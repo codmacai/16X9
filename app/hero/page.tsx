@@ -6,25 +6,23 @@ import { AnimatePresence, LayoutGroup, motion, useMotionValue, useReducedMotion,
 // ===========================================================================
 // CONTENT — replace with your own
 // ===========================================================================
-// Two (or more) videos. Tiles alternate between them in a checkerboard along
-// the tunnel, and each video's clips are spread evenly across its own duration.
-const VIDEOS = [
-  encodeURI("/cleveland_clinic_1.mp4_v1 (1080p) (1).mp4"), // video 1
-  encodeURI("/nike_pitch_nov_25.mp4_v1 (1080p).mp4"), // video 2: change to your real file name in /public
-];
-const CLIP_LEN = 4; // seconds each tile loops
+// 12 short clips in /public/clips (clip-01.mp4 ... clip-12.mp4). Every clip is
+// downloaded, together with the logo and the font, before the page appears.
+const CLIP_COUNT = 12;
+const CLIP_FILES = Array.from({ length: CLIP_COUNT }, (_, i) => `/clips/clip-${String(i + 1).padStart(2, "0")}.mp4`);
+const LOAD_TIMEOUT = 6000; // ms: never keep the visitor waiting longer than this
 
 type Category = "direction" | "motion" | "design";
 type Clip = { id: number; title: string; category: Category; poster?: string };
 
-const CLIPS: Clip[] = Array.from({ length: 12 }, (_, i) => ({
+const CLIPS: Clip[] = Array.from({ length: CLIP_COUNT }, (_, i) => ({
   id: i + 1,
   title: `Project ${String(i + 1).padStart(2, "0")}`,
   category: (["direction", "motion", "design"] as Category[])[i % 3],
 }));
 const C = CLIPS.length;
 
-const LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png"); // your logo in /public
+const LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png"); // your logo in /public
 const BRAND = "16x9";
 const NAV = [
   { label: "Work", href: "/work" },
@@ -65,8 +63,6 @@ type Wall = 0 | 1 | 2 | 3; // left, right, top, bottom
 type Tile = {
   clip: Clip;
   src: string;
-  vslot: number; // this tile's position among the tiles that share its video
-  vslots: number; // how many tiles share that video
   wall: Wall;
   a: number;
   size: number;
@@ -109,21 +105,13 @@ const rnd = (i: number, k: number) => {
   return s - Math.floor(s);
 };
 
-// Which video each tile uses: a checkerboard down the tunnel, so neighbours differ
-const VID = Array.from({ length: N }, (_, i) => ((i % 4) + Math.floor(i / 4)) % VIDEOS.length);
-const VID_COUNT = VIDEOS.map((_, v) => VID.filter((x) => x === v).length);
-const VID_SEEN = VIDEOS.map(() => 0);
-
 const TILES: Tile[] = Array.from({ length: N }, (_, i) => {
   const wall = (i % 4) as Wall;
   const ring = Math.floor(i / 4);
   const set = wall < 2 ? PORTRAIT : LANDSCAPE;
-  const v = VID[i];
   return {
     clip: CLIPS[i % C],
-    src: VIDEOS[v],
-    vslot: VID_SEEN[v]++,
-    vslots: VID_COUNT[v],
+    src: CLIP_FILES[i % C],
     wall,
     a: set[Math.floor(rnd(i, 1) * set.length)],
     size: rnd(i, 2),
@@ -196,7 +184,91 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) { .th-grain, .th-scroll, .th-rec { animation: none; } }
 `;
 
+// ===========================================================================
+// LOADER — the default export. It downloads everything the page needs (all
+// clips, the logo and the font) behind a black screen with a 000 to 100
+// counter. The reel mounts only afterwards, so its entrance animation starts
+// with every tile ready to play and nothing pops in.
+// ===========================================================================
 export default function FloatingReel() {
+  const [pct, setPct] = useState(0);
+  const [blobs, setBlobs] = useState<Record<string, string> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const urls: string[] = [];
+    const map: Record<string, string> = {};
+    const total = CLIP_FILES.length + 2; // clips + logo + font
+    let done = 0;
+    const tick = () => {
+      done++;
+      if (!cancelled) setPct(Math.min(100, Math.round((done / total) * 100)));
+    };
+
+    const clips = CLIP_FILES.map((src) =>
+      fetch(src)
+        .then((r) => (r.ok ? r.blob() : Promise.reject(new Error("bad response"))))
+        .then((b) => {
+          const u = URL.createObjectURL(b);
+          urls.push(u);
+          map[src] = u;
+        })
+        .catch(() => {})
+        .finally(tick)
+    );
+
+    const logo = new Promise<void>((res) => {
+      const img = new Image();
+      img.onload = img.onerror = () => res();
+      img.src = LOGO_SRC;
+    }).finally(tick);
+
+    const font = (document.fonts
+      ? Promise.all([document.fonts.load("900 1em Archivo"), document.fonts.load("300 1em Archivo"), document.fonts.load("500 1em Archivo")])
+      : Promise.resolve()
+    )
+      .catch(() => {})
+      .finally(tick);
+
+    const timeout = new Promise((res) => setTimeout(res, LOAD_TIMEOUT));
+    Promise.race([Promise.all([...clips, logo, font]), timeout]).then(() => {
+      if (cancelled) return;
+      setPct(100);
+      setBlobs({ ...map });
+    });
+
+    return () => {
+      cancelled = true;
+      urls.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, []);
+
+  if (!blobs)
+    return (
+      <main
+        aria-label="Loading"
+        className="relative grid h-dvh w-full place-items-center overflow-hidden bg-black text-white antialiased"
+        style={{ fontFamily: FONT }}
+      >
+        <style>{CSS}</style>
+        <div className="flex flex-col items-center gap-5">
+          <span className="text-[length:clamp(2.5rem,8vw,5rem)] leading-none tabular-nums" style={HEAD}>
+            {String(pct).padStart(3, "0")}
+          </span>
+          <span className="relative block h-px w-40 overflow-hidden bg-white/15">
+            <span className="absolute inset-y-0 left-0 block w-full origin-left bg-white transition-transform duration-200" style={{ transform: `scaleX(${pct / 100})` }} />
+          </span>
+        </div>
+      </main>
+    );
+
+  return <Reel blobs={blobs} />;
+}
+
+// ===========================================================================
+// REEL — the tunnel itself
+// ===========================================================================
+function Reel({ blobs }: { blobs: Record<string, string> }) {
   const reduce = !!useReducedMotion();
   const [selected, setSelected] = useState<number | null>(null); // tile index
   const [hovered, setHovered] = useState<number | null>(null);
@@ -214,7 +286,6 @@ export default function FloatingReel() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-  const startRefs = useRef<number[]>(TILES.map(() => 0)); // clip start (seconds) per tile
   const playing = useRef<boolean[]>(TILES.map(() => true));
 
   useEffect(() => {
@@ -446,11 +517,6 @@ export default function FloatingReel() {
             else v.pause();
           }
         }
-
-        // Keep each tile inside its own clip: jump back to the start at the end
-        if (v && playing.current[i] && v.readyState >= 1 && v.currentTime >= startRefs.current[i] + CLIP_LEN) {
-          v.currentTime = startRefs.current[i];
-        }
       }
     };
     raf = requestAnimationFrame(frame);
@@ -566,24 +632,13 @@ export default function FloatingReel() {
                 ref={(el) => {
                   videoRefs.current[i] = el;
                 }}
-                src={tile.src}
+                src={blobs[tile.src] ?? tile.src}
                 poster={tile.clip.poster}
                 autoPlay
                 muted
+                loop
                 playsInline
-                preload="metadata"
-                onLoadedMetadata={(e) => {
-                  const v = e.currentTarget;
-                  const span = Math.max(0, v.duration - CLIP_LEN);
-                  const startAt = Math.min(span * (tile.vslot / tile.vslots), span);
-                  startRefs.current[i] = startAt;
-                  v.currentTime = startAt;
-                }}
-                onEnded={(e) => {
-                  const v = e.currentTarget;
-                  v.currentTime = startRefs.current[i];
-                  v.play().catch(() => {});
-                }}
+                preload="auto"
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover"
               />
               <span aria-hidden className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/[0.06]" />

@@ -6,16 +6,17 @@ import { AnimatePresence, LayoutGroup, motion, useMotionValue, useReducedMotion,
 // ===========================================================================
 // CONTENT — replace with your own
 // ===========================================================================
-// One video, many clips. Each card loops its own CLIP_LEN-second slice.
-// Without `start`, the clips are spread evenly across the video's duration.
-// Two (or more) videos. Cards alternate between them, and each video's clips
-// are spread evenly across that video's own duration.
-const VIDEOS = [
-  encodeURI("/nike_pitch_nov_25.mp4_v1 (1080p).mp4"), // video 1
-  encodeURI("/cleveland_clinic_1.mp4_v1 (1080p) (1).mp4"), // video 2: change to your real file name in /public
+// The wall plays short clips from /public/clips (clip-01.mp4 ... clip-15.mp4).
+// The two full films load only when someone opens a card in the lightbox.
+// Odd clips (01, 03, ...) were cut from FILMS[0], even clips from FILMS[1].
+// Keep this order in sync with the ffmpeg script you used.
+const FILMS = [
+  encodeURI("/cleveland_clinic_1.mp4_v1 (1080p) (1).mp4"), // film 1
+  encodeURI("/nike_pitch_nov_25.mp4_v1 (1080p).mp4"), // film 2
 ];
 const COUNT = 15; // number of cards / clips in total
-const CLIP_LEN = 4; // seconds each card loops
+const CLIP_LEN = 4; // seconds each clip lasts (used to find the moment in the full film)
+const LOAD_TIMEOUT = 6000; // ms: never keep the visitor waiting longer than this
 
 type Item = {
   id: number;
@@ -23,34 +24,38 @@ type Item = {
   client: string;
   logo: string; // client name / logo text shown on the frame
   category: string;
-  src: string;
+  src: string; // the short clip shown on the wall
+  film: string; // the full film shown in the lightbox
   poster?: string;
-  start?: number; // optional: force a start time in seconds
-  slot: number; // this clip's position within its own video
-  slots: number; // how many clips share that video
+  start?: number; // optional: force the moment (seconds) the lightbox opens at
+  slot: number; // this clip's position within its own film
+  slots: number; // how many clips share that film
 };
 
 // The company logo shown on the black opening card, before the video wipes
 // over it. Drop your file in /public and change the path here.
-const COMPANY_LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png");
+const COMPANY_LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png");
+
+const CLIP_FILES = Array.from({ length: COUNT }, (_, i) => `/clips/clip-${String(i + 1).padStart(2, "0")}.mp4`);
 
 const ITEMS: Item[] = Array.from({ length: COUNT }, (_, i) => {
-  const v = i % VIDEOS.length; // which video this card uses
+  const v = i % FILMS.length; // which film this card was cut from
   return {
     id: i + 1,
     title: `Project ${String(i + 1).padStart(2, "0")}`,
     client: "Client name",
     logo: "LOGO",
     category: ["commercial", "brand film", "music video"][i % 3],
-    src: VIDEOS[v],
-    slot: Math.floor(i / VIDEOS.length),
-    slots: Math.ceil((COUNT - v) / VIDEOS.length),
+    src: CLIP_FILES[i],
+    film: FILMS[v],
+    slot: Math.floor(i / FILMS.length),
+    slots: Math.ceil((COUNT - v) / FILMS.length),
     // start: 12, // uncomment to pick an exact moment for this card
   };
 });
 const N = ITEMS.length;
 
-const LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png"); // your logo in /public
+const LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png"); // your logo in /public
 const BRAND = "16x9";
 const NAV = [
   { label: "Work", href: "/work" },
@@ -97,7 +102,8 @@ const PUSH = 0.05; // slight sideways swell so the rise reads as volume
 
 // Opening: the centre card surfaces out of the dark and its footage wipes up.
 // Every other card then reveals right where it sits, nearest the centre first.
-// Hover and drag unlock once it settles.
+// Hover and drag unlock once it settles. The opening clock starts only once the
+// centre card's video has data, so the footage is ready the moment it wipes up.
 const INTRO = {
   center: 0.35,
   centerDur: 1.8,
@@ -109,9 +115,10 @@ const INTRO = {
   fadeSpread: 0.9,
   fadeDur: 1.4,
 };
-const SETTLE_MS = (INTRO.fadeStart + INTRO.fadeSpread + INTRO.fadeDur + 0.2) * 1000;
+const SETTLE_S = INTRO.fadeStart + INTRO.fadeSpread + INTRO.fadeDur + 0.2;
 const CHROME = 3.5; // copy, nav and marks arrive after the reel unfolds
 const FPS = 25;
+const GATE_MAX = 2500; // ms: start the opening anyway if the centre video is slow
 
 // ===========================================================================
 // TYPE & COLOUR — Archivo (wide cut for display), white on black
@@ -191,16 +198,98 @@ const toMatrix = (srcAdj: M3, dst: number[]) => {
 
 type PoolTile = { p: number; t: number; bx: number; by: number; w: number; h: number; cx: number; cy: number };
 type CenterTile = { p: number; x: number; y: number };
-type OpenFilm = Item & { at: number };
+
+// ===========================================================================
+// LOADER — the default export. Downloads every clip, the logo and the font
+// behind a black screen with a 000 to 100 counter. The reel mounts only
+// afterwards, so every card can play straight from memory.
+// ===========================================================================
+export default function OneScreenReel() {
+  const [pct, setPct] = useState(0);
+  const [blobs, setBlobs] = useState<Record<string, string> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const urls: string[] = [];
+    const map: Record<string, string> = {};
+    const total = CLIP_FILES.length + 2; // clips + logo + font
+    let done = 0;
+    const tick = () => {
+      done++;
+      if (!cancelled) setPct(Math.min(100, Math.round((done / total) * 100)));
+    };
+
+    const clips = CLIP_FILES.map((src) =>
+      fetch(src)
+        .then((r) => (r.ok ? r.blob() : Promise.reject(new Error("bad response"))))
+        .then((b) => {
+          const u = URL.createObjectURL(b);
+          urls.push(u);
+          map[src] = u;
+        })
+        .catch(() => {})
+        .finally(tick)
+    );
+
+    const logo = new Promise<void>((res) => {
+      const img = new Image();
+      img.onload = img.onerror = () => res();
+      img.src = COMPANY_LOGO_SRC;
+    }).finally(tick);
+
+    const font = (document.fonts
+      ? Promise.all([document.fonts.load("900 1em Archivo"), document.fonts.load("800 1em Archivo"), document.fonts.load("300 1em Archivo"), document.fonts.load("500 1em Archivo")])
+      : Promise.resolve()
+    )
+      .catch(() => {})
+      .finally(tick);
+
+    const timeout = new Promise((res) => setTimeout(res, LOAD_TIMEOUT));
+    Promise.race([Promise.all([...clips, logo, font]), timeout]).then(() => {
+      if (cancelled) return;
+      setPct(100);
+      setBlobs({ ...map });
+    });
+
+    return () => {
+      cancelled = true;
+      urls.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, []);
+
+  if (!blobs)
+    return (
+      <main
+        aria-label="Loading"
+        className="relative grid h-dvh w-full place-items-center overflow-hidden bg-black text-white antialiased"
+        style={{ fontFamily: FONT }}
+      >
+        <style>{CSS}</style>
+        <div className="flex flex-col items-center gap-5">
+          <span className="text-[length:clamp(2.5rem,8vw,5rem)] leading-none tabular-nums" style={HEAD}>
+            {String(pct).padStart(3, "0")}
+          </span>
+          <span className="relative block h-px w-40 overflow-hidden bg-white/15">
+            <span
+              className="absolute inset-y-0 left-0 block w-full origin-left bg-white transition-transform duration-200"
+              style={{ transform: `scaleX(${pct / 100})` }}
+            />
+          </span>
+        </div>
+      </main>
+    );
+
+  return <Reel blobs={blobs} />;
+}
 
 // ===========================================================================
 // PAGE
 // ===========================================================================
-export default function OneScreenReel() {
+function Reel({ blobs }: { blobs: Record<string, string> }) {
   const reduce = !!useReducedMotion();
   const [grid, setGrid] = useState({ CW: 480, CH: 300, vw: 1440, vh: 900, px: 2, py: 2 });
   const [hovered, setHovered] = useState<number | null>(null);
-  const [film, setFilm] = useState<OpenFilm | null>(null);
+  const [film, setFilm] = useState<Item | null>(null);
   const [dragging, setDragging] = useState(false);
   const [explored, setExplored] = useState(false);
   const [settled, setSettled] = useState(false);
@@ -215,23 +304,20 @@ export default function OneScreenReel() {
   const introRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const introImgRefs = useRef<(HTMLImageElement | null)[]>([]);
   const current = useRef<number[]>([]);
-  const startRefs = useRef<number[]>([]); // clip start time (seconds) per tile
+  const blobsRef = useRef(blobs);
   const hoverRef = useRef<number | null>(null);
   const settledRef = useRef(false);
   useEffect(() => {
     hoverRef.current = hovered;
   }, [hovered]);
 
-  // Hover, drag and scroll unlock only once the opening has finished
+  // Reduced motion has no opening, so interaction is available straight away.
+  // Otherwise the render loop unlocks hover, drag and scroll when the opening ends.
   useEffect(() => {
-    const id = window.setTimeout(
-      () => {
-        settledRef.current = true;
-        setSettled(true);
-      },
-      reduce ? 0 : SETTLE_MS
-    );
-    return () => window.clearTimeout(id);
+    if (reduce) {
+      settledRef.current = true;
+      setSettled(true);
+    }
   }, [reduce]);
 
   const m = useRef({ ox: 0, oy: 0, vx: 0, vy: 0, down: false, moved: 0, captured: false, lastX: 0, lastY: 0, lastT: 0, lampX: 720, lampY: 450 });
@@ -303,7 +389,6 @@ export default function OneScreenReel() {
     const tiles = poolRef.current;
     const count = tiles.length;
     current.current = Array.from({ length: count }, () => -1);
-    startRefs.current = Array.from({ length: count }, () => 0);
     const playing = Array.from({ length: count }, () => false);
     const shown = Array.from({ length: count }, () => true);
     const shadeCache = Array.from({ length: count }, () => "");
@@ -315,7 +400,10 @@ export default function OneScreenReel() {
     const liftPx = LIFT * Math.min(1, vw / 1440);
     const s = m.current;
     // If the opening already played (e.g. window resize), skip straight to the end
-    const start = performance.now() - (settledRef.current ? 60000 : 0);
+    let start = performance.now() - (settledRef.current ? 60000 : 0);
+    // The opening clock stays at zero until the centre card's video has data
+    let started = settledRef.current || reduce;
+    const gateStart = performance.now();
     let last = performance.now();
     let raf = 0;
     let visible = true;
@@ -379,8 +467,14 @@ export default function OneScreenReel() {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       if (!visible) return;
-      const t = (now - start) / 1000;
+      const t = started ? (now - start) / 1000 : 0;
       const k = (rate: number) => 1 - Math.exp(-dt * (reduce ? 40 : rate));
+
+      // Hover, drag and scroll unlock once the opening has finished
+      if (!settledRef.current && started && t >= SETTLE_S) {
+        settledRef.current = true;
+        setSettled(true);
+      }
       const live = settledRef.current;
 
       if (!s.down) {
@@ -440,7 +534,10 @@ export default function OneScreenReel() {
           current.current[p] = idx;
           const it = ITEMS[idx];
           v.poster = it.poster ?? "";
-          v.src = it.src; // onLoadedMetadata seeks to this card's clip start
+          // Centre card and everything near the screen buffer fully; the rest only fetch metadata
+          const near = cen?.p === p || (Math.abs(w.x) < vw * 0.7 && Math.abs(w.y) < vh * 0.7);
+          v.preload = near ? "auto" : "metadata";
+          v.src = blobsRef.current[it.src] ?? it.src;
           playing[p] = false;
           const set = (r: (HTMLSpanElement | null)[], text: string) => {
             const node = r[p];
@@ -554,16 +651,21 @@ export default function OneScreenReel() {
           if (sh) sh.style.opacity = shade;
         }
 
-        // Keep each card inside its own clip: jump back to the start at the end
-        if (playing[p] && v.readyState >= 1 && v.currentTime >= startRefs.current[p] + CLIP_LEN) {
-          v.currentTime = startRefs.current[p];
-        }
-
         const play = !document.hidden;
         if (play !== playing[p]) {
           playing[p] = play;
           if (play) v.play().catch(() => {});
           else v.pause();
+        }
+      }
+
+      // Hold the opening at zero until the centre card's video has data, so the
+      // footage is already there when the logo card lifts. Never wait longer than GATE_MAX.
+      if (!started && cen) {
+        const cv = videoRefs.current[cen.p];
+        if (!cv || cv.readyState >= 3 || now - gateStart > GATE_MAX) {
+          started = true;
+          start = now;
         }
       }
     };
@@ -715,7 +817,7 @@ export default function OneScreenReel() {
                 onClick={() => {
                   if (!settledRef.current || m.current.moved > 6) return;
                   const idx = current.current[p];
-                  if (idx >= 0) setFilm({ ...ITEMS[idx], at: startRefs.current[p] });
+                  if (idx >= 0) setFilm(ITEMS[idx]);
                 }}
                 className="absolute inset-0 block overflow-hidden bg-[#0c0c0c] outline-none focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-4 focus-visible:outline-white [@media(pointer:fine)]:cursor-none"
               >
@@ -744,23 +846,9 @@ export default function OneScreenReel() {
                       videoRefs.current[p] = el;
                     }}
                     muted
+                    loop
                     playsInline
                     preload="metadata"
-                    onLoadedMetadata={(e) => {
-                      const v = e.currentTarget;
-                      const idx = current.current[p];
-                      const it = ITEMS[idx];
-                      if (!it) return;
-                      const span = Math.max(0, v.duration - CLIP_LEN);
-                      const startAt = Math.min(it.start ?? span * (it.slot / it.slots), span);
-                      startRefs.current[p] = startAt;
-                      v.currentTime = startAt;
-                    }}
-                    onEnded={(e) => {
-                      const v = e.currentTarget;
-                      v.currentTime = startRefs.current[p];
-                      v.play().catch(() => {});
-                    }}
                     className="pointer-events-none absolute inset-0 h-full w-full object-cover"
                     style={{
                       filter: active ? "grayscale(0) contrast(1.02)" : "grayscale(0.6) contrast(1.1)",
@@ -1161,10 +1249,10 @@ function Timecode() {
 }
 
 // ===========================================================================
-// LIGHTBOX — the film full screen, with sound and controls. Opens at the
-// moment of the clicked clip.
+// LIGHTBOX — the full film, with sound and controls. Opens at the moment
+// the clicked clip was cut from, and only loads the big file when opened.
 // ===========================================================================
-function Lightbox({ item, onClose }: { item: OpenFilm | null; onClose: () => void }) {
+function Lightbox({ item, onClose }: { item: Item | null; onClose: () => void }) {
   useEffect(() => {
     if (!item) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -1209,12 +1297,15 @@ function Lightbox({ item, onClose }: { item: OpenFilm | null; onClose: () => voi
           <div className="flex flex-1 items-center justify-center p-4 sm:p-10">
             <video
               key={item.id}
-              src={item.src}
+              src={item.film}
               autoPlay
               controls
               playsInline
               onLoadedMetadata={(e) => {
-                if (item.at) e.currentTarget.currentTime = item.at;
+                const v = e.currentTarget;
+                const span = Math.max(0, v.duration - CLIP_LEN);
+                const at = Math.min(item.start ?? span * (item.slot / item.slots), span);
+                if (at > 0) v.currentTime = at;
               }}
               onClick={(e) => e.stopPropagation()}
               className="max-h-full w-full max-w-[min(100%,160svh)] bg-black"

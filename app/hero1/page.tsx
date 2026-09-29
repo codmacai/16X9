@@ -6,14 +6,13 @@ import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } 
 // ===========================================================================
 // CONTENT — replace with your own
 // ===========================================================================
-// Two (or more) videos. Cards alternate between them, and each video's clips
-// are spread evenly across that video's own duration.
-const VIDEOS = [
-  encodeURI("/cleveland_clinic_1.mp4_v1 (1080p) (1).mp4"), // video 1
-  encodeURI("/nike_pitch_nov_25.mp4_v1 (1080p).mp4"), // video 2: change to your real file name in /public
+// Full films: used ONLY by the "watch the film" lightbox. Cleveland must be
+// first, because the clip script cut clip-01, clip-03... from it.
+const FILMS = [
+  encodeURI("/cleveland_clinic_1.mp4_v1 (1080p) (1).mp4"), // film 1
+  encodeURI("/nike_pitch_nov_25.mp4_v1 (1080p).mp4"), // film 2
 ];
-const COUNT = 12; // number of clips (must match the number of entries in PLACES)
-const CLIP_LEN = 4; // seconds each card loops
+const COUNT = 12; // number of clips (uses public/clips/clip-01..12.mp4, must match PLACES)
 
 type Project = {
   id: number;
@@ -21,26 +20,21 @@ type Project = {
   client: string;
   year: string;
   category: string;
-  src: string;
-  slot: number; // this clip's position within its own video
-  slots: number; // how many clips share that video
-  poster?: string;
+  src: string; // short loop clip
+  film: string; // full film for the lightbox
 };
 
-const PROJECTS: Project[] = Array.from({ length: COUNT }, (_, i) => {
-  const v = i % VIDEOS.length;
-  return {
-    id: i + 1,
-    title: `Project ${String(i + 1).padStart(2, "0")}`,
-    client: "Client name",
-    year: "2026",
-    category: ["commercial", "brand film", "music video"][i % 3],
-    src: VIDEOS[v],
-    slot: Math.floor(i / VIDEOS.length),
-    slots: Math.ceil((COUNT - v) / VIDEOS.length),
-  };
-});
+const PROJECTS: Project[] = Array.from({ length: COUNT }, (_, i) => ({
+  id: i + 1,
+  title: `Project ${String(i + 1).padStart(2, "0")}`,
+  client: "Client name",
+  year: "2026",
+  category: ["commercial", "brand film", "music video"][i % 3],
+  src: `/clips/clip-${String(i + 1).padStart(2, "0")}.mp4`,
+  film: FILMS[i % FILMS.length],
+}));
 const N = PROJECTS.length;
+const CLIP_SRCS = PROJECTS.map((p) => p.src);
 
 const BRAND = "16x9";
 const NAV = [
@@ -97,6 +91,82 @@ const CSS = `
 .hs-rec { animation: hs-rec 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .hs-grain, .hs-scroll, .hs-rec { animation: none; } }
 `;
+
+// ===========================================================================
+// PRELOADER — downloads every short clip into memory before the hero mounts,
+// so each tile plays instantly. Never waits more than MAX_WAIT ms.
+// ===========================================================================
+const MAX_WAIT = 6000;
+
+function useClipPreload(srcs: string[]) {
+  const map = useRef<Record<string, string>>({});
+  const [progress, setProgress] = useState(0);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let done = 0;
+    const created: string[] = [];
+    const finish = () => !cancelled && setReady(true);
+    const timer = window.setTimeout(finish, MAX_WAIT);
+    Promise.all(
+      srcs.map((s) =>
+        fetch(s)
+          .then((r) => (r.ok ? r.blob() : Promise.reject(new Error("bad response"))))
+          .then((b) => {
+            const u = URL.createObjectURL(b);
+            created.push(u);
+            map.current[s] = u;
+          })
+          .catch(() => {})
+          .finally(() => {
+            done++;
+            if (!cancelled) setProgress(done / srcs.length);
+          })
+      )
+    ).then(() => {
+      window.clearTimeout(timer);
+      finish();
+    });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      created.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [srcs]);
+
+  // Falls back to the normal URL if a clip could not be preloaded
+  const resolve = useCallback((s: string) => map.current[s] ?? s, []);
+  return { progress, ready, resolve };
+}
+
+function Loader({ progress, done }: { progress: number; done: boolean }) {
+  const pct = Math.round(progress * 100);
+  return (
+    <AnimatePresence>
+      {!done && (
+        <motion.div
+          key="loader"
+          aria-live="polite"
+          exit={{ opacity: 0, transition: { duration: 0.7, ease: EASE_OUT } }}
+          className="fixed inset-0 z-[90] flex flex-col justify-between bg-black px-6 pb-8 pt-8 text-white sm:px-12 sm:pb-10 sm:pt-10"
+          style={{ fontFamily: FONT }}
+        >
+          <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-white/60">{BRAND}</p>
+          <div>
+            <p className="text-[clamp(3rem,12vw,9rem)] leading-none tabular-nums" style={HEAD}>
+              {String(pct).padStart(3, "0")}
+            </p>
+            <div className="mt-5 h-px w-full bg-white/15">
+              <div className="h-px bg-white" style={{ width: `${pct}%`, transition: "width 300ms ease-out" }} />
+            </div>
+            <p className="mt-3 text-[10px] font-medium uppercase tracking-[0.3em] text-white/50">Loading reel</p>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 // ===========================================================================
 // SPACE
@@ -160,17 +230,26 @@ const Z0 = Array.from({ length: N }, (_, i) => -i * SPACING);
 
 const wrap = (v: number) => ((((v + BACK) % DEPTH) + DEPTH) % DEPTH) - BACK;
 
-type OpenFilm = Project & { at: number };
-
 // ===========================================================================
-// HERO
+// PAGE — loader first, the hero mounts (and its entrance starts) once ready
 // ===========================================================================
 export default function HeroSection() {
+  const { progress, ready, resolve } = useClipPreload(CLIP_SRCS);
+  return (
+    <>
+      <style>{CSS}</style>
+      {ready && <Hero resolve={resolve} />}
+      <Loader progress={progress} done={ready} />
+    </>
+  );
+}
+
+function Hero({ resolve }: { resolve: (s: string) => string }) {
   const reduce = !!useReducedMotion();
   const [selected, setSelected] = useState<number | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
   const [soundOn, setSoundOn] = useState(false);
-  const [film, setFilm] = useState<OpenFilm | null>(null);
+  const [film, setFilm] = useState<Project | null>(null);
 
   const selRef = useRef<number | null>(null);
   const hoverRef = useRef<number | null>(null);
@@ -180,7 +259,6 @@ export default function HeroSection() {
   const worldRef = useRef<HTMLDivElement>(null);
   const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-  const startRefs = useRef<number[]>(PROJECTS.map(() => 0)); // clip start (seconds) per tile
 
   useEffect(() => {
     selRef.current = selected;
@@ -312,12 +390,7 @@ export default function HeroSection() {
           el.style.pointerEvents = pe;
           lastPE[i] = pe;
         }
-
-        // Keep each card inside its own clip: jump back to the start at the end
-        const v = videoRefs.current[i];
-        if (v && !v.paused && v.readyState >= 1 && v.currentTime >= startRefs.current[i] + CLIP_LEN) {
-          v.currentTime = startRefs.current[i];
-        }
+        // Clips loop by themselves (the <video> has `loop`), nothing to reset here.
       }
     };
     raf = requestAnimationFrame(frame);
@@ -405,8 +478,6 @@ export default function HeroSection() {
       className="relative h-dvh w-full select-none overflow-hidden bg-black text-white antialiased"
       style={{ fontFamily: FONT }}
     >
-      <style>{CSS}</style>
-
       {/* 3D space */}
       <div
         className="absolute inset-0"
@@ -432,31 +503,19 @@ export default function HeroSection() {
               onPointerLeave={() => setHovered((h) => (h === p.id ? null : h))}
               onFocus={() => setHovered(p.id)}
               onBlur={() => setHovered(null)}
-              className="absolute left-0 top-0 block overflow-hidden bg-[#0d0d0d] opacity-0 outline-none [backface-visibility:hidden] [will-change:transform,filter,opacity] focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-white [@media(pointer:fine)]:cursor-none"
+              className="absolute left-0 top-0 block overflow-hidden bg-black opacity-0 outline-none [backface-visibility:hidden] [will-change:transform,filter,opacity] focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-white [@media(pointer:fine)]:cursor-none"
             >
               <video
                 ref={(el) => {
                   videoRefs.current[i] = el;
                 }}
-                src={p.src}
-                poster={p.poster}
+                src={resolve(p.src)}
                 autoPlay
                 muted
+                loop
                 playsInline
-                preload="metadata"
-                onLoadedMetadata={(e) => {
-                  const v = e.currentTarget;
-                  const span = Math.max(0, v.duration - CLIP_LEN);
-                  const startAt = Math.min(span * (p.slot / p.slots), span);
-                  startRefs.current[i] = startAt;
-                  v.currentTime = startAt;
-                }}
-                onEnded={(e) => {
-                  const v = e.currentTarget;
-                  v.currentTime = startRefs.current[i];
-                  v.play().catch(() => {});
-                }}
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+                preload="auto"
+                className="pointer-events-none absolute -inset-px block h-[calc(100%+2px)] w-[calc(100%+2px)] max-w-none object-cover"
               />
               <span aria-hidden className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/[0.06]" />
             </button>
@@ -607,7 +666,7 @@ export default function HeroSection() {
                   const v = videoRefs.current[selectedProject.id - 1];
                   if (v) v.muted = true;
                   setSoundOn(false);
-                  setFilm({ ...selectedProject, at: startRefs.current[selectedProject.id - 1] });
+                  setFilm(selectedProject);
                 }}
                 className="py-1 text-white transition-opacity hover:opacity-70"
               >
@@ -795,9 +854,10 @@ export function Timecode() {
 }
 
 // ===========================================================================
-// LIGHTBOX — full film with sound and controls, opened at the clip's start
+// LIGHTBOX — the full film with sound and controls. Only this loads the big
+// 1080p file, and only when "watch the film" is pressed.
 // ===========================================================================
-function Lightbox({ film, onClose }: { film: OpenFilm | null; onClose: () => void }) {
+function Lightbox({ film, onClose }: { film: Project | null; onClose: () => void }) {
   useEffect(() => {
     if (!film) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -839,13 +899,10 @@ function Lightbox({ film, onClose }: { film: OpenFilm | null; onClose: () => voi
           <div className="flex flex-1 items-center justify-center p-4 sm:p-8">
             <motion.video
               key={film.id}
-              src={film.src}
+              src={film.film}
               autoPlay
               controls
               playsInline
-              onLoadedMetadata={(e) => {
-                if (film.at) e.currentTarget.currentTime = film.at;
-              }}
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
