@@ -37,6 +37,7 @@ const N = PROJECTS.length;
 const CLIP_SRCS = PROJECTS.map((p) => p.src);
 
 const BRAND = "16x9";
+const LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png"); // your logo in /public
 const NAV = [
   { label: "Work", href: "/work" },
   { label: "Services", href: "/services" },
@@ -152,7 +153,8 @@ function Loader({ progress, done }: { progress: number; done: boolean }) {
           className="fixed inset-0 z-[90] flex flex-col justify-between bg-black px-6 pb-8 pt-8 text-white sm:px-12 sm:pb-10 sm:pt-10"
           style={{ fontFamily: FONT }}
         >
-          <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-white/60">{BRAND}</p>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={LOGO_SRC} alt={BRAND} className="h-8 w-auto self-start sm:h-10" />
           <div>
             <p className="text-[clamp(3rem,12vw,9rem)] leading-none tabular-nums" style={HEAD}>
               {String(pct).padStart(3, "0")}
@@ -253,6 +255,7 @@ function Hero({ resolve }: { resolve: (s: string) => string }) {
 
   const selRef = useRef<number | null>(null);
   const hoverRef = useRef<number | null>(null);
+  const heroVisible = useRef(true);
   const ptr = useRef({ x: 0, y: 0 });
   const size = useRef({ vw: 1440, vh: 900 });
   const placesRef = useRef<Place[]>(PLACES);
@@ -289,6 +292,40 @@ function Hero({ resolve }: { resolve: (s: string) => string }) {
     return () => {
       window.removeEventListener("resize", apply);
       window.removeEventListener("orientationchange", apply);
+    };
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // Autostart on phones. Mobile browsers (iOS Safari especially) refuse to
+  // start videos that are still invisible or not yet "on screen", and React
+  // does not always write the muted attribute. So: keep asking every video to
+  // play during the first seconds, and again on the first touch, scroll or
+  // tap, in case Low Power Mode blocked the automatic start.
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    const kick = () => {
+      if (document.hidden || !heroVisible.current) return;
+      videoRefs.current.forEach((v) => {
+        if (v && v.paused) v.play().catch(() => {});
+      });
+    };
+    kick();
+    const raf = requestAnimationFrame(kick);
+    const started = performance.now();
+    const iv = window.setInterval(() => {
+      kick();
+      const allPlaying = videoRefs.current.every((v) => !v || !v.paused);
+      if (allPlaying || performance.now() - started > 10000) window.clearInterval(iv);
+    }, 300);
+
+    const events = ["touchstart", "touchend", "pointerdown", "pointermove", "scroll", "click", "keydown"] as const;
+    events.forEach((ev) => window.addEventListener(ev, kick, { passive: true, capture: true }));
+    document.addEventListener("visibilitychange", kick);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearInterval(iv);
+      events.forEach((ev) => window.removeEventListener(ev, kick, { capture: true }));
+      document.removeEventListener("visibilitychange", kick);
     };
   }, []);
 
@@ -447,6 +484,7 @@ function Hero({ resolve }: { resolve: (s: string) => string }) {
     const el = sectionRef.current;
     if (!el) return;
     const io = new IntersectionObserver(([entry]) => {
+      heroVisible.current = entry.isIntersecting;
       videoRefs.current.forEach((v) => v && (entry.isIntersecting && !document.hidden ? v.play().catch(() => {}) : v.pause()));
     });
     io.observe(el);
@@ -508,6 +546,16 @@ function Hero({ resolve }: { resolve: (s: string) => string }) {
               <video
                 ref={(el) => {
                   videoRefs.current[i] = el;
+                  // React does not write the muted attribute; iOS needs it to autoplay.
+                  // Set once per element so a video with sound on is never re-muted.
+                  if (el && !el.dataset.init) {
+                    el.dataset.init = "1";
+                    el.muted = true;
+                    el.defaultMuted = true;
+                    el.setAttribute("muted", "");
+                    el.setAttribute("playsinline", "");
+                    el.setAttribute("webkit-playsinline", "");
+                  }
                 }}
                 src={resolve(p.src)}
                 autoPlay
@@ -515,6 +563,14 @@ function Hero({ resolve }: { resolve: (s: string) => string }) {
                 loop
                 playsInline
                 preload="auto"
+                disablePictureInPicture
+                disableRemotePlayback
+                onLoadedData={(e) => {
+                  if (heroVisible.current) e.currentTarget.play().catch(() => {});
+                }}
+                onCanPlay={(e) => {
+                  if (heroVisible.current) e.currentTarget.play().catch(() => {});
+                }}
                 className="pointer-events-none absolute -inset-px block h-[calc(100%+2px)] w-[calc(100%+2px)] max-w-none object-cover"
               />
               <span aria-hidden className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/[0.06]" />
@@ -746,8 +802,9 @@ function Navbar({ hidden, reduce }: { hidden: boolean; reduce: boolean }) {
         }}
       >
         <div className="flex items-center justify-between rounded-full border border-white/10 bg-black/30 py-2 pl-5 pr-2 shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:pl-6">
-          <a href="/" className="text-[13px] uppercase text-white" style={{ ...WIDE, fontWeight: 800, letterSpacing: "0.06em" }}>
-            {BRAND}
+        <a href="/" aria-label={`${BRAND}, home`} className="block opacity-90 transition-opacity hover:opacity-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={LOGO_SRC} alt={BRAND} className="h-7 w-auto sm:h-8" />
           </a>
 
           <nav aria-label="Main" className="hidden items-center gap-9 md:flex">

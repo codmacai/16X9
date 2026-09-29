@@ -34,7 +34,7 @@ type Item = {
 
 // The company logo shown on the black opening card, before the video wipes
 // over it. Drop your file in /public and change the path here.
-const COMPANY_LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png");
+const COMPANY_LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png");
 
 const CLIP_FILES = Array.from({ length: COUNT }, (_, i) => `/clips/clip-${String(i + 1).padStart(2, "0")}.mp4`);
 
@@ -55,7 +55,7 @@ const ITEMS: Item[] = Array.from({ length: COUNT }, (_, i) => {
 });
 const N = ITEMS.length;
 
-const LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png"); // your logo in /public
+const LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png"); // your logo in /public
 const BRAND = "16x9";
 const NAV = [
   { label: "Work", href: "/work" },
