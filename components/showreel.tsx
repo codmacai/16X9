@@ -6,32 +6,51 @@ import { AnimatePresence, LayoutGroup, motion, useMotionValue, useReducedMotion,
 // ===========================================================================
 // CONTENT — replace with your own
 // ===========================================================================
+// One video, many clips. Each card loops its own CLIP_LEN-second slice.
+// Without `start`, the clips are spread evenly across the video's duration.
+// Two (or more) videos. Cards alternate between them, and each video's clips
+// are spread evenly across that video's own duration.
+const VIDEOS = [
+  encodeURI("/nike_pitch_nov_25.mp4_v1 (1080p).mp4"), // video 1
+  encodeURI("/cleveland_clinic_1.mp4_v1 (1080p) (1).mp4"), // video 2: change to your real file name in /public
+];
+const COUNT = 15; // number of cards / clips in total
+const CLIP_LEN = 4; // seconds each card loops
+
 type Item = {
   id: number;
   title: string;
   client: string;
   logo: string; // client name / logo text shown on the frame
   category: string;
-  src: string; // compressed loop, ~2-4 MB
+  src: string;
   poster?: string;
+  start?: number; // optional: force a start time in seconds
+  slot: number; // this clip's position within its own video
+  slots: number; // how many clips share that video
 };
 
 // The company logo shown on the black opening card, before the video wipes
-// over it. Drop your file in /public (e.g. /public/company-logo.png) and change
-// the path here. A white or light PNG / SVG with a transparent background works best.
-const COMPANY_LOGO_SRC = "/Screenshot 2026-09-29 at 10.25.42 PM.png";
+// over it. Drop your file in /public and change the path here.
+const COMPANY_LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png");
 
-const ITEMS: Item[] = Array.from({ length: 15 }, (_, i) => ({
-  id: i + 1,
-  title: `Project ${String(i + 1).padStart(2, "0")}`,
-  client: "Client name",
-  logo: "LOGO",
-  category: ["commercial", "brand film", "music video"][i % 3],
-  src: "/Aldar - The Promise.mp4",
-}));
+const ITEMS: Item[] = Array.from({ length: COUNT }, (_, i) => {
+  const v = i % VIDEOS.length; // which video this card uses
+  return {
+    id: i + 1,
+    title: `Project ${String(i + 1).padStart(2, "0")}`,
+    client: "Client name",
+    logo: "LOGO",
+    category: ["commercial", "brand film", "music video"][i % 3],
+    src: VIDEOS[v],
+    slot: Math.floor(i / VIDEOS.length),
+    slots: Math.ceil((COUNT - v) / VIDEOS.length),
+    // start: 12, // uncomment to pick an exact moment for this card
+  };
+});
 const N = ITEMS.length;
 
-const LOGO_SRC = "/Screenshot 2026-09-29 at 10.25.42 PM.png"; // your logo in /public
+const LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png"); // your logo in /public
 const BRAND = "16x9";
 const NAV = [
   { label: "Work", href: "/work" },
@@ -59,14 +78,20 @@ const ROW_SHIFT = [0.62, 0.18, 0.44]; // per-row sideways shift, in cards
 const PATTERN: [number, number, number, number][] = [];
 for (let r = 0; r < BLOCK_ROWS; r++)
   for (let c = 0; c < BLOCK_COLS; c++) PATTERN.push([c + ROW_SHIFT[r], r, 1, 1]);
-// How many cards fit across / down the screen
-// How many cards fit across / down the screen
-const VIEW = { desktop: { cols: 3, rows: 3 }, mobile: { cols: 3, rows: 5 } };
+
+// How many cards fit across / down the screen, by screen size
+const getView = (vw: number, vh: number) => {
+  if (vw < 640) return { cols: 2, rows: 4 }; // phones
+  if (vw < 1024) return vh > vw ? { cols: 3, rows: 4 } : { cols: 3, rows: 3 }; // tablets
+  if (vw >= 2200) return { cols: 4, rows: 3 }; // very large screens
+  return { cols: 3, rows: 3 }; // desktop
+};
+
 const CURVE = 0.55; // outward bend of the whole wall (0 = flat)
 const PERSP = 1400;
 // Hover bulge: the wall swells toward you around the hovered card like a
 // dome, so the card rises and every card around it tilts to follow.
-const LIFT = 170; // px the peak rises toward the viewer
+const LIFT = 170; // px the peak rises toward the viewer (scaled down on small screens)
 const SPREAD = 1.15; // width of the dome, in cards
 const PUSH = 0.05; // slight sideways swell so the rise reads as volume
 
@@ -166,15 +191,16 @@ const toMatrix = (srcAdj: M3, dst: number[]) => {
 
 type PoolTile = { p: number; t: number; bx: number; by: number; w: number; h: number; cx: number; cy: number };
 type CenterTile = { p: number; x: number; y: number };
+type OpenFilm = Item & { at: number };
 
 // ===========================================================================
 // PAGE
 // ===========================================================================
 export default function OneScreenReel() {
   const reduce = !!useReducedMotion();
-  const [grid, setGrid] = useState({ CW: 288, CH: 300, vw: 1440, vh: 900, px: 2, py: 2 });
+  const [grid, setGrid] = useState({ CW: 480, CH: 300, vw: 1440, vh: 900, px: 2, py: 2 });
   const [hovered, setHovered] = useState<number | null>(null);
-  const [film, setFilm] = useState<Item | null>(null);
+  const [film, setFilm] = useState<OpenFilm | null>(null);
   const [dragging, setDragging] = useState(false);
   const [explored, setExplored] = useState(false);
   const [settled, setSettled] = useState(false);
@@ -189,6 +215,7 @@ export default function OneScreenReel() {
   const introRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const introImgRefs = useRef<(HTMLImageElement | null)[]>([]);
   const current = useRef<number[]>([]);
+  const startRefs = useRef<number[]>([]); // clip start time (seconds) per tile
   const hoverRef = useRef<number | null>(null);
   const settledRef = useRef(false);
   useEffect(() => {
@@ -214,24 +241,40 @@ export default function OneScreenReel() {
   const glowX = useSpring(gx, { stiffness: 120, damping: 24 });
   const glowY = useSpring(gy, { stiffness: 120, damping: 24 });
 
-  // Cell size: the view fits VIEW.cols x VIEW.rows cells
+  // Cell size: the view fits getView().cols x rows cells. Debounced so mobile
+  // address-bar height changes don't rebuild the wall.
   useEffect(() => {
+    let timer = 0;
+    let lastW = 0;
+    let lastH = 0;
     const measure = () => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const v = vw <= 640 ? VIEW.mobile : VIEW.desktop;
+      lastW = vw;
+      lastH = vh;
+      const v = getView(vw, vh);
       // enough repeats of the block to cover the screen while wrapping
-      const px = Math.ceil((v.cols + 2) / BLOCK_COLS);
-      const py = Math.ceil((v.rows + 2) / BLOCK_ROWS);
+      const px = Math.ceil((v.cols + 3) / BLOCK_COLS);
+      const py = Math.ceil((v.rows + 3) / BLOCK_ROWS);
       setGrid({ CW: vw / v.cols, CH: vh / v.rows, vw, vh, px, py });
       m.current.lampX = vw / 2;
       m.current.lampY = vh / 2;
       gx.jump(vw / 2);
       gy.jump(vh / 2);
     };
+    const onResize = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        if (window.innerWidth === lastW && Math.abs(window.innerHeight - lastH) < 120) return;
+        measure();
+      }, 150);
+    };
     measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("resize", onResize);
+    };
   }, [gx, gy]);
 
   const pool: PoolTile[] = [];
@@ -260,6 +303,7 @@ export default function OneScreenReel() {
     const tiles = poolRef.current;
     const count = tiles.length;
     current.current = Array.from({ length: count }, () => -1);
+    startRefs.current = Array.from({ length: count }, () => 0);
     const playing = Array.from({ length: count }, () => false);
     const shown = Array.from({ length: count }, () => true);
     const shadeCache = Array.from({ length: count }, () => "");
@@ -268,6 +312,7 @@ export default function OneScreenReel() {
     const spanY = py * BLOCK_ROWS * CH;
     const R = vw / CURVE;
     const reach = Math.max(vw, vh) * 0.55;
+    const liftPx = LIFT * Math.min(1, vw / 1440);
     const s = m.current;
     // If the opening already played (e.g. window resize), skip straight to the end
     const start = performance.now() - (settledRef.current ? 60000 : 0);
@@ -324,7 +369,7 @@ export default function OneScreenReel() {
       const fy = y / R;
       const X = R * Math.sin(fx);
       const Y = R * Math.sin(fy);
-      const Z = R * (1 - Math.cos(fx) * Math.cos(fy)) + LIFT * lift;
+      const Z = R * (1 - Math.cos(fx) * Math.cos(fy)) + liftPx * lift;
       const k = PERSP / (PERSP - Z);
       return [vw / 2 + X * k, vh / 2 + Y * k];
     };
@@ -395,7 +440,7 @@ export default function OneScreenReel() {
           current.current[p] = idx;
           const it = ITEMS[idx];
           v.poster = it.poster ?? "";
-          v.src = it.src;
+          v.src = it.src; // onLoadedMetadata seeks to this card's clip start
           playing[p] = false;
           const set = (r: (HTMLSpanElement | null)[], text: string) => {
             const node = r[p];
@@ -470,12 +515,17 @@ export default function OneScreenReel() {
             }
             const wp = easeInOut(clamp01((t - INTRO.cardVideo) / INTRO.wipeDur));
             const zp = easeOut(clamp01((t - INTRO.cardVideo) / INTRO.zoomDur));
+            // hide the card's own client logo while the company logo is on screen
+            const cl = logoRefs.current[p];
+            if (cl) cl.style.opacity = "0";
             v.style.clipPath = `inset(${((1 - wp) * 100).toFixed(2)}% 0% 0% 0%)`;
             v.style.transform = `scale(${(1.3 - 0.3 * zp).toFixed(4)})`;
           } else if (!wipeCleared) {
             wipeCleared = true;
             const layer = introRefs.current[p];
             const img = introImgRefs.current[p];
+            const cl = logoRefs.current[p];
+            if (cl) cl.style.opacity = "";
             if (layer) layer.style.display = "none";
             if (img) img.removeAttribute("src");
             v.style.clipPath = "";
@@ -502,6 +552,11 @@ export default function OneScreenReel() {
           shadeCache[p] = shade;
           const sh = shadeRefs.current[p];
           if (sh) sh.style.opacity = shade;
+        }
+
+        // Keep each card inside its own clip: jump back to the start at the end
+        if (playing[p] && v.readyState >= 1 && v.currentTime >= startRefs.current[p] + CLIP_LEN) {
+          v.currentTime = startRefs.current[p];
         }
 
         const play = !document.hidden;
@@ -653,12 +708,14 @@ export default function OneScreenReel() {
                 data-cursor={settled ? "play" : undefined}
                 aria-label="Play this film"
                 tabIndex={settled ? 0 : -1}
-                onPointerEnter={() => settledRef.current && !m.current.down && setHovered(p)}
+                onPointerEnter={(e) =>
+                  e.pointerType === "mouse" && settledRef.current && !m.current.down && setHovered(p)
+                }
                 onPointerLeave={() => setHovered((h) => (h === p ? null : h))}
                 onClick={() => {
                   if (!settledRef.current || m.current.moved > 6) return;
                   const idx = current.current[p];
-                  if (idx >= 0) setFilm(ITEMS[idx]);
+                  if (idx >= 0) setFilm({ ...ITEMS[idx], at: startRefs.current[p] });
                 }}
                 className="absolute inset-0 block overflow-hidden bg-[#0c0c0c] outline-none focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-4 focus-visible:outline-white [@media(pointer:fine)]:cursor-none"
               >
@@ -687,9 +744,23 @@ export default function OneScreenReel() {
                       videoRefs.current[p] = el;
                     }}
                     muted
-                    loop
                     playsInline
-                    preload="auto"
+                    preload="metadata"
+                    onLoadedMetadata={(e) => {
+                      const v = e.currentTarget;
+                      const idx = current.current[p];
+                      const it = ITEMS[idx];
+                      if (!it) return;
+                      const span = Math.max(0, v.duration - CLIP_LEN);
+                      const startAt = Math.min(it.start ?? span * (it.slot / it.slots), span);
+                      startRefs.current[p] = startAt;
+                      v.currentTime = startAt;
+                    }}
+                    onEnded={(e) => {
+                      const v = e.currentTarget;
+                      v.currentTime = startRefs.current[p];
+                      v.play().catch(() => {});
+                    }}
                     className="pointer-events-none absolute inset-0 h-full w-full object-cover"
                     style={{
                       filter: active ? "grayscale(0) contrast(1.02)" : "grayscale(0.6) contrast(1.1)",
@@ -745,14 +816,14 @@ export default function OneScreenReel() {
                       ref={(el) => {
                         titleRefs.current[p] = el;
                       }}
-                      className="block text-[13px] uppercase"
+                      className="block text-[11px] uppercase sm:text-[13px]"
                       style={{ ...WIDE, fontWeight: 700 }}
                     />
                     <span
                       ref={(el) => {
                         clientRefs.current[p] = el;
                       }}
-                      className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.2em] text-white/55"
+                      className="mt-0.5 block text-[9px] font-medium uppercase tracking-[0.2em] text-white/55 sm:text-[10px]"
                     />
                   </span>
                 </span>
@@ -1090,9 +1161,10 @@ function Timecode() {
 }
 
 // ===========================================================================
-// LIGHTBOX — the film full screen, with sound and controls
+// LIGHTBOX — the film full screen, with sound and controls. Opens at the
+// moment of the clicked clip.
 // ===========================================================================
-function Lightbox({ item, onClose }: { item: Item | null; onClose: () => void }) {
+function Lightbox({ item, onClose }: { item: OpenFilm | null; onClose: () => void }) {
   useEffect(() => {
     if (!item) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -1141,6 +1213,9 @@ function Lightbox({ item, onClose }: { item: Item | null; onClose: () => void })
               autoPlay
               controls
               playsInline
+              onLoadedMetadata={(e) => {
+                if (item.at) e.currentTarget.currentTime = item.at;
+              }}
               onClick={(e) => e.stopPropagation()}
               className="max-h-full w-full max-w-[min(100%,160svh)] bg-black"
             />

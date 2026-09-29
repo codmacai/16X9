@@ -6,24 +6,40 @@ import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } 
 // ===========================================================================
 // CONTENT — replace with your own
 // ===========================================================================
+// Two (or more) videos. Cards alternate between them, and each video's clips
+// are spread evenly across that video's own duration.
+const VIDEOS = [
+  encodeURI("/cleveland_clinic_1.mp4_v1 (1080p) (1).mp4"), // video 1
+  encodeURI("/nike_pitch_nov_25.mp4_v1 (1080p).mp4"), // video 2: change to your real file name in /public
+];
+const COUNT = 12; // number of clips (must match the number of entries in PLACES)
+const CLIP_LEN = 4; // seconds each card loops
+
 type Project = {
   id: number;
   title: string;
   client: string;
   year: string;
   category: string;
-  src: string; // compressed loop, ~3-6 MB
+  src: string;
+  slot: number; // this clip's position within its own video
+  slots: number; // how many clips share that video
   poster?: string;
 };
 
-const PROJECTS: Project[] = Array.from({ length: 12 }, (_, i) => ({
-  id: i + 1,
-  title: `Project ${String(i + 1).padStart(2, "0")}`,
-  client: "Client name",
-  year: "2026",
-  category: ["commercial", "brand film", "music video"][i % 3],
-  src: "/nike_pitch_nov_25.mp4_v1 (1080p).mp4",
-}));
+const PROJECTS: Project[] = Array.from({ length: COUNT }, (_, i) => {
+  const v = i % VIDEOS.length;
+  return {
+    id: i + 1,
+    title: `Project ${String(i + 1).padStart(2, "0")}`,
+    client: "Client name",
+    year: "2026",
+    category: ["commercial", "brand film", "music video"][i % 3],
+    src: VIDEOS[v],
+    slot: Math.floor(i / VIDEOS.length),
+    slots: Math.ceil((COUNT - v) / VIDEOS.length),
+  };
+});
 const N = PROJECTS.length;
 
 const BRAND = "16x9";
@@ -84,6 +100,9 @@ const CSS = `
 
 // ===========================================================================
 // SPACE
+// x, y are fractions of the viewport width / height; w is a fraction of the
+// viewport width. Desktop and tablets use PLACES; phones use MOBILE_PLACES,
+// a layout built for a tall, narrow screen.
 // ===========================================================================
 type Place = { x: number; y: number; w: number; a: number; rx: number; ry: number };
 const PLACES: Place[] = [
@@ -100,6 +119,35 @@ const PLACES: Place[] = [
   { x: 0.36, y: -0.26, w: 0.17, a: 3 / 4, rx: 2, ry: -18 },
   { x: -0.3, y: 0.26, w: 0.28, a: 16 / 9, rx: 0, ry: 6 },
 ];
+const MOBILE_PLACES: Place[] = [
+  { x: -0.24, y: -0.26, w: 0.44, a: 16 / 9, rx: 0, ry: 8 },
+  { x: 0.26, y: 0.2, w: 0.36, a: 4 / 5, rx: 0, ry: -12 },
+  { x: 0.24, y: -0.3, w: 0.48, a: 16 / 10, rx: 0, ry: -6 },
+  { x: -0.26, y: 0.26, w: 0.34, a: 3 / 4, rx: 2, ry: 14 },
+  { x: 0, y: -0.36, w: 0.5, a: 2.2, rx: 0, ry: 0 },
+  { x: 0.3, y: 0.02, w: 0.3, a: 2 / 3, rx: 0, ry: -18 },
+  { x: -0.1, y: 0.34, w: 0.5, a: 16 / 9, rx: 0, ry: 0 },
+  { x: -0.3, y: -0.04, w: 0.3, a: 2 / 3, rx: 0, ry: 18 },
+  { x: 0.2, y: 0.32, w: 0.44, a: 16 / 10, rx: 0, ry: -6 },
+  { x: -0.2, y: -0.34, w: 0.36, a: 1, rx: -2, ry: 10 },
+  { x: 0.28, y: -0.22, w: 0.32, a: 3 / 4, rx: 2, ry: -14 },
+  { x: -0.24, y: 0.16, w: 0.46, a: 16 / 9, rx: 0, ry: 6 },
+];
+const pickPlaces = (vw: number) => (vw < 720 ? MOBILE_PLACES : PLACES);
+
+// Tile size for the current screen: a little larger on tablets, and never
+// taller than 42% of the viewport height (matters on landscape phones).
+const tileSize = (p: Place, vw: number, vh: number) => {
+  const scale = vw >= 720 && vw < 1024 ? 1.25 : 1;
+  let w = Math.max(p.w * vw * scale, 150);
+  let h = w / p.a;
+  const maxH = vh * 0.42;
+  if (h > maxH) {
+    h = maxH;
+    w = h * p.a;
+  }
+  return { w, h };
+};
 
 const PERSP = 1400;
 const SPACING = 800; // depth between clips
@@ -108,10 +156,11 @@ const BACK = DEPTH - 1200;
 const VISIBLE = 2600;
 const FOCUS_Z = 150;
 const SPEED = 900; // px per second the clips move toward you on their own (0 = still)
-const Z0 = PLACES.map((_, i) => -i * SPACING);
+const Z0 = Array.from({ length: N }, (_, i) => -i * SPACING);
 
 const wrap = (v: number) => ((((v + BACK) % DEPTH) + DEPTH) % DEPTH) - BACK;
-const tileWidth = (p: Place, vw: number) => Math.max(p.w * vw * (vw < 720 ? 1.5 : 1), 150);
+
+type OpenFilm = Project & { at: number };
 
 // ===========================================================================
 // HERO
@@ -121,15 +170,17 @@ export default function HeroSection() {
   const [selected, setSelected] = useState<number | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
   const [soundOn, setSoundOn] = useState(false);
-  const [film, setFilm] = useState<Project | null>(null);
+  const [film, setFilm] = useState<OpenFilm | null>(null);
 
   const selRef = useRef<number | null>(null);
   const hoverRef = useRef<number | null>(null);
   const ptr = useRef({ x: 0, y: 0 });
   const size = useRef({ vw: 1440, vh: 900 });
+  const placesRef = useRef<Place[]>(PLACES);
   const worldRef = useRef<HTMLDivElement>(null);
   const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const startRefs = useRef<number[]>(PROJECTS.map(() => 0)); // clip start (seconds) per tile
 
   useEffect(() => {
     selRef.current = selected;
@@ -138,24 +189,30 @@ export default function HeroSection() {
   useEffect(() => {
     hoverRef.current = hovered;
   }, [hovered]);
-  // Tile sizes follow the viewport
+
+  // Tile sizes and the layout choice follow the viewport
   useEffect(() => {
     const apply = () => {
       const vw = window.innerWidth;
-      size.current = { vw, vh: window.innerHeight };
-      PLACES.forEach((p, i) => {
+      const vh = window.innerHeight;
+      size.current = { vw, vh };
+      placesRef.current = pickPlaces(vw);
+      placesRef.current.forEach((p, i) => {
         const el = tileRefs.current[i];
         if (!el) return;
-        const w = tileWidth(p, vw);
+        const { w, h } = tileSize(p, vw, vh);
         el.style.width = `${w}px`;
-        el.style.height = `${w / p.a}px`;
+        el.style.height = `${h}px`;
       });
     };
     apply();
     window.addEventListener("resize", apply);
-    return () => window.removeEventListener("resize", apply);
+    window.addEventListener("orientationchange", apply);
+    return () => {
+      window.removeEventListener("resize", apply);
+      window.removeEventListener("orientationchange", apply);
+    };
   }, []);
-
 
   // -------------------------------------------------------------------------
   // Render loop: the clips float toward you on their own
@@ -170,10 +227,10 @@ export default function HeroSection() {
     let py = 0;
     let g = 0;
     let t = 0;
-    const sel = PLACES.map(() => 0);
-    const hov = PLACES.map(() => 0);
-    const lastFilter = PLACES.map(() => "");
-    const lastPE = PLACES.map(() => "");
+    const sel = Array.from({ length: N }, () => 0);
+    const hov = Array.from({ length: N }, () => 0);
+    const lastFilter = Array.from({ length: N }, () => "");
+    const lastPE = Array.from({ length: N }, () => "");
 
     const onMove = (e: PointerEvent) => {
       ptr.current = { x: e.clientX / window.innerWidth - 0.5, y: e.clientY / window.innerHeight - 0.5 };
@@ -202,11 +259,13 @@ export default function HeroSection() {
 
       g += ((selectedId !== null ? 1 : 0) - g) * k(4.5);
       const { vw, vh } = size.current;
+      const places = placesRef.current;
+      const focusFrac = vw < 720 ? 0.9 : 0.58; // how much of the width an opened clip fills
 
       for (let i = 0; i < N; i++) {
         const el = tileRefs.current[i];
         if (!el) continue;
-        const p = PLACES[i];
+        const p = places[i];
         const id = PROJECTS[i].id;
 
         sel[i] += ((selectedId === id ? 1 : 0) - sel[i]) * k(4);
@@ -216,14 +275,13 @@ export default function HeroSection() {
         const others = g * (1 - sel[i]);
 
         const rel = wrap(Z0[i] + cam) - (1 - intro) * 3200;
-        const w = tileWidth(p, vw);
-        const hgt = w / p.a;
+        const { w, h: hgt } = tileSize(p, vw, vh);
         const bob = reduce ? 0 : Math.sin(t * 0.5 + i * 1.7) * 10;
 
         const fx = p.x * vw;
         const fy = p.y * vh + bob;
         const fz = rel + h * 80 - others * 800;
-        const targetW = Math.min(vw * 0.58, vh * 0.55 * p.a);
+        const targetW = Math.min(vw * focusFrac, vh * 0.55 * p.a);
         const targetScale = targetW / (w * (PERSP / (PERSP - FOCUS_Z)));
 
         const x = lerp(fx, 0, s);
@@ -253,6 +311,12 @@ export default function HeroSection() {
         if (pe !== lastPE[i]) {
           el.style.pointerEvents = pe;
           lastPE[i] = pe;
+        }
+
+        // Keep each card inside its own clip: jump back to the start at the end
+        const v = videoRefs.current[i];
+        if (v && !v.paused && v.readyState >= 1 && v.currentTime >= startRefs.current[i] + CLIP_LEN) {
+          v.currentTime = startRefs.current[i];
         }
       }
     };
@@ -338,7 +402,7 @@ export default function HeroSection() {
     <section
       ref={sectionRef}
       aria-label="Showreel"
-      className="relative h-svh w-full select-none overflow-hidden bg-black text-white antialiased"
+      className="relative h-dvh w-full select-none overflow-hidden bg-black text-white antialiased"
       style={{ fontFamily: FONT }}
     >
       <style>{CSS}</style>
@@ -364,7 +428,7 @@ export default function HeroSection() {
                 if (selected === p.id) toggleSound();
                 else setSelected(p.id);
               }}
-              onPointerEnter={() => setHovered(p.id)}
+              onPointerEnter={(e) => e.pointerType === "mouse" && setHovered(p.id)}
               onPointerLeave={() => setHovered((h) => (h === p.id ? null : h))}
               onFocus={() => setHovered(p.id)}
               onBlur={() => setHovered(null)}
@@ -378,12 +442,19 @@ export default function HeroSection() {
                 poster={p.poster}
                 autoPlay
                 muted
-                loop
                 playsInline
-                preload="auto"
+                preload="metadata"
                 onLoadedMetadata={(e) => {
                   const v = e.currentTarget;
-                  if (v.duration) v.currentTime = (i * 1.37) % v.duration;
+                  const span = Math.max(0, v.duration - CLIP_LEN);
+                  const startAt = Math.min(span * (p.slot / p.slots), span);
+                  startRefs.current[i] = startAt;
+                  v.currentTime = startAt;
+                }}
+                onEnded={(e) => {
+                  const v = e.currentTarget;
+                  v.currentTime = startRefs.current[i];
+                  v.play().catch(() => {});
                 }}
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover"
               />
@@ -406,8 +477,8 @@ export default function HeroSection() {
         {/* Centre line */}
         <div className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center">
           <h1
-            className="overflow-hidden pb-[0.08em] uppercase leading-none"
-            style={{ ...HEAD, color: WHITE, fontSize: "clamp(1.5rem, min(3.6vw, 7vh), 3.75rem)", textShadow: "0 4px 40px rgba(0,0,0,0.45)" }}
+            className="overflow-hidden pb-[0.08em] text-[length:clamp(1.75rem,8vw,2.75rem)] uppercase leading-none md:text-[length:clamp(1.5rem,min(3.6vw,7vh),3.75rem)]"
+            style={{ ...HEAD, color: WHITE, textShadow: "0 4px 40px rgba(0,0,0,0.45)" }}
           >
             <motion.span className="block" {...rise(T.copy)}>
               {CENTER}
@@ -417,8 +488,8 @@ export default function HeroSection() {
 
         {/* Bottom-left, on the same left edge as the navbar */}
         <p
-          className="absolute bottom-6 left-5 uppercase leading-[1.02] text-white sm:bottom-9 sm:left-12"
-          style={{ ...WIDE, fontWeight: 300, letterSpacing: "-0.01em", fontSize: "clamp(1.1rem, min(2.3vw, 4.5vh), 2.4rem)" }}
+          className="absolute bottom-6 left-5 text-[length:clamp(1.1rem,5vw,1.6rem)] uppercase leading-[1.02] text-white sm:bottom-9 sm:left-12 md:text-[length:clamp(1.1rem,min(2.3vw,4.5vh),2.4rem)]"
+          style={{ ...WIDE, fontWeight: 300, letterSpacing: "-0.01em" }}
         >
           {BOTTOM.map((line) => (
             <span key={line} className="block overflow-hidden pb-[0.06em]">
@@ -451,12 +522,8 @@ export default function HeroSection() {
           </ul>
         </motion.nav>
 
-        {/* Bottom-right: running timecode + scroll indicator */}
-        <motion.div
-          {...appear(T.side + 0.1)}
-          className="absolute bottom-6 right-5 flex items-end gap-10 sm:bottom-9 sm:right-12"
-        >
-          
+        {/* Bottom-right: scroll indicator */}
+        <motion.div {...appear(T.side + 0.1)} className="absolute bottom-6 right-5 flex items-end gap-10 sm:bottom-9 sm:right-12">
           <button
             type="button"
             onClick={() => window.scrollBy({ top: window.innerHeight, behavior: "smooth" })}
@@ -473,7 +540,7 @@ export default function HeroSection() {
         {/* Social links on phones: a single row above the bottom copy */}
         <motion.ul
           {...appear(T.side)}
-          className="pointer-events-auto absolute bottom-28 left-5 flex gap-5 sm:hidden"
+          className="pointer-events-auto absolute bottom-28 left-5 flex flex-wrap gap-x-5 gap-y-2 sm:hidden"
         >
           {SOCIALS.map((s) => (
             <li key={s.label}>
@@ -524,14 +591,14 @@ export default function HeroSection() {
                 </motion.div>
               </AnimatePresence>
             </div>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium text-white/65">
-              <button type="button" onClick={() => step(-1)} className="transition-colors hover:text-white">
+            <div className="flex flex-wrap gap-x-5 gap-y-3 text-sm font-medium text-white/65">
+              <button type="button" onClick={() => step(-1)} className="py-1 transition-colors hover:text-white">
                 previous
               </button>
-              <button type="button" onClick={() => step(1)} className="transition-colors hover:text-white">
+              <button type="button" onClick={() => step(1)} className="py-1 transition-colors hover:text-white">
                 next
               </button>
-              <button type="button" onClick={toggleSound} className="transition-colors hover:text-white">
+              <button type="button" onClick={toggleSound} className="py-1 transition-colors hover:text-white">
                 {soundOn ? "mute" : "sound on"}
               </button>
               <button
@@ -540,13 +607,13 @@ export default function HeroSection() {
                   const v = videoRefs.current[selectedProject.id - 1];
                   if (v) v.muted = true;
                   setSoundOn(false);
-                  setFilm(selectedProject);
+                  setFilm({ ...selectedProject, at: startRefs.current[selectedProject.id - 1] });
                 }}
-                className="text-white transition-opacity hover:opacity-70"
+                className="py-1 text-white transition-opacity hover:opacity-70"
               >
                 watch the film
               </button>
-              <button type="button" onClick={() => setSelected(null)} className="transition-colors hover:text-white">
+              <button type="button" onClick={() => setSelected(null)} className="py-1 transition-colors hover:text-white">
                 close
               </button>
             </div>
@@ -701,9 +768,10 @@ function Navbar({ hidden, reduce }: { hidden: boolean; reduce: boolean }) {
 }
 
 // ===========================================================================
-// TIMECODE — a running HH:MM:SS:FF counter, updated without re-rendering
+// TIMECODE — a running HH:MM:SS:FF counter, updated without re-rendering.
+// Not used right now; drop <Timecode /> anywhere to show it.
 // ===========================================================================
-function Timecode() {
+export function Timecode() {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const start = performance.now();
@@ -727,9 +795,9 @@ function Timecode() {
 }
 
 // ===========================================================================
-// LIGHTBOX — full film with sound and controls
+// LIGHTBOX — full film with sound and controls, opened at the clip's start
 // ===========================================================================
-function Lightbox({ film, onClose }: { film: Project | null; onClose: () => void }) {
+function Lightbox({ film, onClose }: { film: OpenFilm | null; onClose: () => void }) {
   useEffect(() => {
     if (!film) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -775,6 +843,9 @@ function Lightbox({ film, onClose }: { film: Project | null; onClose: () => void
               autoPlay
               controls
               playsInline
+              onLoadedMetadata={(e) => {
+                if (film.at) e.currentTarget.currentTime = film.at;
+              }}
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}

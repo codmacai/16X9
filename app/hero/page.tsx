@@ -6,18 +6,25 @@ import { AnimatePresence, LayoutGroup, motion, useMotionValue, useReducedMotion,
 // ===========================================================================
 // CONTENT — replace with your own
 // ===========================================================================
+// Two (or more) videos. Tiles alternate between them in a checkerboard along
+// the tunnel, and each video's clips are spread evenly across its own duration.
+const VIDEOS = [
+  encodeURI("/cleveland_clinic_1.mp4_v1 (1080p) (1).mp4"), // video 1
+  encodeURI("/nike_pitch_nov_25.mp4_v1 (1080p).mp4"), // video 2: change to your real file name in /public
+];
+const CLIP_LEN = 4; // seconds each tile loops
+
 type Category = "direction" | "motion" | "design";
-type Clip = { id: number; title: string; category: Category; src: string; poster?: string };
+type Clip = { id: number; title: string; category: Category; poster?: string };
 
 const CLIPS: Clip[] = Array.from({ length: 12 }, (_, i) => ({
   id: i + 1,
   title: `Project ${String(i + 1).padStart(2, "0")}`,
   category: (["direction", "motion", "design"] as Category[])[i % 3],
-  src: `/nike_pitch_nov_25.mp4_v1 (1080p).mp4`,
 }));
 const C = CLIPS.length;
 
-const LOGO_SRC = "/Screenshot 2026-09-29 at 10.25.42 PM.png"; // your logo in /public
+const LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png"); // your logo in /public
 const BRAND = "16x9";
 const NAV = [
   { label: "Work", href: "/work" },
@@ -55,7 +62,17 @@ const FPS = 25; // timecode frame rate
 // of the tunnel stays empty for the headline.
 // ---------------------------------------------------------------------------
 type Wall = 0 | 1 | 2 | 3; // left, right, top, bottom
-type Tile = { clip: Clip; wall: Wall; a: number; size: number; lat: number; z0: number };
+type Tile = {
+  clip: Clip;
+  src: string;
+  vslot: number; // this tile's position among the tiles that share its video
+  vslots: number; // how many tiles share that video
+  wall: Wall;
+  a: number;
+  size: number;
+  lat: number;
+  z0: number;
+};
 
 const PERSP = 1400;
 const SPACING = 800;
@@ -92,45 +109,61 @@ const rnd = (i: number, k: number) => {
   return s - Math.floor(s);
 };
 
+// Which video each tile uses: a checkerboard down the tunnel, so neighbours differ
+const VID = Array.from({ length: N }, (_, i) => ((i % 4) + Math.floor(i / 4)) % VIDEOS.length);
+const VID_COUNT = VIDEOS.map((_, v) => VID.filter((x) => x === v).length);
+const VID_SEEN = VIDEOS.map(() => 0);
+
 const TILES: Tile[] = Array.from({ length: N }, (_, i) => {
   const wall = (i % 4) as Wall;
-  const slot = Math.floor(i / 4);
+  const ring = Math.floor(i / 4);
   const set = wall < 2 ? PORTRAIT : LANDSCAPE;
+  const v = VID[i];
   return {
     clip: CLIPS[i % C],
+    src: VIDEOS[v],
+    vslot: VID_SEEN[v]++,
+    vslots: VID_COUNT[v],
     wall,
     a: set[Math.floor(rnd(i, 1) * set.length)],
     size: rnd(i, 2),
     lat: rnd(i, 3) * 2 - 1,
-    z0: -(slot * SPACING + (wall * SPACING) / 4),
+    z0: -(ring * SPACING + (wall * SPACING) / 4),
   };
 });
 
 type Layout = { vw: number; vh: number; tw: number; th: number; tiles: { w: number; h: number; x: number; y: number }[] };
 
+// Sizes follow the screen: phones get slightly smaller wall tiles and larger
+// ceiling / floor tiles, tablets sit in between, desktops use the base values.
 const buildLayout = (vw: number, vh: number): Layout => {
   const tw = vw * 0.62;
   const th = vh * 0.62;
   const mobile = vw < 720;
+  const tablet = vw >= 720 && vw < 1100;
+  const wallK = mobile ? 0.85 : tablet ? 0.95 : 1;
+  const flatK = mobile ? 1.5 : tablet ? 1.2 : 1;
   const tiles = TILES.map((t) => {
     let w: number;
     let h: number;
     let x: number;
     let y: number;
     if (t.wall < 2) {
-      h = vh * (0.3 + 0.22 * t.size) * (mobile ? 0.85 : 1);
+      h = vh * (0.3 + 0.22 * t.size) * wallK;
       w = h * t.a;
-      if (w > 680) {
-        w = 680;
+      const maxW = Math.min(680, vw * 0.6);
+      if (w > maxW) {
+        w = maxW;
         h = w / t.a;
       }
       y = t.lat * Math.max(0, th - h / 2 - 16);
       x = t.wall === 0 ? -tw : tw;
     } else {
-      w = Math.max(vw * (0.2 + 0.18 * t.size) * (mobile ? 1.5 : 1), 150);
+      w = Math.max(vw * (0.2 + 0.18 * t.size) * flatK, 150);
       h = w / t.a;
-      if (h > 640) {
-        h = 640;
+      const maxH = Math.min(640, vh * 0.5);
+      if (h > maxH) {
+        h = maxH;
         w = h * t.a;
       }
       x = t.lat * Math.max(0, tw - w / 2 - 16);
@@ -181,6 +214,7 @@ export default function FloatingReel() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tileRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const startRefs = useRef<number[]>(TILES.map(() => 0)); // clip start (seconds) per tile
   const playing = useRef<boolean[]>(TILES.map(() => true));
 
   useEffect(() => {
@@ -216,7 +250,11 @@ export default function FloatingReel() {
     };
     apply();
     window.addEventListener("resize", apply);
-    return () => window.removeEventListener("resize", apply);
+    window.addEventListener("orientationchange", apply);
+    return () => {
+      window.removeEventListener("resize", apply);
+      window.removeEventListener("orientationchange", apply);
+    };
   }, []);
 
   // Stop everything once the hero has scrolled out of view
@@ -345,6 +383,7 @@ export default function FloatingReel() {
       g += ((selectedId !== null ? 1 : 0) - g) * k(4.5);
       const lay = layout.current;
       const { vw, vh } = lay;
+      const focusFrac = vw < 720 ? 0.9 : 0.58; // how much of the width an opened clip fills
 
       drawGrid((ax * Math.PI) / 180, (by * Math.PI) / 180, clamp01(ip * 1.4) * (1 - g * 0.6));
 
@@ -366,7 +405,7 @@ export default function FloatingReel() {
         const fx = L.x + inw[0] * h * 70;
         const fy = L.y + inw[1] * h * 70;
         const fz = rel - others * 800;
-        const targetW = Math.min(vw * 0.58, vh * 0.55 * t.a);
+        const targetW = Math.min(vw * focusFrac, vh * 0.55 * t.a);
         const targetScale = targetW / (L.w * (PERSP / (PERSP - FOCUS_Z)));
 
         const x = lerp(fx, 0, s);
@@ -398,14 +437,19 @@ export default function FloatingReel() {
         }
 
         // Only decode video that can actually be seen
+        const v = videoRefs.current[i];
         const vis = op > 0.03 && !document.hidden;
         if (vis !== playing.current[i]) {
           playing.current[i] = vis;
-          const v = videoRefs.current[i];
           if (v) {
             if (vis) v.play().catch(() => {});
             else v.pause();
           }
+        }
+
+        // Keep each tile inside its own clip: jump back to the start at the end
+        if (v && playing.current[i] && v.readyState >= 1 && v.currentTime >= startRefs.current[i] + CLIP_LEN) {
+          v.currentTime = startRefs.current[i];
         }
       }
     };
@@ -512,7 +556,7 @@ export default function FloatingReel() {
                 if (selected === i) toggleSound();
                 else setSelected(i);
               }}
-              onPointerEnter={() => setHovered(i)}
+              onPointerEnter={(e) => e.pointerType === "mouse" && setHovered(i)}
               onPointerLeave={() => setHovered((h) => (h === i ? null : h))}
               onFocus={() => setHovered(i)}
               onBlur={() => setHovered(null)}
@@ -522,16 +566,23 @@ export default function FloatingReel() {
                 ref={(el) => {
                   videoRefs.current[i] = el;
                 }}
-                src={tile.clip.src}
+                src={tile.src}
                 poster={tile.clip.poster}
                 autoPlay
                 muted
-                loop
                 playsInline
-                preload="auto"
+                preload="metadata"
                 onLoadedMetadata={(e) => {
                   const v = e.currentTarget;
-                  if (v.duration) v.currentTime = (i * 1.37) % v.duration;
+                  const span = Math.max(0, v.duration - CLIP_LEN);
+                  const startAt = Math.min(span * (tile.vslot / tile.vslots), span);
+                  startRefs.current[i] = startAt;
+                  v.currentTime = startAt;
+                }}
+                onEnded={(e) => {
+                  const v = e.currentTarget;
+                  v.currentTime = startRefs.current[i];
+                  v.play().catch(() => {});
                 }}
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover"
               />
@@ -555,8 +606,8 @@ export default function FloatingReel() {
         {/* Centre of the tunnel */}
         <div className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center">
           <h1
-            className="overflow-hidden pb-[0.08em] uppercase leading-none"
-            style={{ ...HEAD, fontSize: "clamp(1.5rem, min(3.6vw, 7vh), 3.75rem)", textShadow: "0 4px 40px rgba(0,0,0,0.5)" }}
+            className="overflow-hidden pb-[0.08em] text-[length:clamp(1.75rem,8vw,2.75rem)] uppercase leading-none md:text-[length:clamp(1.5rem,min(3.6vw,7vh),3.75rem)]"
+            style={{ ...HEAD, textShadow: "0 4px 40px rgba(0,0,0,0.5)" }}
           >
             <motion.span className="block" {...rise(T.copy)}>
               {CENTER}
@@ -566,8 +617,8 @@ export default function FloatingReel() {
 
         {/* Bottom-left */}
         <p
-          className="absolute bottom-7 left-6 uppercase leading-[1.02] sm:bottom-10 sm:left-12"
-          style={{ ...WIDE, fontWeight: 300, letterSpacing: "-0.01em", fontSize: "clamp(1.1rem, min(2.3vw, 4.5vh), 2.4rem)" }}
+          className="absolute bottom-7 left-6 text-[length:clamp(1.1rem,5vw,1.6rem)] uppercase leading-[1.02] sm:bottom-10 sm:left-12 md:text-[length:clamp(1.1rem,min(2.3vw,4.5vh),2.4rem)]"
+          style={{ ...WIDE, fontWeight: 300, letterSpacing: "-0.01em" }}
         >
           {BOTTOM.map((line) => (
             <span key={line} className="block overflow-hidden pb-[0.06em]">
@@ -601,7 +652,7 @@ export default function FloatingReel() {
         </motion.nav>
 
         {/* Socials on phones: one row above the bottom copy */}
-        <motion.ul {...appear(T.side)} className="pointer-events-auto absolute bottom-28 left-6 flex gap-5 sm:hidden">
+        <motion.ul {...appear(T.side)} className="pointer-events-auto absolute bottom-28 left-6 flex flex-wrap gap-x-5 gap-y-2 sm:hidden">
           {SOCIALS.map((s) => (
             <li key={s.label}>
               <a
@@ -666,17 +717,17 @@ export default function FloatingReel() {
                 </motion.div>
               </AnimatePresence>
             </div>
-            <div className="flex gap-6 text-[11px] font-medium uppercase tracking-[0.2em] text-white/65">
-              <button type="button" onClick={() => step(-1)} className="transition-colors hover:text-white">
+            <div className="flex flex-wrap gap-x-6 gap-y-3 text-[11px] font-medium uppercase tracking-[0.2em] text-white/65">
+              <button type="button" onClick={() => step(-1)} className="py-1 transition-colors hover:text-white">
                 previous
               </button>
-              <button type="button" onClick={() => step(1)} className="transition-colors hover:text-white">
+              <button type="button" onClick={() => step(1)} className="py-1 transition-colors hover:text-white">
                 next
               </button>
-              <button type="button" onClick={toggleSound} className="transition-colors hover:text-white">
+              <button type="button" onClick={toggleSound} className="py-1 transition-colors hover:text-white">
                 {soundOn ? "mute" : "sound on"}
               </button>
-              <button type="button" onClick={() => setSelected(null)} className="text-white transition-opacity hover:opacity-70">
+              <button type="button" onClick={() => setSelected(null)} className="py-1 text-white transition-opacity hover:opacity-70">
                 close
               </button>
             </div>
@@ -715,9 +766,9 @@ export default function FloatingReel() {
 
 // ===========================================================================
 // VIEWFINDER NAVBAR
-// The whole screen reads like a camera monitor: crop marks in the corners,
-// a recording readout top-right, and nav links that a focus box snaps onto
-// as you hover, while the label "re-focuses" through scrambled letters.
+// The whole screen reads like a camera monitor: crop marks in the corners
+// and nav links that a focus box snaps onto as you hover, while the label
+// "re-focuses" through scrambled letters. Full-screen menu on phones.
 // ===========================================================================
 function Viewfinder({ reduce, hidden }: { reduce: boolean; hidden: boolean }) {
   const [focus, setFocus] = useState<number | null>(null);
@@ -759,70 +810,68 @@ function Viewfinder({ reduce, hidden }: { reduce: boolean; hidden: boolean }) {
         className="absolute inset-x-0 top-0 z-50 transition-opacity duration-500"
         style={{ opacity: hidden ? 0 : 1, pointerEvents: hidden ? "none" : "auto" }}
       >
-      <motion.header {...fade} className="relative flex items-center justify-between px-6 pt-6 sm:px-12 sm:pt-9">
-        {/* Logo */}
-        <a href="/" aria-label={`${BRAND}, home`} className="block opacity-90 transition-opacity hover:opacity-100">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_SRC} alt={BRAND} className="h-9 w-auto sm:h-11" />
-        </a>
+        <motion.header {...fade} className="relative flex items-center justify-between px-6 pt-6 sm:px-12 sm:pt-9">
+          {/* Logo */}
+          <a href="/" aria-label={`${BRAND}, home`} className="block opacity-90 transition-opacity hover:opacity-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={LOGO_SRC} alt={BRAND} className="h-9 w-auto sm:h-11" />
+          </a>
 
-        {/* Links with a snapping focus box */}
-        <LayoutGroup id="viewfinder-nav">
-          <nav
-            aria-label="Main"
-            className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex"
-            onMouseLeave={() => setFocus(null)}
-          >
-            {NAV.map((n, i) => (
-              <a
-                key={n.label}
-                href={n.href}
-                onMouseEnter={() => setFocus(i)}
-                onFocus={() => setFocus(i)}
-                onBlur={() => setFocus(null)}
-                className={`relative px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.3em] transition-colors duration-300 ${
-                  focus === i ? "text-white" : "text-white/60"
-                }`}
-              >
-                <Scramble text={n.label} active={focus === i && !reduce} />
-                <AnimatePresence>
-                  {focus === i && (
-                    <motion.span
-                      layoutId="focus-box"
-                      aria-hidden
-                      className="absolute inset-0"
-                      initial={{ opacity: 0, scale: 1.25 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 1.15 }}
-                      transition={{ type: "spring", stiffness: 420, damping: 32 }}
-                    >
-                      <FocusCorners />
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </a>
-            ))}
-          </nav>
-        </LayoutGroup>
+          {/* Links with a snapping focus box */}
+          <LayoutGroup id="viewfinder-nav">
+            <nav
+              aria-label="Main"
+              className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex"
+              onMouseLeave={() => setFocus(null)}
+            >
+              {NAV.map((n, i) => (
+                <a
+                  key={n.label}
+                  href={n.href}
+                  onMouseEnter={() => setFocus(i)}
+                  onFocus={() => setFocus(i)}
+                  onBlur={() => setFocus(null)}
+                  className={`relative px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.3em] transition-colors duration-300 ${
+                    focus === i ? "text-white" : "text-white/60"
+                  }`}
+                >
+                  <Scramble text={n.label} active={focus === i && !reduce} />
+                  <AnimatePresence>
+                    {focus === i && (
+                      <motion.span
+                        layoutId="focus-box"
+                        aria-hidden
+                        className="absolute inset-0"
+                        initial={{ opacity: 0, scale: 1.25 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 1.15 }}
+                        transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                      >
+                        <FocusCorners />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </a>
+              ))}
+            </nav>
+          </LayoutGroup>
 
-        {/* Recording readout / menu on phones */}
-        <div className="flex items-center gap-6">
-          
-            
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            aria-expanded={open}
-            aria-controls="viewfinder-menu"
-            className="relative px-3 py-2 text-[11px] font-medium uppercase tracking-[0.3em] text-white md:hidden"
-          >
-            {open ? "Close" : "Menu"}
-            <span aria-hidden className="absolute inset-0">
-              <FocusCorners />
-            </span>
-          </button>
-        </div>
-      </motion.header>
+          {/* Menu button on phones and small tablets */}
+          <div className="flex items-center gap-6">
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              aria-expanded={open}
+              aria-controls="viewfinder-menu"
+              className="relative px-3 py-2 text-[11px] font-medium uppercase tracking-[0.3em] text-white md:hidden"
+            >
+              {open ? "Close" : "Menu"}
+              <span aria-hidden className="absolute inset-0">
+                <FocusCorners />
+              </span>
+            </button>
+          </div>
+        </motion.header>
       </div>
 
       {/* Full-screen menu on phones */}
@@ -926,9 +975,10 @@ function Scramble({ text, active }: { text: string; active: boolean }) {
 }
 
 // ===========================================================================
-// TIMECODE — a running HH:MM:SS:FF counter, updated without re-rendering
+// TIMECODE — a running HH:MM:SS:FF counter, updated without re-rendering.
+// Not used right now; drop <Timecode /> anywhere to show it.
 // ===========================================================================
-function Timecode() {
+export function Timecode() {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const start = performance.now();
