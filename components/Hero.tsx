@@ -298,14 +298,18 @@ export default function Hero() {
 
   return (
     <main className={styles.page}>
-      <CRTScreen
+            <CRTScreen
         curvature={compact ? 0.06 : 0.1}
         scanlineSize={3}
-        scanlineOpacity={0.3}
+        scanlineOpacity={focused !== null ? 0 : 0.3}
         scanlineColor="#1a0004"
-        vignette={0.72}
+        vignette={focused !== null ? 0.2 : 0.72}
         aberration={0}
         phosphor={0}
+        grain={focused !== null ? 0 : 0.08}
+        rollingBar={focused === null}
+        flicker={focused === null}
+        glare={focused === null}
         backdrop={
           <div ref={wallRef} className={styles.wall} data-hover={active !== null} data-focus={focused !== null} data-light="off">
             <div className={styles.grid} style={grid}>
