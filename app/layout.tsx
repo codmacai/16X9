@@ -10,8 +10,8 @@ const sans = Archivo({
 });
 
 export const metadata: Metadata = {
-  title: "16x9, brand films shot like cinema",
-  description: "Campaign films for fashion and product brands.",
+  title: "16x9",
+  description: "",
 };
 
 /* lets the page run edge to edge on phones with a notch */
