@@ -10,36 +10,41 @@ import { AnimatePresence, LayoutGroup, motion, useMotionValue, useReducedMotion,
 // The two full films load only when someone opens a card in the lightbox.
 // Odd clips (01, 03, ...) were cut from FILMS[0], even clips from FILMS[1].
 // Keep this order in sync with the ffmpeg script you used.
+//
+// SAFARI / iOS: clips MUST be H.264, yuv420p, with +faststart. Chrome plays
+// yuv444p / 10-bit files, Safari shows a black box. Encode clips with:
+//   ffmpeg -ss <start> -i film.mp4 -t 4 -an -vf "scale=960:-2" \
+//     -c:v libx264 -profile:v main -pix_fmt yuv420p -crf 23 \
+//     -movflags +faststart clips/clip-01.mp4
 const FILMS = [
   encodeURI("/cleveland_clinic_1.mp4_v1 (1080p) (1).mp4"), // film 1
   encodeURI("/nike_pitch_nov_25.mp4_v1 (1080p).mp4"), // film 2
 ];
 const COUNT = 15; // number of cards / clips in total
 const CLIP_LEN = 4; // seconds each clip lasts (used to find the moment in the full film)
-const LOAD_TIMEOUT = 6000; // ms: never keep the visitor waiting longer than this
+const LOAD_TIMEOUT = 8000; // ms: never keep the visitor waiting longer than this
 
 type Item = {
   id: number;
   title: string;
   client: string;
-  logo: string; // client name / logo text shown on the frame
+  logo: string;
   category: string;
-  src: string; // the short clip shown on the wall
-  film: string; // the full film shown in the lightbox
+  src: string;
+  film: string;
   poster?: string;
-  start?: number; // optional: force the moment (seconds) the lightbox opens at
-  slot: number; // this clip's position within its own film
-  slots: number; // how many clips share that film
+  start?: number;
+  slot: number;
+  slots: number;
 };
 
-// The company logo shown on the black opening card, before the video wipes
-// over it. Drop your file in /public and change the path here.
-const COMPANY_LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png");
+// The company logo shown on the black opening card, before the video wipes over it.
+const COMPANY_LOGO_SRC = encodeURI("/logo.png");
 
 const CLIP_FILES = Array.from({ length: COUNT }, (_, i) => `/clips/clip-${String(i + 1).padStart(2, "0")}.mp4`);
 
 const ITEMS: Item[] = Array.from({ length: COUNT }, (_, i) => {
-  const v = i % FILMS.length; // which film this card was cut from
+  const v = i % FILMS.length;
   return {
     id: i + 1,
     title: `Project ${String(i + 1).padStart(2, "0")}`,
@@ -50,12 +55,11 @@ const ITEMS: Item[] = Array.from({ length: COUNT }, (_, i) => {
     film: FILMS[v],
     slot: Math.floor(i / FILMS.length),
     slots: Math.ceil((COUNT - v) / FILMS.length),
-    // start: 12, // uncomment to pick an exact moment for this card
   };
 });
 const N = ITEMS.length;
 
-const LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png"); // your logo in /public
+const LOGO_SRC = encodeURI("/logo.png");
 const BRAND = "16x9";
 const NAV = [
   { label: "Work", href: "/work" },
@@ -73,55 +77,45 @@ const LEFT_LINE = "Bringing brands to life";
 const RIGHT_LINES = ["Turn target audience", "into your viewers"];
 
 // ===========================================================================
-// WALL — equal cards, edge to edge. Each row is shifted sideways by its own
-// amount so the columns never line up. A 5 x 3 block repeats endlessly in
-// every direction. [col, row, width, height] in cells.
+// WALL
 // ===========================================================================
 const BLOCK_COLS = 5;
 const BLOCK_ROWS = 3;
-const ROW_SHIFT = [0.62, 0.18, 0.44]; // per-row sideways shift, in cards
+const ROW_SHIFT = [0.62, 0.18, 0.44];
 const PATTERN: [number, number, number, number][] = [];
 for (let r = 0; r < BLOCK_ROWS; r++)
   for (let c = 0; c < BLOCK_COLS; c++) PATTERN.push([c + ROW_SHIFT[r], r, 1, 1]);
 
-// How many cards fit across / down the screen, by screen size
 const getView = (vw: number, vh: number) => {
-  if (vw < 640) return { cols: 2, rows: 4 }; // phones
-  if (vw < 1024) return vh > vw ? { cols: 3, rows: 4 } : { cols: 3, rows: 3 }; // tablets
-  if (vw >= 2200) return { cols: 4, rows: 3 }; // very large screens
-  return { cols: 3, rows: 3 }; // desktop
+  if (vw < 640) return { cols: 2, rows: 4 };
+  if (vw < 1024) return vh > vw ? { cols: 3, rows: 4 } : { cols: 3, rows: 3 };
+  if (vw >= 2200) return { cols: 4, rows: 3 };
+  return { cols: 3, rows: 3 };
 };
 
-const CURVE = 0.55; // outward bend of the whole wall (0 = flat)
+const CURVE = 0.55;
 const PERSP = 1400;
-// Hover bulge: the wall swells toward you around the hovered card like a
-// dome, so the card rises and every card around it tilts to follow.
-const LIFT = 170; // px the peak rises toward the viewer (scaled down on small screens)
-const SPREAD = 1.15; // width of the dome, in cards
-const PUSH = 0.05; // slight sideways swell so the rise reads as volume
+const LIFT = 170;
+const SPREAD = 1.15;
+const PUSH = 0.05;
 
-// Opening: the centre card surfaces out of the dark and its footage wipes up.
-// Every other card then reveals right where it sits, nearest the centre first.
-// Hover and drag unlock once it settles. The opening clock starts only once the
-// centre card's video has data, so the footage is ready the moment it wipes up.
 const INTRO = {
   center: 0.35,
   centerDur: 1.8,
-  cardVideo: 1.7, // footage wipe starts (the logo card is held until then)
+  cardVideo: 1.7,
   wipeDur: 1.3,
   zoomDur: 2.4,
-  // every other card reveals right where it sits, nearest the centre first
   fadeStart: 2.7,
   fadeSpread: 0.9,
   fadeDur: 1.4,
 };
 const SETTLE_S = INTRO.fadeStart + INTRO.fadeSpread + INTRO.fadeDur + 0.2;
-const CHROME = 3.5; // copy, nav and marks arrive after the reel unfolds
+const CHROME = 3.5;
 const FPS = 25;
-const GATE_MAX = 2500; // ms: start the opening anyway if the centre video is slow
+const GATE_MAX = 3000; // ms: start the opening anyway if the centre video is slow
 
 // ===========================================================================
-// TYPE & COLOUR — Archivo (wide cut for display), white on black
+// TYPE & COLOUR
 // ===========================================================================
 const FONT = "'Archivo', 'Helvetica Neue', Arial, sans-serif";
 const WIDE = { fontFamily: FONT, fontVariationSettings: "'wdth' 125" } as const;
@@ -155,10 +149,24 @@ const smoothstep = (t: number) => {
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 4);
 const easeInOut = (t: number) => (t < 0.5 ? 8 * t ** 4 : 1 - Math.pow(-2 * t + 2, 4) / 2);
 
+// Clip-path with the -webkit- prefix too (older Safari / iOS need it)
+const setClip = (el: HTMLElement, value: string) => {
+  el.style.clipPath = value;
+  el.style.setProperty("-webkit-clip-path", value);
+};
+
+// React does not write the `muted` attribute to the DOM. iOS Safari needs it
+// (plus playsinline) before it will autoplay, so set everything by hand.
+const prepVideo = (v: HTMLVideoElement) => {
+  v.muted = true;
+  v.defaultMuted = true;
+  v.setAttribute("muted", "");
+  v.setAttribute("playsinline", "");
+  v.setAttribute("webkit-playsinline", "");
+};
+
 // ---------------------------------------------------------------------------
-// Projective transform: maps a w x h element onto any four screen points.
-// Neighbouring frames share their corner points, so the whole mosaic can
-// bend and bulge without ever opening a gap.
+// Projective transform
 // ---------------------------------------------------------------------------
 type M3 = number[];
 const adj = (m: M3): M3 => [
@@ -188,7 +196,6 @@ const basis = (p: number[]): M3 => {
   const v = mulMV(adj(m), [p[6], p[7], 1]);
   return mulMM(m, [v[0], 0, 0, 0, v[1], 0, 0, 0, v[2]]);
 };
-// dst: top-left, top-right, bottom-left, bottom-right
 const toMatrix = (srcAdj: M3, dst: number[]) => {
   const t = mulMM(basis(dst), srcAdj);
   const k = t[8] || 1;
@@ -198,11 +205,10 @@ const toMatrix = (srcAdj: M3, dst: number[]) => {
 
 type PoolTile = { p: number; t: number; bx: number; by: number; w: number; h: number; cx: number; cy: number };
 type CenterTile = { p: number; x: number; y: number };
+type Grid = { CW: number; CH: number; vw: number; vh: number; px: number; py: number };
 
 // ===========================================================================
-// LOADER — the default export. Downloads every clip, the logo and the font
-// behind a black screen with a 000 to 100 counter. The reel mounts only
-// afterwards, so every card can play straight from memory.
+// LOADER
 // ===========================================================================
 export default function OneScreenReel() {
   const [pct, setPct] = useState(0);
@@ -212,7 +218,7 @@ export default function OneScreenReel() {
     let cancelled = false;
     const urls: string[] = [];
     const map: Record<string, string> = {};
-    const total = CLIP_FILES.length + 2; // clips + logo + font
+    const total = CLIP_FILES.length + 2;
     let done = 0;
     const tick = () => {
       done++;
@@ -223,7 +229,9 @@ export default function OneScreenReel() {
       fetch(src)
         .then((r) => (r.ok ? r.blob() : Promise.reject(new Error("bad response"))))
         .then((b) => {
-          const u = URL.createObjectURL(b);
+          // Safari refuses blob videos without a video MIME type
+          const typed = b.type.startsWith("video/") ? b : new Blob([b], { type: "video/mp4" });
+          const u = URL.createObjectURL(typed);
           urls.push(u);
           map[src] = u;
         })
@@ -238,7 +246,12 @@ export default function OneScreenReel() {
     }).finally(tick);
 
     const font = (document.fonts
-      ? Promise.all([document.fonts.load("900 1em Archivo"), document.fonts.load("800 1em Archivo"), document.fonts.load("300 1em Archivo"), document.fonts.load("500 1em Archivo")])
+      ? Promise.all([
+          document.fonts.load("900 1em Archivo"),
+          document.fonts.load("800 1em Archivo"),
+          document.fonts.load("300 1em Archivo"),
+          document.fonts.load("500 1em Archivo"),
+        ])
       : Promise.resolve()
     )
       .catch(() => {})
@@ -261,7 +274,7 @@ export default function OneScreenReel() {
     return (
       <main
         aria-label="Loading"
-        className="relative grid h-dvh w-full place-items-center overflow-hidden bg-black text-white antialiased"
+        className="fixed inset-0 grid place-items-center overflow-hidden bg-black text-white antialiased"
         style={{ fontFamily: FONT }}
       >
         <style>{CSS}</style>
@@ -287,12 +300,14 @@ export default function OneScreenReel() {
 // ===========================================================================
 function Reel({ blobs }: { blobs: Record<string, string> }) {
   const reduce = !!useReducedMotion();
-  const [grid, setGrid] = useState({ CW: 480, CH: 300, vw: 1440, vh: 900, px: 2, py: 2 });
+  // null until the real window size is known, so the wall is never built twice
+  const [grid, setGrid] = useState<Grid | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
   const [film, setFilm] = useState<Item | null>(null);
   const [dragging, setDragging] = useState(false);
   const [explored, setExplored] = useState(false);
   const [settled, setSettled] = useState(false);
+  const [began, setBegan] = useState(false); // opening clock has started: chrome can follow
 
   const rootRef = useRef<HTMLElement>(null);
   const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -311,12 +326,11 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
     hoverRef.current = hovered;
   }, [hovered]);
 
-  // Reduced motion has no opening, so interaction is available straight away.
-  // Otherwise the render loop unlocks hover, drag and scroll when the opening ends.
   useEffect(() => {
     if (reduce) {
       settledRef.current = true;
       setSettled(true);
+      setBegan(true);
     }
   }, [reduce]);
 
@@ -327,8 +341,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
   const glowX = useSpring(gx, { stiffness: 120, damping: 24 });
   const glowY = useSpring(gy, { stiffness: 120, damping: 24 });
 
-  // Cell size: the view fits getView().cols x rows cells. Debounced so mobile
-  // address-bar height changes don't rebuild the wall.
   useEffect(() => {
     let timer = 0;
     let lastW = 0;
@@ -339,7 +351,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
       lastW = vw;
       lastH = vh;
       const v = getView(vw, vh);
-      // enough repeats of the block to cover the screen while wrapping
       const px = Math.ceil((v.cols + 3) / BLOCK_COLS);
       const py = Math.ceil((v.rows + 3) / BLOCK_ROWS);
       setGrid({ CW: vw / v.cols, CH: vh / v.rows, vw, vh, px, py });
@@ -364,20 +375,21 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
   }, [gx, gy]);
 
   const pool: PoolTile[] = [];
-  for (let by = 0; by < grid.py; by++)
-    for (let bx = 0; bx < grid.px; bx++)
-      PATTERN.forEach(([c, r, w, h], t) => {
-        pool.push({
-          p: pool.length,
-          t,
-          bx,
-          by,
-          w: w * grid.CW,
-          h: h * grid.CH,
-          cx: (bx * BLOCK_COLS + c + w / 2) * grid.CW - (grid.px * BLOCK_COLS * grid.CW) / 2,
-          cy: (by * BLOCK_ROWS + r + h / 2) * grid.CH - (grid.py * BLOCK_ROWS * grid.CH) / 2,
+  if (grid)
+    for (let by = 0; by < grid.py; by++)
+      for (let bx = 0; bx < grid.px; bx++)
+        PATTERN.forEach(([c, r, w, h], t) => {
+          pool.push({
+            p: pool.length,
+            t,
+            bx,
+            by,
+            w: w * grid.CW,
+            h: h * grid.CH,
+            cx: (bx * BLOCK_COLS + c + w / 2) * grid.CW - (grid.px * BLOCK_COLS * grid.CW) / 2,
+            cy: (by * BLOCK_ROWS + r + h / 2) * grid.CH - (grid.py * BLOCK_ROWS * grid.CH) / 2,
+          });
         });
-      });
   const poolRef = useRef(pool);
   poolRef.current = pool;
 
@@ -385,12 +397,14 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
   // Render loop
   // -------------------------------------------------------------------------
   useEffect(() => {
+    if (!grid) return;
     const { CW, CH, vw, vh, px, py } = grid;
     const tiles = poolRef.current;
     const count = tiles.length;
     current.current = Array.from({ length: count }, () => -1);
     const playing = Array.from({ length: count }, () => false);
     const shown = Array.from({ length: count }, () => true);
+    const wantSrc = Array.from({ length: count }, () => "");
     const shadeCache = Array.from({ length: count }, () => "");
     const srcAdj = tiles.map((t) => adj(basis([0, 0, t.w, 0, 0, t.h, t.w, t.h])));
     const spanX = px * BLOCK_COLS * CW;
@@ -399,10 +413,9 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
     const reach = Math.max(vw, vh) * 0.55;
     const liftPx = LIFT * Math.min(1, vw / 1440);
     const s = m.current;
-    // If the opening already played (e.g. window resize), skip straight to the end
     let start = performance.now() - (settledRef.current ? 60000 : 0);
-    // The opening clock stays at zero until the centre card's video has data
     let started = settledRef.current || reduce;
+    if (started) setBegan(true);
     const gateStart = performance.now();
     let last = performance.now();
     let raf = 0;
@@ -410,13 +423,37 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
     let wipeCleared = false;
     let introShown = false;
     let center: CenterTile | null = null;
-    let filmShift = 0; // makes the opening card show the first film
-    // Bulge state: follows the hovered frame
+    let filmShift = 0;
     let b = 0;
     let hx = 0;
     let hy = 0;
     let sgx = CW;
     let sgy = CH;
+    // Autoplay was refused (iOS Low Power Mode, data saver...). Wait for a tap.
+    let blocked = false;
+
+    const startVideo = (p: number, v: HTMLVideoElement) => {
+      playing[p] = true;
+      const pr = v.play();
+      if (pr)
+        pr.catch((err: DOMException) => {
+          playing[p] = false;
+          if (err?.name === "NotAllowedError") blocked = true;
+        });
+    };
+
+    // A real user gesture: iOS allows play() only inside it
+    const unblock = () => {
+      if (!blocked) return;
+      blocked = false;
+      for (const tile of tiles) {
+        const v = videoRefs.current[tile.p];
+        if (v && shown[tile.p] && v.getAttribute("src")) startVideo(tile.p, v);
+      }
+    };
+    window.addEventListener("pointerdown", unblock);
+    window.addEventListener("touchstart", unblock, { passive: true });
+    window.addEventListener("keydown", unblock);
 
     const io = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
@@ -437,7 +474,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
       return { x, y, bx: t.bx + px * nx, by: t.by + py * ny };
     };
 
-    // How high the dome is at a flat point (0..1)
     const dome = (x: number, y: number) => {
       if (b < 0.001) return 0;
       const dx = x - hx;
@@ -445,7 +481,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
       return b * Math.exp(-((dx * dx) / (sgx * sgx) + (dy * dy) / (sgy * sgy)));
     };
 
-    // flat point -> dome -> outward curve -> screen
     const project = (x: number, y: number) => {
       const lift = dome(x, y);
       if (lift > 0) {
@@ -470,7 +505,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
       const t = started ? (now - start) / 1000 : 0;
       const k = (rate: number) => 1 - Math.exp(-dt * (reduce ? 40 : rate));
 
-      // Hover, drag and scroll unlock once the opening has finished
       if (!settledRef.current && started && t >= SETTLE_S) {
         settledRef.current = true;
         setSettled(true);
@@ -485,8 +519,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
         s.vy *= f;
       }
 
-      // First frame: nudge the wall so the card nearest the middle sits
-      // exactly in the middle of the screen. That card opens the reel.
       if (!center) {
         let best = Infinity;
         let bestTile: PoolTile | null = null;
@@ -509,7 +541,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
       }
       const cen = center;
 
-      // Bulge follows the hovered frame, swelling in and settling out
       const hp = live ? hoverRef.current : null;
       if (hp !== null && !reduce) {
         const ht = tiles[hp];
@@ -528,17 +559,12 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
         if (!el || !v) continue;
         const w = wrapped(tile);
 
-        // Which film this frame shows
         const idx = mod(tile.t + w.bx * 5 + w.by * 11 + filmShift, N);
         if (current.current[p] !== idx) {
           current.current[p] = idx;
           const it = ITEMS[idx];
           v.poster = it.poster ?? "";
-          // Centre card and everything near the screen buffer fully; the rest only fetch metadata
-          const near = cen?.p === p || (Math.abs(w.x) < vw * 0.7 && Math.abs(w.y) < vh * 0.7);
-          v.preload = near ? "auto" : "metadata";
-          v.src = blobsRef.current[it.src] ?? it.src;
-          playing[p] = false;
+          wantSrc[p] = blobsRef.current[it.src] ?? it.src;
           const set = (r: (HTMLSpanElement | null)[], text: string) => {
             const node = r[p];
             if (node) node.textContent = text;
@@ -548,7 +574,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
           set(logoRefs.current, it.logo);
         }
 
-        // Opening (in the flat wall)
         let scale = 1;
         let opacity = 1;
         let dark = 0;
@@ -559,7 +584,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
             scale = 0.86 + 0.14 * e;
             opacity = e;
           } else {
-            // Every other card reveals in its own place, nearest the centre first
             const near = Math.min(1, Math.hypot(w.x / vw, w.y / vh) * 1.6);
             const t0 = INTRO.fadeStart + near * INTRO.fadeSpread;
             const e = clamp01((t - t0) / INTRO.fadeDur);
@@ -571,8 +595,10 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
         const cx = w.x;
         const cy = w.y;
 
-        // Cull what is well off screen
-        const onScreen = Math.abs(cx) - tile.w / 2 < vw * 0.62 && Math.abs(cy) - tile.h / 2 < vh * 0.62 && opacity > 0;
+        // Cull by POSITION only. Cards that are still invisible (opacity 0)
+        // keep loading and playing underneath, so the footage is already
+        // running at the moment each card is revealed.
+        const onScreen = Math.abs(cx) - tile.w / 2 < vw * 0.62 && Math.abs(cy) - tile.h / 2 < vh * 0.62;
         if (onScreen !== shown[p]) {
           shown[p] = onScreen;
           el.style.visibility = onScreen ? "visible" : "hidden";
@@ -585,8 +611,14 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
           continue;
         }
 
-        // Corners in the flat wall (scaled / spun for the opening), then
-        // through the bulge and the curve onto the screen
+        // Give the video its source only once it is near the screen: fewer
+        // live decoders, which is what keeps iPhones from dropping videos.
+        if (wantSrc[p] && v.getAttribute("src") !== wantSrc[p]) {
+          v.preload = "auto";
+          v.src = wantSrc[p];
+          playing[p] = false;
+        }
+
         const hw = (tile.w / 2) * scale;
         const hh = (tile.h / 2) * scale;
         const corner = (ax: number, ay: number) => project(cx + ax, cy + ay);
@@ -598,41 +630,38 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
         el.style.opacity = opacity.toFixed(3);
         el.style.zIndex = isCenter && !live ? "5" : hoverRef.current === p ? "3" : "1";
 
-        // Centre card: footage wipes up while zooming out from 1.3x
+        // Centre card: black logo card on TOP of the video. The card is
+        // clipped away from the bottom up, revealing footage that is already
+        // playing underneath (clipping the <video> itself fails in Safari).
         if (isCenter && !reduce) {
+          const layer = introRefs.current[p];
           if (t < INTRO.cardVideo + INTRO.zoomDur + 0.1) {
             if (!introShown) {
               introShown = true;
-              const layer = introRefs.current[p];
               const img = introImgRefs.current[p];
               if (layer && img) {
                 img.src = COMPANY_LOGO_SRC;
+                setClip(layer, "inset(0% 0% 0% 0%)");
                 layer.style.display = "grid";
               }
             }
             const wp = easeInOut(clamp01((t - INTRO.cardVideo) / INTRO.wipeDur));
             const zp = easeOut(clamp01((t - INTRO.cardVideo) / INTRO.zoomDur));
-            // hide the card's own client logo while the company logo is on screen
-            const cl = logoRefs.current[p];
-            if (cl) cl.style.opacity = "0";
-            v.style.clipPath = `inset(${((1 - wp) * 100).toFixed(2)}% 0% 0% 0%)`;
+            if (layer) setClip(layer, `inset(0% 0% ${(wp * 100).toFixed(2)}% 0%)`);
             v.style.transform = `scale(${(1.3 - 0.3 * zp).toFixed(4)})`;
           } else if (!wipeCleared) {
             wipeCleared = true;
-            const layer = introRefs.current[p];
             const img = introImgRefs.current[p];
-            const cl = logoRefs.current[p];
-            if (cl) cl.style.opacity = "";
-            if (layer) layer.style.display = "none";
+            if (layer) {
+              layer.style.display = "none";
+              setClip(layer, "");
+            }
             if (img) img.removeAttribute("src");
-            v.style.clipPath = "";
             v.style.transform = "";
           }
         }
 
-        // Light: darker the further from the pointer
         const mid = project(cx, cy);
-        // cards on the slope of the dome catch less light
         const slope =
           b > 0.001
             ? Math.abs(dome(cx + tile.w / 2, cy) - dome(cx - tile.w / 2, cy)) +
@@ -651,21 +680,24 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
           if (sh) sh.style.opacity = shade;
         }
 
-        const play = !document.hidden;
-        if (play !== playing[p]) {
-          playing[p] = play;
-          if (play) v.play().catch(() => {});
-          else v.pause();
+        if (document.hidden) {
+          if (playing[p]) {
+            playing[p] = false;
+            v.pause();
+          }
+        } else if (!playing[p] && !blocked && v.getAttribute("src")) {
+          startVideo(p, v);
         }
       }
 
-      // Hold the opening at zero until the centre card's video has data, so the
-      // footage is already there when the logo card lifts. Never wait longer than GATE_MAX.
+      // Hold the opening until the centre video is actually producing frames.
       if (!started && cen) {
         const cv = videoRefs.current[cen.p];
-        if (!cv || cv.readyState >= 3 || now - gateStart > GATE_MAX) {
+        const ready = !!cv && cv.readyState >= 2 && (cv.currentTime > 0 || cv.readyState >= 3);
+        if (!cv || ready || blocked || now - gateStart > GATE_MAX) {
           started = true;
           start = now;
+          setBegan(true);
         }
       }
     };
@@ -673,11 +705,14 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
     return () => {
       cancelAnimationFrame(raf);
       io.disconnect();
+      window.removeEventListener("pointerdown", unblock);
+      window.removeEventListener("touchstart", unblock);
+      window.removeEventListener("keydown", unblock);
     };
   }, [grid, reduce]);
 
   // -------------------------------------------------------------------------
-  // Input: drag / swipe with momentum, trackpad, arrow keys (after the intro)
+  // Input
   // -------------------------------------------------------------------------
   useEffect(() => {
     const root = rootRef.current;
@@ -769,7 +804,7 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
     <main
       ref={rootRef}
       aria-label="Showreel"
-      className="relative h-dvh w-full select-none overflow-hidden bg-black text-white antialiased"
+      className="fixed inset-0 select-none overflow-hidden bg-black text-white antialiased"
       style={{ fontFamily: FONT }}
     >
       <style>{CSS}</style>
@@ -821,34 +856,18 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
                 }}
                 className="absolute inset-0 block overflow-hidden bg-[#0c0c0c] outline-none focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-4 focus-visible:outline-white [@media(pointer:fine)]:cursor-none"
               >
-                {/* The picture */}
                 <span className="absolute inset-0 overflow-hidden bg-[#0c0c0c]">
-                  {/* Opening card only: black, with the company logo. The video wipes up over it. */}
-                  <span
-                    ref={(el) => {
-                      introRefs.current[p] = el;
-                    }}
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 hidden place-items-center bg-black"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      ref={(el) => {
-                        introImgRefs.current[p] = el;
-                      }}
-                      alt=""
-                      draggable={false}
-                      className="h-auto max-h-[42%] w-auto max-w-[74%] object-contain"
-                    />
-                  </span>
                   <video
                     ref={(el) => {
                       videoRefs.current[p] = el;
+                      if (el) prepVideo(el);
                     }}
                     muted
                     loop
                     playsInline
-                    preload="metadata"
+                    autoPlay
+                    preload="none"
+                    disablePictureInPicture
                     className="pointer-events-none absolute inset-0 h-full w-full object-cover"
                     style={{
                       filter: active ? "grayscale(0) contrast(1.02)" : "grayscale(0.6) contrast(1.1)",
@@ -856,8 +875,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
                     }}
                   />
 
-                  {/* Darkness, set each frame by distance from the pointer.
-                      No CSS transition during the opening, so the light-up follows the animation exactly. */}
                   <span
                     ref={(el) => {
                       shadeRefs.current[p] = el;
@@ -875,7 +892,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
                     style={{ opacity: active ? 1 : 0 }}
                   />
 
-                  {/* Client logo: centred at rest, glides into the corner on hover */}
                   <span
                     ref={(el) => {
                       logoRefs.current[p] = el;
@@ -894,7 +910,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
                     }}
                   />
 
-                  {/* Title, only on hover */}
                   <span
                     aria-hidden
                     className="pointer-events-none absolute bottom-3 left-3 block text-left leading-tight transition-[opacity,transform] duration-500"
@@ -914,9 +929,28 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
                       className="mt-0.5 block text-[9px] font-medium uppercase tracking-[0.2em] text-white/55 sm:text-[10px]"
                     />
                   </span>
+
+                  {/* Opening card only: black, with the company logo. Sits ABOVE
+                      everything and is clipped away to reveal the footage. */}
+                  <span
+                    ref={(el) => {
+                      introRefs.current[p] = el;
+                    }}
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 z-10 hidden place-items-center bg-black"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      ref={(el) => {
+                        introImgRefs.current[p] = el;
+                      }}
+                      alt=""
+                      draggable={false}
+                      className="h-auto max-h-[42%] w-auto max-w-[74%] object-contain"
+                    />
+                  </span>
                 </span>
 
-                {/* Hairline seam; a fine white rule on hover */}
                 <span
                   aria-hidden
                   className="pointer-events-none absolute inset-0 transition-[box-shadow] duration-500"
@@ -928,7 +962,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
         })}
       </div>
 
-      {/* Light that follows the pointer */}
       {!reduce && (
         <motion.div
           aria-hidden
@@ -943,7 +976,6 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
         />
       )}
 
-      {/* Vignette and the dark corners behind the copy */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-30 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.72)_100%)]"
@@ -953,74 +985,77 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
         className="pointer-events-none absolute inset-0 z-30 bg-[radial-gradient(ellipse_at_0%_100%,rgba(0,0,0,0.8),transparent_40%),radial-gradient(ellipse_at_100%_100%,rgba(0,0,0,0.8),transparent_40%)]"
       />
 
-      {/* ================= Copy ================= */}
-      <div className="pointer-events-none absolute inset-x-6 bottom-7 z-40 flex items-end justify-between gap-6 sm:inset-x-12 sm:bottom-10">
-        <p
-          className="max-w-[55%] overflow-hidden pb-[0.1em] text-[clamp(1.6rem,4.4vw,4.5rem)] uppercase leading-[0.95]"
-          style={{ ...WIDE, fontWeight: 800, letterSpacing: "0.01em" }}
-        >
-          <motion.span className="block" {...rise(CHROME)}>
-            {LEFT_LINE}
-          </motion.span>
-        </p>
-        <p
-          className="text-right text-[clamp(0.8rem,1.15vw,1.1rem)] uppercase leading-[1.15]"
-          style={{ ...WIDE, fontWeight: 300, letterSpacing: "0.02em" }}
-        >
-          {RIGHT_LINES.map((l, i) => (
-            <span key={l} className="block overflow-hidden">
-              <motion.span className="block" {...rise(CHROME + 0.06 * (i + 1))}>
-                {l}
+      {/* Everything below mounts when the opening starts, so its delays are
+          measured from the opening, not from page load. */}
+      {began && (
+        <>
+          <div className="pointer-events-none absolute inset-x-6 bottom-7 z-40 flex items-end justify-between gap-6 sm:inset-x-12 sm:bottom-10">
+            <p
+              className="max-w-[55%] overflow-hidden pb-[0.1em] text-[clamp(1.6rem,4.4vw,4.5rem)] uppercase leading-[0.95]"
+              style={{ ...WIDE, fontWeight: 800, letterSpacing: "0.01em" }}
+            >
+              <motion.span className="block" {...rise(CHROME)}>
+                {LEFT_LINE}
               </motion.span>
-            </span>
-          ))}
-        </p>
-      </div>
+            </p>
+            <p
+              className="text-right text-[clamp(0.8rem,1.15vw,1.1rem)] uppercase leading-[1.15]"
+              style={{ ...WIDE, fontWeight: 300, letterSpacing: "0.02em" }}
+            >
+              {RIGHT_LINES.map((l, i) => (
+                <span key={l} className="block overflow-hidden">
+                  <motion.span className="block" {...rise(CHROME + 0.06 * (i + 1))}>
+                    {l}
+                  </motion.span>
+                </span>
+              ))}
+            </p>
+          </div>
 
-      {/* Hint, until the first drag */}
-      <AnimatePresence>
-        {!explored && (
-          <motion.p
-            initial={reduce ? false : { opacity: 0 }}
-            animate={{ opacity: 1, transition: { delay: CHROME + 0.6, duration: 1 } }}
-            exit={{ opacity: 0, transition: { duration: 0.4 } }}
-            className="pointer-events-none absolute bottom-9 left-1/2 z-40 hidden -translate-x-1/2 text-[10px] font-medium uppercase tracking-[0.3em] text-white/60 sm:block"
-          >
-            Drag to explore
-          </motion.p>
-        )}
-      </AnimatePresence>
-
-      {/* Socials, set vertically on the right edge */}
-      <motion.nav
-        aria-label="Social"
-        initial={reduce ? false : { opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1.2, ease: EASE_OUT, delay: CHROME + 0.2 }}
-        className="absolute right-6 top-1/2 z-40 hidden -translate-y-1/2 sm:right-12 sm:block"
-      >
-        <ul className="flex rotate-180 gap-7 [writing-mode:vertical-rl]">
-          {SOCIALS.map((s) => (
-            <li key={s.label}>
-              <a
-                href={s.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] font-medium uppercase tracking-[0.3em] text-white/55 transition-colors hover:text-white"
+          <AnimatePresence>
+            {!explored && (
+              <motion.p
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1, transition: { delay: CHROME + 0.6, duration: 1 } }}
+                exit={{ opacity: 0, transition: { duration: 0.4 } }}
+                className="pointer-events-none absolute bottom-9 left-1/2 z-40 hidden -translate-x-1/2 text-[10px] font-medium uppercase tracking-[0.3em] text-white/60 sm:block"
               >
-                {s.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </motion.nav>
+                Drag to explore
+              </motion.p>
+            )}
+          </AnimatePresence>
 
-      {/* Film grain */}
+          <motion.nav
+            aria-label="Social"
+            initial={reduce ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1.2, ease: EASE_OUT, delay: CHROME + 0.2 }}
+            className="absolute right-6 top-1/2 z-40 hidden -translate-y-1/2 sm:right-12 sm:block"
+          >
+            <ul className="flex rotate-180 gap-7 [writing-mode:vertical-rl]">
+              {SOCIALS.map((s) => (
+                <li key={s.label}>
+                  <a
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-medium uppercase tracking-[0.3em] text-white/55 transition-colors hover:text-white"
+                  >
+                    {s.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </motion.nav>
+
+          <Viewfinder reduce={reduce} />
+        </>
+      )}
+
       <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] overflow-hidden opacity-[0.08]">
         <div className="gh-grain absolute -inset-[50%]" style={{ backgroundImage: GRAIN }} />
       </div>
 
-      <Viewfinder reduce={reduce} />
       <Lightbox item={film} onClose={() => setFilm(null)} />
       <Cursor />
     </main>
@@ -1028,8 +1063,7 @@ function Reel({ blobs }: { blobs: Record<string, string> }) {
 }
 
 // ===========================================================================
-// VIEWFINDER NAVBAR — crop marks, a focus box that snaps to links, and a
-// recording readout; full-screen menu on phones
+// VIEWFINDER NAVBAR
 // ===========================================================================
 function Viewfinder({ reduce }: { reduce: boolean }) {
   const [focus, setFocus] = useState<number | null>(null);
@@ -1044,7 +1078,6 @@ function Viewfinder({ reduce }: { reduce: boolean }) {
 
   return (
     <>
-      {/* Corner crop marks */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-3 z-50 sm:inset-5"
@@ -1249,8 +1282,7 @@ function Timecode() {
 }
 
 // ===========================================================================
-// LIGHTBOX — the full film, with sound and controls. Opens at the moment
-// the clicked clip was cut from, and only loads the big file when opened.
+// LIGHTBOX
 // ===========================================================================
 function Lightbox({ item, onClose }: { item: Item | null; onClose: () => void }) {
   useEffect(() => {
@@ -1298,17 +1330,24 @@ function Lightbox({ item, onClose }: { item: Item | null; onClose: () => void })
             <video
               key={item.id}
               src={item.film}
-              autoPlay
               controls
               playsInline
+              preload="auto"
               onLoadedMetadata={(e) => {
                 const v = e.currentTarget;
                 const span = Math.max(0, v.duration - CLIP_LEN);
                 const at = Math.min(item.start ?? span * (item.slot / item.slots), span);
                 if (at > 0) v.currentTime = at;
+                // Safari blocks autoplay with sound: fall back to muted playback
+                const pr = v.play();
+                if (pr)
+                  pr.catch(() => {
+                    v.muted = true;
+                    v.play().catch(() => {});
+                  });
               }}
               onClick={(e) => e.stopPropagation()}
-              className="max-h-full w-full max-w-[min(100%,160svh)] bg-black"
+              className="max-h-full w-full max-w-[min(100%,160vh)] bg-black"
             />
           </div>
         </motion.div>
@@ -1318,7 +1357,7 @@ function Lightbox({ item, onClose }: { item: Item | null; onClose: () => void })
 }
 
 // ===========================================================================
-// CURSOR — a white disc that labels anything with data-cursor (fine pointers)
+// CURSOR
 // ===========================================================================
 function Cursor() {
   const [label, setLabel] = useState<string | null>(null);

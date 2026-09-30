@@ -22,8 +22,9 @@ const CLIPS: Clip[] = Array.from({ length: CLIP_COUNT }, (_, i) => ({
 }));
 const C = CLIPS.length;
 
-const LOGO_SRC = encodeURI("/Screenshot 2026-09-29 at 10.25.42 PM.png"); // your logo in /public
+const LOGO_SRC = encodeURI("/logo.png"); // your logo in /public
 const BRAND = "16x9";
+
 const NAV = [
   { label: "Work", href: "/work" },
   { label: "Services", href: "/services" },
