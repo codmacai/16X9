@@ -16,8 +16,7 @@ const body = Inter_Tight({
 });
 
 export const metadata: Metadata = {
-  title: "16X9, brand films shot like cinema",
-  description: "Campaign films for fashion and product brands.",
+  title: "16X9",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
