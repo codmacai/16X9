@@ -1,914 +1,960 @@
 /* type: Archivo throughout (loaded in layout.tsx as --font-sans).
    Wide cut (wdth 125) for display, normal width in caps for small print. */
 
-   .page {
-    height: 100svh;
-    min-height: 560px;
-    padding: clamp(6px, 1.2vw, 16px);
-    background: #000;
-  }
-  
-  .stage {
-    --red: #e1142b;
-    --ink: #0a0002;
-    --paper: #f7f2ee;
-    --ease: cubic-bezier(0.16, 1, 0.3, 1);
-    position: relative;
-    height: 100%;
-    overflow: hidden;
-    color: var(--paper);
-    font-family: var(--font-sans, "Archivo"), "Helvetica Neue", Arial, sans-serif;
-  }
-  
-  .stage a {
-    color: inherit;
-    text-decoration: none;
-  }
-  
-  /* ---------- backdrop: the video wall (gets the CRT effect) ---------- */
-  
-  .wall {
-    position: absolute;
-    inset: 0;
-    isolation: isolate; /* keeps the clips under the scanlines */
-    background: #070001;
-  }
-  
-  .grid {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    gap: 4px;
-    padding: 4px;
-  }
-  
-  .tile {
-    position: relative;
-    overflow: hidden;
-    isolation: isolate;
-    border-radius: 3px;
-    background: #140204;
-  }
-  
-  /* films play in full colour and bright at rest; hover lifts them a touch more */
-  .video,
-  .placeholder {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    filter: saturate(1.05) contrast(1.04) brightness(0.96);
-    transition: filter 450ms ease, transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
-  }
-  
-  /* a soft shade over each film at rest */
-  .grade {
-    position: absolute;
-    inset: 0;
-    background: #000;
-    opacity: 0.04;
-    transition: opacity 450ms ease;
-  }
-  
-  /* dim layer for the tiles you're not hovering */
-  .tile::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: #0a0002;
+/* registered so the accent colour eases between films instead of snapping */
+@property --accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #e1142b;
+}
+
+.page {
+  height: 100svh;
+  min-height: 560px;
+  padding: clamp(6px, 1.2vw, 16px);
+  background: #000;
+}
+
+.stage {
+  --red: #e1142b;
+  --accent: var(--red); /* follows the film that is playing (set inline from Hero.tsx) */
+  --ink: #0a0002;
+  --paper: #f7f2ee;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  color: var(--paper);
+  font-family: var(--font-sans, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+  transition: --accent 500ms ease;
+}
+
+.stage a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ---------- backdrop: the video wall (gets the CRT effect) ---------- */
+
+.wall {
+  position: absolute;
+  inset: 0;
+  isolation: isolate; /* keeps the clips under the scanlines */
+  background: #070001;
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+}
+
+.tile {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 3px;
+  background: #140204;
+}
+
+/* holds one clip, so two clips can crossfade inside the same tile */
+.swap {
+  position: absolute;
+  inset: 0;
+}
+
+/* films play in full colour and bright at rest; hover lifts them a touch more */
+.video,
+.placeholder {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(1.05) contrast(1.04) brightness(0.96);
+  transition: filter 450ms ease, transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* a soft shade over each film at rest */
+.grade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0.04;
+  transition: opacity 450ms ease;
+}
+
+/* dim layer for the tiles you're not hovering */
+.tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #0a0002;
+  opacity: 0;
+  transition: opacity 450ms ease;
+}
+
+.wall[data-hover="true"] .tile::after {
+  opacity: 0.35;
+}
+
+.wall .tile[data-active="true"]::after {
+  opacity: 0;
+}
+
+.tile[data-active="true"] .grade {
+  opacity: 0;
+}
+
+.tile[data-active="true"] .video,
+.tile[data-active="true"] .placeholder {
+  filter: saturate(1.08) brightness(1.1) contrast(1.04);
+  transform: scale(1.04);
+}
+
+/* keeps the centre dark enough for the headline */
+.spot {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 44% 40% at 50% 50%,
+    rgb(10 0 2 / 0.66) 0%,
+    rgb(10 0 2 / 0.38) 55%,
+    transparent 85%
+  );
+  pointer-events: none;
+  transition: opacity 400ms ease;
+}
+
+.wall[data-focus="true"] .spot {
+  opacity: 0;
+}
+
+/* a light that follows the pointer across the wall: a soft warm pool,
+   screened over the footage so it lifts it without washing it out */
+.light {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle min(12vw, 170px) at var(--lx, 50%) var(--ly, 50%), rgb(255 246 238 / 0.14), transparent 70%),
+    radial-gradient(circle min(34vw, 480px) at var(--lx, 50%) var(--ly, 50%), rgb(255 232 220 / 0.2), rgb(255 222 208 / 0.07) 42%, transparent 72%);
+  mix-blend-mode: screen;
+  transition: opacity 600ms ease;
+}
+
+.wall[data-light="on"] .light {
+  opacity: 1;
+}
+
+.wall[data-focus="true"] .light {
+  opacity: 0;
+}
+
+/* one film full screen: it opens out from a framed crop and settles */
+.channel {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: #000;
+  animation: film-in 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.channel .video,
+.channel .placeholder {
+  filter: none;
+}
+
+/* placeholder "footage" until your clips are in /public/clips */
+.placeholder {
+  overflow: hidden;
+  background: #1a0508;
+}
+
+.placeholder > div {
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(circle at 30% 35%, hsl(calc(var(--seed) * 47 + 10) 70% 62% / 0.95), transparent 38%),
+    radial-gradient(circle at 70% 65%, hsl(calc(var(--seed) * 47 + 190) 55% 40% / 0.9), transparent 45%),
+    radial-gradient(ellipse 30% 55% at 55% 75%, rgb(10 6 6 / 0.9), transparent 70%),
+    linear-gradient(calc(var(--seed) * 33deg), hsl(calc(var(--seed) * 47 + 20) 40% 18%), hsl(calc(var(--seed) * 47 + 220) 35% 10%));
+  animation: drift calc(9s + var(--seed) * 0.7s) ease-in-out infinite alternate;
+}
+
+/* ---------- foreground ---------- */
+
+.hitGrid {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+}
+
+.stage[data-focus="true"] .hitGrid {
+  pointer-events: none;
+}
+
+.hit {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.hit:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: -6px;
+}
+
+/* the tile's own accent (set inline per tile) draws a thin line under the tag on hover */
+.hit::after {
+  content: "";
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: calc(14% + 24px);
+  height: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 500ms var(--ease);
+}
+
+.hit[data-active="true"]::after {
+  transform: scaleX(1);
+}
+
+.tag {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 14%;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 250ms ease, transform 250ms ease;
+}
+
+.tag b {
+  font-size: 12px;
+  font-weight: 800;
+  font-variation-settings: "wdth" 125;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+}
+
+.tag span:last-child {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.hit[data-active="true"] .tag {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------- centre copy ---------- */
+
+.copy {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 300ms ease, visibility 300ms;
+}
+
+.stage[data-focus="true"] .copy {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.headline {
+  margin: 0;
+  font-size: clamp(34px, 6.2vw, 108px);
+  font-weight: 800;
+  font-variation-settings: "wdth" 125;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  text-shadow: 0 4px 40px rgb(0 0 0 / 0.55);
+}
+
+.sub {
+  max-width: 38ch;
+  margin: clamp(18px, 2.6vh, 28px) 0 0;
+  color: #ffd9cf;
+  font-size: clamp(11px, 0.85vw, 13px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* headline lines rise out of a mask */
+.line {
+  display: block;
+  overflow: hidden;
+  padding: 0.04em 0.06em 0.06em;
+}
+
+.lineInner {
+  display: block;
+  transform-origin: 0% 100%;
+  will-change: transform;
+}
+
+/* ---------- viewing a film ----------
+   Header, scrim, client strip and HUD sit in .chrome and step aside while a
+   film plays, so only the film and its title bar are on screen. */
+.chrome {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 450ms cubic-bezier(0.16, 1, 0.3, 1), visibility 450ms;
+}
+
+.header {
+  pointer-events: auto;
+}
+
+.stage[data-focus="true"] .chrome {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.stage[data-focus="true"] .chrome * {
+  pointer-events: none !important;
+}
+
+/* no channel tags over the playing film */
+.stage[data-focus="true"] .hitGrid {
+  visibility: hidden;
+}
+
+/* hover and clicks stay off until the entrance has played */
+.stage[data-ready="false"] .hitGrid {
+  pointer-events: none;
+}
+
+/* ---------- opening ----------
+   The logo appears on black, then the black parts top and bottom
+   like a cinema letterbox opening. */
+
+.power {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.powerTop,
+.powerBottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50.5%;
+  background: #000;
+  will-change: transform;
+}
+
+.powerTop {
+  top: 0;
+  transform-origin: 50% 0%;
+}
+
+.powerBottom {
+  bottom: 0;
+  transform-origin: 50% 100%;
+}
+
+.powerLogo {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  will-change: transform, opacity, filter;
+}
+
+.powerLogo img {
+  display: block;
+  height: clamp(40px, 5vw, 72px);
+  width: auto;
+}
+
+.powerLogo span {
+  font-size: clamp(28px, 4vw, 56px);
+  font-weight: 900;
+  font-variation-settings: "wdth" 125;
+  letter-spacing: -0.03em;
+}
+
+/* ---------- buttons ----------
+   Glass keys with a hairline border. On hover a white fill rises from the
+   bottom, the label rolls up to a fresh copy of itself and turns black.
+   The only colour is the small recording dot (the film's accent). */
+
+.stage .cta {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  margin-top: clamp(24px, 3.6vh, 36px);
+  padding: 0 26px 0 22px;
+  overflow: hidden;
+  border: 0;
+  background: rgb(10 0 2 / 0.3);
+  box-shadow: inset 0 0 0 1px rgb(247 242 238 / 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--paper);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: color 500ms var(--ease), box-shadow 500ms var(--ease);
+}
+
+/* the white fill */
+.stage .cta::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--paper);
+  transform: scaleY(0);
+  transform-origin: center bottom;
+  transition: transform 600ms var(--ease);
+}
+
+.stage .cta:hover,
+.stage .cta:focus-visible {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--paper);
+}
+
+.stage .cta:hover::before,
+.stage .cta:focus-visible::before {
+  transform: scaleY(1);
+}
+
+.stage .cta:active {
+  transform: translateY(1px);
+}
+
+.stage .cta:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 4px;
+}
+
+/* label roll: the text slides up and an identical copy follows it in */
+.ctaText {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  padding: 2px 0;
+}
+
+.ctaText > span,
+.ctaText::after {
+  display: block;
+  transition: transform 600ms var(--ease);
+}
+
+.ctaText::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  padding: 2px 0;
+}
+
+.stage .cta:hover .ctaText > span,
+.stage .cta:hover .ctaText::after,
+.stage .cta:focus-visible .ctaText > span,
+.stage .cta:focus-visible .ctaText::after {
+  transform: translateY(-100%);
+}
+
+/* the only colour: a small recording dot, in the film's accent */
+.ctaRec {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: blink 1.6s steps(1, end) infinite;
+}
+
+.stage .cta:hover .ctaRec,
+.stage .cta:focus-visible .ctaRec {
+  animation: none;
+}
+
+/* "All films" over full-screen footage: same key, a back chevron instead of the dot */
+.back {
+  width: 7px;
+  height: 7px;
+  margin-left: 3px;
+  flex-shrink: 0;
+  border-bottom: 1.5px solid currentColor;
+  border-left: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 500ms var(--ease);
+}
+
+.stage .ctaDark:hover .back,
+.stage .ctaDark:focus-visible .back {
+  transform: translateX(-3px) rotate(45deg);
+}
+
+/* the "All films" key takes the colour of the film that is playing */
+.stage .ctaDark {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.stage .ctaDark .back {
+  color: var(--accent);
+}
+
+/* ---------- header ----------
+   Built into the top edge of the screen like a broadcast header: logo left,
+   links centre, contact right, all sitting on one hairline. A marker
+   slides along the hairline to whatever you point at; labels roll on hover. */
+
+.topScrim {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 3;
+  height: 180px;
+  background: linear-gradient(to bottom, rgb(10 0 2 / 0.72), rgb(10 0 2 / 0.3) 55%, transparent);
+  pointer-events: none;
+}
+
+.header {
+  position: absolute;
+  z-index: 6;
+  top: clamp(18px, 3.4vh, 30px);
+  left: clamp(20px, 3.2vw, 44px);
+  right: clamp(20px, 3.2vw, 44px);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding-bottom: clamp(14px, 2vh, 20px);
+}
+
+.logo {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  font-size: 17px;
+  font-weight: 900;
+  font-variation-settings: "wdth" 125;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.logo img {
+  display: block;
+  height: 30px;
+  width: auto;
+}
+
+.links {
+  display: flex;
+  gap: clamp(28px, 3.6vw, 56px);
+}
+
+.link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.72;
+  transition: opacity 400ms var(--ease);
+}
+
+.link:hover,
+.link:focus-visible {
+  opacity: 1 !important;
+}
+
+.link:focus-visible,
+.logo:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 6px;
+}
+
+.contact {
+  justify-self: end;
+  opacity: 1;
+}
+
+/* label roll: the text slides up and an identical copy follows it in */
+.roll {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  padding: 2px 0;
+}
+
+.roll > span,
+.roll::after {
+  display: block;
+  transition: transform 600ms var(--ease);
+}
+
+.roll::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  padding: 2px 0;
+}
+
+.link:hover .roll > span,
+.link:hover .roll::after,
+.link:focus-visible .roll > span,
+.link:focus-visible .roll::after {
+  transform: translateY(-100%);
+}
+
+/* the hairline, and the marker that rides it */
+.rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: rgb(247 242 238 / 0.16);
+  transform-origin: left center;
+}
+
+.ruleMark {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: left 550ms var(--ease), width 550ms var(--ease), opacity 300ms ease;
+}
+
+/* phones: menu button with two lines that cross into an X */
+.menuBtn {
+  display: none;
+  justify-self: end;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--paper);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.menuBtn i {
+  position: relative;
+  width: 18px;
+  height: 8px;
+}
+
+.menuBtn i::before,
+.menuBtn i::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: currentColor;
+  transition: transform 500ms var(--ease), top 500ms var(--ease);
+}
+
+.menuBtn i::before { top: 0; }
+.menuBtn i::after { top: 6.5px; }
+
+.header[data-menu="true"] .menuBtn i::before { top: 3.25px; transform: rotate(45deg); }
+.header[data-menu="true"] .menuBtn i::after { top: 3.25px; transform: rotate(-45deg); }
+
+.menu {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 120px 24px 36px;
+  background: rgb(10 0 2 / 0.9);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  clip-path: inset(0 0 100% 0);
+  -webkit-clip-path: inset(0 0 100% 0);
+  pointer-events: none;
+  transition: clip-path 700ms var(--ease), -webkit-clip-path 700ms var(--ease);
+}
+
+.menu[data-open="true"] {
+  clip-path: inset(0 0 0 0);
+  -webkit-clip-path: inset(0 0 0 0);
+  pointer-events: auto;
+}
+
+.menuLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.menuLink,
+.menuContact {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 500ms var(--ease), transform 700ms var(--ease);
+}
+
+.menu[data-open="true"] .menuLink,
+.menu[data-open="true"] .menuContact {
+  opacity: 1;
+  transform: none;
+  transition-delay: calc(180ms + var(--i) * 70ms);
+}
+
+.menuLink {
+  font-size: clamp(44px, 14vw, 76px);
+  font-weight: 800;
+  font-variation-settings: "wdth" 125;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.menuContact {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid rgb(247 242 238 / 0.16);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* ---------- now playing ---------- */
+
+.nowPlaying {
+  position: absolute;
+  z-index: 3;
+  left: clamp(28px, 6.5vw, 96px);
+  right: clamp(28px, 6.5vw, 96px);
+  bottom: clamp(140px, 22vh, 220px);
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(16px, 2.4vw, 32px);
+}
+
+.npNumber {
+  display: block;
+  overflow: hidden;
+  padding-top: 0.08em;
+}
+
+.nowPlaying b {
+  display: block;
+  max-width: 14ch;
+  font-size: clamp(34px, 5.4vw, 88px);
+  font-weight: 900;
+  font-variation-settings: "wdth" 125;
+  line-height: 0.88;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 4px 30px rgb(0 0 0 / 0.5);
+}
+
+.nowPlaying div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-shadow: 0 2px 16px rgb(0 0 0 / 0.6);
+}
+
+.nowPlaying div span:last-child {
+  color: #ffd9cf;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage .close {
+  margin: 0 0 0 auto;
+}
+
+/* ---------- clients (unchanged) ---------- */
+
+.clients {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: clamp(76px, 12vh, 118px);
+  overflow: hidden;
+  pointer-events: none;
+  mask-image: linear-gradient(to right, transparent, #000 22%, #000 78%, transparent);
+}
+
+.track {
+  display: flex;
+  align-items: center;
+  gap: clamp(40px, 6vw, 88px);
+  width: max-content;
+  animation: marquee 38s linear infinite;
+}
+
+.track span {
+  white-space: nowrap;
+  opacity: 0.9;
+  text-shadow: 0 2px 16px rgb(0 0 0 / 0.5);
+}
+
+.logoA { font-size: 22px; font-weight: 800; letter-spacing: -0.04em; }
+.logoB { font-size: 24px; font-weight: 500; letter-spacing: -0.06em; }
+.logoC { font-size: 20px; font-weight: 400; font-style: italic; letter-spacing: -0.02em; }
+.logoD { font-size: 15px; font-weight: 700; letter-spacing: 0.22em; }
+
+/* ---------- hud ---------- */
+
+.hud {
+  position: absolute;
+  z-index: 2;
+  inset: auto clamp(28px, 6.5vw, 96px) clamp(26px, 5vh, 48px);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgb(247 242 238 / 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  pointer-events: none;
+}
+
+.hud > :last-child {
+  justify-self: end;
+}
+
+/* ---------- motion ---------- */
+
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+
+@keyframes blink {
+  50% { opacity: 0.15; }
+}
+
+@keyframes drift {
+  from { transform: translate(-4%, -3%) scale(1); }
+  to   { transform: translate(4%, 3%) scale(1.08); }
+}
+
+@keyframes film-in {
+  from {
     opacity: 0;
-    transition: opacity 450ms ease;
+    transform: scale(1.06);
+    clip-path: inset(10% 14% 10% 14%);
   }
-  
-  .wall[data-hover="true"] .tile::after {
-    opacity: 0.35;
-  }
-  
-  .wall .tile[data-active="true"]::after {
-    opacity: 0;
-  }
-  
-  .tile[data-active="true"] .grade {
-    opacity: 0;
-  }
-  
-  .tile[data-active="true"] .video,
-  .tile[data-active="true"] .placeholder {
-    filter: saturate(1.08) brightness(1.1) contrast(1.04);
-    transform: scale(1.04);
-  }
-  
-  /* keeps the centre dark enough for the headline */
-  .spot {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(
-      ellipse 44% 40% at 50% 50%,
-      rgb(10 0 2 / 0.66) 0%,
-      rgb(10 0 2 / 0.38) 55%,
-      transparent 85%
-    );
-    pointer-events: none;
-    transition: opacity 400ms ease;
-  }
-  
-  .wall[data-focus="true"] .spot {
-    opacity: 0;
-  }
-  
-  /* a light that follows the pointer across the wall: a soft warm pool,
-     screened over the footage so it lifts it without washing it out */
-  .light {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    pointer-events: none;
-    opacity: 0;
-    background:
-      radial-gradient(circle min(12vw, 170px) at var(--lx, 50%) var(--ly, 50%), rgb(255 246 238 / 0.14), transparent 70%),
-      radial-gradient(circle min(34vw, 480px) at var(--lx, 50%) var(--ly, 50%), rgb(255 232 220 / 0.2), rgb(255 222 208 / 0.07) 42%, transparent 72%);
-    mix-blend-mode: screen;
-    transition: opacity 600ms ease;
-  }
-  
-  .wall[data-light="on"] .light {
-    opacity: 1;
-  }
-  
-  .wall[data-focus="true"] .light {
-    opacity: 0;
-  }
-  
-  /* one film full screen: it opens out from a framed crop and settles */
-  .channel {
-    position: absolute;
-    inset: 0;
-    z-index: 3;
-    background: #000;
-    animation: film-in 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  
-  .channel .video,
-  .channel .placeholder {
-    filter: none;
-  }
-  
-  /* placeholder "footage" until your clips are in /public/clips */
-  .placeholder {
-    overflow: hidden;
-    background: #1a0508;
-  }
-  
-  .placeholder > div {
-    position: absolute;
-    inset: -25%;
-    background:
-      radial-gradient(circle at 30% 35%, hsl(calc(var(--seed) * 47 + 10) 70% 62% / 0.95), transparent 38%),
-      radial-gradient(circle at 70% 65%, hsl(calc(var(--seed) * 47 + 190) 55% 40% / 0.9), transparent 45%),
-      radial-gradient(ellipse 30% 55% at 55% 75%, rgb(10 6 6 / 0.9), transparent 70%),
-      linear-gradient(calc(var(--seed) * 33deg), hsl(calc(var(--seed) * 47 + 20) 40% 18%), hsl(calc(var(--seed) * 47 + 220) 35% 10%));
-    animation: drift calc(9s + var(--seed) * 0.7s) ease-in-out infinite alternate;
-  }
-  
-  /* ---------- foreground ---------- */
-  
-  .hitGrid {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    display: grid;
-    gap: 4px;
-    padding: 4px;
-  }
-  
-  .stage[data-focus="true"] .hitGrid {
-    pointer-events: none;
-  }
-  
-  .hit {
-    position: relative;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    border-radius: 3px;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-  }
-  
-  .hit:focus-visible {
-    outline: 1px solid var(--paper);
-    outline-offset: -6px;
-  }
-  
-  .tag {
-    position: absolute;
-    left: 9%;
-    right: 9%;
-    top: 14%;
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    font-size: 11px;
-    font-weight: 500;
-    line-height: 1.15;
-    letter-spacing: 0.04em;
-    text-align: left;
-    text-transform: uppercase;
-    opacity: 0;
-    transform: translateY(-4px);
-    transition: opacity 250ms ease, transform 250ms ease;
-  }
-  
-  .tag b {
-    font-size: 12px;
-    font-weight: 800;
-    font-variation-settings: "wdth" 125;
-    letter-spacing: -0.01em;
-    color: var(--red);
-  }
-  
-  .tag span:last-child {
-    margin-left: auto;
-    font-variant-numeric: tabular-nums;
-  }
-  
-  .hit[data-active="true"] .tag {
+  to {
     opacity: 1;
     transform: none;
+    clip-path: inset(0 0 0 0);
   }
-  
-  /* ---------- centre copy ---------- */
-  
-  .copy {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0 24px;
-    text-align: center;
-    pointer-events: none;
-    transition: opacity 300ms ease, visibility 300ms;
-  }
-  
-  .stage[data-focus="true"] .copy {
-    opacity: 0;
-    visibility: hidden;
-  }
-  
-  .headline {
-    margin: 0;
-    font-size: clamp(34px, 6.2vw, 108px);
-    font-weight: 800;
-    font-variation-settings: "wdth" 125;
-    line-height: 0.92;
-    letter-spacing: -0.035em;
-    text-transform: uppercase;
-    text-shadow: 0 4px 40px rgb(0 0 0 / 0.55);
-  }
-  
-  .sub {
-    max-width: 38ch;
-    margin: clamp(18px, 2.6vh, 28px) 0 0;
-    color: #ffd9cf;
-    font-size: clamp(11px, 0.85vw, 13px);
-    font-weight: 600;
-    line-height: 1.25;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-  
-  /* headline lines rise out of a mask */
-  .line {
-    display: block;
-    overflow: hidden;
-    padding: 0.04em 0.06em 0.06em;
-  }
-  
-  .lineInner {
-    display: block;
-    transform-origin: 0% 100%;
-    will-change: transform;
-  }
-  
-  /* ---------- viewing a film ----------
-     Header, scrim, client strip and HUD sit in .chrome and step aside while a
-     film plays, so only the film and its title bar are on screen. */
-  .chrome {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    transition: opacity 450ms cubic-bezier(0.16, 1, 0.3, 1), visibility 450ms;
-  }
-  
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- small screens ---------- */
+
+@media (max-width: 760px) {
   .header {
-    pointer-events: auto;
+    grid-template-columns: 1fr auto;
   }
-  
-  .stage[data-focus="true"] .chrome {
-    opacity: 0;
-    visibility: hidden;
+  .links,
+  .contact {
+    display: none;
   }
-  
-  .stage[data-focus="true"] .chrome * {
-    pointer-events: none !important;
-  }
-  
-  /* no channel tags over the playing film */
-  .stage[data-focus="true"] .hitGrid {
-    visibility: hidden;
-  }
-  
-  /* hover and clicks stay off until the entrance has played */
-  .stage[data-ready="false"] .hitGrid {
-    pointer-events: none;
-  }
-  
-  /* ---------- opening ----------
-     The logo appears on black, then the black parts top and bottom
-     like a cinema letterbox opening. */
-  
-  .power {
-    position: absolute;
-    inset: 0;
-    z-index: 20;
-    pointer-events: none;
-  }
-  
-  .powerTop,
-  .powerBottom {
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 50.5%;
-    background: #000;
-    will-change: transform;
-  }
-  
-  .powerTop {
-    top: 0;
-    transform-origin: 50% 0%;
-  }
-  
-  .powerBottom {
-    bottom: 0;
-    transform-origin: 50% 100%;
-  }
-  
-  .powerLogo {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    will-change: transform, opacity, filter;
-  }
-  
-  .powerLogo img {
-    display: block;
-    height: clamp(40px, 5vw, 72px);
-    width: auto;
-  }
-  
-  .powerLogo span {
-    font-size: clamp(28px, 4vw, 56px);
-    font-weight: 900;
-    font-variation-settings: "wdth" 125;
-    letter-spacing: -0.03em;
-  }
-  
-  /* ---------- buttons ----------
-     Glass keys with a hairline border. On hover a white fill rises from the
-     bottom, the label rolls up to a fresh copy of itself and turns black.
-     Red is only the small recording dot. */
-  
-  .stage .cta {
-    position: relative;
-    isolation: isolate;
+  .menuBtn {
     display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    height: 52px;
-    margin-top: clamp(24px, 3.6vh, 36px);
-    padding: 0 26px 0 22px;
-    overflow: hidden;
-    border: 0;
-    background: rgb(10 0 2 / 0.3);
-    box-shadow: inset 0 0 0 1px rgb(247 242 238 / 0.4);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    color: var(--paper);
-    font: inherit;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    cursor: pointer;
-    pointer-events: auto;
-    transition: color 500ms var(--ease), box-shadow 500ms var(--ease);
   }
-  
-  /* the white fill */
-  .stage .cta::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: var(--paper);
-    transform: scaleY(0);
-    transform-origin: center bottom;
-    transition: transform 600ms var(--ease);
+  .menu {
+    display: flex;
   }
-  
-  .stage .cta:hover,
-  .stage .cta:focus-visible {
-    color: var(--ink);
-    box-shadow: inset 0 0 0 1px var(--paper);
+  .hud {
+    grid-template-columns: 1fr 1fr;
   }
-  
-  .stage .cta:hover::before,
-  .stage .cta:focus-visible::before {
-    transform: scaleY(1);
+  .hud > :nth-child(2) {
+    display: none;
   }
-  
-  .stage .cta:active {
-    transform: translateY(1px);
+  .nowPlaying {
+    flex-wrap: wrap;
   }
-  
-  .stage .cta:focus-visible {
-    outline: 1px solid var(--paper);
-    outline-offset: 4px;
+  .tag span:nth-child(2) {
+    display: none;
   }
-  
-  /* label roll: the text slides up and an identical copy follows it in */
-  .ctaText {
-    position: relative;
-    display: block;
-    overflow: hidden;
-    padding: 2px 0;
-  }
-  
-  .ctaText > span,
-  .ctaText::after {
-    display: block;
-    transition: transform 600ms var(--ease);
-  }
-  
-  .ctaText::after {
-    content: attr(data-text);
-    position: absolute;
-    left: 0;
-    top: 100%;
-    padding: 2px 0;
-  }
-  
-  .stage .cta:hover .ctaText > span,
-  .stage .cta:hover .ctaText::after,
-  .stage .cta:focus-visible .ctaText > span,
-  .stage .cta:focus-visible .ctaText::after {
-    transform: translateY(-100%);
-  }
-  
-  /* the only red: a small recording dot */
-  .ctaRec {
-    width: 7px;
-    height: 7px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    background: var(--red);
-    animation: blink 1.6s steps(1, end) infinite;
-  }
-  
-  .stage .cta:hover .ctaRec,
-  .stage .cta:focus-visible .ctaRec {
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .ctaRec,
+  .placeholder > div,
+  .channel {
     animation: none;
   }
-  
-  /* "All films" over full-screen footage: same key, a back chevron instead of the dot */
-  .back {
-    width: 7px;
-    height: 7px;
-    margin-left: 3px;
-    flex-shrink: 0;
-    border-bottom: 1.5px solid currentColor;
-    border-left: 1.5px solid currentColor;
-    transform: rotate(45deg);
-    transition: transform 500ms var(--ease);
+  .stage,
+  .hit::after {
+    transition: none;
   }
-  
-  .stage .ctaDark:hover .back,
-  .stage .ctaDark:focus-visible .back {
-    transform: translateX(-3px) rotate(45deg);
-  }
-  
-  /* ---------- header ----------
-     Built into the top edge of the screen like a broadcast header: logo left,
-     links centre, contact right, all sitting on one hairline. A red marker
-     slides along the hairline to whatever you point at; labels roll on hover. */
-  
-  .topScrim {
-    position: absolute;
-    inset: 0 0 auto;
-    z-index: 3;
-    height: 180px;
-    background: linear-gradient(to bottom, rgb(10 0 2 / 0.72), rgb(10 0 2 / 0.3) 55%, transparent);
-    pointer-events: none;
-  }
-  
-  .header {
-    position: absolute;
-    z-index: 6;
-    top: clamp(18px, 3.4vh, 30px);
-    left: clamp(20px, 3.2vw, 44px);
-    right: clamp(20px, 3.2vw, 44px);
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    padding-bottom: clamp(14px, 2vh, 20px);
-  }
-  
-  .logo {
-    justify-self: start;
-    display: flex;
-    align-items: center;
-    font-size: 17px;
-    font-weight: 900;
-    font-variation-settings: "wdth" 125;
-    line-height: 1;
-    letter-spacing: -0.03em;
-  }
-  
-  .logo img {
-    display: block;
-    height: 30px;
-    width: auto;
-  }
-  
-  .links {
-    display: flex;
-    gap: clamp(28px, 3.6vw, 56px);
-  }
-  
-  .link {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 6px 0;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    opacity: 0.72;
-    transition: opacity 400ms var(--ease);
-  }
-  
-  .link:hover,
-  .link:focus-visible {
-    opacity: 1 !important;
-  }
-  
-  .link:focus-visible,
-  .logo:focus-visible {
-    outline: 1px solid var(--paper);
-    outline-offset: 6px;
-  }
-  
-  .contact {
-    justify-self: end;
-    opacity: 1;
-  }
-  
-  /* label roll: the text slides up and an identical copy follows it in */
-  .roll {
-    position: relative;
-    display: block;
-    overflow: hidden;
-    padding: 2px 0;
-  }
-  
-  .roll > span,
-  .roll::after {
-    display: block;
-    transition: transform 600ms var(--ease);
-  }
-  
-  .roll::after {
-    content: attr(data-text);
-    position: absolute;
-    left: 0;
-    top: 100%;
-    padding: 2px 0;
-  }
-  
-  .link:hover .roll > span,
-  .link:hover .roll::after,
-  .link:focus-visible .roll > span,
-  .link:focus-visible .roll::after {
-    transform: translateY(-100%);
-  }
-  
-  /* the hairline, and the red marker that rides it */
-  .rule {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 1px;
-    background: rgb(247 242 238 / 0.16);
-    transform-origin: left center;
-  }
-  
-  .ruleMark {
-    position: absolute;
-    bottom: 0;
-    height: 2px;
-    background: var(--red);
-    transition: left 550ms var(--ease), width 550ms var(--ease), opacity 300ms ease;
-  }
-  
-  /* phones: menu button with two lines that cross into an X */
-  .menuBtn {
-    display: none;
-    justify-self: end;
-    align-items: center;
-    gap: 12px;
-    padding: 6px 0;
-    border: 0;
-    background: none;
-    color: var(--paper);
-    font: inherit;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    cursor: pointer;
-  }
-  
-  .menuBtn i {
-    position: relative;
-    width: 18px;
-    height: 8px;
-  }
-  
-  .menuBtn i::before,
-  .menuBtn i::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 1.5px;
-    background: currentColor;
-    transition: transform 500ms var(--ease), top 500ms var(--ease);
-  }
-  
-  .menuBtn i::before { top: 0; }
-  .menuBtn i::after { top: 6.5px; }
-  
-  .header[data-menu="true"] .menuBtn i::before { top: 3.25px; transform: rotate(45deg); }
-  .header[data-menu="true"] .menuBtn i::after { top: 3.25px; transform: rotate(-45deg); }
-  
-  .menu {
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    display: none;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 120px 24px 36px;
-    background: rgb(10 0 2 / 0.9);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    clip-path: inset(0 0 100% 0);
-    -webkit-clip-path: inset(0 0 100% 0);
-    pointer-events: none;
-    transition: clip-path 700ms var(--ease), -webkit-clip-path 700ms var(--ease);
-  }
-  
-  .menu[data-open="true"] {
-    clip-path: inset(0 0 0 0);
-    -webkit-clip-path: inset(0 0 0 0);
-    pointer-events: auto;
-  }
-  
-  .menuLinks {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  
-  .menuLink,
-  .menuContact {
-    opacity: 0;
-    transform: translateY(24px);
-    transition: opacity 500ms var(--ease), transform 700ms var(--ease);
-  }
-  
-  .menu[data-open="true"] .menuLink,
-  .menu[data-open="true"] .menuContact {
-    opacity: 1;
-    transform: none;
-    transition-delay: calc(180ms + var(--i) * 70ms);
-  }
-  
-  .menuLink {
-    font-size: clamp(44px, 14vw, 76px);
-    font-weight: 800;
-    font-variation-settings: "wdth" 125;
-    line-height: 0.95;
-    letter-spacing: -0.035em;
-    text-transform: uppercase;
-  }
-  
-  .menuContact {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding-top: 18px;
-    border-top: 1px solid rgb(247 242 238 / 0.16);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-  }
-  
-  /* ---------- now playing ---------- */
-  
-  .nowPlaying {
-    position: absolute;
-    z-index: 3;
-    left: clamp(28px, 6.5vw, 96px);
-    right: clamp(28px, 6.5vw, 96px);
-    bottom: clamp(140px, 22vh, 220px);
-    display: flex;
-    align-items: flex-end;
-    gap: clamp(16px, 2.4vw, 32px);
-  }
-  
-  .npNumber {
-    display: block;
-    overflow: hidden;
-    padding-top: 0.08em;
-  }
-  
-  .nowPlaying b {
-    display: block;
-    max-width: 14ch;
-    font-size: clamp(34px, 5.4vw, 88px);
-    font-weight: 900;
-    font-variation-settings: "wdth" 125;
-    line-height: 0.88;
-    letter-spacing: -0.04em;
-    text-transform: uppercase;
-    text-shadow: 0 4px 30px rgb(0 0 0 / 0.5);
-  }
-  
-  .nowPlaying div {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    font-size: 13px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    text-shadow: 0 2px 16px rgb(0 0 0 / 0.6);
-  }
-  
-  .nowPlaying div span:last-child {
-    color: #ffd9cf;
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-  }
-  
-  .stage .close {
-    margin: 0 0 0 auto;
-  }
-  
-  /* ---------- clients (unchanged) ---------- */
-  
-  .clients {
-    position: absolute;
-    z-index: 2;
-    left: 0;
-    right: 0;
-    bottom: clamp(76px, 12vh, 118px);
-    overflow: hidden;
-    pointer-events: none;
-    mask-image: linear-gradient(to right, transparent, #000 22%, #000 78%, transparent);
-  }
-  
-  .track {
-    display: flex;
-    align-items: center;
-    gap: clamp(40px, 6vw, 88px);
-    width: max-content;
-    animation: marquee 38s linear infinite;
-  }
-  
-  .track span {
-    white-space: nowrap;
-    opacity: 0.9;
-    text-shadow: 0 2px 16px rgb(0 0 0 / 0.5);
-  }
-  
-  .logoA { font-size: 22px; font-weight: 800; letter-spacing: -0.04em; }
-  .logoB { font-size: 24px; font-weight: 500; letter-spacing: -0.06em; }
-  .logoC { font-size: 20px; font-weight: 400; font-style: italic; letter-spacing: -0.02em; }
-  .logoD { font-size: 15px; font-weight: 700; letter-spacing: 0.22em; }
-  
-  /* ---------- hud ---------- */
-  
-  .hud {
-    position: absolute;
-    z-index: 2;
-    inset: auto clamp(28px, 6.5vw, 96px) clamp(26px, 5vh, 48px);
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    font-size: 11px;
-    font-weight: 600;
-    color: rgb(247 242 238 / 0.6);
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    pointer-events: none;
-  }
-  
-  .hud > :last-child {
-    justify-self: end;
-  }
-  
-  /* ---------- motion ---------- */
-  
-  @keyframes marquee {
-    to { transform: translateX(-50%); }
-  }
-  
-  @keyframes blink {
-    50% { opacity: 0.15; }
-  }
-  
-  @keyframes drift {
-    from { transform: translate(-4%, -3%) scale(1); }
-    to   { transform: translate(4%, 3%) scale(1.08); }
-  }
-  
-  @keyframes film-in {
-    from {
-      opacity: 0;
-      transform: scale(1.06);
-      clip-path: inset(10% 14% 10% 14%);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-      clip-path: inset(0 0 0 0);
-    }
-  }
-  
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: none; }
-  }
-  
-  /* ---------- small screens ---------- */
-  
-  @media (max-width: 760px) {
-    .header {
-      grid-template-columns: 1fr auto;
-    }
-    .links,
-    .contact {
-      display: none;
-    }
-    .menuBtn {
-      display: inline-flex;
-    }
-    .menu {
-      display: flex;
-    }
-    .hud {
-      grid-template-columns: 1fr 1fr;
-    }
-    .hud > :nth-child(2) {
-      display: none;
-    }
-    .nowPlaying {
-      flex-wrap: wrap;
-    }
-    .tag span:nth-child(2) {
-      display: none;
-    }
-  }
-  
-  @media (prefers-reduced-motion: reduce) {
-    .track,
-    .ctaRec,
-    .placeholder > div,
-    .channel {
-      animation: none;
-    }
-  }
+}

@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "framer-motion";
+import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  useTransform,
+} from "framer-motion";
 
 // ===========================================================================
 // CONTENT — replace with your own
@@ -16,15 +24,17 @@ const WORDMARK = "16X9";
 const LEFT_LINE = "Bringing brands to life";
 const RIGHT_LINES = ["Turn target audience", "into your viewers"];
 
-// Full-screen background film (short muted loop; H.264 yuv420p so Safari plays it)
-const BG_VIDEO = { src: "/clips/clip-02.mp4", poster: "" };
+// The film. It is never shown as wallpaper: the page is black, and this one
+// clip is only visible through the cut-out letters and the cursor viewfinder.
+// Both are windows onto the SAME full-screen frame, so they line up.
+// (short muted loop; H.264 yuv420p so Safari plays it)
+const FILM = { src: "/clips/clip-02.mp4", poster: "" };
+const FPS = 25; // timecode frame rate shown in the viewfinder
 
 // Showreel (opens full screen)
 const REEL = { src: "/showreel.mp4", length: "01:32" };
 
-// Clients strip. Replace with your real clients. Give an entry a `logo`
-// (an SVG/PNG in /public) and it shows the logo in white; otherwise the name
-// is set as a wordmark.
+// Clients strip. Give an entry a `logo` (SVG/PNG in /public) to show it in white.
 const CLIENTS: { name: string; logo?: string }[] = [
   { name: "Cleveland Clinic" },
   { name: "Nike" },
@@ -37,14 +47,16 @@ const CLIENTS: { name: string; logo?: string }[] = [
 ];
 
 // ===========================================================================
-// COLOUR & TYPE — black, white, cobalt
+// COLOUR & TYPE — black, white, cobalt (and one red REC dot)
 // ===========================================================================
 const COBALT = "#2340FF";
+const REC = "#FF2A2A";
 const LINE = "rgba(35, 64, 255, 0.55)";
 const FONT = "'Archivo', 'Helvetica Neue', Arial, sans-serif";
 const WIDE = { fontFamily: FONT, fontVariationSettings: "'wdth' 125" } as const;
 const EASE = [0.16, 1, 0.3, 1] as const;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
+const FILM_GRADE = "grayscale(0.2) contrast(1.1) brightness(1)";
 
 // Block geometry, in % of the block's width (cqw)
 const PAD_X = 4.5;
@@ -69,20 +81,22 @@ const CSS = `
 @keyframes hx-marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
 .hx-marquee { animation: hx-marquee 48s linear infinite; }
 .hx-strip:hover .hx-marquee { animation-play-state: paused; }
-@media (prefers-reduced-motion: reduce) { .hx-grain, .hx-scroll, .hx-marquee { animation: none; } }
+@keyframes hx-rec { 0%,55% { opacity: 1 } 56%,100% { opacity: 0.15 } }
+.hx-rec { animation: hx-rec 1.2s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .hx-grain, .hx-scroll, .hx-marquee, .hx-rec { animation: none; } }
 `;
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 // iOS/Safari autoplay needs real muted + playsinline attributes
-const prepVideo = (v: HTMLVideoElement | null) => {
+const prepVideo = (v: HTMLVideoElement | null, play = true) => {
   if (!v) return;
   v.muted = true;
   v.defaultMuted = true;
   v.setAttribute("muted", "");
   v.setAttribute("playsinline", "");
   v.setAttribute("webkit-playsinline", "");
-  v.play().catch(() => {});
+  if (play) v.play().catch(() => {});
 };
 
 // ===========================================================================
@@ -132,23 +146,30 @@ function GridLabel({ children, style, delay, reduce }: { children: string; style
 // ===========================================================================
 // HERO
 // ===========================================================================
-type Box = { w: number; h: number; pl: number; pt: number; pb: number; pr: number };
+type Box = {
+  w: number; h: number; pl: number; pt: number; pb: number; pr: number;
+  ox: number; oy: number; // block's top-left inside the section
+  sw: number; sh: number; // section size
+};
 
 export default function Hero16x9() {
   const reduce = !!useReducedMotion();
   const maskId = `hx-cut-${useId().replace(/:/g, "")}`;
+  const sectionRef = useRef<HTMLElement>(null);
   const blockRef = useRef<HTMLDivElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
+  const filmRef = useRef<HTMLVideoElement | null>(null);
   const [fontSize, setFontSize] = useState<number | null>(null);
   const [box, setBox] = useState<Box | null>(null);
   const [reelOpen, setReelOpen] = useState(false);
 
-  // Fit the wordmark to the block and record the block's size in px, so the
-  // letters can be cut out of it as a mask.
+  // Fit the wordmark to the block, and record where the block sits inside the
+  // section, so the film behind the letters lines up with the full-screen frame.
   useIsoLayoutEffect(() => {
+    const section = sectionRef.current;
     const block = blockRef.current;
     const probe = probeRef.current;
-    if (!block || !probe) return;
+    if (!section || !block || !probe) return;
     const fit = () => {
       const cs = getComputedStyle(block);
       const pl = parseFloat(cs.paddingLeft);
@@ -160,16 +181,37 @@ export default function Hero16x9() {
       const tw = probe.getBoundingClientRect().width; // measured at 100px
       if (tw > 0 && inner > 0) {
         const fs = (100 * inner * 0.9) / tw;
+        const sr = section.getBoundingClientRect();
+        const br = block.getBoundingClientRect();
         setFontSize(fs);
-        setBox({ w, h: pt + pb + fs * CAP, pl, pt, pb, pr });
+        setBox({
+          w, h: pt + pb + fs * CAP, pl, pt, pb, pr,
+          ox: br.left - sr.left, oy: br.top - sr.top,
+          sw: sr.width, sh: sr.height,
+        });
       }
     };
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(block);
+    ro.observe(section);
     document.fonts?.ready.then(fit).catch(() => {});
     return () => ro.disconnect();
   }, []);
+
+  useEffect(() => {
+    prepVideo(filmRef.current, !reduce);
+    const v = filmRef.current;
+    if (!v) return;
+    const onVis = () => (document.hidden ? v.pause() : !reduce && v.play().catch(() => {}));
+    const kick = () => !reduce && v.play().catch(() => {});
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("touchstart", kick, { once: true, passive: true });
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("touchstart", kick);
+    };
+  }, [reduce]);
 
   const fade = (delay: number, y = 0) =>
     reduce
@@ -180,6 +222,7 @@ export default function Hero16x9() {
 
   return (
     <section
+      ref={sectionRef}
       aria-label={WORDMARK}
       className="relative h-screen w-full overflow-hidden bg-black text-white antialiased supports-[height:100svh]:h-[100svh]"
       style={{ fontFamily: FONT }}
@@ -188,8 +231,6 @@ export default function Hero16x9() {
       <h1 className="sr-only">
         {WORDMARK}. {LEFT_LINE}. {RIGHT_LINES.join(" ")}.
       </h1>
-
-      <BackgroundVideo reduce={reduce} />
 
       {/* ================= The mark on its grid ================= */}
       <div className="absolute inset-0 grid place-items-center">
@@ -202,6 +243,31 @@ export default function Hero16x9() {
             animate={{ clipPath: "inset(0% 0% 0% 0%)" }}
             transition={{ duration: 1.2, ease: EASE_CINE, delay: 0.9 }}
           >
+            {/* The film, placed as if it were a full-screen frame behind the
+                whole hero. Only what the cut-out letters expose is ever seen. */}
+            {box ? (
+              <video
+                ref={filmRef}
+                src={FILM.src}
+                poster={FILM.poster || undefined}
+                muted
+                loop
+                autoPlay={!reduce}
+                playsInline
+                preload="auto"
+                disablePictureInPicture
+                aria-hidden
+                className="pointer-events-none absolute max-w-none object-cover"
+                style={{
+                  left: -box.ox,
+                  top: -box.oy,
+                  width: box.sw,
+                  height: box.sh,
+                  filter: FILM_GRADE,
+                }}
+              />
+            ) : null}
+
             {/* hidden probe: measures the wordmark at 100px */}
             <span
               ref={probeRef}
@@ -216,7 +282,7 @@ export default function Hero16x9() {
             <span aria-hidden className="block" style={{ height: fontSize ? fontSize * CAP : "12cqw" }} />
 
             {/* The cobalt block with 16X9 and © cut clean through it:
-                the film behind shows inside the letters. */}
+                the film behind shows only inside the letters. */}
             {box && fontSize ? (
               <svg
                 aria-hidden
@@ -305,6 +371,9 @@ export default function Hero16x9() {
         </div>
       </div>
 
+      {/* ================= Cursor viewfinder: a second window into the film ================= */}
+      {box ? <Viewfinder sw={box.sw} sh={box.sh} reduce={reduce} filmRef={filmRef} /> : null}
+
       {/* ================= Top: floating nav ================= */}
       <motion.div className="absolute inset-x-0 top-5 z-40 flex justify-center px-4 sm:top-7" {...fade(2.1, -10)}>
         <FloatingNav reduce={reduce} />
@@ -349,6 +418,162 @@ export default function Hero16x9() {
 
       <Showreel open={reelOpen} onClose={() => setReelOpen(false)} />
     </section>
+  );
+}
+
+// ===========================================================================
+// VIEWFINDER — a small 16:9 frame that follows the mouse. Inside it, the same
+// film the letters show, positioned as a full-screen frame, so moving the
+// frame over a letter makes the two windows line up. Corner brackets, a REC
+// dot and a running timecode. With no mouse (touch devices, or before the
+// first move) the frame drifts slowly on its own. It steps aside over links
+// and buttons so it never gets in the way of a click.
+// ===========================================================================
+function Viewfinder({
+  sw, sh, reduce, filmRef,
+}: {
+  sw: number;
+  sh: number;
+  reduce: boolean;
+  filmRef: React.RefObject<HTMLVideoElement | null>;
+}) {
+  const fw = sw < 640 ? 168 : 264;
+  const fh = (fw * 9) / 16;
+
+  const vidRef = useRef<HTMLVideoElement | null>(null);
+  const tcRef = useRef<HTMLSpanElement>(null);
+  const target = useRef<{ x: number; y: number; seen: boolean }>({ x: 0, y: 0, seen: false });
+  const dims = useRef({ sw, sh, fw, fh });
+  dims.current = { sw, sh, fw, fh };
+
+  const x = useMotionValue(sw / 2 - fw / 2);
+  const y = useMotionValue(sh * 0.38 - fh / 2);
+  const spring = reduce ? { stiffness: 1000, damping: 100 } : { stiffness: 170, damping: 24, mass: 0.6 };
+  const sx = useSpring(x, spring);
+  const sy = useSpring(y, spring);
+  const nx = useTransform(sx, (v) => -v); // counter-move so the film stays put
+  const ny = useTransform(sy, (v) => -v);
+
+  const [ready, setReady] = useState(false);
+  const [over, setOver] = useState(false);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setReady(true), reduce ? 0 : 2600);
+    return () => window.clearTimeout(t);
+  }, [reduce]);
+
+  useEffect(() => {
+    prepVideo(vidRef.current, !reduce);
+  }, [reduce]);
+
+  // Mouse / pen only. Touch keeps the frame drifting.
+  useEffect(() => {
+    const host = vidRef.current?.closest("section");
+    if (!host) return;
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
+      const r = host.getBoundingClientRect();
+      target.current = { x: e.clientX - r.left, y: e.clientY - r.top, seen: true };
+      const el = e.target as Element | null;
+      setOver(!!el?.closest("a, button, [role='dialog']"));
+    };
+    const onLeave = () => setOver(true);
+    window.addEventListener("pointermove", onMove, { passive: true });
+    host.addEventListener("pointerleave", onLeave);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      host.removeEventListener("pointerleave", onLeave);
+    };
+  }, []);
+
+  // One loop: position, timecode, and keeping the two videos in step.
+  useEffect(() => {
+    let raf = 0;
+    const pad = (n: number, l = 2) => String(n).padStart(l, "0");
+    const tick = (now: number) => {
+      const { sw: W, sh: H, fw: FW, fh: FH } = dims.current;
+      const p = target.current;
+      let tx: number;
+      let ty: number;
+      if (p.seen) {
+        tx = p.x - FW / 2;
+        ty = p.y - FH / 2;
+      } else if (reduce) {
+        tx = (W - FW) / 2;
+        ty = H * 0.38 - FH / 2;
+      } else {
+        tx = W * 0.5 - FW / 2 + Math.sin(now / 2600) * W * 0.26;
+        ty = H * 0.38 - FH / 2 + Math.sin(now / 3300 + 1) * H * 0.18;
+      }
+      x.set(Math.min(Math.max(tx, 8), W - FW - 8));
+      y.set(Math.min(Math.max(ty, 8), H - FH - 8));
+
+      const v = vidRef.current;
+      const f = filmRef.current;
+      if (v && f) {
+        const t = f.currentTime || 0;
+        const d = f.duration || 0;
+        const off = Math.abs(v.currentTime - t);
+        if (off > 0.25 && (!d || off < d - 0.25)) v.currentTime = t;
+        if (tcRef.current) {
+          const fr = Math.floor((t % 1) * FPS);
+          tcRef.current.textContent = `${pad(Math.floor(t / 3600))}:${pad(Math.floor(t / 60) % 60)}:${pad(Math.floor(t) % 60)}:${pad(fr)}`;
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [reduce, filmRef, x, y]);
+
+  const show = ready && !over;
+  const corner = "absolute block h-3 w-3 border-white";
+
+  return (
+    <motion.div
+      aria-hidden
+      className="pointer-events-none absolute left-0 top-0 z-30"
+      style={{ x: sx, y: sy, width: fw, height: fh }}
+      initial={{ opacity: 0, scale: 0.92 }}
+      animate={{ opacity: show ? 1 : 0, scale: show ? 1 : 0.92 }}
+      transition={{ duration: 0.45, ease: EASE }}
+    >
+      <div className="absolute inset-0 overflow-hidden bg-black outline outline-1 outline-white/25">
+        <motion.video
+          ref={vidRef}
+          src={FILM.src}
+          poster={FILM.poster || undefined}
+          muted
+          loop
+          autoPlay={!reduce}
+          playsInline
+          preload="auto"
+          disablePictureInPicture
+          className="absolute left-0 top-0 max-w-none object-cover"
+          style={{ x: nx, y: ny, width: sw, height: sh, filter: FILM_GRADE }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/55" />
+      </div>
+
+      <span className={`${corner} -left-1 -top-1 border-l-2 border-t-2`} />
+      <span className={`${corner} -right-1 -top-1 border-r-2 border-t-2`} />
+      <span className={`${corner} -bottom-1 -left-1 border-b-2 border-l-2`} />
+      <span className={`${corner} -bottom-1 -right-1 border-b-2 border-r-2`} />
+
+      <span className="absolute left-1/2 top-1/2 block h-2.5 w-px -translate-x-1/2 -translate-y-1/2 bg-white/70" />
+      <span className="absolute left-1/2 top-1/2 block h-px w-2.5 -translate-x-1/2 -translate-y-1/2 bg-white/70" />
+
+      <span className="absolute left-2.5 top-2 flex items-center gap-1.5 text-[9px] font-semibold uppercase leading-none tracking-[0.2em] text-white">
+        <span className="hx-rec block h-1.5 w-1.5 rounded-full" style={{ background: REC }} />
+        Rec
+      </span>
+      <span
+        ref={tcRef}
+        className="absolute bottom-2 right-2.5 text-[9px] font-medium leading-none tabular-nums tracking-[0.08em] text-white"
+      >
+        00:00:00:00
+      </span>
+    </motion.div>
   );
 }
 
@@ -472,61 +697,6 @@ function ClientStrip() {
         </ul>
       </div>
     </div>
-  );
-}
-
-// ===========================================================================
-// BACKGROUND FILM — full bleed, muted, looping, graded down so the cobalt,
-// the grid and the white type stay the loudest things on screen.
-// ===========================================================================
-function BackgroundVideo({ reduce }: { reduce: boolean }) {
-  const ref = useRef<HTMLVideoElement | null>(null);
-
-  useEffect(() => {
-    const v = ref.current;
-    if (!v) return;
-    prepVideo(v);
-    const kick = () => v.play().catch(() => {});
-    window.addEventListener("touchstart", kick, { once: true, passive: true });
-    window.addEventListener("pointerdown", kick, { once: true });
-    const onVis = () => (document.hidden ? v.pause() : v.play().catch(() => {}));
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      window.removeEventListener("touchstart", kick);
-      window.removeEventListener("pointerdown", kick);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, []);
-
-  return (
-    <>
-      <motion.video
-        ref={ref}
-        src={BG_VIDEO.src}
-        poster={BG_VIDEO.poster || undefined}
-        muted
-        loop
-        autoPlay={!reduce}
-        playsInline
-        preload="auto"
-        disablePictureInPicture
-        aria-hidden
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-        style={{ filter: "grayscale(0.35) contrast(1.08) brightness(0.9)" }}
-        initial={reduce ? false : { opacity: 0, scale: 1.08 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 2.4, ease: EASE, delay: 0.2 }}
-      />
-      <div aria-hidden className="pointer-events-none absolute inset-0 bg-black/50" />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.75) 100%), linear-gradient(to bottom, rgba(0,0,0,0.55), transparent 22%, transparent 75%, rgba(0,0,0,0.7))",
-        }}
-      />
-    </>
   );
 }
 

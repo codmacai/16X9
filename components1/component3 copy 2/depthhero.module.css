@@ -1,0 +1,320 @@
+/* 16x9 depth wall. Black, white and one cobalt card with the 16|9 logo cut
+   through it. Type matches the logo: Archivo at normal width, a bold
+   grotesque like the logo's numerals (loaded in layout.tsx as --font-sans). */
+
+   .page {
+    --paper: #f7f2ee;
+    --gap: 14px;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100svh;
+    min-height: 560px;
+    overflow: hidden;
+    background: #000;
+    color: var(--paper);
+    font-family: var(--font-sans, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+    font-variation-settings: "wdth" 100;
+    font-feature-settings: "kern" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  @media (max-width: 760px) {
+    .page {
+      --gap: 9px;
+    }
+  }
+  
+  /* ================= The depth gallery =================
+     A plane wider and taller than the screen, tilted back from its bottom edge.
+     Perspective is sized in vh so it always runs past the top and both sides. */
+  
+  .scene {
+    position: absolute;
+    inset: 0;
+    perspective: 155vh;
+    perspective-origin: 50% 0%;
+    overflow: hidden;
+  }
+  
+  .plane {
+    position: absolute;
+    backface-visibility: hidden;
+    left: 50%;
+    bottom: -20vh;
+    width: 240vw;
+    height: 225vh;
+    margin-left: -120vw;
+    display: flex;
+    gap: var(--gap);
+    overflow: hidden;
+    transform-origin: 50% 100%;
+    transform: rotateX(52deg); /* the camera loop in depthhero.tsx takes over from here */
+    will-change: transform;
+  }
+  
+  .lane {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  
+  /* moved every frame by the camera loop in depthero.tsx */
+  .track {
+    display: flex;
+    flex-direction: column;
+    will-change: transform;
+  }
+  
+  .tile {
+    position: relative;
+    width: 100%;
+    margin: 0 0 var(--gap);
+    border-radius: 10px;
+    overflow: hidden;
+    background: radial-gradient(120% 90% at 30% 25%, #1c1c1c 0%, #080808 72%);
+  }
+  
+  /* no filters on the films (expensive); one flat layer does the darkening */
+  .tileVideo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+  }
+  
+  .tileVideo[data-ready="true"] {
+    opacity: 1;
+  }
+  
+  /* ================= Grade ================= */
+  
+  .dim,
+  .fog,
+  .shade,
+  .vignette,
+  .grainWrap {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  
+  /* one flat darkening layer over the whole wall */
+  .dim {
+    background: rgb(0 0 0 / 0.3);
+  }
+  
+  .fog {
+    background: linear-gradient(to bottom, rgb(0 0 0 / 0.85) 0%, rgb(0 0 0 / 0.5) 9%, rgb(0 0 0 / 0.15) 26%, transparent 40%);
+  }
+  
+  .shade {
+    background: linear-gradient(to top, rgb(0 0 0 / 0.85) 0%, rgb(0 0 0 / 0.45) 14%, transparent 34%);
+  }
+  
+  .vignette {
+    background: radial-gradient(ellipse 90% 80% at 50% 55%, transparent 55%, rgb(0 0 0 / 0.5) 100%);
+  }
+  
+  .grainWrap {
+    overflow: hidden;
+    opacity: 0.07;
+  }
+  
+  .grain {
+    position: absolute;
+    inset: 0;
+  }
+  
+  /* ================= Middle ================= */
+  
+  .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  
+  .copy {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 6vh;
+    pointer-events: none;
+  }
+  
+  /* same size as the original blue 16X9 block */
+  .logo {
+    position: relative;
+    width: 88vw;
+    container-type: inline-size; /* cqw units are % of this width */
+    text-align: left;
+  }
+  
+  @media (min-width: 640px) {
+    .logo {
+      width: min(62vw, 980px);
+    }
+  }
+  
+  /* the card; its wipe is animated from depthhero.tsx */
+  .card {
+    position: relative;
+    width: 100%;
+    filter: drop-shadow(0 24px 60px rgb(0 0 0 / 0.45));
+  }
+  
+  .cardSvg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* under the logo: one line left, two lines right */
+  .under {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding-top: 16px;
+  }
+  
+  @media (min-width: 768px) {
+    .under {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-top: 2.2cqw;
+    }
+  }
+  
+  .lineMask {
+    display: block;
+    overflow: hidden;
+    padding: 0.04em 0 0.08em;
+  }
+  
+  .line {
+    display: block;
+    white-space: nowrap;
+    font-size: 6.2cqw;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    text-shadow: 0 2px 24px rgb(0 0 0 / 0.5);
+  }
+  
+  @media (min-width: 768px) {
+    .line {
+      font-size: 3.4cqw;
+    }
+  }
+  
+  .right {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    color: rgb(247 242 238 / 0.7);
+    font-size: clamp(10px, 1.05cqw, 13px);
+    font-weight: 600;
+    line-height: 1.55;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    text-shadow: 0 2px 16px rgb(0 0 0 / 0.6);
+  }
+  
+  @media (min-width: 768px) {
+    .right {
+      align-items: flex-end;
+      padding-bottom: 0.25cqw;
+      text-align: right;
+    }
+  }
+  
+  .rightMask {
+    display: block;
+    overflow: hidden;
+  }
+  
+  .rightLine {
+    display: block;
+    white-space: nowrap;
+  }
+  
+  /* ================= Logo strip ================= */
+  
+  .clients {
+    position: absolute;
+    z-index: 2;
+    left: 0;
+    right: 0;
+    bottom: clamp(28px, 6vh, 64px);
+    padding: 18px 0;
+    border-top: 1px solid rgb(247 242 238 / 0.08);
+    border-bottom: 1px solid rgb(247 242 238 / 0.08);
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent);
+  }
+  
+  .clientsTrack {
+    display: flex;
+    align-items: center;
+    gap: clamp(48px, 6vw, 96px);
+    width: max-content;
+    animation: marquee 40s linear infinite;
+  }
+  
+  .clientsTrack span {
+    color: rgb(247 242 238 / 0.5);
+    font-size: clamp(13px, 1.1vw, 17px);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  
+  /* ================= Motion ================= */
+  
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  
+  @media (max-width: 760px) {
+    .copy {
+      padding-bottom: 14vh;
+    }
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    .tileVideo {
+      transition: none;
+    }
+    .clientsTrack {
+      animation: none;
+    }
+    .plane {
+      will-change: auto;
+    }
+  }
