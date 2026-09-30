@@ -49,53 +49,26 @@ const CLIENTS = [
 
 // ===========================================================================
 // ENTRANCE — one timeline, in seconds.
-// The tube powers on (a line of light, then the picture opens from the
-// centre), the channels light up from the middle outwards, the header draws
+// Your logo appears on black, the black opens top and bottom like a
+// letterbox, the films settle in from the middle outwards, the header draws
 // itself, the headline rises, then the small print settles in.
 // ===========================================================================
 const EASE = [0.16, 1, 0.3, 1] as const; // long, soft settle
 const EASE_CINE = [0.76, 0, 0.24, 1] as const; // shutter-like in and out
 const T = {
-  line: 0.25, // line of light draws across
-  open: 0.8, // picture opens from the centre
-  tiles: 0.95, // first channels light up
+  logo: 0.15, // logo fades in on black
+  open: 0.95, // frame opens
+  tiles: 1.1, // first films settle in
   tileSpread: 0.55, // how long the ripple takes to reach the edges
-  header: 1.35,
-  headline: 1.55,
-  sub: 2.0,
-  clients: 2.2,
-  hud: 2.3,
-  ready: 2.6, // hover and clicks unlock
+  header: 1.55,
+  headline: 1.7,
+  sub: 2.15,
+  clients: 2.35,
+  hud: 2.45,
+  ready: 2.75, // hover and clicks unlock
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
-
-/** hh:mm:ss:ff at 24 fps, written straight to the DOM so React doesn't re-render. */
-function Timecode() {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const start = performance.now() - (11 * 60 + 1) * 1000;
-    let raf = 0;
-    let last = "";
-    const tick = (now: number) => {
-      const frames = Math.floor(((now - start) / 1000) * 24);
-      const s = Math.floor(frames / 24);
-      const tc = `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}:${pad(frames % 24)}`;
-      if (tc !== last && ref.current) {
-        ref.current.textContent = tc;
-        last = tc;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-  return (
-    <span ref={ref} className={styles.tc}>
-      00:11:01:00
-    </span>
-  );
-}
 
 /** Starts muted autoplay reliably across browsers (incl. iOS Safari). */
 const autoplay = (el: HTMLVideoElement | null) => {
@@ -139,29 +112,35 @@ function Clip({
   );
 }
 
-/** The tube switching on: a line of light, then the picture opens from the centre. */
-function PowerOn({ onDone }: { onDone: () => void }) {
+/** Opening: the logo on black, then the black parts top and bottom like a letterbox. */
+function Opening({ onDone }: { onDone: () => void }) {
   return (
     <div className={styles.power} aria-hidden="true">
       <motion.div
         className={styles.powerTop}
         initial={{ scaleY: 1 }}
         animate={{ scaleY: 0 }}
-        transition={{ delay: T.open, duration: 1, ease: EASE_CINE }}
+        transition={{ delay: T.open, duration: 1.2, ease: EASE_CINE }}
       />
       <motion.div
         className={styles.powerBottom}
         initial={{ scaleY: 1 }}
         animate={{ scaleY: 0 }}
-        transition={{ delay: T.open, duration: 1, ease: EASE_CINE }}
+        transition={{ delay: T.open, duration: 1.2, ease: EASE_CINE }}
         onAnimationComplete={onDone}
       />
       <motion.div
-        className={styles.powerLine}
-        initial={{ scaleX: 0, opacity: 1 }}
-        animate={{ scaleX: [0, 1, 1], opacity: [1, 1, 0], scaleY: [1, 1, 6] }}
-        transition={{ delay: T.line, duration: 1.2, times: [0, 0.45, 1], ease: EASE_CINE }}
-      />
+        className={styles.powerLogo}
+        initial={{ opacity: 0, scale: 0.96, filter: "blur(8px)" }}
+        animate={{
+          opacity: [0, 1, 1, 0],
+          scale: [0.96, 1, 1, 1.03],
+          filter: ["blur(8px)", "blur(0px)", "blur(0px)", "blur(4px)"],
+        }}
+        transition={{ delay: T.logo, duration: 1.15, times: [0, 0.4, 0.75, 1], ease: EASE }}
+      >
+        {LOGO_SRC ? <img src={LOGO_SRC} alt="" /> : <span>16x9</span>}
+      </motion.div>
     </div>
   );
 }
@@ -298,18 +277,21 @@ export default function Hero() {
 
   return (
     <main className={styles.page}>
-            <CRTScreen
+      {/* Same curved glass as before. The TV artefacts are gone: no scanlines,
+          rolling bar, flicker or glare; just a soft cinematic vignette and a
+          whisper of film grain, both cleared while a film is playing. */}
+      <CRTScreen
         curvature={compact ? 0.06 : 0.1}
         scanlineSize={3}
-        scanlineOpacity={focused !== null ? 0 : 0.3}
-        scanlineColor="#1a0004"
-        vignette={focused !== null ? 0.2 : 0.72}
+        scanlineOpacity={0}
+        scanlineColor="#000000"
+        vignette={focused !== null ? 0.18 : 0.42}
         aberration={0}
         phosphor={0}
-        grain={focused !== null ? 0 : 0.08}
-        rollingBar={focused === null}
-        flicker={focused === null}
-        glare={focused === null}
+        grain={focused !== null ? 0 : 0.05}
+        rollingBar={false}
+        flicker={false}
+        glare={false}
         backdrop={
           <div ref={wallRef} className={styles.wall} data-hover={active !== null} data-focus={focused !== null} data-light="off">
             <div className={styles.grid} style={grid}>
@@ -344,9 +326,9 @@ export default function Hero() {
             {current && focused !== null && (
               <div key={focused} className={styles.channel}>
                 <Clip index={focused} src={current.src} failed={failed[focused]} onFail={onFail} />
-                <div className={styles.static} />
               </div>
             )}
+
           </div>
         }
       >
@@ -381,7 +363,7 @@ export default function Hero() {
                 tabIndex={focused !== null ? -1 : 0}
               >
                 <span className={styles.tag}>
-                  <b>CH {pad(i + 1)}</b>
+                  <b>{pad(i + 1)}</b>
                   <span>{c.title}</span>
                   <span>{c.duration}</span>
                 </span>
@@ -538,11 +520,13 @@ export default function Hero() {
                     initial={reduce ? false : { y: "100%" }}
                     animate={{ y: "0%", transition: { delay: 0.25, duration: 0.9, ease: EASE } }}
                   >
-                    CH {pad(focused + 1)}
+                    {current.title}
                   </motion.b>
                 </span>
                 <div>
-                  <span>{current.title}</span>
+                  <span>
+                    {pad(focused + 1)} / {pad(clips.length)}
+                  </span>
                   <span>{current.duration}</span>
                 </div>
                 <button
@@ -580,17 +564,14 @@ export default function Hero() {
             className={styles.hud}
             {...enter(T.hud, { opacity: 0, y: 12 }, { opacity: 1, y: 0 })}
           >
-            <span className={styles.rec}>
-              <i aria-hidden="true" />
-              Rec <Timecode />
-            </span>
-            <span>{focused !== null ? "Esc to go back" : "Hover a channel, click to tune in"}</span>
+            <span>Selected work ({pad(clips.length)})</span>
+            <span>{focused !== null ? "Esc to close" : "Hover to preview, click to play"}</span>
             <span>Est. 2019</span>
           </motion.footer>
 
           </div>
 
-          {!reduce && !powered && <PowerOn onDone={() => setPowered(true)} />}
+          {!reduce && !powered && <Opening onDone={() => setPowered(true)} />}
         </div>
       </CRTScreen>
     </main>
