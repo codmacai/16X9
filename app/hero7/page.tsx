@@ -30,6 +30,7 @@ import styles from "./depthhero.module.css";
 // COPY
 // ===========================================================================
 const LEFT_LINE = "BRINGING BRANDS TO LIFE";
+const MARK_SUB = "& BEYOND"; // second, smaller line cut into the card under the mark
 const RIGHT_LINES = ["Turn target audience", "into your viewers"];
 const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 
@@ -88,6 +89,11 @@ const PAD_BOTTOM = 3.8;
 const CAP = 0.727; // Inter Tight cap height, as a fraction of the font size
 const TRACK = -0.03; // letter spacing, in em
 const MARK_WEIGHT = 700;
+// "& BEYOND": its size and the gap above it, as fractions of the 16X9 font size
+const SUB_SCALE = 0.2;
+const SUB_GAP = 0.13;
+/** Height of the lettering inside the card: the 16X9 caps, the gap, then the small line's caps. */
+const markHeight = (fs: number) => fs * (CAP + SUB_GAP + SUB_SCALE * CAP);
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -287,7 +293,19 @@ function Letterbox({ onDone }: { onDone: () => void }) {
 // THE MARK — a block with 16X9 and © cut clean through it. No animation of
 // its own: it cuts in whole at T.card. The wall behind shows through the letters.
 // ===========================================================================
-type Box = { w: number; h: number; pl: number; pr: number; pt: number; pb: number };
+type Box = { w: number; h: number; pl: number; pr: number; pt: number; pb: number; subX: number };
+
+/** Where to start the small line so its first letter's ink lines up with the mark's
+ *  (the "1" in 16X9 carries extra side bearing that a plain left edge would ignore). */
+function alignedSubX(left: number, fs: number, family: string, mark: string) {
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return left;
+  ctx.font = `${MARK_WEIGHT} ${fs}px ${family}`;
+  const markInk = ctx.measureText(mark).actualBoundingBoxLeft;
+  ctx.font = `${MARK_WEIGHT} ${fs * SUB_SCALE}px ${family}`;
+  const subInk = ctx.measureText(MARK_SUB).actualBoundingBoxLeft;
+  return left - markInk + subInk;
+}
 
 function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
   const maskId = `dh-cut-${useId().replace(/:/g, "")}`;
@@ -313,7 +331,8 @@ function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
       if (tw > 0 && inner > 0) {
         const fs = (100 * inner * 0.9) / tw;
         setFontSize(fs);
-        setBox({ w, h: pt + pb + fs * CAP, pl, pr, pt, pb });
+        const subX = alignedSubX(pl, fs, getComputedStyle(probe).fontFamily, mark);
+        setBox({ w, h: pt + pb + markHeight(fs), pl, pr, pt, pb, subX });
       }
     };
     fit();
@@ -343,7 +362,7 @@ function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
           {mark}
         </span>
 
-        <span aria-hidden className={styles.wmSpacer} style={{ height: fontSize ? fontSize * CAP : "12cqw" }} />
+        <span aria-hidden className={styles.wmSpacer} style={{ height: fontSize ? markHeight(fontSize) : "15cqw" }} />
 
         {box && fontSize ? (
           <svg aria-hidden className={styles.wmCut} viewBox={`0 0 ${box.w} ${box.h}`} preserveAspectRatio="none">
@@ -357,6 +376,20 @@ function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
                   style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize, letterSpacing: `${TRACK}em` }}
                 >
                   {mark}
+                </text>
+                {/* & BEYOND: smaller, on its own line, sharing a baseline with the © */}
+                <text
+                  x={box.subX}
+                  y={box.h - box.pb}
+                  fill="#000"
+                  style={{
+                    ...WIDE,
+                    fontWeight: MARK_WEIGHT,
+                    fontSize: fontSize * SUB_SCALE,
+                    letterSpacing: `${TRACK}em`,
+                  }}
+                >
+                  {MARK_SUB}
                 </text>
                 <text
                   x={box.w - box.pr * 0.45}
@@ -643,7 +676,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
       <div className={styles.copy}>
         <h1 className={styles.sr}>
-          {mark}. {LEFT_LINE}. {RIGHT_LINES.join(" ")}.
+          {mark} {MARK_SUB}. {LEFT_LINE}. {RIGHT_LINES.join(" ")}.
         </h1>
         <Mark mark={mark} reduce={reduce} />
       </div>
