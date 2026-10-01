@@ -47,7 +47,7 @@
 
 .logo img {
   display: block;
-  height: clamp(26px, 2.4vw, 36px);
+  height: clamp(40px, 4vw, 60px);
   width: auto;
 }
 
@@ -112,38 +112,7 @@
   transform: rotate(45deg);
 }
 
-.burger {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 7px;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-
-.burger span {
-  display: block;
-  width: 28px;
-  height: 1.5px;
-  background: var(--paper);
-  transition: width 0.5s var(--ease);
-}
-
-.burger span + span {
-  width: 17px;
-}
-
-.burger:hover span + span {
-  width: 28px;
-}
-
-.talk:focus-visible,
-.burger:focus-visible {
+.talk:focus-visible {
   outline: 1px solid var(--paper);
   outline-offset: 4px;
 }
@@ -364,8 +333,7 @@
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
 }
 
-.still,
-.video {
+.still {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -381,10 +349,6 @@
 /* black and white at rest */
 .still {
   filter: grayscale(1) contrast(1.08) brightness(0.72);
-}
-
-.video {
-  opacity: 0;
 }
 
 .windowShade {
@@ -445,11 +409,6 @@
 /* ---- pulled up: colour, motion, the way in ---- */
 .folderOn .still {
   filter: grayscale(0) contrast(1.04) brightness(1);
-  transform: scale(1);
-}
-
-.folderOn .video {
-  opacity: 1;
   transform: scale(1);
 }
 
@@ -570,7 +529,6 @@
     animation: none;
   }
   .still,
-  .video,
   .title,
   .enter {
     transition: none;

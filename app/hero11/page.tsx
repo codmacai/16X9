@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import { Archivo } from "next/font/google";
 import styles from "./hero11.module.css";
@@ -11,7 +11,7 @@ import styles from "./hero11.module.css";
 // editorial meta row, the headline with a film playing inside it, a short
 // lede), and three folders stacked down the screen like files in a drawer,
 // each with a numbered tab. Point at a folder and it is pulled up out of the
-// stack: its film turns from black-and-white to colour and plays, its label
+// stack: its poster turns from black-and-white to colour, its label
 // and a way in come forward, and the other folders sink back. Each folder is
 // a link: Work, About, Services.
 // ===========================================================================
@@ -20,9 +20,9 @@ const wide = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wid
 
 const LOGO_SRC = "/logo.png";
 const FOLDERS = [
-  { no: "01", label: "Work", line: "Films · Campaigns · Content", href: "#work", clip: "/clips/clip-04.mp4", tab: 0.45 },
-  { no: "02", label: "About", line: "The studio · The people", href: "#about", clip: "/clips/clip-08.mp4", tab: 0.68 },
-  { no: "03", label: "Services", line: "Production · Post · Strategy", href: "#services", clip: "/clips/clip-02.mp4", tab: 0.91 },
+  { no: "01", label: "Work", line: "Films · Campaigns · Content", href: "#work", poster: "/hero11/work.webp", tab: 0.45 },
+  { no: "02", label: "About", line: "The studio · The people", href: "#about", poster: "/hero11/about.webp", tab: 0.68 },
+  { no: "03", label: "Services", line: "Production · Post · Strategy", href: "#services", poster: "/hero11/services.webp", tab: 0.91 },
 ] as const;
 
 const HERO = {
@@ -64,11 +64,6 @@ export default function Hero11Page() {
               ↗
             </span>
           </a>
-          {/* the menu: not wired up yet */}
-          <button type="button" className={styles.burger} aria-label="Menu">
-            <span />
-            <span />
-          </button>
         </div>
       </motion.header>
 
@@ -156,8 +151,8 @@ export default function Hero11Page() {
 }
 
 // ===========================================================================
-// FOLDER — a sheet of card stock with a tab, holding a film. Pulled up on
-// hover; the film plays only then.
+// FOLDER — a sheet of card stock with a tab, holding a poster. Pulled up on
+// hover, where the poster comes into colour.
 // ===========================================================================
 function Folder({
   folder,
@@ -172,18 +167,8 @@ function Folder({
   hover: number | null;
   onHover: (i: number | null) => void;
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const on = hover === index;
   const away = hover !== null && !on;
-
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    if (on && !reduce) {
-      v.currentTime = 0;
-      v.play().catch(() => {});
-    } else v.pause();
-  }, [on, reduce]);
 
   return (
     <motion.a
@@ -212,8 +197,7 @@ function Folder({
         {/* the film, framed in the card */}
         <span className={styles.window}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={styles.still} src={stillFor(folder.clip)} alt="" draggable={false} />
-          <video ref={videoRef} className={styles.video} src={folder.clip} muted loop playsInline preload="none" />
+          <img className={styles.still} src={folder.poster} alt="" draggable={false} />
           <span className={styles.windowShade} aria-hidden="true" />
 
           <span className={styles.caption}>
