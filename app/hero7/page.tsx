@@ -137,11 +137,6 @@ const MENU = [
   { label: "Contact", href: "#contact" },
 ] as const;
 const MENU_T = { letters: 0.5, split: 0.46, spread: 0.85, words: 1.0, collapse: 0.6, collapseAt: 0.18, join: 0.8 };
-const BAR_H = 0.15; // each bar's height, as a fraction of the card's width
-const BAR_GAP = 0.018; // gap between bars, same unit
-// The wheel: neighbours' scale and opacity, how long a turn takes, and what counts as a turn.
-const WHEEL = { side: 0.62, fade: 0.38, turnS: 0.7, cooldown: 420, wheelStep: 40, swipe: 36 };
-
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 const surgeAt = (t: number) => {
@@ -343,21 +338,12 @@ type Box = {
   subX: number;
 };
 
-/** Width of a word at 100px in the mark's face, letter-spacing included. */
-function wordWidth100(word: string, family: string) {
-  const ctx = document.createElement("canvas").getContext("2d");
-  if (!ctx) return word.length * 62;
-  ctx.font = `${MARK_WEIGHT} 100px ${family}`;
-  return ctx.measureText(word.toUpperCase()).width + (word.length - 1) * TRACK * 100;
-}
-
 function Mark({
   mark,
   reduce,
   gone,
   menuOpen,
   menuKey,
-  onNavigate,
 }: {
   mark: string;
   reduce: boolean;
@@ -366,9 +352,7 @@ function Mark({
   menuOpen: boolean;
   /** changes every time the menu opens, so the wheel starts fresh on WORK */
   menuKey: number;
-  onNavigate: () => void;
 }) {
-  const [menuFs, setMenuFs] = useState(0);
   const maskId = `dh-cut-${useId().replace(/:/g, "")}`;
   const blockRef = useRef<HTMLDivElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
@@ -410,11 +394,6 @@ function Mark({
           base: pt + (area + fs * CAP) / 2,
           subX: pl + (fs * tw) / 100 + fs * SUB_GAP,
         });
-        // the menu words: as big as the bars allow, the longest still fitting the card
-        const family = getComputedStyle(probe).fontFamily;
-        const widest = Math.max(...MENU.map((m) => wordWidth100(m.label, family)));
-        const barH = w * BAR_H;
-        setMenuFs(Math.min((barH * 0.56) / CAP, (inner * 0.86 * 100) / widest));
       }
     };
     fit();
@@ -516,251 +495,64 @@ function Mark({
           </motion.div>
         ) : null}
 
-        {box && menuFs > 0 ? (
-          <Menu key={menuKey} box={box} fs={menuFs} open={menuOpen} reduce={reduce} onNavigate={onNavigate} />
-        ) : null}
       </div>
     </div>
   );
 }
 
 // ===========================================================================
-// MENU WHEEL — the card becomes a wheel of white bars. The active link sits in
-// the middle at full size with its words cut through the white like the mark;
-// the ones before and after sit above and below, smaller and faded. Scroll,
-// swipe or ↑/↓ turn the wheel (it loops); click a faded bar to bring it to the
-// middle; click the middle one to go there.
-//
-// The wheel is drawn as a window of slots k = cursor-3 … cursor+3. A slot's
-// key is k itself, so turning the wheel only shifts each slot's offset and
-// framer animates the move; slots that leave the window are already invisible.
+// NAV — no boxes. The wall keeps moving behind a dark veil; the links rise in
+// one after another, large and extended like the heading, each with a small
+// index. Pointing at one fades the others back and draws a hairline under it.
+// Closing lifts the words away and clears the veil.
 // ===========================================================================
-const mod = (a: number, n: number) => ((a % n) + n) % n;
-
-function Menu({
-  box,
-  fs,
-  open,
-  reduce,
-  onNavigate,
-}: {
-  box: Box;
-  fs: number;
-  open: boolean;
-  reduce: boolean;
-  onNavigate: () => void;
-}) {
-  const uid = useId().replace(/:/g, "");
-  const [cursor, setCursor] = useState(0); // unbounded; the active item is MENU[mod(cursor)]
-  const [turned, setTurned] = useState(false); // once the wheel has turned, moves are quick (no open choreography)
-  const wheelAcc = useRef(0);
-  const lastTurn = useRef(0);
-  const swipe = useRef<{ y: number; moved: boolean } | null>(null);
-
+function Nav({ open, reduce, onNavigate }: { open: boolean; reduce: boolean; onNavigate: () => void }) {
+  const firstRef = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (open) firstRef.current?.focus({ preventScroll: true });
+  }, [open]);
   const n = MENU.length;
-  const barH = box.w * BAR_H;
-  const gap = box.w * BAR_GAP;
-  const centerTop = (box.h - barH) / 2; // the active bar sits where the card's middle was
-  const step = barH * (0.5 + WHEEL.side / 2) + gap; // centre-to-centre distance to a neighbour
-  const base = (barH + fs * CAP) / 2;
-  const indexSize = Math.max(10, box.w * 0.022);
-
-  const turn = useCallback((dir: number) => {
-    const now = performance.now();
-    if (now - lastTurn.current < WHEEL.cooldown) return;
-    lastTurn.current = now;
-    setTurned(true);
-    setCursor((c) => c + dir);
-  }, []);
-
-  // keyboard: ↑ / ↓ turn the wheel while the menu is open
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        turn(1);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        turn(-1);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, turn]);
-
-  // Scroll and swipe anywhere on the screen turn the wheel while the menu is open.
-  // The wheel listener is non-passive so the page never scrolls underneath.
-  useEffect(() => {
-    if (!open) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      wheelAcc.current += e.deltaY;
-      if (Math.abs(wheelAcc.current) >= WHEEL.wheelStep) {
-        turn(Math.sign(wheelAcc.current));
-        wheelAcc.current = 0;
-      }
-    };
-    // a swipe: touch events on phones (pointer events get cancelled by the browser's
-    // own gesture handling), a mouse drag on desktop
-    const start = (y: number) => {
-      swipe.current = { y, moved: false };
-    };
-    const end = (y: number) => {
-      const s = swipe.current;
-      if (!s) return;
-      const dy = y - s.y;
-      if (Math.abs(dy) > WHEEL.swipe) {
-        s.moved = true;
-        turn(dy < 0 ? 1 : -1); // swipe up = next
-      }
-    };
-    const onTouchStart = (e: TouchEvent) => start(e.touches[0].clientY);
-    const onTouchEnd = (e: TouchEvent) => end(e.changedTouches[0].clientY);
-    const onMouseDown = (e: PointerEvent) => e.pointerType === "mouse" && start(e.clientY);
-    const onMouseUp = (e: PointerEvent) => e.pointerType === "mouse" && end(e.clientY);
-    window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchend", onTouchEnd, { passive: true });
-    window.addEventListener("pointerdown", onMouseDown);
-    window.addEventListener("pointerup", onMouseUp);
-    return () => {
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchend", onTouchEnd);
-      window.removeEventListener("pointerdown", onMouseDown);
-      window.removeEventListener("pointerup", onMouseUp);
-    };
-  }, [open, turn]);
-
-  const slots = [];
-  for (let k = cursor - 3; k <= cursor + 3; k++) slots.push(k);
-
   return (
-    <nav
-      id="hero7-menu"
-      className={styles.menu}
-      aria-label="Main"
-      aria-hidden={!open}
-      style={{ pointerEvents: open ? "auto" : "none" }}
-    >
-      {slots.map((k) => {
-        const o = k - cursor; // -3 … 3, 0 = active
-        const i = mod(k, n);
-        const item = MENU[i];
-        const far = Math.abs(o) >= 2;
-        const s = o === 0 ? 1 : WHEEL.side * (far ? 0.85 : 1);
-        const maskId = `m-${uid}-${k}`;
-
-        // open: placed on the wheel. closed: the active bar covers the card, the rest fold into it.
-        const opened = {
-          y: o === 0 ? 0 : Math.sign(o) * (step + (far ? (Math.abs(o) - 1) * step * WHEEL.side : 0)),
-          scaleX: s,
-          scaleY: s,
-          opacity: o === 0 ? 1 : far ? 0 : WHEEL.fade,
-        };
-        const closed =
-          o === 0
-            ? { y: 0, scaleX: 1, scaleY: box.h / barH, opacity: 0 }
-            : { y: 0, scaleX: s, scaleY: 0, opacity: 0 };
-
-        const openTransition = reduce
-          ? { duration: 0 }
-          : turned
-            ? { duration: WHEEL.turnS, ease: EASE }
-            : {
-                opacity: { duration: o === 0 ? 0 : 0.5, delay: o === 0 ? MENU_T.split : MENU_T.split + 0.25 },
-                default: { duration: MENU_T.spread, ease: EASE_CINE, delay: MENU_T.split },
-              };
-        const closeTransition = reduce
-          ? { duration: 0 }
-          : {
-              opacity: { duration: o === 0 ? 0 : 0.3, delay: o === 0 ? MENU_T.join : 0 },
-              default: { duration: MENU_T.collapse, ease: EASE_CINE, delay: MENU_T.collapseAt },
-            };
-        const wordIn = reduce
-          ? { duration: 0 }
-          : open
-            ? { duration: 0.8, ease: EASE, delay: turned ? 0 : MENU_T.words }
-            : { duration: 0.3, ease: EASE_CINE };
-
-        return (
-          <motion.div
-            key={k}
-            className={styles.bar}
-            style={{ top: centerTop, height: barH, transformOrigin: "50% 50%", zIndex: 10 - Math.abs(o) }}
-            initial={closed}
-            animate={open ? { ...opened, transition: openTransition } : { ...closed, transition: closeTransition }}
-          >
-            <a
-              href={item.href}
-              className={`${styles.barLink} ${o === 0 ? styles.barActive : ""}`}
-              aria-label={item.label}
-              aria-current={o === 0 ? "page" : undefined}
-              tabIndex={open && o === 0 ? 0 : -1}
-              onClick={(e) => {
-                if (swipe.current?.moved) {
-                  e.preventDefault(); // that was a swipe, not a tap
-                  swipe.current = null;
-                  return;
-                }
-                if (o !== 0) {
-                  e.preventDefault(); // a faded bar comes to the middle first
-                  setTurned(true);
-                  lastTurn.current = performance.now();
-                  setCursor((c) => c + o);
-                  return;
-                }
-                onNavigate();
-              }}
-            >
-              <svg aria-hidden viewBox={`0 0 ${box.w} ${barH}`} preserveAspectRatio="none">
-                <defs>
-                  <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={box.w} height={barH}>
-                    <rect width={box.w} height={barH} fill="#fff" />
-                    <motion.text
-                      x={box.pl}
-                      y={base}
-                      fill="#000"
-                      style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: fs, letterSpacing: `${TRACK}em` }}
-                      initial={{ y: barH }}
-                      animate={{ y: open ? 0 : barH }}
-                      transition={wordIn}
+    <AnimatePresence>
+      {open && (
+        <motion.nav
+          key="nav"
+          id="hero7-menu"
+          className={styles.nav}
+          aria-label="Main"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, transition: { duration: reduce ? 0 : 0.6, ease: EASE } }}
+          exit={{ opacity: 0, transition: { duration: reduce ? 0 : 0.5, ease: EASE, delay: reduce ? 0 : 0.25 } }}
+          onClick={(e) => e.target === e.currentTarget && onNavigate()}
+        >
+          <ul className={styles.navList}>
+            {MENU.map((item, i) => (
+              <li key={item.href} className={styles.navItem}>
+                <a ref={i === 0 ? firstRef : undefined} href={item.href} className={styles.navLink} onClick={onNavigate}>
+                  <span className={styles.navMask}>
+                    <motion.span
+                      className={styles.navWord}
+                      initial={reduce ? { opacity: 0 } : { y: "110%" }}
+                      animate={{ y: 0, opacity: 1, transition: { delay: reduce ? 0 : 0.15 + i * 0.08, duration: 0.9, ease: EASE } }}
+                      exit={
+                        reduce
+                          ? { opacity: 0, transition: { duration: 0 } }
+                          : { y: "-110%", transition: { delay: (n - 1 - i) * 0.05, duration: 0.5, ease: EASE_CINE } }
+                      }
                     >
-                      {item.label.toUpperCase()}
-                    </motion.text>
-                    <motion.text
-                      x={box.w - box.pr * 0.45}
-                      y={barH - box.pb * 0.9}
-                      textAnchor="end"
-                      fill="#000"
-                      style={{ fontFamily: FONT, fontWeight: 600, fontSize: indexSize }}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: open ? 1 : 0 }}
-                      transition={wordIn}
-                    >
-                      {String(i + 1).padStart(2, "0")}
-                    </motion.text>
-                  </mask>
-                </defs>
-                <rect width={box.w} height={barH} fill={COBALT} mask={`url(#${maskId})`} />
-              </svg>
-            </a>
-          </motion.div>
-        );
-      })}
-
-      {/* a quiet hint under the wheel */}
-      <motion.p
-        className={styles.wheelHint}
-        style={{ top: centerTop + barH / 2 + step + (barH * WHEEL.side) / 2 + gap * 1.6 }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: open ? 1 : 0, transition: { duration: 0.5, delay: open && !turned ? MENU_T.words + 0.3 : 0 } }}
-        aria-hidden="true"
-      >
-        Scroll or swipe
-      </motion.p>
-    </nav>
+                      <span className={styles.navIndex} aria-hidden="true">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      {item.label}
+                    </motion.span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </motion.nav>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -1295,8 +1087,11 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           first={menuKey === 0}
           reduce={reduce}
         />
-        <Mark mark={mark} reduce={reduce} gone={gone} menuOpen={menuOpen} menuKey={menuKey} onNavigate={closeMenu} />
+        <Mark mark={mark} reduce={reduce} gone={gone} menuOpen={menuOpen} menuKey={menuKey} />
       </div>
+
+      {/* ================= Menu (no boxes: a veil over the wall and the links) ================= */}
+      <Nav open={menuOpen} reduce={reduce} onNavigate={closeMenu} />
 
       {/* ================= Top bar: logo left, burger right ================= */}
       <motion.header
