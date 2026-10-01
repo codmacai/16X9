@@ -355,16 +355,55 @@
 
   /* ---- the heading that takes the card's place ---- */
   /* the heading: extended and heavy, the line under it small and spaced */
+  /* centred exactly like .copy centres the card, so the rule lands on the card's line */
   .head {
+    --head-gap: clamp(24px, 3.6vh, 42px);
     position: absolute;
     inset: 0;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 0 3vw 6vh;
+    padding-bottom: 6vh;
     text-align: center;
     pointer-events: none;
+  }
+
+  .headCenter {
+    position: relative;
+    display: flex;
+    justify-content: center;
+  }
+
+  .headAbove,
+  .headBelow {
+    position: absolute;
+    left: 50%;
+    width: max-content;
+    max-width: 96vw;
+    transform: translateX(-50%);
+  }
+
+  .headAbove {
+    bottom: calc(100% + var(--head-gap));
+  }
+
+  .headBelow {
+    top: calc(100% + var(--head-gap));
+  }
+
+  /* the card's last line, drawn in to a short rule */
+  .headRule {
+    position: relative;
+    display: block;
+    width: 88vw;
+    height: 3px;
+    background: var(--paper);
+  }
+
+  @media (min-width: 640px) {
+    .headRule {
+      width: min(62vw, 980px);
+    }
   }
 
   /* a soft dark pool behind the words so they read over the moving wall */
@@ -403,7 +442,7 @@
 
   .headTag {
     position: relative;
-    margin: clamp(28px, 7vh, 86px) 0 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -421,6 +460,9 @@
 
   /* phones: the first line breaks so the heading can stay big */
   @media (max-width: 640px) {
+    .headAbove {
+      width: 94vw;
+    }
     .headTitle {
       font-size: 12.4vw;
     }

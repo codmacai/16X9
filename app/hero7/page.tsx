@@ -459,7 +459,7 @@ function Mark({
                       : {
                           scaleY: { delay: LEAVE.fold, duration: LEAVE.foldS, ease: EASE_SMOOTH },
                           // stays until the heading's rule is drawn over it, then fades
-                          opacity: { delay: LEAVE.fold + LEAVE.foldS - 0.1, duration: 0.3 },
+                          opacity: { delay: LEAVE.fold + LEAVE.foldS + 0.02, duration: 0.2 },
                         },
                   }
                 : { clipPath: "inset(0% 0% 0% 0%)", scaleY: 1, opacity: 1, transition: { delay: T.card, duration: 0.95, ease: EASE_CINE } }
@@ -775,9 +775,9 @@ function Menu({
 }
 
 // ===========================================================================
-// HEADING — takes the card's place. As soon as the card has closed, the
-// heading fades in, huge and extended across the wall, and the line under it
-// follows a beat later.
+// HEADING — takes the card's place. The card folds down to a white line; that
+// line draws in to a short rule, and the heading fades in above it, huge and
+// extended across the wall, with the line under it fading in a beat later.
 // ===========================================================================
 function Heading({
   lines,
@@ -789,10 +789,11 @@ function Heading({
   lines: string[];
   tagline: string[];
   show: boolean;
-  /** the first reveal waits for the card to close; later ones (after the menu) are quick */
+  /** the first reveal waits for the card to fold; later ones (after the menu) are quick */
   first: boolean;
   reduce: boolean;
 }) {
+  // the rule takes over from the card's line the moment it lands
   const base = reduce ? 0 : first ? LEAVE.fold + LEAVE.foldS : 0;
   const out = { opacity: 0, transition: { duration: reduce ? 0 : 0.35, ease: EASE_CINE } };
   return (
@@ -802,26 +803,49 @@ function Heading({
         initial={{ opacity: 0 }}
         animate={show ? { opacity: 1, transition: { delay: base * 0.6, duration: 1.6, ease: EASE } } : out}
       />
-      <motion.p
-        className={styles.headTitle}
-        initial={reduce ? false : { opacity: 0, y: 10 }}
-        animate={show ? { opacity: 1, y: 0, transition: { delay: base, duration: 1.4, ease: EASE } } : out}
-      >
-        {lines.map((l) => (
-          <span key={l} className={styles.headLine}>
-            {l}
-          </span>
-        ))}
-      </motion.p>
-      <motion.p
-        className={styles.headTag}
-        initial={reduce ? false : { opacity: 0, y: 8 }}
-        animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.35), duration: 1.2, ease: EASE } } : out}
-      >
-        {tagline.map((l) => (
-          <span key={l}>{l}</span>
-        ))}
-      </motion.p>
+      {/* the rule is the only thing in flow, so it sits exactly where the card's middle was */}
+      <div className={styles.headCenter}>
+        <div className={styles.headAbove}>
+          <motion.p
+            className={styles.headTitle}
+            initial={reduce ? false : { opacity: 0, y: 10 }}
+            animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.1), duration: 1.4, ease: EASE } } : out}
+          >
+            {lines.map((l) => (
+              <span key={l} className={styles.headLine}>
+                {l}
+              </span>
+            ))}
+          </motion.p>
+        </div>
+        <motion.span
+          className={styles.headRule}
+          initial={reduce ? false : { scaleX: 1, opacity: 0 }}
+          animate={
+            show
+              ? {
+                  scaleX: 0.07,
+                  opacity: 1,
+                  transition: {
+                    opacity: { delay: Math.max(0, base - 0.1), duration: 0.15 },
+                    scaleX: { delay: base + (reduce ? 0 : 0.04), duration: 1.15, ease: EASE },
+                  },
+                }
+              : out
+          }
+        />
+        <div className={styles.headBelow}>
+          <motion.p
+            className={styles.headTag}
+            initial={reduce ? false : { opacity: 0, y: 8 }}
+            animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.45), duration: 1.2, ease: EASE } } : out}
+          >
+            {tagline.map((l) => (
+              <span key={l}>{l}</span>
+            ))}
+          </motion.p>
+        </div>
+      </div>
     </div>
   );
 }
