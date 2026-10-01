@@ -1,8 +1,28 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion, type TargetAndTransition } from "framer-motion";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Ref,
+} from "react";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  type TargetAndTransition,
+} from "framer-motion";
 import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-config";
+import ProjectView, { type OpenProject } from "./project-view";
+import { liveBudget, posterFor, WallPlayback } from "./wall-playback";
 import styles from "./depthhero.module.css";
 
 
@@ -21,6 +41,8 @@ const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 // 3. The lines settle in under the card.
 // 4. The client strip fades in.
 // After that the wall surges forward every few seconds like a dolly push.
+// Hovering a tile holds the wall still and lifts the tile; clicking it opens
+// the film full screen (see project-view.tsx).
 // ===========================================================================
 const EASE = [0.16, 1, 0.3, 1] as const;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
@@ -34,13 +56,25 @@ const T = {
 };
 
 // Speeds are in screen-heights per second.
-const CRAWL = 0.05;
-const SURGE = { first: T.card + 3.4, every: 5.8, length: 1.7, peak: 1.15 };
+const CRAWL = 0.13;
+const SURGE = { first: T.card + 3.4, every: 5.8, length: 1.7, peak: 1.5 };
+// How fast the wall runs while a tile is hovered (0 = stopped, 1 = full speed),
+// and how quickly it eases between speeds.
+const HOVER_SPEED = 0.06;
+const SPEED_EASE = 5;
+// The wall only holds while the visitor is actively pointing. A resting mouse
+// lets it run again, otherwise it would stall whenever the cursor sits on the page.
+const HOLD_MS = 1800;
 const ARRIVAL = { length: 2.6, peak: 2.4 };
 
 const LANES_DESKTOP = 8;
 const LANES_MOBILE = 4;
-const TILES_PER_LANE = 9;
+const PLANE = { width: 2.4, height: 2.5 }; // the tilted plane, in viewport widths / heights (see .plane)
+const GAP = { desktop: 14, mobile: 9 }; // must match --gap
+
+/** Just enough tiles per lane for one copy to cover the plane's height (the loop needs that). */
+const tilesPerLane = (vw: number, vh: number, lanes: number, gap: number) =>
+  Math.min(10, Math.max(5, Math.ceil((vh * PLANE.height) / ((vw * PLANE.width) / lanes + gap)) + 1));
 const RATIOS = ["3 / 4", "16 / 10", "4 / 5", "1 / 1", "2 / 3", "16 / 9", "5 / 6"];
 
 // The mark
@@ -54,9 +88,6 @@ const PAD_BOTTOM = 3.8;
 const CAP = 0.727; // Inter Tight cap height, as a fraction of the font size
 const TRACK = -0.03; // letter spacing, in em
 const MARK_WEIGHT = 700;
-
-const GRAIN =
-  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")";
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -78,48 +109,154 @@ const arrivalAt = (t: number) => {
 };
 
 // ===========================================================================
-// TILE — just the film. Loads when it comes on screen, pauses when it leaves.
+// TILE — one film on the wall. It always shows a still poster; WallPlayback
+// lets only a few tiles at a time mount a live <video>, which fades in over
+// the poster once it is actually playing. Hover lifts it (CSS); click opens it.
 // ===========================================================================
-function Tile({ clip, ratio, reduce }: { clip: Clip; ratio: string; reduce: boolean }) {
-  const ref = useRef<HTMLVideoElement>(null);
-  const [failed, setFailed] = useState(false);
+type TileProps = {
+  id: string;
+  clip: Clip;
+  index: number;
+  ratio: string;
+  playback: WallPlayback;
+  onHover: (id: string | null, index: number | null) => void;
+  onOpen: (index: number, el: HTMLElement, time: number) => void;
+};
+
+const Tile = memo(function Tile({ id, clip, index, ratio, playback, onHover, onOpen }: TileProps) {
+  const tileRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [live, setLive] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [poster, setPoster] = useState(true);
 
   useEffect(() => {
-    const v = ref.current;
-    if (!v || failed) return;
+    const el = tileRef.current;
+    if (!el) return;
+    return playback.register(id, el, (on) => {
+      setLive(on);
+      if (!on) setPlaying(false);
+    });
+  }, [id, playback]);
+
+  // iOS needs the muted attribute (not just the property) before it will autoplay.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!live || !v) return;
     v.muted = true;
     v.setAttribute("muted", "");
-    v.setAttribute("playsinline", "");
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          if (!v.getAttribute("src")) v.src = clip.src;
-          if (!reduce) v.play().catch(() => {});
-        } else {
-          v.pause();
-        }
-      },
-      { rootMargin: "-6% 0px 0px 0px" }
-    );
-    io.observe(v);
-    return () => io.disconnect();
-  }, [clip.src, reduce, failed]);
+    v.play().catch(() => {});
+  }, [live]);
 
   return (
-    <div className={styles.tile} style={{ aspectRatio: ratio }}>
-      {!failed && (
+    <div
+      ref={tileRef}
+      className={styles.tile}
+      style={{ aspectRatio: ratio }}
+      onPointerEnter={(e) => e.pointerType === "mouse" && onHover(id, index)}
+      onPointerLeave={() => onHover(null, null)}
+      onClick={(e) => onOpen(index, e.currentTarget, videoRef.current?.currentTime ?? 0)}
+    >
+      {poster && (
+        // A tiny static still (~5 KB); next/image would add a request per tile size for no gain here.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          className={styles.tilePoster}
+          src={posterFor(clip.src)}
+          alt=""
+          decoding="async"
+          draggable={false}
+          onError={() => setPoster(false)}
+        />
+      )}
+      {live && (
         <video
-          ref={ref}
-          className={styles.tileVideo}
+          ref={videoRef}
+          className={`${styles.tileVideo} ${playing ? styles.tileVideoOn : ""}`}
+          src={clip.src}
           muted
           loop
           playsInline
-          preload={reduce ? "metadata" : "none"}
+          autoPlay
+          preload="auto"
           disablePictureInPicture
-          onError={() => setFailed(true)}
+          onPlaying={() => setPlaying(true)}
         />
       )}
     </div>
+  );
+});
+
+// ===========================================================================
+// CURSOR LABEL — a small white block, cut like the 16X9 mark, that trails the
+// pointer over a tile with the film's name and length.
+// It owns its own state (set through a ref), so hovering never re-renders the
+// wall; the pointer position lives in motion values, so following it never
+// re-renders anything at all.
+// ===========================================================================
+type CursorLabelHandle = { show: (clip: Clip | null) => void };
+
+function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
+  const [clip, setClip] = useState<Clip | null>(null);
+  useImperativeHandle(ref, () => ({ show: setClip }), []);
+
+  const x = useMotionValue(-200);
+  const y = useMotionValue(-200);
+  const sx = useSpring(x, { stiffness: 900, damping: 60, mass: 0.4 });
+  const sy = useSpring(y, { stiffness: 900, damping: 60, mass: 0.4 });
+
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      x.set(e.clientX);
+      y.set(e.clientY);
+    };
+    window.addEventListener("pointermove", move, { passive: true });
+    return () => window.removeEventListener("pointermove", move);
+  }, [x, y]);
+
+  return (
+    <motion.div className={styles.cursor} style={{ x: sx, y: sy }} aria-hidden="true">
+      <AnimatePresence>
+        {clip && (
+          <motion.svg
+            key="play"
+            className={styles.cursorPlay}
+            viewBox="0 0 12 14"
+            initial={{ scale: 0, rotate: -90 }}
+            animate={{ scale: 1, rotate: 0, transition: { duration: 0.4, ease: EASE } }}
+            exit={{ scale: 0, transition: { duration: 0.2 } }}
+          >
+            <path d="M0 0L12 7L0 14Z" />
+          </motion.svg>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {clip && (
+          <motion.div
+            key="label"
+            className={styles.cursorTag}
+            // an edit-style wipe: in from the left, off to the right
+            initial={{ clipPath: "inset(0% 100% 0% 0%)" }}
+            animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: { duration: 0.42, ease: EASE_CINE } }}
+            exit={{ clipPath: "inset(0% 0% 0% 100%)", transition: { duration: 0.28, ease: EASE_CINE } }}
+          >
+            <span className={styles.cursorTitle}>
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={clip.title}
+                  initial={{ y: "105%" }}
+                  animate={{ y: 0, transition: { duration: 0.45, ease: EASE } }}
+                  exit={{ y: "-105%", transition: { duration: 0.3, ease: EASE } }}
+                >
+                  {clip.title}
+                </motion.span>
+              </AnimatePresence>
+            </span>
+            <span className={styles.cursorDur}>{clip.duration}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -288,29 +425,93 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const mark = variant.wordmark ?? "16X9";
   const reduce = !!useReducedMotion();
 
-  const [laneCount, setLaneCount] = useState(LANES_DESKTOP);
+  const [grid, setGrid] = useState({ lanes: LANES_DESKTOP, perLane: 7 });
+  const laneCount = grid.lanes;
+  const playback = useMemo(() => new WallPlayback(), []);
   const [opened, setOpened] = useState(false);
+  const [project, setProject] = useState<OpenProject | null>(null);
+  const labelRef = useRef<CursorLabelHandle>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
-
+  // Read by the camera loop: is a tile under the pointer, is a film open, when did the pointer last move.
+  const hoverRef = useRef(false);
+  const projectRef = useRef(false);
+  const lastMoveRef = useRef(-Infinity);
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 760px)");
-    const sync = () => setLaneCount(mq.matches ? LANES_MOBILE : LANES_DESKTOP);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
+    projectRef.current = project !== null;
+  }, [project]);
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") lastMoveRef.current = performance.now();
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
   }, []);
+
+  // Hover never touches DepthInner state: it flips a ref for the camera loop
+  // and hands the clip to the cursor label, so the wall itself never re-renders.
+  const onHover = useCallback(
+    (id: string | null, index: number | null) => {
+      hoverRef.current = index !== null;
+      playback.setHovered(id);
+      labelRef.current?.show(index === null ? null : clips[index]);
+    },
+    [clips, playback]
+  );
+  const closeProject = useCallback(() => setProject(null), []);
+  const onOpen = useCallback((index: number, el: HTMLElement, time: number) => {
+    const r = el.getBoundingClientRect();
+    hoverRef.current = false;
+    playback.setHovered(null);
+    labelRef.current?.show(null);
+    setProject({ index, rect: { top: r.top, left: r.left, width: r.width, height: r.height }, time });
+  }, [playback]);
+
+  // Lanes and tiles per lane follow the screen, so the wall never builds more tiles than it shows.
+  useEffect(() => {
+    let raf = 0;
+    const sync = () => {
+      const small = window.innerWidth <= 760;
+      const lanes = small ? LANES_MOBILE : LANES_DESKTOP;
+      const perLane = tilesPerLane(window.innerWidth, window.innerHeight, lanes, small ? GAP.mobile : GAP.desktop);
+      setGrid((g) => (g.lanes === lanes && g.perLane === perLane ? g : { lanes, perLane }));
+    };
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(sync);
+    };
+    sync();
+    window.addEventListener("resize", onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  // Live video budget for this device; nothing plays while a film is open or the tab is hidden.
+  useEffect(() => {
+    playback.start(liveBudget());
+    const onVis = () => playback.setPaused(document.hidden || projectRef.current);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      playback.stop();
+    };
+  }, [playback]);
+  useEffect(() => {
+    playback.setPaused(project !== null || document.hidden);
+  }, [project, playback]);
 
   const lanes = useMemo(
     () =>
       Array.from({ length: laneCount }, (_, l) => ({
         speed: 0.86 + ((l * 5) % 7) * 0.05,
-        items: Array.from({ length: TILES_PER_LANE }, (_, t) => ({
-          clip: clips[(l * 3 + t * 7) % clips.length],
+        items: Array.from({ length: grid.perLane }, (_, t) => ({
+          index: (l * 3 + t * 7) % clips.length,
           ratio: RATIOS[(l * 2 + t) % RATIOS.length],
         })),
       })),
-    [laneCount, clips]
+    [laneCount, grid.perLane, clips]
   );
 
   // ---- the camera: one loop drives every lane ----
@@ -335,17 +536,28 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     const start = performance.now();
     let last = start;
     let raf = 0;
+    let speed = 1;
     const step = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       const t = (now - start) / 1000;
       const vh = window.innerHeight;
+      // 1 = running, HOVER_SPEED = held under an active pointer, 0 = a film is open.
+      // Ease toward it so the wall glides to a hold and back, never snaps.
+      const holding = hoverRef.current && now - lastMoveRef.current < HOLD_MS;
+      const target = projectRef.current ? 0 : holding ? HOVER_SPEED : 1;
+      speed += (target - speed) * Math.min(1, dt * SPEED_EASE);
+      if (speed < 0.0005 && target === 0) {
+        // frozen behind an open film: no work, no DOM writes
+        raf = requestAnimationFrame(step);
+        return;
+      }
       for (let l = 0; l < n; l++) {
         const h = heights[l];
         if (!h) continue;
         const lag = Math.abs(l - (n - 1) / 2) * 0.09; // centre lanes push first
         const surge = variant.swap ? surgeAt(t - lag) * SURGE.peak : 0;
-        const v = (CRAWL + surge + arrivalAt(t - lag) * ARRIVAL.peak) * vh * lanes[l].speed;
+        const v = (CRAWL + surge + arrivalAt(t - lag) * ARRIVAL.peak) * vh * lanes[l].speed * speed;
         pos[l] = (pos[l] + v * dt) % h;
         place(l);
       }
@@ -407,7 +619,16 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
               >
                 {[0, 1].map((copy) =>
                   lane.items.map((it, t) => (
-                    <Tile key={`${copy}-${t}`} clip={it.clip} ratio={it.ratio} reduce={reduce} />
+                    <Tile
+                      key={`${copy}-${t}`}
+                      id={`${l}-${copy}-${t}`}
+                      clip={clips[it.index]}
+                      index={it.index}
+                      ratio={it.ratio}
+                      playback={playback}
+                      onHover={onHover}
+                      onOpen={onOpen}
+                    />
                   ))
                 )}
               </div>
@@ -416,13 +637,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         </div>
       </motion.div>
 
-      <div className={styles.fog} aria-hidden="true" />
-      <div className={styles.spot} aria-hidden="true" />
-      <div className={styles.shade} aria-hidden="true" />
-      <div className={styles.vignette} aria-hidden="true" />
-      <div className={styles.grainWrap} aria-hidden="true">
-        <div className={styles.grain} style={{ backgroundImage: GRAIN }} />
-      </div>
+      {/* one layer for the whole grade */}
+      <div className={styles.grade} aria-hidden="true" />
 
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
       <div className={styles.copy}>
@@ -462,6 +678,12 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           ))}
         </div>
       </motion.div>
+
+      {/* ================= Hover label and the full-screen project ================= */}
+      <CursorLabel ref={labelRef} />
+      <AnimatePresence>
+        {project && <ProjectView key="project" clips={clips} open={project} onClose={closeProject} />}
+      </AnimatePresence>
 
       {/* ================= Opening ================= */}
       {!reduce && !opened && <Letterbox onDone={() => setOpened(true)} />}

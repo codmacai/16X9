@@ -75,64 +75,88 @@
     border-radius: 10px;
     overflow: hidden;
     background: radial-gradient(120% 90% at 30% 25%, #1c1c1c 0%, #080808 72%);
+    cursor: pointer;
+    contain: layout paint; /* a tile's changes never ripple out to the rest of the wall */
+    transition: transform 0.55s var(--ease);
   }
-  
+
+  /* Dim the film with an overlay, not a filter: changing its opacity on hover
+     is compositor-only, where a filter change repaints the video. */
+  .tile::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: #000;
+    opacity: 0.12;
+    transition: opacity 0.55s var(--ease);
+    pointer-events: none;
+  }
+
   .tile::after {
     content: "";
     position: absolute;
     inset: 0;
+    z-index: 2;
     border-radius: inherit;
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+    transition: box-shadow 0.55s var(--ease);
+    pointer-events: none;
   }
-  
+
+  .tilePoster,
   .tileVideo {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    filter: brightness(0.62) saturate(0.85) contrast(1.06);
   }
-  
+
+  /* the live film fades in over the still once it is actually playing */
+  .tileVideo {
+    opacity: 0;
+    transition: opacity 0.6s var(--ease);
+  }
+
+  .tileVideoOn {
+    opacity: 1;
+  }
+
+  /* Hover: the tile lifts a touch and comes up to full brightness. */
+  @media (hover: hover) {
+    .tile:hover {
+      z-index: 3;
+      transform: scale(1.05);
+    }
+
+    .tile:hover::before {
+      opacity: 0;
+    }
+
+    .tile:hover::after {
+      box-shadow: inset 0 0 0 1px rgb(247 242 238 / 0.55);
+    }
+  }
+
   /* ================= Grade ================= */
   
-  .fog,
-  .spot,
-  .shade,
-  .vignette,
-  .grainWrap {
+  .grade {
     position: absolute;
     inset: 0;
     pointer-events: none;
   }
-  
-  .fog {
-    background: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 0.86) 9%, rgb(0 0 0 / 0.35) 28%, transparent 46%);
+
+  /* Fog at the top, a soft spot behind the card, shade at the foot and a
+     vignette, painted as ONE layer instead of four stacked full-screen ones. */
+  .grade {
+    background:
+      radial-gradient(ellipse 85% 75% at 50% 55%, transparent 50%, rgb(0 0 0 / 0.72) 100%),
+      linear-gradient(to top, #000 0%, rgb(0 0 0 / 0.8) 14%, transparent 40%),
+      radial-gradient(ellipse 50% 40% at 50% 50%, rgb(0 0 0 / 0.2) 0%, rgb(0 0 0 / 0.08) 55%, transparent 85%),
+      linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 0.86) 9%, rgb(0 0 0 / 0.35) 28%, transparent 46%);
   }
-  
-  .spot {
-    background: radial-gradient(ellipse 50% 40% at 50% 50%, rgb(0 0 0 / 0.35) 0%, rgb(0 0 0 / 0.15) 55%, transparent 85%);
-  }
-  
-  .shade {
-    background: linear-gradient(to top, #000 0%, rgb(0 0 0 / 0.8) 14%, transparent 40%);
-  }
-  
-  .vignette {
-    background: radial-gradient(ellipse 85% 75% at 50% 55%, transparent 50%, rgb(0 0 0 / 0.72) 100%);
-  }
-  
-  .grainWrap {
-    overflow: hidden;
-    opacity: 0.09;
-  }
-  
-  .grain {
-    position: absolute;
-    inset: -50%;
-    animation: grain 0.8s steps(4) infinite;
-  }
-  
+
   /* ================= Middle ================= */
   
   .sr {
@@ -402,6 +426,361 @@
     transform-origin: 50% 100%;
   }
   
+  /* ================= Cursor label ================= */
+
+  .cursor {
+    position: fixed;
+    z-index: 15;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  /* A small cut of the mark: a sharp white block with the name in bold,
+     tight uppercase and the length in the corner like the ©. Solid black type
+     (not a knockout) so it stays readable even when it passes over the mark. */
+  .cursorTag {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    padding: 9px 10px 8px 12px;
+    background: #fff;
+    color: #000;
+    white-space: nowrap;
+  }
+
+  .cursorTitle {
+    display: inline-flex;
+    overflow: hidden;
+    font-size: clamp(15px, 1.25vw, 20px);
+    font-weight: 700;
+    line-height: 0.92;
+    letter-spacing: -0.03em;
+    padding-top: 0.08em;
+  }
+
+  .cursorTitle span {
+    display: block;
+  }
+
+  /* the length sits in the corner, like the © on the mark */
+  .cursorDur {
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    margin-bottom: 1px;
+  }
+
+  /* a white play triangle, centred on the pointer, replaces the arrow
+     while over a tile */
+  .cursorPlay {
+    position: absolute;
+    top: -8px;
+    left: -6px;
+    width: 14px;
+    height: 16px;
+    fill: var(--paper);
+    filter: drop-shadow(0 1px 6px rgb(0 0 0 / 0.55));
+    overflow: visible;
+  }
+
+  @media (hover: hover) {
+    .tile {
+      cursor: none;
+    }
+  }
+
+  /* ================= Project view: centred film card ================= */
+
+  .pv {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    color: var(--paper);
+  }
+
+  .pvBackdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 0.9);
+  }
+
+  .pvCard {
+    position: fixed;
+    overflow: hidden;
+    border-radius: 28px;
+    background: #000;
+    transform-origin: 50% 50%;
+    will-change: transform, clip-path;
+  }
+
+  .pvVideo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: pointer;
+  }
+
+  .pvIdle,
+  .pvIdle .pvVideo {
+    cursor: none;
+  }
+
+  .pvShade {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(to bottom, rgb(0 0 0 / 0.45) 0%, transparent 20%),
+      linear-gradient(to top, rgb(0 0 0 / 0.85) 0%, rgb(0 0 0 / 0.4) 26%, transparent 48%);
+    transition: opacity 0.6s var(--ease);
+  }
+
+  .pvIdle .pvShade {
+    opacity: 0.35;
+  }
+
+  .pvTop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: clamp(16px, 2.4vw, 34px) clamp(18px, 2.6vw, 38px);
+    pointer-events: none;
+  }
+
+  .pvCount {
+    font-size: clamp(11px, 0.95vw, 13px);
+    letter-spacing: 0.04em;
+    color: rgb(247 242 238 / 0.75);
+  }
+
+  .pvCount i {
+    font-style: normal;
+    color: rgb(247 242 238 / 0.35);
+  }
+
+  .pvClose {
+    position: relative;
+    width: clamp(42px, 3.6vw, 56px);
+    height: clamp(42px, 3.6vw, 56px);
+    border: 1px solid rgb(247 242 238 / 0.35);
+    border-radius: 50%;
+    background: rgb(0 0 0 / 0.35);
+    color: var(--paper);
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .pvClose span {
+    position: absolute;
+    left: 30%;
+    right: 30%;
+    top: 50%;
+    height: 1.5px;
+    margin-top: -0.75px;
+    background: currentColor;
+  }
+
+  .pvClose span:first-child {
+    transform: rotate(45deg);
+  }
+
+  .pvClose span:last-child {
+    transform: rotate(-45deg);
+  }
+
+  .pvBottom {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(10px, 1.4vw, 20px);
+    padding: 0 clamp(18px, 8%, 140px) clamp(18px, 3vw, 44px);
+    pointer-events: none;
+  }
+
+  .pvTitle {
+    margin: 0;
+    font-size: clamp(18px, 2.5vw, 40px);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    text-align: center;
+    text-shadow: 0 2px 24px rgb(0 0 0 / 0.5);
+  }
+
+  .pvTitleMask {
+    display: block;
+    overflow: hidden;
+    padding: 0.06em 0 0.1em;
+  }
+
+  .pvTitleLine {
+    display: block;
+  }
+
+  .pvBar {
+    display: flex;
+    align-items: center;
+    gap: clamp(12px, 2.2vw, 40px);
+    width: 100%;
+    pointer-events: auto;
+  }
+
+  .pvPlay {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--paper);
+    cursor: pointer;
+  }
+
+  .pvPlay svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+  }
+
+  .pvTime {
+    flex: none;
+    min-width: 5ch;
+    font-size: clamp(11px, 1vw, 14px);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: rgb(247 242 238 / 0.9);
+  }
+
+  .pvTrack {
+    position: relative;
+    flex: 1;
+    height: 24px;
+    cursor: pointer;
+    touch-action: none;
+  }
+
+  .pvTrackLine,
+  .pvTrackFill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+  }
+
+  /* the unplayed part is a fine dotted line, the played part solid */
+  .pvTrackLine {
+    background-image: linear-gradient(to right, rgb(247 242 238 / 0.45) 50%, transparent 50%);
+    background-size: 5px 1px;
+  }
+
+  .pvTrackFill {
+    height: 1.5px;
+    margin-top: -0.25px;
+    background: var(--paper);
+    transform-origin: 0 50%;
+  }
+
+  .pvTrackDot {
+    position: absolute;
+    top: 50%;
+    width: 9px;
+    height: 9px;
+    margin: -4.5px 0 0 -4.5px;
+    border-radius: 50%;
+    background: var(--paper);
+    transition: transform 0.3s var(--ease);
+  }
+
+  .pvTrack:hover .pvTrackDot {
+    transform: scale(1.5);
+  }
+
+  .pvSound {
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--paper);
+    font: inherit;
+    font-size: clamp(11px, 1vw, 15px);
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .pvNav {
+    position: fixed;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: clamp(14px, 2vh, 24px);
+    font-size: clamp(11px, 0.95vw, 13px);
+    letter-spacing: 0.04em;
+  }
+
+  .pvNav button {
+    display: inline-flex;
+    gap: 8px;
+    padding: 6px 0;
+    border: 0;
+    background: none;
+    color: rgb(247 242 238 / 0.7);
+    font: inherit;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.3s;
+  }
+
+  .pvNav button:hover {
+    color: var(--paper);
+  }
+
+  .pvHint {
+    color: rgb(247 242 238 / 0.3);
+  }
+
+  .pvClose:focus-visible,
+  .pvPlay:focus-visible,
+  .pvSound:focus-visible,
+  .pvNav button:focus-visible {
+    outline: 2px solid var(--paper);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 760px) {
+    .pvCard {
+      border-radius: 18px;
+    }
+
+    .pvBar {
+      gap: 10px;
+    }
+
+    .pvHint {
+      display: none;
+    }
+  }
+
   /* ================= Motion ================= */
   
   @keyframes marquee {
@@ -410,21 +789,6 @@
     }
   }
   
-  @keyframes grain {
-    0%,
-    100% {
-      transform: translate(0, 0);
-    }
-    25% {
-      transform: translate(-4%, 3%);
-    }
-    50% {
-      transform: translate(3%, -4%);
-    }
-    75% {
-      transform: translate(-2%, -3%);
-    }
-  }
   
   @media (max-width: 760px) {
     .copy {
@@ -433,7 +797,6 @@
   }
   
   @media (prefers-reduced-motion: reduce) {
-    .grain,
     .clientsTrack {
       animation: none;
     }

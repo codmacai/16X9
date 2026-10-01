@@ -20,4 +20,14 @@ for ((i=0; i<COUNT; i++)); do
     -pix_fmt yuv420p -an -movflags +faststart "public/clips/clip-$nn.mp4"
   echo "clip-$nn  <-  $(basename "$F")  @ ${ss}s"
 done
+# Posters: one still per clip for the hero 7 wall. Every tile shows its poster
+# and only a few play live video at once (see app/hero7/wall-playback.ts).
+mkdir -p public/clips/posters
+rm -f public/clips/posters/*.webp
+for f in public/clips/clip-*.mp4; do
+  n=$(basename "$f" .mp4)
+  ffmpeg -y -loglevel error -ss 1.2 -i "$f" -frames:v 1 -vf "scale=360:-2" \
+    -c:v libwebp -quality 72 "public/clips/posters/$n.webp"
+done
+
 ls -lh public/clips
