@@ -30,6 +30,7 @@ import styles from "./depthhero.module.css";
 // COPY
 // ===========================================================================
 const LEFT_LINE = "BRINGING BRANDS TO LIFE";
+const MARK_SUB = "& BEYOND"; // tiny tag on the same line as the mark, cut into the card
 const RIGHT_LINES = ["Turn target audience", "into your viewers"];
 const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 
@@ -88,6 +89,27 @@ const PAD_BOTTOM = 3.8;
 const CAP = 0.727; // Inter Tight cap height, as a fraction of the font size
 const TRACK = -0.03; // letter spacing, in em
 const MARK_WEIGHT = 700;
+// "& BEYOND" on the mark's line: its size and the space before it, as fractions of
+// the 16X9 font size. The card keeps its original size; 16X9 shrinks to make room.
+const SUB_SCALE = 0.17;
+const SUB_GAP = 0.07;
+
+// ===========================================================================
+// MENU — the 16X9 card becomes the navigation. Timeline, in seconds:
+//   open:  the card's letters rise out (0 → LETTERS) · at SPLIT the card is
+//          swapped for three white bars that tile it exactly, which spread
+//          into a stack · the words rise into the bars (from WORDS)
+//   close: the words drop · the bars close back into the card · at JOIN the
+//          card returns and its letters settle back down
+// ===========================================================================
+const MENU = [
+  { label: "Work", href: "#work" },
+  { label: "Services", href: "#services" },
+  { label: "Contact", href: "#contact" },
+] as const;
+const MENU_T = { letters: 0.5, split: 0.46, spread: 0.85, words: 1.0, collapse: 0.6, collapseAt: 0.18, join: 0.8 };
+const BAR_H = 0.15; // each bar's height, as a fraction of the card's width
+const BAR_GAP = 0.018; // gap between bars, same unit
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -287,20 +309,56 @@ function Letterbox({ onDone }: { onDone: () => void }) {
 // THE MARK — a block with 16X9 and © cut clean through it. No animation of
 // its own: it cuts in whole at T.card. The wall behind shows through the letters.
 // ===========================================================================
-type Box = { w: number; h: number; pl: number; pr: number; pt: number; pb: number };
+type Box = {
+  w: number;
+  h: number;
+  pl: number;
+  pr: number;
+  pt: number;
+  pb: number;
+  /** height of the lettering area: what 16X9 alone would fill, so the card never changes size */
+  area: number;
+  /** shared baseline for 16X9 and the tag, centred in that area */
+  base: number;
+  /** where the tag starts */
+  subX: number;
+};
 
-function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
+/** Width of a word at 100px in the mark's face, letter-spacing included. */
+function wordWidth100(word: string, family: string) {
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return word.length * 62;
+  ctx.font = `${MARK_WEIGHT} 100px ${family}`;
+  return ctx.measureText(word.toUpperCase()).width + (word.length - 1) * TRACK * 100;
+}
+
+function Mark({
+  mark,
+  reduce,
+  menuOpen,
+  onNavigate,
+}: {
+  mark: string;
+  reduce: boolean;
+  menuOpen: boolean;
+  onNavigate: () => void;
+}) {
+  const [menuFs, setMenuFs] = useState(0);
   const maskId = `dh-cut-${useId().replace(/:/g, "")}`;
   const blockRef = useRef<HTMLDivElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
+  const subProbeRef = useRef<HTMLSpanElement>(null);
   const [fontSize, setFontSize] = useState<number | null>(null);
   const [box, setBox] = useState<Box | null>(null);
 
-  // Fit the letters to 90% of the block's inner width; re-fit on resize and font load.
+  // The card is sized as if 16X9 alone filled 90% of its inner width (its original
+  // size). 16X9 + the tag then share that same 90%, sitting on one baseline,
+  // centred in the card. Re-fit on resize and font load.
   useIsoLayoutEffect(() => {
     const block = blockRef.current;
     const probe = probeRef.current;
-    if (!block || !probe) return;
+    const subProbe = subProbeRef.current;
+    if (!block || !probe || !subProbe) return;
     const fit = () => {
       const cs = getComputedStyle(block);
       const pl = parseFloat(cs.paddingLeft);
@@ -309,11 +367,29 @@ function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
       const pb = parseFloat(cs.paddingBottom);
       const w = block.clientWidth;
       const inner = w - pl - pr;
-      const tw = probe.getBoundingClientRect().width; // measured at 100px
-      if (tw > 0 && inner > 0) {
-        const fs = (100 * inner * 0.9) / tw;
+      const tw = probe.getBoundingClientRect().width; // 16X9 measured at 100px
+      const ts = subProbe.getBoundingClientRect().width; // the tag measured at 100px
+      if (tw > 0 && ts > 0 && inner > 0) {
+        const original = (100 * inner * 0.9) / tw; // the font size 16X9 had on its own
+        const area = original * CAP;
+        const fs = (100 * inner * 0.9) / (tw + 100 * SUB_GAP + ts * SUB_SCALE);
         setFontSize(fs);
-        setBox({ w, h: pt + pb + fs * CAP, pl, pr, pt, pb });
+        setBox({
+          w,
+          h: pt + pb + area,
+          pl,
+          pr,
+          pt,
+          pb,
+          area,
+          base: pt + (area + fs * CAP) / 2,
+          subX: pl + (fs * tw) / 100 + fs * SUB_GAP,
+        });
+        // the menu words: as big as the bars allow, the longest still fitting the card
+        const family = getComputedStyle(probe).fontFamily;
+        const widest = Math.max(...MENU.map((m) => wordWidth100(m.label, family)));
+        const barH = w * BAR_H;
+        setMenuFs(Math.min((barH * 0.56) / CAP, (inner * 0.86 * 100) / widest));
       }
     };
     fit();
@@ -342,21 +418,58 @@ function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
         >
           {mark}
         </span>
+        <span
+          ref={subProbeRef}
+          aria-hidden
+          className={styles.wmProbe}
+          style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: 100, letterSpacing: `${TRACK}em` }}
+        >
+          {MARK_SUB}
+        </span>
 
-        <span aria-hidden className={styles.wmSpacer} style={{ height: fontSize ? fontSize * CAP : "12cqw" }} />
+        <span aria-hidden className={styles.wmSpacer} style={{ height: box ? box.area : "12cqw" }} />
 
         {box && fontSize ? (
-          <svg aria-hidden className={styles.wmCut} viewBox={`0 0 ${box.w} ${box.h}`} preserveAspectRatio="none">
+          <motion.svg
+            aria-hidden
+            className={styles.wmCut}
+            viewBox={`0 0 ${box.w} ${box.h}`}
+            preserveAspectRatio="none"
+            initial={false}
+            animate={{ opacity: menuOpen ? 0 : 1 }}
+            transition={{ duration: 0, delay: reduce ? 0 : menuOpen ? MENU_T.split : MENU_T.join }}
+          >
             <defs>
               <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={box.w} height={box.h}>
                 <rect width={box.w} height={box.h} fill="#fff" />
+                {/* the letters rise out of the card when the menu opens, and settle back on close */}
+                <motion.g
+                  initial={false}
+                  animate={{ y: menuOpen ? -box.h : 0 }}
+                  transition={
+                    reduce
+                      ? { duration: 0 }
+                      : menuOpen
+                        ? { duration: MENU_T.letters, ease: EASE_CINE }
+                        : { duration: 0.75, ease: EASE, delay: MENU_T.join }
+                  }
+                >
                 <text
                   x={box.pl}
-                  y={box.pt + fontSize * CAP}
+                  y={box.base}
                   fill="#000"
                   style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize, letterSpacing: `${TRACK}em` }}
                 >
                   {mark}
+                </text>
+                {/* & BEYOND: tiny, on the same baseline, right after the mark */}
+                <text
+                  x={box.subX}
+                  y={box.base}
+                  fill="#000"
+                  style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: fontSize * SUB_SCALE, letterSpacing: `${TRACK}em` }}
+                >
+                  {MARK_SUB}
                 </text>
                 <text
                   x={box.w - box.pr * 0.45}
@@ -367,15 +480,31 @@ function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
                 >
                   ©
                 </text>
+                </motion.g>
               </mask>
             </defs>
             <rect width={box.w} height={box.h} fill={COBALT} mask={`url(#${maskId})`} />
-          </svg>
+          </motion.svg>
+        ) : null}
+
+        {box && menuFs > 0 ? (
+          <Menu box={box} fs={menuFs} open={menuOpen} reduce={reduce} onNavigate={onNavigate} />
         ) : null}
       </motion.div>
 
       {/* Under the block: the line on the left, two lines on the right (all uppercase via CSS) */}
-      <div className={styles.wmUnder}>
+      <motion.div
+        className={styles.wmUnder}
+        initial={false}
+        animate={{ opacity: menuOpen ? 0 : 1, y: menuOpen ? 14 : 0 }}
+        transition={
+          reduce
+            ? { duration: 0 }
+            : menuOpen
+              ? { duration: 0.4, ease: EASE_CINE }
+              : { duration: 0.8, ease: EASE, delay: MENU_T.join + 0.15 }
+        }
+      >
         <span className={styles.wmLineMask}>
           <motion.span
             className={styles.wmLine}
@@ -401,8 +530,126 @@ function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
             </span>
           ))}
         </p>
-      </div>
+      </motion.div>
     </div>
+  );
+}
+
+// ===========================================================================
+// MENU BARS — three white bars that start out tiling the card exactly, then
+// spread into a stack with WORK / SERVICES / CONTACT cut clean through them
+// (same knockout as the mark) and a small index in the corner like the ©.
+// ===========================================================================
+function Menu({
+  box,
+  fs,
+  open,
+  reduce,
+  onNavigate,
+}: {
+  box: Box;
+  fs: number;
+  open: boolean;
+  reduce: boolean;
+  onNavigate: () => void;
+}) {
+  const uid = useId().replace(/:/g, "");
+  const barH = box.w * BAR_H;
+  const gap = box.w * BAR_GAP;
+  const stackH = MENU.length * barH + (MENU.length - 1) * gap;
+  const stackTop = (box.h - stackH) / 2; // centred on the card
+  const band = box.h / MENU.length; // each bar's slice of the card when closed
+  const base = (barH + fs * CAP) / 2; // word baseline inside a bar
+  const indexSize = Math.max(10, box.w * 0.022);
+
+  return (
+    <nav id="hero7-menu" className={styles.menu} aria-label="Main" aria-hidden={!open} style={{ pointerEvents: open ? "auto" : "none" }}>
+      {MENU.map((item, i) => {
+        const top = stackTop + i * (barH + gap);
+        const maskId = `m-${uid}-${i}`;
+        // closed: sitting on its slice of the card, squashed to the slice's height, invisible
+        const closed = {
+          y: i * band - top,
+          scaleY: band / barH,
+          opacity: 0,
+          transition: reduce
+            ? { duration: 0 }
+            : {
+                opacity: { duration: 0, delay: MENU_T.join },
+                default: { duration: MENU_T.collapse, ease: EASE_CINE, delay: MENU_T.collapseAt },
+              },
+        };
+        const opened = {
+          y: 0,
+          scaleY: 1,
+          opacity: 1,
+          transition: reduce
+            ? { duration: 0 }
+            : {
+                opacity: { duration: 0, delay: MENU_T.split },
+                default: { duration: MENU_T.spread, ease: EASE_CINE, delay: MENU_T.split + i * 0.04 },
+              },
+        };
+        const wordIn = reduce
+          ? { duration: 0 }
+          : open
+            ? { duration: 0.8, ease: EASE, delay: MENU_T.words + i * 0.07 }
+            : { duration: 0.3, ease: EASE_CINE };
+
+        return (
+          <motion.div
+            key={item.label}
+            className={styles.bar}
+            style={{ top, height: barH, transformOrigin: "50% 0%" }}
+            initial={false}
+            animate={open ? opened : closed}
+          >
+            <motion.a
+              href={item.href}
+              className={styles.barLink}
+              aria-label={item.label}
+              tabIndex={open ? 0 : -1}
+              onClick={onNavigate}
+              whileHover={reduce ? undefined : { x: box.w * 0.025 }}
+              transition={{ duration: 0.5, ease: EASE }}
+            >
+              <svg aria-hidden viewBox={`0 0 ${box.w} ${barH}`} preserveAspectRatio="none">
+                <defs>
+                  <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={box.w} height={barH}>
+                    <rect width={box.w} height={barH} fill="#fff" />
+                    {/* the word rises into the bar from below its edge */}
+                    <motion.text
+                      x={box.pl}
+                      y={base}
+                      fill="#000"
+                      style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: fs, letterSpacing: `${TRACK}em` }}
+                      initial={false}
+                      animate={{ y: open ? 0 : barH }}
+                      transition={wordIn}
+                    >
+                      {item.label.toUpperCase()}
+                    </motion.text>
+                    <motion.text
+                      x={box.w - box.pr * 0.45}
+                      y={barH - box.pb * 0.9}
+                      textAnchor="end"
+                      fill="#000"
+                      style={{ fontFamily: FONT, fontWeight: 600, fontSize: indexSize }}
+                      initial={false}
+                      animate={{ opacity: open ? 1 : 0 }}
+                      transition={wordIn}
+                    >
+                      {String(i + 1).padStart(2, "0")}
+                    </motion.text>
+                  </mask>
+                </defs>
+                <rect width={box.w} height={barH} fill={COBALT} mask={`url(#${maskId})`} />
+              </svg>
+            </motion.a>
+          </motion.div>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -430,6 +677,16 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const playback = useMemo(() => new WallPlayback(), []);
   const [opened, setOpened] = useState(false);
   const [project, setProject] = useState<OpenProject | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  // Esc closes the menu
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
   const labelRef = useRef<CursorLabelHandle>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -643,9 +900,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
       <div className={styles.copy}>
         <h1 className={styles.sr}>
-          {mark}. {LEFT_LINE}. {RIGHT_LINES.join(" ")}.
+          {mark} {MARK_SUB}. {LEFT_LINE}. {RIGHT_LINES.join(" ")}.
         </h1>
-        <Mark mark={mark} reduce={reduce} />
+        <Mark mark={mark} reduce={reduce} menuOpen={menuOpen} onNavigate={closeMenu} />
       </div>
 
       {/* ================= Top bar: logo left, burger right ================= */}
@@ -657,7 +914,14 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           <img src={LOGO_SRC} alt={mark} className={styles.logoImg} />
         </a>
 
-        <button type="button" className={styles.burger} aria-label="Open menu">
+        <button
+          type="button"
+          className={`${styles.burger} ${menuOpen ? styles.burgerOpen : ""}`}
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+          aria-controls="hero7-menu"
+          onClick={() => setMenuOpen((o) => !o)}
+        >
           <span />
           <span />
           <span />
