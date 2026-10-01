@@ -168,7 +168,8 @@ const Tile = memo(function Tile({ clip, index, ratio, reduce, onHover, onOpen }:
 });
 
 // ===========================================================================
-// CURSOR LABEL — a small black pill that trails the pointer over a tile.
+// CURSOR LABEL — a small white block, cut like the 16X9 mark, that trails the
+// pointer over a tile with the film's name and length.
 // It owns its own state (set through a ref), so hovering never re-renders the
 // wall; the pointer position lives in motion values, so following it never
 // re-renders anything at all.
@@ -197,21 +198,32 @@ function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
     <motion.div className={styles.cursor} style={{ x: sx, y: sy }} aria-hidden="true">
       <AnimatePresence>
         {clip && (
+          <motion.span
+            key="dot"
+            className={styles.cursorDot}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1, transition: { duration: 0.3, ease: EASE } }}
+            exit={{ scale: 0, transition: { duration: 0.2 } }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {clip && (
           <motion.div
             key="label"
-            className={styles.cursorPill}
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1, transition: { duration: 0.35, ease: EASE } }}
-            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+            className={styles.cursorTag}
+            // an edit-style wipe: in from the left, off to the right
+            initial={{ clipPath: "inset(0% 100% 0% 0%)" }}
+            animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: { duration: 0.42, ease: EASE_CINE } }}
+            exit={{ clipPath: "inset(0% 0% 0% 100%)", transition: { duration: 0.28, ease: EASE_CINE } }}
           >
-            <span className={styles.cursorPlay} />
-            <span className={styles.cursorText}>
+            <span className={styles.cursorTitle}>
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.span
                   key={clip.title}
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0, transition: { duration: 0.4, ease: EASE } }}
-                  exit={{ y: "-100%", transition: { duration: 0.25, ease: EASE } }}
+                  initial={{ y: "105%" }}
+                  animate={{ y: 0, transition: { duration: 0.45, ease: EASE } }}
+                  exit={{ y: "-105%", transition: { duration: 0.3, ease: EASE } }}
                 >
                   {clip.title}
                 </motion.span>
