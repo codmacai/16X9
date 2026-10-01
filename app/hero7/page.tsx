@@ -218,13 +218,16 @@ function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
     <motion.div className={styles.cursor} style={{ x: sx, y: sy }} aria-hidden="true">
       <AnimatePresence>
         {clip && (
-          <motion.span
-            key="dot"
-            className={styles.cursorDot}
-            initial={{ scale: 0 }}
-            animate={{ scale: 1, transition: { duration: 0.3, ease: EASE } }}
+          <motion.svg
+            key="play"
+            className={styles.cursorPlay}
+            viewBox="0 0 12 14"
+            initial={{ scale: 0, rotate: -90 }}
+            animate={{ scale: 1, rotate: 0, transition: { duration: 0.4, ease: EASE } }}
             exit={{ scale: 0, transition: { duration: 0.2 } }}
-          />
+          >
+            <path d="M0 0L12 7L0 14Z" />
+          </motion.svg>
         )}
       </AnimatePresence>
       <AnimatePresence>

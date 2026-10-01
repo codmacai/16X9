@@ -493,14 +493,17 @@
     margin-bottom: 1px;
   }
 
-  /* a small square replaces the arrow while over a tile */
-  .cursorDot {
+  /* a white play triangle, centred on the pointer, replaces the arrow
+     while over a tile */
+  .cursorPlay {
     position: absolute;
-    top: -3px;
-    left: -3px;
-    width: 6px;
-    height: 6px;
-    background: var(--paper);
+    top: -8px;
+    left: -6px;
+    width: 14px;
+    height: 16px;
+    fill: var(--paper);
+    filter: drop-shadow(0 1px 6px rgb(0 0 0 / 0.55));
+    overflow: visible;
   }
 
   @media (hover: hover) {
