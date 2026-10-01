@@ -21,7 +21,6 @@ import {
 } from "framer-motion";
 import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
 import ProjectView, { type OpenProject } from "../hero7/project-view";
-import { posterFor } from "../hero7/wall-playback";
 import { fitStage, points, type Layout, type Stripe, type Word } from "./composition";
 import styles from "./hero8.module.css";
 
@@ -31,7 +30,8 @@ import styles from "./hero8.module.css";
 // A white "‹" bracket and "›" arrow wrap a poster window, slashes cut in from
 // the corners, and the headline sits above and below it. Everything enters in
 // sequence, leans with the pointer, the arrow nudges forward now and then, and
-// the black-and-white posters cut from one to the next every few seconds.
+// the posters cut from one to the next every few seconds (arrow keys and
+// swipes step through them; a hairline shows the time to the next cut).
 //
 // The stripe colour is one token: --accent in hero8.module.css.
 // ===========================================================================
@@ -47,6 +47,10 @@ const NAV = [
 const RAIL = "16X9 · Bringing brands to life";
 const LOGO_SRC = "/logo.png";
 const CYCLE_MS = 2500; // how long each poster holds before cutting to the next
+const SWIPE_PX = 40; // a horizontal drag this long on the poster changes it instead of opening it
+
+/** Full-size still for a clip: /clips/clip-01.mp4 -> /clips/stills/clip-01.webp */
+const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.webp");
 
 // Entrance, in seconds
 const T = { grids: 0.1, stripes: 0.25, film: 0.75, top: 1.0, bottom: 1.25, film_ui: 1.6, ui: 1.5, nudge: 3.2 };
@@ -118,6 +122,20 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
     return () => window.clearTimeout(t);
   }, [current, reduce, project, hoverFilm, go]);
 
+  // ---- arrow keys step through the posters (unless the player has them) ----
+  useEffect(() => {
+    if (project) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") go(current + 1);
+      else if (e.key === "ArrowLeft") go(current - 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [project, go, current]);
+
+  // ---- touch: a horizontal swipe on the poster steps; a tap still opens it ----
+  const swipe = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+
   // ---- pointer: one pair of springs feeds every layer's depth ----
   const px = useMotionValue(0);
   const py = useMotionValue(0);
@@ -149,6 +167,7 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
   const stripeY = useTransform(spy, (y) => y * DEPTH.stripes * 0.6);
 
   const openFilm = () => {
+    if (swipe.current?.moved) return; // that was a swipe, not a tap
     const el = filmRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
@@ -212,23 +231,36 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
           animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: { delay: T.film, duration: 1.1, ease: EASE_CINE } }}
           onPointerEnter={(ev) => ev.pointerType === "mouse" && setHoverFilm(true)}
           onPointerLeave={() => setHoverFilm(false)}
+          onPointerDown={(ev) => {
+            swipe.current = { x: ev.clientX, y: ev.clientY, moved: false };
+          }}
+          onPointerUp={(ev) => {
+            const sw = swipe.current;
+            if (!sw || ev.pointerType === "mouse") return;
+            const dx = ev.clientX - sw.x;
+            if (Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(ev.clientY - sw.y)) {
+              sw.moved = true;
+              go(current + (dx < 0 ? 1 : -1));
+            }
+          }}
           onClick={openFilm}
           role="button"
           tabIndex={0}
           aria-label={`Open ${clip.title}`}
           onKeyDown={(ev) => (ev.key === "Enter" || ev.key === " ") && (ev.preventDefault(), openFilm())}
         >
-          {/* black-and-white posters, stacked; the current one shows — a straight cut, no transition */}
+          {/* posters, stacked; only the current one shows — a straight cut, no transition */}
           <div className={styles.reel}>
             {clips.map((c, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 key={c.src}
-                src={posterFor(c.src)}
+                src={stillFor(c.src)}
                 alt=""
                 className={styles.poster}
                 style={{ opacity: i === current ? 1 : 0 }}
                 decoding="async"
+                draggable={false}
                 fetchPriority={i === 0 ? "high" : "low"}
               />
             ))}
@@ -241,7 +273,10 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
               initial={reduce ? false : { opacity: 0, x: -16 }}
               animate={{ opacity: 1, x: 0, transition: { delay: T.film_ui, duration: 0.9, ease: EASE } }}
             >
-              {variant.sub}
+              <span className={styles.captionLabel}>Selected work</span>
+              <span className={styles.captionMeta}>
+                {String(current + 1).padStart(2, "0")} — {clip.duration}
+              </span>
             </motion.p>
             <motion.img
               src={LOGO_SRC}
@@ -259,9 +294,22 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
               >
                 {clip.title}
               </motion.p>
-              <span className={styles.filmIndex}>{String(current + 1).padStart(2, "0")}</span>
+              <span className={styles.filmIndex}>
+                View <span aria-hidden="true">↗</span>
+              </span>
             </div>
           </div>
+
+          {/* time to the next cut */}
+          {!reduce && !hoverFilm && !project && (
+            <motion.span
+              key={current}
+              className={styles.progress}
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1, transition: { duration: CYCLE_MS / 1000, ease: "linear" } }}
+              aria-hidden="true"
+            />
+          )}
         </motion.div>
 
         {/* ================= UI: top bar, rails, marks, buttons ================= */}
