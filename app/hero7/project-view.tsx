@@ -27,6 +27,9 @@ const OPEN_S = 0.9;
 const TILE_RADIUS = 10; // matches .tile in the wall
 const IDLE_MS = 2200; // controls fade after this long without movement
 const LETTERBOX = 0.2; // each bar starts covering this much of the frame, then parts
+// Closing: the letterbox shuts over the film like a shutter, then everything fades
+// back to the home screen. The film does not fly back into its tile.
+const CLOSE = { shutter: 0.45, fade: 0.35 };
 const LOGO_SRC = "/logo.png"; // same logo as the landing top bar
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -72,7 +75,7 @@ export default function ProjectView({
   const total = clips.length;
   const titleSize = Math.max(20, box.width * 0.04);
 
-  // ---- FLIP: where the frame starts (the tile) and where it lands ----
+  // ---- FLIP on open only: where the frame starts (the tile) and where it lands ----
   const from = useMemo(() => {
     const r = open.rect;
     const s = Math.max(r.width / box.width, r.height / box.height); // cover the tile, uniformly
@@ -211,7 +214,7 @@ export default function ProjectView({
         className={styles.pvBackdrop}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, transition: { duration: 0.6, ease: EASE } }}
-        exit={{ opacity: 0, transition: { duration: 0.5, delay: 0.2 } }}
+        exit={{ opacity: 0, transition: { duration: 0.5, delay: reduce ? 0 : CLOSE.shutter * 0.8 } }}
         onClick={onClose}
       />
 
@@ -236,7 +239,7 @@ export default function ProjectView({
         style={{ top: box.top, left: box.left, width: box.width, height: box.height }}
         initial={reduce ? { opacity: 0 } : from}
         animate={{ ...landed, opacity: 1 }}
-        exit={reduce ? { opacity: 0, transition: { duration: 0.2 } } : { ...from, transition: { ...frame, duration: 0.7 } }}
+        exit={{ opacity: 0, transition: { duration: CLOSE.fade, delay: reduce ? 0 : CLOSE.shutter } }}
         transition={frame}
       >
         <AnimatePresence initial={false}>
@@ -274,12 +277,14 @@ export default function ProjectView({
               aria-hidden="true"
               initial={{ scaleY: LETTERBOX / 0.5 }}
               animate={{ scaleY: 0, transition: { delay: OPEN_S * 0.55, duration: 1.1, ease: EASE_CINE } }}
+              exit={{ scaleY: 1, transition: { duration: CLOSE.shutter, ease: EASE_CINE } }}
             />
             <motion.span
               className={`${styles.pvBar} ${styles.pvBarBottom}`}
               aria-hidden="true"
               initial={{ scaleY: LETTERBOX / 0.5 }}
               animate={{ scaleY: 0, transition: { delay: OPEN_S * 0.55, duration: 1.1, ease: EASE_CINE } }}
+              exit={{ scaleY: 1, transition: { duration: CLOSE.shutter, ease: EASE_CINE } }}
             />
           </>
         )}
