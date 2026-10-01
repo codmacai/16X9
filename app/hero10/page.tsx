@@ -407,6 +407,38 @@ function SpiralHero() {
             ))}
           </h1>
         </div>
+
+        {/* clients: a slow strip of wordmarks along the foot */}
+        <motion.div
+          className={styles.clients}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, transition: { delay: T.ui + 0.2, duration: 1.4, ease: EASE } }}
+        >
+          <motion.span
+            className={styles.clientsRule}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1, transition: { delay: T.ui, duration: 1.6, ease: EASE_CINE } }}
+            aria-hidden="true"
+          />
+          <p className={styles.clientsLabel}>
+            Selected clients <span>({String(variant.clients.length).padStart(2, "0")})</span>
+          </p>
+          <div className={styles.clientsWindow}>
+            <ul className={styles.clientsTrack} aria-label="Clients">
+              {[0, 1].map((copy) =>
+                variant.clients.map((c) => (
+                  <li
+                    key={`${copy}-${c.name}`}
+                    className={`${styles.client} ${styles[`client_${c.style}`]}`}
+                    aria-hidden={copy === 1}
+                  >
+                    {c.name}
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+        </motion.div>
       </div>
 
       {/* letterbox: the frame opens on arrival */}
