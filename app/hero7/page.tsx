@@ -637,11 +637,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         </div>
       </motion.div>
 
-      {/* one layer for the whole grade, one for the grain */}
+      {/* one layer for the whole grade */}
       <div className={styles.grade} aria-hidden="true" />
-      <div className={styles.grainWrap} aria-hidden="true">
-        <div className={styles.grain} />
-      </div>
 
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
       <div className={styles.copy}>
