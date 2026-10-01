@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import * as THREE from "three";
 import { AnimatePresence, motion, useMotionValue, useSpring } from "framer-motion";
 import { Archivo } from "next/font/google";
-import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-config";
+import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
 import ProjectView, { type OpenProject } from "../hero7/project-view";
 import { centreAngle, makePanel, panelPoint, panelStart, SPIRAL, type Panel } from "./spiral";
 import styles from "./hero10.module.css";
@@ -13,8 +13,8 @@ import styles from "./hero10.module.css";
 // HERO 10 — the spiral. A ribbon of curved 16:9 panels wound into a helix in
 // pure black, turning on its own. Point at a film and the spiral slows, that
 // film comes up and the rest dim; click it to watch it full screen. Drag,
-// swipe or scroll to spin it. Around it, the hero's content: the line, what
-// we do, two ways in, and what's showing right now.
+// swipe or scroll to spin it. The line sits in the middle; a logo and a menu
+// button frame it.
 //
 // Cinematic finish: letterbox bars open on arrival, a film grade in the
 // shader, a vignette and a fine moving grain.
@@ -25,28 +25,18 @@ const wide = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wid
 const COPY = {
   eyebrow: "16X9 — Video production · Dubai",
   headline: ["Bringing brands", "to life"],
-  sub: "Films, campaigns and content that turn your target audience into visitors, across the UAE and beyond.",
-  primary: "Watch showreel",
-  secondary: "Our work",
 };
-const NAV = [
-  { label: "Work", href: "#work" },
-  { label: "Services", href: "#services" },
-  { label: "About", href: "#about" },
-  { label: "Contact", href: "#contact" },
-] as const;
 const LOGO_SRC = "/logo.png";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
-const T = { bars: 0.25, spiral: 0.7, head: 1.3, ui: 1.7 }; // entrance, seconds
+const T = { bars: 0.25, spiral: 0.6, head: 1.25, ui: 1.8 }; // entrance, seconds
 const MAX_LIVE = 4; // films decoding at once
 const LIVE_EVERY_MS = 300;
-const FOCUS_SPEED = 0.18; // how fast the spiral turns while you point at a film (1 = normal)
+const FOCUS_SPEED = 0.15; // how fast the spiral turns while you point at a film (1 = normal)
 const DRAG_PX = 6; // movement that makes a press a drag rather than a click
 
 const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.webp");
-const pad = (n: number) => String(n).padStart(2, "0");
 const noop = () => () => {};
 
 export default function Hero10Page() {
@@ -55,8 +45,6 @@ export default function Hero10Page() {
   return <SpiralHero />;
 }
 
-type Api = { open: (clip: number) => void };
-
 function SpiralHero() {
   const variant = useMemo<HeroVariant>(
     () => resolveVariant(new Date(), new URLSearchParams(window.location.search).get("hero")),
@@ -64,10 +52,8 @@ function SpiralHero() {
   );
   const clips = variant.clips;
   const hostRef = useRef<HTMLDivElement>(null);
-  const apiRef = useRef<Api | null>(null);
   const projectRef = useRef(false);
   const [hover, setHover] = useState<number | null>(null);
-  const [now, setNow] = useState(0);
   const [project, setProject] = useState<OpenProject | null>(null);
 
   useEffect(() => {
@@ -274,15 +260,8 @@ function SpiralHero() {
         time: v && !v.el.paused ? v.el.currentTime : 0,
       });
     };
-    apiRef.current = {
-      open: (clip) => {
-        const p = panels.find((q) => q.clip === clip && facing(q) > 0.5) ?? panels.find((q) => q.clip === clip);
-        if (p) openPanel(p);
-      },
-    };
 
-    // ---- which films play (the panels facing you), and which is "now showing" ----
-    let nowShown = -1;
+    // ---- which films play: the panels facing you ----
     const pickLive = () => {
       const scored = panels
         .map((p) => {
@@ -290,11 +269,6 @@ function SpiralHero() {
           return { p, score: Math.cos(a) - Math.abs(a * SPIRAL.pitch) * 0.6 };
         })
         .sort((a, b) => b.score - a.score);
-      const front = scored[0]?.p.clip ?? 0;
-      if (front !== nowShown) {
-        nowShown = front;
-        setNow(front);
-      }
       const want = new Set<number>();
       scored.filter((s) => s.score > 0.2).forEach((s) => want.size < MAX_LIVE && want.add(s.p.clip));
       if (focused) want.add(focused.clip);
@@ -362,7 +336,6 @@ function SpiralHero() {
       cancelAnimationFrame(raf);
       window.clearInterval(liveTimer);
       ro.disconnect();
-      apiRef.current = null;
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("pointermove", onPointer);
       host.removeEventListener("pointerdown", onDown);
@@ -386,7 +359,6 @@ function SpiralHero() {
     };
   }, [clips]);
 
-  const showing: Clip = clips[now] ?? clips[0];
   const rise = (delay: number) => ({
     initial: { y: "110%" },
     animate: { y: 0, transition: { delay, duration: 1.2, ease: EASE } },
@@ -413,76 +385,28 @@ function SpiralHero() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={LOGO_SRC} alt="16x9" />
           </a>
-          <nav className={styles.nav} aria-label="Main">
-            {NAV.map((n) => (
-              <a key={n.label} href={n.href}>
-                {n.label}
-              </a>
-            ))}
-          </nav>
-          <a href="#contact" className={styles.pill}>
-            Start a project
-          </a>
+          {/* the menu: not wired up yet */}
+          <button type="button" className={styles.burger} aria-label="Menu">
+            <span />
+            <span />
+          </button>
         </motion.header>
 
-        {/* now showing: the film turning past the front */}
-        <motion.div className={styles.now} {...fadeIn(T.ui + 0.2, 0)}>
-          <span className={styles.nowLabel}>
-            <i className={styles.dot} aria-hidden="true" /> Now showing
-          </span>
-          <span className={styles.nowMask}>
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={now}
-                className={styles.nowTitle}
-                initial={{ y: "100%", opacity: 0 }}
-                animate={{ y: 0, opacity: 1, transition: { duration: 0.6, ease: EASE } }}
-                exit={{ y: "-100%", opacity: 0, transition: { duration: 0.3, ease: EASE_CINE } }}
-              >
-                {showing.title}
-              </motion.span>
-            </AnimatePresence>
-          </span>
-          <span className={styles.nowMeta}>
-            {pad(now + 1)} / {pad(clips.length)} · {showing.duration}
-          </span>
-        </motion.div>
-
-        <div className={styles.bottom}>
-          <div>
-            <motion.p className={styles.eyebrow} {...fadeIn(T.head - 0.15, 8)}>
-              {COPY.eyebrow}
-            </motion.p>
-            <h1 className={styles.headline}>
-              {COPY.headline.map((line, i) => (
-                <span key={line} className={styles.mask}>
-                  <motion.span className={styles.line} {...rise(T.head + i * 0.12)}>
-                    {line}
-                  </motion.span>
-                </span>
-              ))}
-            </h1>
-          </div>
-
-          <motion.div className={styles.side} {...fadeIn(T.head + 0.45, 12)}>
-            <p className={styles.sub}>{COPY.sub}</p>
-            <div className={styles.ctas}>
-              <button type="button" className={styles.primary} onClick={() => apiRef.current?.open(now)}>
-                <svg viewBox="0 0 12 14" aria-hidden="true">
-                  <path d="M0 0L12 7L0 14Z" />
-                </svg>
-                {COPY.primary}
-              </button>
-              <a href={variant.takeover.ctaHref} className={styles.secondary}>
-                {COPY.secondary} <span aria-hidden="true">↗</span>
-              </a>
-            </div>
-          </motion.div>
+        {/* the line, in the middle */}
+        <div className={styles.center}>
+          <motion.p className={styles.eyebrow} {...fadeIn(T.head - 0.2, 8)}>
+            {COPY.eyebrow}
+          </motion.p>
+          <h1 className={styles.headline}>
+            {COPY.headline.map((line, i) => (
+              <span key={line} className={styles.mask}>
+                <motion.span className={styles.line} {...rise(T.head + i * 0.14)}>
+                  {line}
+                </motion.span>
+              </span>
+            ))}
+          </h1>
         </div>
-
-        <motion.p className={styles.hint} {...fadeIn(T.ui + 0.4, 0)}>
-          Drag to spin · Click a film to watch
-        </motion.p>
       </div>
 
       {/* letterbox: the frame opens on arrival */}

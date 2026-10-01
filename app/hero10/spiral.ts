@@ -23,7 +23,7 @@ export const SPIRAL = {
   count: 26, // panels on the ribbon (~3.2 turns, more than fill the frame)
   camera: { distance: 4.3, fov: 27, y: 0, x: -0.04 },
   tilt: { x: 0.05, z: -0.1 }, // the whole spiral leans right, like an italic S, and its top tips away
-  drift: 0.06, // radians per second the ribbon turns on its own
+  drift: 0.24, // radians per second the ribbon turns on its own (a full turn in ~26 s)
 };
 
 const STEP = SPIRAL.arc + SPIRAL.gap;
