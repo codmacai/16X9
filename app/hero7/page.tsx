@@ -10,6 +10,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type Ref,
 } from "react";
 import {
@@ -20,6 +21,8 @@ import {
   useSpring,
   type TargetAndTransition,
 } from "framer-motion";
+import { Inter_Tight } from "next/font/google";
+import Link from "next/link";
 import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-config";
 import ProjectView, { type OpenProject } from "./project-view";
 import { liveBudget, posterFor, WallPlayback } from "./wall-playback";
@@ -30,8 +33,13 @@ import styles from "./depthhero.module.css";
 // COPY
 // ===========================================================================
 const MARK_SUB = "& BEYOND"; // tiny tag on the same line as the mark, cut into the card
-// The heading and tagline that take the card's place come from Hero-config (headline, sub).
-const HINT = { mouse: "Hover a film · Click to watch · Scroll to fly", touch: "Tap a film · Swipe to fly" };
+const HEADLINE = ["Bringing brands", "to life"];
+const SUBHEAD = "Turn target audience into visitors";
+const HINT = { mouse: "Hover a film · Click to watch · Drag to fly", touch: "Tap a film · Drag to fly" };
+
+// Inter Tight: a Swiss, International-Style grotesk. Loaded for hero 7 only (it
+// overrides --font-sans inside this section), so the other heroes keep Archivo.
+const interTight = Inter_Tight({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 
 // ===========================================================================
@@ -61,14 +69,15 @@ const T = {
   clients: 2.8, // logo strip
 };
 // The card's exit, relative to T.leave
-const LEAVE = { letters: 0.5, fold: 0.42, foldS: 0.62, head: 1.0 };
+const LEAVE = { letters: 0.7, fold: 0.32, foldS: 0.9 };
+const EASE_SMOOTH = [0.65, 0, 0.35, 1] as const; // symmetrical, for the fold
 
 // Speeds are in screen-heights per second.
 const CRAWL = 0.3;
 const SURGE = { first: T.leave + 1.6, every: 4.6, length: 1.6, peak: 2.2 };
-// Scroll / drag push: screen-heights per second added per unit of input, its cap,
-// and how fast it coasts back down (per second).
-const PUSH = { wheel: 0.0045, drag: 0.014, max: 7, decay: 1.9 };
+// Drag to slide: how far the wall moves per pixel dragged, the cap on the glide
+// it's thrown with (screen-heights per second), and how fast that glide settles.
+const PUSH = { drag: 1.7, max: 9, decay: 2.4, threshold: 6 };
 // How fast the wall runs while a tile is hovered (0 = stopped, 1 = full speed),
 // and how quickly it eases between speeds.
 const HOVER_SPEED = 0.06;
@@ -473,8 +482,9 @@ function Mark({
                     transition: reduce
                       ? { duration: 0 }
                       : {
-                          scaleY: { delay: LEAVE.fold, duration: LEAVE.foldS, ease: EASE_CINE },
-                          opacity: { delay: LEAVE.fold + LEAVE.foldS, duration: 0 },
+                          scaleY: { delay: LEAVE.fold, duration: LEAVE.foldS, ease: EASE_SMOOTH },
+                          // stays until the heading's rule is drawn over it, then fades
+                          opacity: { delay: LEAVE.fold + LEAVE.foldS + 0.2, duration: 0.3 },
                         },
                   }
                 : { clipPath: "inset(0% 0% 0% 0%)", scaleY: 1, opacity: 1, transition: { delay: T.card, duration: 0.95, ease: EASE_CINE } }
@@ -818,7 +828,7 @@ function Heading({
       <motion.span
         className={styles.headShade}
         initial={{ opacity: 0 }}
-        animate={{ opacity: show ? 1 : 0, transition: { delay: show ? base * 0.6 : 0, duration: show ? 1.4 : 0.4, ease: EASE } }}
+        animate={{ opacity: show ? 1 : 0, transition: { delay: show ? base * 0.3 : 0, duration: show ? 1.6 : 0.4, ease: EASE } }}
       />
       {/* the rule is the only thing in flow, so it sits exactly where the card's middle was */}
       <div className={styles.headCenter}>
@@ -827,11 +837,11 @@ function Heading({
             <span key={l} className={styles.headMask}>
               <motion.span
                 className={styles.headLine}
-                initial={reduce ? false : { y: "112%" }}
+                initial={reduce ? false : { y: "112%", opacity: 0 }}
                 animate={
                   show
-                    ? { y: 0, transition: { delay: base + k * (0.12 + i * 0.12), duration: 1.15, ease: EASE } }
-                    : { y: "112%", transition: hidden }
+                    ? { y: 0, opacity: 1, transition: { delay: base + k * (0.05 + i * 0.11), duration: 1.3, ease: EASE } }
+                    : { y: "112%", opacity: 0, transition: hidden }
                 }
               >
                 {l}
@@ -848,8 +858,8 @@ function Heading({
                   scaleX: 0.07,
                   opacity: 1,
                   transition: {
-                    opacity: { delay: base, duration: 0 },
-                    scaleX: { delay: base + k * 0.08, duration: 0.95, ease: EASE_CINE },
+                    opacity: { delay: Math.max(0, base - 0.1), duration: 0.15 },
+                    scaleX: { delay: base + k * 0.04, duration: 1.15, ease: EASE },
                   },
                 }
               : { opacity: 0, transition: hidden }
@@ -861,7 +871,7 @@ function Heading({
             initial={reduce ? false : { clipPath: "inset(0% 100% 0% 0%)" }}
             animate={
               show
-                ? { clipPath: "inset(0% 0% 0% 0%)", transition: { delay: base + k * 0.5, duration: 0.7, ease: EASE_CINE } }
+                ? { clipPath: "inset(0% 0% 0% 0%)", transition: { delay: base + k * 0.42, duration: 0.85, ease: EASE_CINE } }
                 : { clipPath: "inset(0% 0% 0% 100%)", transition: hidden }
             }
           >
@@ -872,7 +882,7 @@ function Heading({
             initial={reduce ? false : { opacity: 0, y: 8 }}
             animate={
               show
-                ? { opacity: 1, y: 0, transition: { delay: base + k * 1.15, duration: 0.9, ease: EASE } }
+                ? { opacity: 1, y: 0, transition: { delay: base + k * 1.05, duration: 1, ease: EASE } }
                 : { opacity: 0, transition: hidden }
             }
           >
@@ -887,14 +897,20 @@ function Heading({
 // ===========================================================================
 // HERO — films and clients come from Hero-config (URL ?hero=, dates, default)
 // ===========================================================================
+// The variant depends on the URL and today's date, so it's read on the client only
+// (the server renders an empty section), without a setState-in-effect round trip.
+const noopSubscribe = () => () => {};
 export default function DepthHero({ variantId }: { variantId?: string }) {
-  const [variant, setVariant] = useState<HeroVariant | null>(null);
-  useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get("hero");
-    setVariant(resolveVariant(new Date(), variantId ?? q));
-  }, [variantId]);
+  const isClient = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  const variant = useMemo<HeroVariant | null>(
+    () =>
+      isClient
+        ? resolveVariant(new Date(), variantId ?? new URLSearchParams(window.location.search).get("hero"))
+        : null,
+    [isClient, variantId]
+  );
 
-  if (!variant) return <section className={styles.page} aria-hidden="true" />;
+  if (!variant) return <section className={`${styles.page} ${interTight.variable}`} aria-hidden="true" />;
   return <DepthInner key={variant.id} variant={variant} />;
 }
 
@@ -939,6 +955,10 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   // last touch was a drag (so it doesn't also open the tile under the finger).
   const pushRef = useRef(0);
   const draggedRef = useRef(false);
+  const draggingRef = useRef(false); // a drag is in progress: the wall follows it, hover is off
+  const dragAccRef = useRef(0); // wall travel dragged since the last frame, in px
+  const planeRef = useRef<HTMLDivElement>(null);
+  const spotTimer = useRef(0);
   const warpRef = useRef<HTMLDivElement>(null);
   const lightRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -957,17 +977,29 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
   // Hover never touches DepthInner state: it flips a ref for the camera loop
   // and hands the clip to the cursor label, so the wall itself never re-renders.
+  // The spotlight (every other film dims) is one class on the plane. Leaving a
+  // tile waits a beat before lifting it, so gliding from tile to tile doesn't
+  // flicker the whole wall.
+  const setSpot = useCallback((on: boolean) => {
+    window.clearTimeout(spotTimer.current);
+    const plane = planeRef.current;
+    if (!plane) return;
+    if (on) plane.classList.add(styles.spot);
+    else spotTimer.current = window.setTimeout(() => plane.classList.remove(styles.spot), 160);
+  }, []);
   const onHover = useCallback(
     (id: string | null, index: number | null) => {
+      if (draggingRef.current) return; // tiles sliding under a drag don't count as hovers
       hoverRef.current = index !== null;
       playback.setHovered(id);
       labelRef.current?.show(index === null ? null : clips[index]);
+      setSpot(index !== null);
     },
-    [clips, playback]
+    [clips, playback, setSpot]
   );
   const closeProject = useCallback(() => setProject(null), []);
   const onOpen = useCallback((index: number, el: HTMLElement, time: number) => {
-    if (draggedRef.current) return; // that touch was a drag through the wall, not a tap
+    if (draggedRef.current) return; // that was a drag through the wall, not a click
     const r = el.getBoundingClientRect();
     hoverRef.current = false;
     playback.setHovered(null);
@@ -1055,7 +1087,10 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       // 1 = running, HOVER_SPEED = held under an active pointer, 0 = a film is open.
       // Ease toward it so the wall glides to a hold and back, never snaps.
       const holding = hoverRef.current && now - lastMoveRef.current < HOLD_MS;
-      const target = projectRef.current ? 0 : holding ? HOVER_SPEED : 1;
+      // while dragged, the wall goes only where the pointer takes it
+      const target = projectRef.current || draggingRef.current ? 0 : holding ? HOVER_SPEED : 1;
+      const drag = dragAccRef.current;
+      dragAccRef.current = 0;
       speed += (target - speed) * Math.min(1, dt * SPEED_EASE);
       // the push coasts back down; while it lasts the camera leans in a touch
       pushRef.current *= Math.exp(-PUSH.decay * dt);
@@ -1065,7 +1100,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         warpShown = w;
         warp.style.transform = `scale(${(1 + w * 0.06).toFixed(4)})`;
       }
-      if (speed < 0.0005 && target === 0) {
+      if (speed < 0.0005 && target === 0 && !drag && !pushRef.current) {
         // frozen behind an open film: no work, no DOM writes
         raf = requestAnimationFrame(step);
         return;
@@ -1075,8 +1110,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         if (!h) continue;
         const lag = Math.abs(l - (n - 1) / 2) * 0.09; // centre lanes push first
         const surge = variant.swap ? surgeAt(t - lag) * SURGE.peak : 0;
-        const v = (CRAWL + surge + arrivalAt(t - lag) * ARRIVAL.peak + pushRef.current) * vh * lanes[l].speed * speed;
-        pos[l] = (((pos[l] + v * dt) % h) + h) % h; // runs either way
+        const own = (CRAWL + surge + arrivalAt(t - lag) * ARRIVAL.peak) * speed;
+        const v = (own + pushRef.current) * vh * lanes[l].speed;
+        pos[l] = (((pos[l] + v * dt + drag * lanes[l].speed) % h) + h) % h; // runs either way
         place(l);
       }
       raf = requestAnimationFrame(step);
@@ -1088,38 +1124,72 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     };
   }, [laneCount, lanes, reduce, variant.swap]);
 
-  // Scroll or drag to push the wall: forward or back, then it coasts to its own pace.
+  // Drag to slide: grab the wall (mouse or finger) and it follows; let go and it
+  // glides on with the throw, then settles back to its own pace. Hover is off
+  // for the whole drag so tiles sliding under the pointer don't pop.
   useEffect(() => {
     if (reduce) return;
-    const add = (v: number) => {
-      if (menuRef.current || projectRef.current) return;
-      pushRef.current = Math.max(-PUSH.max, Math.min(PUSH.max, pushRef.current + v));
-    };
-    const onWheel = (e: WheelEvent) => add(e.deltaY * (e.deltaMode === 1 ? 16 : 1) * PUSH.wheel);
+    const scene = sceneRef.current;
+    if (!scene) return;
+    let id = -1;
     let lastY = 0;
+    let lastT = 0;
     let travel = 0;
-    const onStart = (e: TouchEvent) => {
-      lastY = e.touches[0].clientY;
+    let vel = 0; // px per second, smoothed
+    const begin = () => {
+      draggingRef.current = true;
+      draggedRef.current = true;
+      scene.classList.add(styles.dragging);
+      hoverRef.current = false;
+      playback.setHovered(null);
+      labelRef.current?.show(null);
+      setSpot(false);
+    };
+    const onDown = (e: PointerEvent) => {
+      if (e.button !== 0 || menuRef.current || projectRef.current) return;
+      id = e.pointerId;
+      lastY = e.clientY;
+      lastT = performance.now();
       travel = 0;
+      vel = 0;
       draggedRef.current = false;
+      pushRef.current = 0; // catching the wall stops its glide
     };
-    const onMove = (e: TouchEvent) => {
-      const y = e.touches[0].clientY;
-      const dy = lastY - y; // finger up = forward
-      lastY = y;
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerId !== id) return;
+      const now = performance.now();
+      const dy = e.clientY - lastY;
       travel += Math.abs(dy);
-      if (travel > 10) draggedRef.current = true;
-      add(dy * PUSH.drag);
+      if (!draggingRef.current && travel > PUSH.threshold) begin();
+      if (draggingRef.current) {
+        dragAccRef.current += dy * PUSH.drag;
+        const inst = (dy / Math.max(1, now - lastT)) * 1000;
+        vel = vel * 0.55 + inst * 0.45;
+      }
+      lastY = e.clientY;
+      lastT = now;
     };
-    window.addEventListener("wheel", onWheel, { passive: true });
-    window.addEventListener("touchstart", onStart, { passive: true });
-    window.addEventListener("touchmove", onMove, { passive: true });
+    const onUp = (e: PointerEvent) => {
+      if (e.pointerId !== id) return;
+      id = -1;
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      scene.classList.remove(styles.dragging);
+      if (performance.now() - lastT > 90) vel = 0; // held still before letting go: no throw
+      const throwV = (vel * PUSH.drag) / window.innerHeight;
+      pushRef.current = Math.max(-PUSH.max, Math.min(PUSH.max, throwV));
+    };
+    scene.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("touchstart", onStart);
-      window.removeEventListener("touchmove", onMove);
+      scene.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
-  }, [reduce]);
+  }, [reduce, playback, setSpot]);
 
   // The wall leans a little toward the pointer
   useEffect(() => {
@@ -1152,7 +1222,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       : { initial: from, animate: { ...to, transition: { delay, duration, ease: EASE } } };
 
   return (
-    <section className={styles.page} aria-label={mark} style={menuOpen ? { touchAction: "none" } : undefined}>
+    <section className={`${styles.page} ${interTight.variable}`} aria-label={mark} style={menuOpen ? { touchAction: "none" } : undefined}>
       {/* ================= The depth gallery: rushing behind the letterbox ================= */}
 
       <motion.div
@@ -1163,7 +1233,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
       >
         <div ref={warpRef} className={styles.warp}>
-        <div className={styles.plane}>
+        <div ref={planeRef} className={styles.plane}>
           {lanes.map((lane, l) => (
             <div key={l} className={styles.lane}>
               <div
@@ -1201,11 +1271,11 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
       <div className={styles.copy}>
         <h1 className={styles.sr}>
-          {mark} {MARK_SUB}. {variant.headline.join(" ")}. {variant.sub}.
+          {mark} {MARK_SUB}. {HEADLINE.join(" ")}. {SUBHEAD}.
         </h1>
         <Heading
-          lines={variant.headline}
-          tagline={variant.sub}
+          lines={HEADLINE}
+          tagline={SUBHEAD}
           show={gone && !menuOpen}
           first={menuKey === 0}
           reduce={reduce}
@@ -1218,9 +1288,10 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         className={styles.topbar}
         {...enter(T.lines, { opacity: 0, y: -12 }, { opacity: 1, y: 0 }, 1.0)}
       >
-        <a href="/" className={styles.logo} aria-label="Home">
+        <Link href="/" className={styles.logo} aria-label="Home">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_SRC} alt={mark} className={styles.logoImg} />
-        </a>
+        </Link>
 
         <button
           type="button"

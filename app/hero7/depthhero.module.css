@@ -36,6 +36,19 @@
     position: absolute;
     inset: 0;
     overflow: hidden;
+    cursor: grab;
+    touch-action: none; /* the wall takes drags itself */
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* mid-drag: the tiles stop taking the pointer, so nothing pops as they slide past */
+  .dragging {
+    cursor: grabbing;
+  }
+
+  .dragging .tile {
+    pointer-events: none;
   }
 
   /* holds the perspective; the camera loop scales it a touch while the wall is pushed */
@@ -168,7 +181,8 @@
       opacity: 1;
     }
 
-    .plane:has(.tile:hover) .tile:not(:hover)::before {
+    /* the spotlight: a class set from JS (cheaper than :has on every hover) */
+    .spot .tile:not(:hover)::before {
       opacity: 0.6;
     }
   }
