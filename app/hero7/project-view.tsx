@@ -1,20 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
+import { AnimatePresence, motion, useMotionValue, useReducedMotion } from "framer-motion";
 import type { Clip } from "@/components/Hero-config";
 import styles from "./depthhero.module.css";
 
 // ===========================================================================
-// PROJECT VIEW — a tile on the wall opens into a centred film card.
+// PROJECT VIEW — a tile on the wall opens into the film, dressed like the
+// landing section: the same top bar (logo left, burger-turned-X right), a
+// sharp-cornered frame like the 16X9 card, letterbox bars that part as it
+// lands, the title and two small lines underneath like the mark's lines, and
+// a hairline strip at the foot like the client strip.
 //
-// The card is laid out at its final size and position, then animated in from
-// the tile with a FLIP: a uniform scale + translate (so the film is never
-// squashed) and a clip-path that crops it to the tile's shape. Both run on the
-// compositor, so the open is smooth even with the wall playing behind.
-//
-// Per-frame values (time, progress) are written straight to the DOM / motion
-// values, never through React state.
+// The frame is laid out at its final size and animated in from the tile with
+// a FLIP: a uniform scale + translate (the film is never squashed) and a
+// clip-path that crops it to the tile's shape. Per-frame values (time,
+// progress) go straight to the DOM / motion values, never through React state.
 // ===========================================================================
 
 export type TileRect = { top: number; left: number; width: number; height: number };
@@ -23,18 +24,22 @@ export type OpenProject = { index: number; rect: TileRect; time: number };
 const EASE = [0.16, 1, 0.3, 1] as const;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
 const OPEN_S = 0.9;
-const RADIUS = 28; // card corner radius, px
 const TILE_RADIUS = 10; // matches .tile in the wall
-const IDLE_MS = 2200; // controls fade away after this long without movement
+const IDLE_MS = 2200; // controls fade after this long without movement
+const LETTERBOX = 0.2; // each bar starts covering this much of the frame, then parts
+const LOGO_SRC = "/logo.png"; // same logo as the landing top bar
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const clock = (s: number) => (Number.isFinite(s) && s > 0 ? `${pad(Math.floor(s / 60))}:${pad(Math.floor(s % 60))}` : "00:00");
 
-/** The card's final box: 16:9, centred, never taller than 78% of the screen. */
-function cardBox(vw: number, vh: number) {
-  const width = Math.min(vw * (vw < 760 ? 0.92 : 0.78), ((vh * 0.78) * 16) / 9);
+/** The frame's final box: 16:9, leaving room for the top bar, the lines under it and the strip. */
+function frameBox(vw: number, vh: number) {
+  const small = vw < 760;
+  const width = Math.min(vw * (small ? 0.88 : 0.72), ((vh * (small ? 0.5 : 0.6)) * 16) / 9);
   const height = (width * 9) / 16;
-  return { width, height, left: (vw - width) / 2, top: (vh - height) / 2 };
+  const under = small ? 96 : Math.max(70, width * 0.085); // space for the lines below
+  const top = Math.max(small ? 96 : 110, (vh - height - under) / 2);
+  return { width, height, left: (vw - width) / 2, top };
 }
 
 export default function ProjectView({
@@ -52,29 +57,27 @@ export default function ProjectView({
   const [muted, setMuted] = useState(true);
   const [idle, setIdle] = useState(false);
   const [navigated, setNavigated] = useState(false); // false until the visitor steps to another film
-  const [box, setBox] = useState(() => cardBox(window.innerWidth, window.innerHeight));
+  const [box, setBox] = useState(() => frameBox(window.innerWidth, window.innerHeight));
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const nowRef = useRef<HTMLSpanElement>(null);
   const durRef = useRef<HTMLSpanElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const scrubbing = useRef(false);
   const idleTimer = useRef(0);
   const progress = useMotionValue(0);
-  const dotLeft = useTransform(progress, (p) => `${p * 100}%`);
 
   const clip = clips[index];
   const total = clips.length;
+  const titleSize = Math.max(20, box.width * 0.04);
 
-  // ---- FLIP: where the card starts (the tile) and where it lands ----
+  // ---- FLIP: where the frame starts (the tile) and where it lands ----
   const from = useMemo(() => {
     const r = open.rect;
     const s = Math.max(r.width / box.width, r.height / box.height); // cover the tile, uniformly
-    const visW = r.width / s;
-    const visH = r.height / s;
-    const ix = (box.width - visW) / 2;
-    const iy = (box.height - visH) / 2;
+    const ix = (box.width - r.width / s) / 2;
+    const iy = (box.height - r.height / s) / 2;
     return {
       x: r.left + r.width / 2 - (box.left + box.width / 2),
       y: r.top + r.height / 2 - (box.top + box.height / 2),
@@ -82,7 +85,7 @@ export default function ProjectView({
       clipPath: `inset(${iy}px ${ix}px ${iy}px ${ix}px round ${TILE_RADIUS / s}px)`,
     };
   }, [open.rect, box]);
-  const landed = { x: 0, y: 0, scale: 1, clipPath: `inset(0px 0px 0px 0px round ${RADIUS}px)` };
+  const landed = { x: 0, y: 0, scale: 1, clipPath: "inset(0px 0px 0px 0px round 0px)" };
 
   // ---- controls ----
   const step = useCallback(
@@ -125,12 +128,14 @@ export default function ProjectView({
         togglePlay();
       } else if (e.key === "m") setMuted((m) => !m);
     };
-    const onResize = () => setBox(cardBox(window.innerWidth, window.innerHeight));
+    const onResize = () => setBox(frameBox(window.innerWidth, window.innerHeight));
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
-    const focus = window.setTimeout(() => closeRef.current?.focus({ preventScroll: true }), OPEN_S * 1000);
+    // Focus the dialog itself (not a button) so keyboard users land inside it
+    // without a focus ring appearing on the close button after a mouse click.
+    const focus = window.setTimeout(() => dialogRef.current?.focus({ preventScroll: true }), OPEN_S * 1000);
     // Give the controls a proper look before they first auto-hide.
     idleTimer.current = window.setTimeout(() => setIdle(true), OPEN_S * 1000 + IDLE_MS * 1.8);
     return () => {
@@ -182,9 +187,26 @@ export default function ProjectView({
 
   const showUi = !idle || !playing;
   const frame = reduce ? { duration: 0.25 } : { duration: OPEN_S, ease: EASE_CINE };
+  const settle = navigated ? 0.1 : OPEN_S * 0.7; // when the type arrives
+  const reveal = (i: number) =>
+    reduce
+      ? { initial: false as const }
+      : {
+          initial: { y: "110%" },
+          animate: { y: 0, transition: { duration: 1.1, ease: EASE, delay: settle + i * 0.08 } },
+          exit: { y: "-110%", transition: { duration: 0.35, ease: EASE_CINE } },
+        };
 
   return (
-    <div className={styles.pv} role="dialog" aria-modal="true" aria-label={clip.title} onPointerMove={wake}>
+    <div
+      ref={dialogRef}
+      className={styles.pv}
+      role="dialog"
+      aria-modal="true"
+      aria-label={clip.title}
+      tabIndex={-1}
+      onPointerMove={wake}
+    >
       <motion.div
         className={styles.pvBackdrop}
         initial={{ opacity: 0 }}
@@ -193,9 +215,24 @@ export default function ProjectView({
         onClick={onClose}
       />
 
-      {/* ============ The card: flies out of the tile, lands centred ============ */}
+      {/* ============ Top bar: the landing's own, logo left, burger turned X right ============ */}
+      <motion.header
+        className={styles.pvTopbar}
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0, transition: { duration: 0.9, ease: EASE, delay: reduce ? 0 : OPEN_S * 0.5 } }}
+        exit={{ opacity: 0, transition: { duration: 0.2 } }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={LOGO_SRC} alt="" className={styles.logoImg} />
+        <button type="button" className={styles.pvClose} onClick={onClose} aria-label="Close project">
+          <span />
+          <span />
+        </button>
+      </motion.header>
+
+      {/* ============ The frame: flies out of the tile, lands sharp-cornered ============ */}
       <motion.div
-        className={`${styles.pvCard} ${showUi ? "" : styles.pvIdle}`}
+        className={`${styles.pvFrame} ${showUi ? "" : styles.pvIdle}`}
         style={{ top: box.top, left: box.left, width: box.width, height: box.height }}
         initial={reduce ? { opacity: 0 } : from}
         animate={{ ...landed, opacity: 1 }}
@@ -229,115 +266,96 @@ export default function ProjectView({
 
         <div className={styles.pvShade} aria-hidden="true" />
 
-        {/* ---- top: count left, close right ---- */}
+        {/* letterbox bars part as the frame lands, like the landing's opening */}
+        {!reduce && (
+          <>
+            <motion.span
+              className={`${styles.pvBar} ${styles.pvBarTop}`}
+              aria-hidden="true"
+              initial={{ scaleY: LETTERBOX / 0.5 }}
+              animate={{ scaleY: 0, transition: { delay: OPEN_S * 0.55, duration: 1.1, ease: EASE_CINE } }}
+            />
+            <motion.span
+              className={`${styles.pvBar} ${styles.pvBarBottom}`}
+              aria-hidden="true"
+              initial={{ scaleY: LETTERBOX / 0.5 }}
+              animate={{ scaleY: 0, transition: { delay: OPEN_S * 0.55, duration: 1.1, ease: EASE_CINE } }}
+            />
+          </>
+        )}
+
+        {/* ---- the transport: one hairline strip of bold type along the foot of the film ---- */}
         <motion.div
-          className={styles.pvTop}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: showUi ? 1 : 0, transition: { duration: 0.5, delay: showUi ? 0 : 0.1 } }}
+          className={styles.pvTransport}
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{
+            opacity: showUi ? 1 : 0,
+            transition: { duration: 0.5, ease: EASE, delay: showUi ? (navigated ? 0 : OPEN_S * 1.05) : 0 },
+          }}
           exit={{ opacity: 0, transition: { duration: 0.15 } }}
         >
-          <span className={styles.pvCount}>
-            {pad(index + 1)} <i>/</i> {pad(total)}
+          <button type="button" className={styles.pvText} onClick={togglePlay} aria-label={playing ? "Pause" : "Play"}>
+            {playing ? "Pause" : "Play"}
+          </button>
+          <span className={styles.pvTime}>
+            <span ref={nowRef}>00:00</span>
+            <i>/</i>
+            <span ref={durRef}>{clip.duration.padStart(5, "0")}</span>
           </span>
-          <motion.button
-            ref={closeRef}
-            type="button"
-            className={styles.pvClose}
-            onClick={onClose}
-            aria-label="Close project"
-            initial={reduce ? false : { scale: 0.6, opacity: 0, rotate: -90 }}
-            animate={{ scale: 1, opacity: 1, rotate: 0, transition: { delay: OPEN_S * 0.7, duration: 0.7, ease: EASE } }}
-            whileHover={{ rotate: 90, transition: { duration: 0.5, ease: EASE } }}
-            whileTap={{ scale: 0.92 }}
+          <div
+            ref={trackRef}
+            className={styles.pvTrack}
+            aria-hidden="true"
+            onPointerDown={onScrubDown}
+            onPointerMove={onScrubMove}
+            onPointerUp={onScrubUp}
+            onPointerCancel={onScrubUp}
           >
-            <span />
-            <span />
-          </motion.button>
+            <span className={styles.pvTrackLine} />
+            <motion.span className={styles.pvTrackFill} style={{ scaleX: progress }} />
+          </div>
+          <button type="button" className={styles.pvText} onClick={() => setMuted((m) => !m)} aria-pressed={!muted}>
+            {muted ? "Sound off" : "Sound on"}
+          </button>
         </motion.div>
+      </motion.div>
 
-        {/* ---- bottom: the project name, then the transport ---- */}
-        <div className={styles.pvBottom}>
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.h2
-              key={clip.src}
-              className={styles.pvTitle}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.2 } }}
-            >
-              <span className={styles.pvTitleMask}>
-                <motion.span
-                  className={styles.pvTitleLine}
-                  initial={reduce ? false : { y: "110%" }}
-                  animate={{ y: 0, transition: { duration: 0.9, ease: EASE, delay: navigated ? 0.15 : OPEN_S * 0.75 } }}
-                >
+      {/* ============ Under the frame: the title left, two small lines right ============ */}
+      <div
+        className={styles.pvUnder}
+        style={{ top: box.top + box.height, left: box.left, width: box.width }}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div key={clip.src} className={styles.pvUnderRow}>
+            <h2 className={styles.pvTitle} style={{ fontSize: titleSize }}>
+              <span className={styles.pvMask}>
+                <motion.span className={styles.pvLine} {...reveal(0)}>
                   {clip.title}
                 </motion.span>
               </span>
-            </motion.h2>
-          </AnimatePresence>
-
-          <motion.div
-            className={styles.pvBar}
-            initial={reduce ? false : { opacity: 0, y: 14 }}
-            animate={{
-              opacity: showUi ? 1 : 0,
-              y: showUi ? 0 : 8,
-              transition: { duration: 0.6, ease: EASE, delay: showUi ? (navigated ? 0 : OPEN_S * 0.85) : 0 },
-            }}
-            exit={{ opacity: 0, transition: { duration: 0.15 } }}
-          >
-            <button type="button" className={styles.pvPlay} onClick={togglePlay} aria-label={playing ? "Pause" : "Play"}>
-              <AnimatePresence mode="wait" initial={false}>
-                {playing ? (
-                  <motion.svg key="pause" viewBox="0 0 24 24" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={{ duration: 0.18 }}>
-                    <rect x="6" y="4.5" width="3" height="15" />
-                    <rect x="15" y="4.5" width="3" height="15" />
-                  </motion.svg>
-                ) : (
-                  <motion.svg key="play" viewBox="0 0 24 24" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={{ duration: 0.18 }}>
-                    <path d="M7 4.5v15l12.5-7.5z" />
-                  </motion.svg>
-                )}
-              </AnimatePresence>
-            </button>
-
-            <span ref={nowRef} className={styles.pvTime}>
-              00:00
-            </span>
-
-            <div
-              ref={trackRef}
-              className={styles.pvTrack}
-              aria-hidden="true"
-              onPointerDown={onScrubDown}
-              onPointerMove={onScrubMove}
-              onPointerUp={onScrubUp}
-              onPointerCancel={onScrubUp}
-            >
-              <span className={styles.pvTrackLine} />
-              <motion.span className={styles.pvTrackFill} style={{ scaleX: progress }} />
-              <motion.span className={styles.pvTrackDot} style={{ left: dotLeft }} />
-            </div>
-
-            <span ref={durRef} className={styles.pvTime}>
-              {clip.duration.padStart(5, "0")}
-            </span>
-
-            <button type="button" className={styles.pvSound} onClick={() => setMuted((m) => !m)} aria-pressed={!muted}>
-              {muted ? "Sound off" : "Sound on"}
-            </button>
+            </h2>
+            <p className={styles.pvMeta}>
+              <span className={styles.pvMask}>
+                <motion.span className={styles.pvLine} {...reveal(1)}>
+                  Project {pad(index + 1)} / {pad(total)}
+                </motion.span>
+              </span>
+              <span className={styles.pvMask}>
+                <motion.span className={styles.pvLine} {...reveal(2)}>
+                  Runtime {clip.duration}
+                </motion.span>
+              </span>
+            </p>
           </motion.div>
-        </div>
-      </motion.div>
+        </AnimatePresence>
+      </div>
 
-      {/* ============ Under the card: previous / next ============ */}
+      {/* ============ Foot strip: like the client strip ============ */}
       <motion.nav
-        className={styles.pvNav}
-        style={{ top: box.top + box.height, left: box.left, width: box.width }}
+        className={styles.pvStrip}
         aria-label="Projects"
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0, transition: { delay: reduce ? 0 : OPEN_S * 0.8, duration: 0.6, ease: EASE } }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { delay: reduce ? 0 : OPEN_S * 0.9, duration: 0.8 } }}
         exit={{ opacity: 0, transition: { duration: 0.15 } }}
       >
         <button type="button" onClick={() => step(-1)}>
