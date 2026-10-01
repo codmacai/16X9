@@ -21,7 +21,7 @@ import {
   useSpring,
   type TargetAndTransition,
 } from "framer-motion";
-import { Inter_Tight } from "next/font/google";
+import { Archivo, Inter_Tight } from "next/font/google";
 import Link from "next/link";
 import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-config";
 import ProjectView, { type OpenProject } from "./project-view";
@@ -34,12 +34,13 @@ import styles from "./depthhero.module.css";
 // ===========================================================================
 const MARK_SUB = "& BEYOND"; // tiny tag on the same line as the mark, cut into the card
 const HEADLINE = ["Bringing brands", "to life"];
-const SUBHEAD = "Turn target audience into visitors";
-const HINT = { mouse: "Hover a film · Click to watch · Drag to fly", touch: "Tap a film · Drag to fly" };
+const SUBHEAD = ["Turn target audience into", "visitors"]; // two lines, as set
 
 // Inter Tight: a Swiss, International-Style grotesk. Loaded for hero 7 only (it
 // overrides --font-sans inside this section), so the other heroes keep Archivo.
 const interTight = Inter_Tight({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+// The heading: Archivo opened up to its widest, heaviest cut, an extended grotesk.
+const archivo = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wide", display: "swap" });
 const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 
 // ===========================================================================
@@ -250,19 +251,16 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: Ti
 });
 
 // ===========================================================================
-// CURSOR — over a film the arrow becomes a round paper badge: a play mark in
-// the middle and "PLAY FILM" turning slowly around its rim. It springs in once
-// and stays while you glide from film to film (the film's own title is printed
-// on the tile). State is set through a ref, so hovering never re-renders the
-// wall, and the position lives in motion values, so following the pointer
-// never re-renders anything at all.
+// CURSOR — over a film the arrow becomes a thin paper ring with a small play
+// mark. It eases in once and stays while you glide from film to film. State is
+// set through a ref, so hovering never re-renders the wall, and the position
+// lives in motion values, so following the pointer never re-renders anything.
 // ===========================================================================
 type CursorLabelHandle = { show: (clip: Clip | null) => void };
 
 function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
   const [on, setOn] = useState(false);
   useImperativeHandle(ref, () => ({ show: (clip) => setOn(clip !== null) }), []);
-  const ringId = `ring-${useId().replace(/:/g, "")}`;
 
   const x = useMotionValue(-200);
   const y = useMotionValue(-200);
@@ -285,20 +283,10 @@ function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
           <motion.div
             key="disc"
             className={styles.cursorDisc}
-            initial={{ scale: 0.2, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1, transition: { type: "spring", stiffness: 320, damping: 26, mass: 0.7 } }}
-            exit={{ scale: 0.2, opacity: 0, transition: { duration: 0.28, ease: EASE_CINE } }}
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1, transition: { duration: 0.45, ease: EASE } }}
+            exit={{ scale: 0.5, opacity: 0, transition: { duration: 0.25, ease: EASE } }}
           >
-            <svg className={styles.cursorRing} viewBox="0 0 100 100">
-              <defs>
-                <path id={ringId} d="M50,50 m-37,0 a37,37 0 1,1 74,0 a37,37 0 1,1 -74,0" />
-              </defs>
-              <text>
-                <textPath href={`#${ringId}`} textLength="230" lengthAdjust="spacing">
-                  PLAY FILM · PLAY FILM · PLAY FILM ·
-                </textPath>
-              </text>
-            </svg>
             <svg className={styles.cursorPlay} viewBox="0 0 12 14">
               <path d="M0 0L12 7L0 14Z" />
             </svg>
@@ -471,7 +459,7 @@ function Mark({
                       : {
                           scaleY: { delay: LEAVE.fold, duration: LEAVE.foldS, ease: EASE_SMOOTH },
                           // stays until the heading's rule is drawn over it, then fades
-                          opacity: { delay: LEAVE.fold + LEAVE.foldS + 0.2, duration: 0.3 },
+                          opacity: { delay: LEAVE.fold + LEAVE.foldS - 0.1, duration: 0.3 },
                         },
                   }
                 : { clipPath: "inset(0% 0% 0% 0%)", scaleY: 1, opacity: 1, transition: { delay: T.card, duration: 0.95, ease: EASE_CINE } }
@@ -787,9 +775,9 @@ function Menu({
 }
 
 // ===========================================================================
-// HEADING — takes the card's place. A white line (where the card folded down)
-// draws in to a short rule; the headline rises out above it and the tagline,
-// a white block like the card, wipes in below. Then a quiet hint.
+// HEADING — takes the card's place. As soon as the card has closed, the
+// heading fades in, huge and extended across the wall, and the line under it
+// follows a beat later.
 // ===========================================================================
 function Heading({
   lines,
@@ -799,84 +787,41 @@ function Heading({
   reduce,
 }: {
   lines: string[];
-  tagline: string;
+  tagline: string[];
   show: boolean;
-  /** the first reveal waits for the card to fold and plays in full; later ones (after the menu) are quick */
+  /** the first reveal waits for the card to close; later ones (after the menu) are quick */
   first: boolean;
   reduce: boolean;
 }) {
-  // the rule takes over from the card's line the moment it lands
   const base = reduce ? 0 : first ? LEAVE.fold + LEAVE.foldS : 0;
-  const k = reduce ? 0 : first ? 1 : 0.5; // stagger scale
-  const hidden = { duration: reduce ? 0 : 0.35, ease: EASE_CINE };
-  const touch = typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
+  const out = { opacity: 0, transition: { duration: reduce ? 0 : 0.35, ease: EASE_CINE } };
   return (
     <div className={styles.head} aria-hidden="true">
       <motion.span
         className={styles.headShade}
         initial={{ opacity: 0 }}
-        animate={{ opacity: show ? 1 : 0, transition: { delay: show ? base * 0.3 : 0, duration: show ? 1.6 : 0.4, ease: EASE } }}
+        animate={show ? { opacity: 1, transition: { delay: base * 0.6, duration: 1.6, ease: EASE } } : out}
       />
-      {/* the rule is the only thing in flow, so it sits exactly where the card's middle was */}
-      <div className={styles.headCenter}>
-        <p className={styles.headTitle}>
-          {lines.map((l, i) => (
-            <span key={l} className={styles.headMask}>
-              <motion.span
-                className={styles.headLine}
-                initial={reduce ? false : { y: "112%", opacity: 0 }}
-                animate={
-                  show
-                    ? { y: 0, opacity: 1, transition: { delay: base + k * (0.05 + i * 0.11), duration: 1.3, ease: EASE } }
-                    : { y: "112%", opacity: 0, transition: hidden }
-                }
-              >
-                {l}
-              </motion.span>
-            </span>
-          ))}
-        </p>
-        <motion.span
-          className={styles.headRule}
-          initial={reduce ? false : { scaleX: 1, opacity: 0 }}
-          animate={
-            show
-              ? {
-                  scaleX: 0.07,
-                  opacity: 1,
-                  transition: {
-                    opacity: { delay: Math.max(0, base - 0.1), duration: 0.15 },
-                    scaleX: { delay: base + k * 0.04, duration: 1.15, ease: EASE },
-                  },
-                }
-              : { opacity: 0, transition: hidden }
-          }
-        />
-        <div className={styles.headBelow}>
-          <motion.p
-            className={styles.headTag}
-            initial={reduce ? false : { clipPath: "inset(0% 100% 0% 0%)" }}
-            animate={
-              show
-                ? { clipPath: "inset(0% 0% 0% 0%)", transition: { delay: base + k * 0.42, duration: 0.85, ease: EASE_CINE } }
-                : { clipPath: "inset(0% 0% 0% 100%)", transition: hidden }
-            }
-          >
-            {tagline}
-          </motion.p>
-          <motion.p
-            className={styles.headHint}
-            initial={reduce ? false : { opacity: 0, y: 8 }}
-            animate={
-              show
-                ? { opacity: 1, y: 0, transition: { delay: base + k * 1.05, duration: 1, ease: EASE } }
-                : { opacity: 0, transition: hidden }
-            }
-          >
-            {touch ? HINT.touch : HINT.mouse}
-          </motion.p>
-        </div>
-      </div>
+      <motion.p
+        className={styles.headTitle}
+        initial={reduce ? false : { opacity: 0, y: 10 }}
+        animate={show ? { opacity: 1, y: 0, transition: { delay: base, duration: 1.4, ease: EASE } } : out}
+      >
+        {lines.map((l) => (
+          <span key={l} className={styles.headLine}>
+            {l}
+          </span>
+        ))}
+      </motion.p>
+      <motion.p
+        className={styles.headTag}
+        initial={reduce ? false : { opacity: 0, y: 8 }}
+        animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.35), duration: 1.2, ease: EASE } } : out}
+      >
+        {tagline.map((l) => (
+          <span key={l}>{l}</span>
+        ))}
+      </motion.p>
     </div>
   );
 }
@@ -897,7 +842,7 @@ export default function DepthHero({ variantId }: { variantId?: string }) {
     [isClient, variantId]
   );
 
-  if (!variant) return <section className={`${styles.page} ${interTight.variable}`} aria-hidden="true" />;
+  if (!variant) return <section className={`${styles.page} ${interTight.variable} ${archivo.variable}`} aria-hidden="true" />;
   return <DepthInner key={variant.id} variant={variant} />;
 }
 
@@ -1296,7 +1241,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       : { initial: from, animate: { ...to, transition: { delay, duration, ease: EASE } } };
 
   return (
-    <section className={`${styles.page} ${interTight.variable}`} aria-label={mark} style={menuOpen ? { touchAction: "none" } : undefined}>
+    <section className={`${styles.page} ${interTight.variable} ${archivo.variable}`} aria-label={mark} style={menuOpen ? { touchAction: "none" } : undefined}>
       {/* ================= The depth gallery: rushing behind the letterbox ================= */}
 
       <motion.div
@@ -1352,7 +1297,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
       <div className={styles.copy}>
         <h1 className={styles.sr}>
-          {mark} {MARK_SUB}. {HEADLINE.join(" ")}. {SUBHEAD}.
+          {mark} {MARK_SUB}. {HEADLINE.join(" ")}. {SUBHEAD.join(" ")}.
         </h1>
         <Heading
           lines={HEADLINE}
