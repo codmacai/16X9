@@ -107,8 +107,10 @@ const RATIOS = ["3 / 4", "16 / 10", "4 / 5", "1 / 1", "2 / 3", "16 / 9", "5 / 6"
 
 // The mark
 const COBALT = "#FFFFFF";
-// Inter Tight: bold, tight grotesque (normal width) to match the FEVER COAST reference
-const FONT = "var(--font-sans, 'Inter Tight'), 'Helvetica Neue', Arial, sans-serif";
+// The card (and the menu bars cut from it) keep the original face, Archivo at its
+// normal width, so the card keeps its original proportions: its size is measured
+// from this lettering. (--font-wide is the same Archivo, loaded in this file.)
+const FONT = "var(--font-wide, 'Archivo'), 'Helvetica Neue', Arial, sans-serif";
 const WIDE = { fontFamily: FONT } as const; // no width axis any more
 const PAD_X = 4.5; // block geometry, in % of the block's width (cqw)
 const PAD_TOP = 3.4;
