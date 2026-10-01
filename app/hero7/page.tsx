@@ -1,8 +1,16 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion, type TargetAndTransition } from "framer-motion";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  type TargetAndTransition,
+} from "framer-motion";
 import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-config";
+import ProjectView, { type OpenProject } from "./project-view";
 import styles from "./depthhero.module.css";
 
 
@@ -21,6 +29,8 @@ const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 // 3. The lines settle in under the card.
 // 4. The client strip fades in.
 // After that the wall surges forward every few seconds like a dolly push.
+// Hovering a tile holds the wall still and lifts the tile; clicking it opens
+// the film full screen (see project-view.tsx).
 // ===========================================================================
 const EASE = [0.16, 1, 0.3, 1] as const;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
@@ -34,8 +44,15 @@ const T = {
 };
 
 // Speeds are in screen-heights per second.
-const CRAWL = 0.05;
-const SURGE = { first: T.card + 3.4, every: 5.8, length: 1.7, peak: 1.15 };
+const CRAWL = 0.13;
+const SURGE = { first: T.card + 3.4, every: 5.8, length: 1.7, peak: 1.5 };
+// How fast the wall runs while a tile is hovered (0 = stopped, 1 = full speed),
+// and how quickly it eases between speeds.
+const HOVER_SPEED = 0.06;
+const SPEED_EASE = 5;
+// The wall only holds while the visitor is actively pointing. A resting mouse
+// lets it run again, otherwise it would stall whenever the cursor sits on the page.
+const HOLD_MS = 1800;
 const ARRIVAL = { length: 2.6, peak: 2.4 };
 
 const LANES_DESKTOP = 8;
@@ -78,9 +95,19 @@ const arrivalAt = (t: number) => {
 };
 
 // ===========================================================================
-// TILE — just the film. Loads when it comes on screen, pauses when it leaves.
+// TILE — one film on the wall. Loads when it comes on screen, pauses when it
+// leaves. Hover lifts it (CSS); click opens it full screen from this spot.
 // ===========================================================================
-function Tile({ clip, ratio, reduce }: { clip: Clip; ratio: string; reduce: boolean }) {
+type TileProps = {
+  clip: Clip;
+  index: number;
+  ratio: string;
+  reduce: boolean;
+  onHover: (index: number | null) => void;
+  onOpen: (index: number, el: HTMLElement, time: number) => void;
+};
+
+const Tile = memo(function Tile({ clip, index, ratio, reduce, onHover, onOpen }: TileProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
 
@@ -106,7 +133,13 @@ function Tile({ clip, ratio, reduce }: { clip: Clip; ratio: string; reduce: bool
   }, [clip.src, reduce, failed]);
 
   return (
-    <div className={styles.tile} style={{ aspectRatio: ratio }}>
+    <div
+      className={styles.tile}
+      style={{ aspectRatio: ratio, ["--accent" as string]: clip.accent }}
+      onPointerEnter={(e) => e.pointerType === "mouse" && onHover(index)}
+      onPointerLeave={() => onHover(null)}
+      onClick={(e) => onOpen(index, e.currentTarget, ref.current?.currentTime ?? 0)}
+    >
       {!failed && (
         <video
           ref={ref}
@@ -120,6 +153,57 @@ function Tile({ clip, ratio, reduce }: { clip: Clip; ratio: string; reduce: bool
         />
       )}
     </div>
+  );
+});
+
+// ===========================================================================
+// CURSOR LABEL — a small pill that trails the pointer over a tile
+// ===========================================================================
+function CursorLabel({ clip }: { clip: Clip | null }) {
+  const x = useMotionValue(-200);
+  const y = useMotionValue(-200);
+  const sx = useSpring(x, { stiffness: 520, damping: 42, mass: 0.6 });
+  const sy = useSpring(y, { stiffness: 520, damping: 42, mass: 0.6 });
+
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      x.set(e.clientX);
+      y.set(e.clientY);
+    };
+    window.addEventListener("pointermove", move, { passive: true });
+    return () => window.removeEventListener("pointermove", move);
+  }, [x, y]);
+
+  return (
+    <motion.div className={styles.cursor} style={{ x: sx, y: sy }} aria-hidden="true">
+      <AnimatePresence>
+        {clip && (
+          <motion.div
+            key="label"
+            className={styles.cursorPill}
+            style={{ ["--accent" as string]: clip.accent }}
+            initial={{ opacity: 0, scale: 0.6, y: 6 }}
+            animate={{ opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 420, damping: 30 } }}
+            exit={{ opacity: 0, scale: 0.7, transition: { duration: 0.15 } }}
+          >
+            <span className={styles.cursorPlay} />
+            <span className={styles.cursorText}>
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={clip.title}
+                  initial={{ y: "100%", opacity: 0 }}
+                  animate={{ y: 0, opacity: 1, transition: { duration: 0.35, ease: EASE } }}
+                  exit={{ y: "-100%", opacity: 0, transition: { duration: 0.2 } }}
+                >
+                  {clip.title}
+                </motion.span>
+              </AnimatePresence>
+            </span>
+            <span className={styles.cursorDur}>{clip.duration}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -290,8 +374,32 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
   const [laneCount, setLaneCount] = useState(LANES_DESKTOP);
   const [opened, setOpened] = useState(false);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [project, setProject] = useState<OpenProject | null>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // Read by the camera loop: is a tile under the pointer, is a film open, when did the pointer last move.
+  const hoverRef = useRef(false);
+  const projectRef = useRef(false);
+  const lastMoveRef = useRef(-Infinity);
+  useEffect(() => {
+    hoverRef.current = hovered !== null;
+    projectRef.current = project !== null;
+  }, [hovered, project]);
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") lastMoveRef.current = performance.now();
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
+  }, []);
+
+  const onHover = useCallback((index: number | null) => setHovered(index), []);
+  const onOpen = useCallback((index: number, el: HTMLElement, time: number) => {
+    const r = el.getBoundingClientRect();
+    setHovered(null);
+    setProject({ index, rect: { top: r.top, left: r.left, width: r.width, height: r.height }, time });
+  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 760px)");
@@ -306,7 +414,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       Array.from({ length: laneCount }, (_, l) => ({
         speed: 0.86 + ((l * 5) % 7) * 0.05,
         items: Array.from({ length: TILES_PER_LANE }, (_, t) => ({
-          clip: clips[(l * 3 + t * 7) % clips.length],
+          index: (l * 3 + t * 7) % clips.length,
           ratio: RATIOS[(l * 2 + t) % RATIOS.length],
         })),
       })),
@@ -335,17 +443,23 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     const start = performance.now();
     let last = start;
     let raf = 0;
+    let speed = 1;
     const step = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       const t = (now - start) / 1000;
       const vh = window.innerHeight;
+      // 1 = running, HOVER_SPEED = held under an active pointer, 0 = a film is open.
+      // Ease toward it so the wall glides to a hold and back, never snaps.
+      const holding = hoverRef.current && now - lastMoveRef.current < HOLD_MS;
+      const target = projectRef.current ? 0 : holding ? HOVER_SPEED : 1;
+      speed += (target - speed) * Math.min(1, dt * SPEED_EASE);
       for (let l = 0; l < n; l++) {
         const h = heights[l];
         if (!h) continue;
         const lag = Math.abs(l - (n - 1) / 2) * 0.09; // centre lanes push first
         const surge = variant.swap ? surgeAt(t - lag) * SURGE.peak : 0;
-        const v = (CRAWL + surge + arrivalAt(t - lag) * ARRIVAL.peak) * vh * lanes[l].speed;
+        const v = (CRAWL + surge + arrivalAt(t - lag) * ARRIVAL.peak) * vh * lanes[l].speed * speed;
         pos[l] = (pos[l] + v * dt) % h;
         place(l);
       }
@@ -392,7 +506,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
       <motion.div
         ref={sceneRef}
-        className={styles.scene}
+        className={`${styles.scene} ${hovered !== null ? styles.sceneFocus : ""}`}
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
       >
@@ -407,7 +521,15 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
               >
                 {[0, 1].map((copy) =>
                   lane.items.map((it, t) => (
-                    <Tile key={`${copy}-${t}`} clip={it.clip} ratio={it.ratio} reduce={reduce} />
+                    <Tile
+                      key={`${copy}-${t}`}
+                      clip={clips[it.index]}
+                      index={it.index}
+                      ratio={it.ratio}
+                      reduce={reduce}
+                      onHover={onHover}
+                      onOpen={onOpen}
+                    />
                   ))
                 )}
               </div>
@@ -462,6 +584,12 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           ))}
         </div>
       </motion.div>
+
+      {/* ================= Hover label and the full-screen project ================= */}
+      <CursorLabel clip={hovered !== null && !project ? clips[hovered] : null} />
+      <AnimatePresence>
+        {project && <ProjectView key="project" clips={clips} open={project} onClose={() => setProject(null)} />}
+      </AnimatePresence>
 
       {/* ================= Opening ================= */}
       {!reduce && !opened && <Letterbox onDone={() => setOpened(true)} />}
