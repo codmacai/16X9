@@ -102,7 +102,28 @@
     --ty: 0;
     --gx: 50%;
     --gy: 50%;
+    /* the resting pose (set per tile): raised and tilted, sunk, or flat */
+    --rx: 0deg;
+    --ry: 0deg;
+    --rz: 0deg;
+    --s: 1;
+    transform: perspective(700px) rotateX(var(--rx)) rotateY(var(--ry)) rotate(var(--rz)) scale(var(--s));
     transition: transform 0.55s var(--ease);
+  }
+
+  /* raised: it casts a shadow onto the wall */
+  .tileLift {
+    z-index: 2;
+    box-shadow: 0 22px 40px -12px rgb(0 0 0 / 0.75);
+  }
+
+  .tileLift::after {
+    box-shadow: inset 0 0 0 2px var(--paper);
+  }
+
+  /* sunk: smaller and a little darker, further back */
+  .tileSink::before {
+    opacity: 0.38;
   }
 
   /* a soft glare that follows the pointer across the hovered film */
@@ -135,7 +156,7 @@
     inset: 0;
     z-index: 2;
     border-radius: inherit;
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+    box-shadow: inset 0 0 0 1.25px rgb(247 242 238 / 0.8); /* every film gets a white edge */
     transition: box-shadow 0.55s var(--ease);
     pointer-events: none;
   }

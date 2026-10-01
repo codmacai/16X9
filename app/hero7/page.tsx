@@ -95,6 +95,18 @@ const GAP = { desktop: 14, mobile: 9 }; // must match --gap
 /** Just enough tiles per lane for one copy to cover the plane's height (the loop needs that). */
 const tilesPerLane = (vw: number, vh: number, lanes: number, gap: number) =>
   Math.min(10, Math.max(5, Math.ceil((vh * PLANE.height) / ((vw * PLANE.width) / lanes + gap)) + 1));
+/**
+ * How a tile sits on the wall at rest: some are raised and tilted, some sunk
+ * low, the rest lie flat. Deterministic per slot, so it never reshuffles.
+ */
+type Pose = { kind: "lift" | "sink" | "flat"; rx: number; ry: number; rz: number; s: number };
+function poseFor(l: number, t: number): Pose {
+  const h = (l * 7 + t * 13 + ((l * t) % 5)) % 10;
+  const side = (l + t) % 2 === 0 ? 1 : -1;
+  if (h < 3) return { kind: "lift", rx: 7, ry: side * (7 + h * 2), rz: side * (1.5 + h), s: 1.05 };
+  if (h < 5) return { kind: "sink", rx: 0, ry: 0, rz: 0, s: 0.88 };
+  return { kind: "flat", rx: 0, ry: 0, rz: 0, s: 1 };
+}
 const RATIOS = ["3 / 4", "16 / 10", "4 / 5", "1 / 1", "2 / 3", "16 / 9", "5 / 6"];
 
 // The mark
@@ -161,12 +173,13 @@ type TileProps = {
   clip: Clip;
   index: number;
   ratio: string;
+  pose: Pose;
   playback: WallPlayback;
   onHover: (id: string | null, index: number | null) => void;
   onOpen: (index: number, el: HTMLElement, time: number) => void;
 };
 
-const Tile = memo(function Tile({ id, clip, index, ratio, playback, onHover, onOpen }: TileProps) {
+const Tile = memo(function Tile({ id, clip, index, ratio, pose, playback, onHover, onOpen }: TileProps) {
   const tileRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [live, setLive] = useState(false);
@@ -194,8 +207,16 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onHover, onO
   return (
     <div
       ref={tileRef}
-      className={styles.tile}
-      style={{ aspectRatio: ratio }}
+      className={`${styles.tile} ${pose.kind === "lift" ? styles.tileLift : pose.kind === "sink" ? styles.tileSink : ""}`}
+      style={
+        {
+          aspectRatio: ratio,
+          "--rx": `${pose.rx}deg`,
+          "--ry": `${pose.ry}deg`,
+          "--rz": `${pose.rz}deg`,
+          "--s": pose.s,
+        } as React.CSSProperties
+      }
       onPointerEnter={(e) => e.pointerType === "mouse" && onHover(id, index)}
       // tilt toward the pointer and move the glare with it: CSS variables on this
       // one tile, so nothing re-renders
@@ -1049,6 +1070,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         items: Array.from({ length: grid.perLane }, (_, t) => ({
           index: (l * 3 + t * 7) % clips.length,
           ratio: RATIOS[(l * 2 + t) % RATIOS.length],
+          pose: poseFor(l, t),
         })),
       })),
     [laneCount, grid.perLane, clips]
@@ -1250,6 +1272,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
                       clip={clips[it.index]}
                       index={it.index}
                       ratio={it.ratio}
+                      pose={it.pose}
                       playback={playback}
                       onHover={onHover}
                       onOpen={onOpen}
