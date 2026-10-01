@@ -1,0 +1,701 @@
+/* HERO 9 — fluted glass. Ember glow behind vertical glass ribs, paper type.
+   Recolour the glow with the --ember-* tokens below. */
+
+.root {
+  --paper: #f7f2ee;
+  --ink: #08070a;
+  --ember-core: #ffc04a;
+  --ember-hot: #ff6814;
+  --ember: #df2a10;
+  --ember-deep: #560a10;
+  --glow: radial-gradient(
+    ellipse 64% 82% at 50% 50%,
+    var(--ember-core) 0%,
+    var(--ember-hot) 20%,
+    var(--ember) 44%,
+    var(--ember-deep) 74%,
+    var(--ink) 100%
+  );
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ui: clamp(16px, 2.4vw, 36px);
+  position: relative;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-sans, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ================= the panels ================= */
+
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+}
+
+.strips {
+  position: absolute;
+  inset: 0;
+  perspective-origin: 50% 50%;
+}
+
+.strip {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  overflow: hidden;
+  background-image: var(--glow);
+  background-repeat: no-repeat;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+/* each rib: dark where it turns away, a lit edge where it catches the glow */
+.strip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.16) 26%,
+    rgba(0, 0, 0, 0) 50%,
+    rgba(255, 222, 186, 0.14) 80%,
+    rgba(0, 0, 0, 0.34) 100%
+  );
+  pointer-events: none;
+}
+
+.sheen {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 18%;
+  width: 52%;
+  background: linear-gradient(90deg, transparent, rgba(255, 238, 218, 0.2), transparent);
+  pointer-events: none;
+}
+
+.shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #000;
+  pointer-events: none;
+}
+
+.pulse {
+  position: absolute;
+  left: -10%;
+  top: -10%;
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(ellipse 30% 26% at 50% 50%, rgba(255, 210, 120, 0.42), transparent 70%);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* ================= the name ================= */
+
+.center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(22px, 4.4vh, 48px);
+  pointer-events: none;
+}
+
+.name {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: 800;
+  font-stretch: 62%;
+  font-variation-settings: "wdth" 62;
+  line-height: 0.86;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--paper);
+}
+
+.line {
+  display: flex;
+}
+
+.mask {
+  display: inline-block;
+  overflow: hidden;
+  padding: 0.06em 0 0.04em;
+  margin: -0.06em 0 -0.04em;
+}
+
+.char {
+  display: inline-block;
+}
+
+/* ================= buttons ================= */
+
+.seeWrap {
+  pointer-events: auto;
+}
+
+.magnet {
+  display: inline-block;
+  will-change: transform;
+}
+
+.seeWork {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  height: 58px;
+  padding: 0 8px 0 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  font-stretch: 80%;
+  font-variation-settings: "wdth" 80;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.5s var(--ease), color 0.5s var(--ease);
+}
+
+/* the label rolls to a second copy on hover */
+.seeLabel {
+  position: relative;
+  display: inline-grid;
+  overflow: hidden;
+  height: 1.2em;
+  line-height: 1.2em;
+}
+
+.seeLabel span {
+  grid-area: 1 / 1;
+  transition: transform 0.6s var(--ease);
+}
+
+.seeLabel span + span {
+  transform: translateY(110%);
+}
+
+.seeArrow {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  transition: background-color 0.5s var(--ease), color 0.5s var(--ease), transform 0.6s var(--ease);
+}
+
+.seeArrow svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.seeWork:hover,
+.seeWork:focus-visible {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.seeWork:hover .seeLabel span,
+.seeWork:focus-visible .seeLabel span {
+  transform: translateY(-110%);
+}
+
+.seeWork:hover .seeLabel span + span,
+.seeWork:focus-visible .seeLabel span + span {
+  transform: translateY(0);
+}
+
+.seeWork:hover .seeArrow,
+.seeWork:focus-visible .seeArrow {
+  background: var(--paper);
+  color: var(--ink);
+  transform: rotate(-8deg) scale(1.06);
+}
+
+.seeWork:focus-visible,
+.ghost:focus-visible,
+.viewFilm:focus-visible,
+.hudLogo:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: 4px;
+}
+
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 58px;
+  padding: 0 26px;
+  border: 1.5px solid var(--paper);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--paper);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.5s var(--ease), color 0.5s var(--ease);
+}
+
+.ghost:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* ================= chrome on the panels ================= */
+
+.chrome {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.chrome a {
+  pointer-events: auto;
+}
+
+.topbar {
+  position: absolute;
+  top: var(--ui);
+  left: var(--ui);
+  right: var(--ui);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  height: clamp(28px, 2.8vw, 40px);
+  width: auto;
+}
+
+.nav {
+  display: flex;
+  gap: clamp(18px, 2.6vw, 36px);
+}
+
+.nav a {
+  position: relative;
+  padding: 4px 0;
+  color: var(--paper);
+  text-decoration: none;
+}
+
+.nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--paper);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.5s var(--ease);
+}
+
+.nav a:hover::after,
+.nav a:focus-visible::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.cornerL,
+.cornerR {
+  position: absolute;
+  bottom: var(--ui);
+  margin: 0;
+}
+
+.cornerL {
+  left: var(--ui);
+}
+
+.cornerR {
+  right: var(--ui);
+}
+
+.cornerR span {
+  opacity: 0.7;
+}
+
+/* ================= the work ================= */
+
+.work {
+  position: relative;
+  background: var(--ink);
+}
+
+.frame {
+  position: relative;
+  height: 200vh;
+  height: 200svh;
+}
+
+.frameSticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.frameIntro {
+  position: absolute;
+  inset: 0;
+}
+
+.window {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #111;
+  cursor: none;
+  outline: none;
+  will-change: clip-path;
+}
+
+.window:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: -6px;
+}
+
+.media {
+  position: absolute;
+  inset: -14% 0;
+  will-change: transform;
+}
+
+/* phones: the picture is sized to the window, not the whole tall screen */
+.mediaTall {
+  inset: 21% 0;
+}
+
+.video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #111;
+}
+
+.dim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+}
+
+.frameTitleMask {
+  position: absolute;
+  left: var(--ui);
+  right: var(--ui);
+  bottom: calc(var(--ui) * 0.6);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.frameTitle {
+  margin: 0;
+  font-size: clamp(64px, 13vw, 230px);
+  font-weight: 800;
+  font-stretch: 62%;
+  font-variation-settings: "wdth" 62;
+  line-height: 0.86;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  color: var(--paper);
+  text-shadow: 0 0 60px rgba(0, 0, 0, 0.25);
+  will-change: transform;
+}
+
+.frameMeta {
+  position: absolute;
+  top: calc(var(--ui) * 3.2);
+  left: var(--ui);
+  right: var(--ui);
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.frameCta {
+  position: absolute;
+  right: var(--ui);
+  bottom: calc(var(--ui) + clamp(64px, 13vw, 230px) * 0.86 + 14px);
+}
+
+.viewFilm {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.45s var(--ease), color 0.45s var(--ease);
+}
+
+.viewFilm span {
+  transition: transform 0.45s var(--ease);
+}
+
+.viewFilm:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.viewFilm:hover span {
+  transform: rotate(45deg);
+}
+
+/* ================= HUD ================= */
+
+.hud {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.hudLogo {
+  position: absolute;
+  top: var(--ui);
+  left: var(--ui);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.hudLogo img {
+  display: block;
+  height: clamp(28px, 2.8vw, 40px);
+  width: auto;
+}
+
+.hudCount {
+  position: absolute;
+  top: var(--ui);
+  right: var(--ui);
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hudNum {
+  display: inline-flex;
+  overflow: hidden;
+  font-size: 22px;
+  font-stretch: 62%;
+  font-variation-settings: "wdth" 62;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.hudNum span {
+  display: inline-block;
+}
+
+.hudTotal {
+  opacity: 0.7;
+}
+
+.hudBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: var(--paper);
+  transform-origin: left;
+}
+
+/* ================= outro ================= */
+
+.outro {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(28px, 5vh, 56px);
+  padding: 12vh var(--ui);
+  text-align: center;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.5) 0,
+      rgba(0, 0, 0, 0.14) 12px,
+      rgba(0, 0, 0, 0) 23px,
+      rgba(255, 222, 186, 0.13) 37px,
+      rgba(0, 0, 0, 0.32) 46px
+    ),
+    var(--glow);
+}
+
+.outroTitle {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: clamp(72px, 15vw, 260px);
+  font-weight: 800;
+  font-stretch: 62%;
+  font-variation-settings: "wdth" 62;
+  line-height: 0.86;
+  text-transform: uppercase;
+}
+
+.outroActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+
+/* ================= cursor ================= */
+
+.cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 25;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.cursorTag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  word-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cursorTag svg {
+  width: 11px;
+  height: 11px;
+  fill: currentColor;
+}
+
+/* ================= touch & small screens ================= */
+
+@media (hover: none) {
+  .window {
+    cursor: pointer;
+  }
+  .cursor {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .cornerL {
+    display: none;
+  }
+  .cornerR {
+    left: var(--ui);
+    text-align: center;
+  }
+  .seeWork {
+    height: 54px;
+    padding-left: 24px;
+  }
+  .seeArrow {
+    width: 38px;
+    height: 38px;
+  }
+  /* phones: number and runtime sit just above the window, the button just below it */
+  .frameMeta {
+    top: 19%;
+  }
+  .frameCta {
+    top: calc(75% + 14px);
+    bottom: auto;
+  }
+  .viewFilm {
+    height: 40px;
+    padding: 0 16px;
+  }
+  .frameTitle {
+    font-size: 17vw;
+    white-space: normal;
+    overflow: visible;
+  }
+  .ghost {
+    height: 54px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seeLabel span,
+  .seeArrow,
+  .nav a::after,
+  .viewFilm,
+  .ghost {
+    transition: none;
+  }
+}
