@@ -1,0 +1,584 @@
+/* HERO 8 — "16x9 & beyond", after the chevron poster reference.
+   Black and paper white only. The stripes, dot grids and band all use one
+   token, --accent: change it here to recolour the whole poster. */
+
+.root {
+  --paper: #f7f2ee;
+  --accent: var(--paper);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-cine: cubic-bezier(0.76, 0, 0.24, 1);
+  --ui: clamp(16px, 2.4vw, 40px);
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  background: #000;
+  color: var(--paper);
+  font-family: var(--font-sans, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: clip;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+/* ================= the stage ================= */
+
+.stage {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.grid {
+  position: absolute;
+  background-image: radial-gradient(circle, var(--accent) 1.1px, transparent 1.6px);
+  background-position: 0 0;
+  opacity: 0.55;
+}
+
+.stripes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.stripe {
+  fill: var(--accent);
+}
+
+/* ================= the headline ================= */
+
+.word {
+  position: absolute;
+  margin: 0;
+  display: flex;
+  white-space: nowrap;
+  font-weight: 800;
+  font-stretch: 112%;
+  font-variation-settings: "wdth" 112;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  text-transform: lowercase;
+  color: var(--paper);
+  will-change: transform;
+}
+
+.charMask {
+  display: inline-block;
+  overflow: hidden;
+  padding-bottom: 0.18em;
+  margin-bottom: -0.18em;
+}
+
+.char {
+  display: inline-block;
+  will-change: transform;
+}
+
+/* ================= the film window ================= */
+
+.film {
+  position: absolute;
+  overflow: hidden;
+  background: #111;
+  cursor: none;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  outline: none;
+  z-index: 2;
+}
+
+.film:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: 4px;
+}
+
+.reel {
+  position: absolute;
+  inset: 0;
+}
+
+.reelVideo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #111;
+}
+
+/* the white band that rides the edge of a wipe */
+.band {
+  position: absolute;
+  top: -10%;
+  height: 120%;
+  width: 7%;
+  background: var(--accent);
+  transform: skewX(-17deg) translateX(-100%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.filmUi {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr auto;
+  padding: 1.5em 1.7em 1.3em;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 30%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.55), transparent 34%);
+}
+
+.caption {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+  max-width: 15em;
+  font-weight: 500;
+  font-size: 1em;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+
+.filmLogo {
+  grid-column: 2;
+  grid-row: 1;
+  height: 3.2em;
+  width: auto;
+}
+
+.filmFoot {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1em;
+  overflow: hidden;
+}
+
+.filmTitle {
+  margin: 0;
+  font-weight: 800;
+  font-stretch: 112%;
+  font-variation-settings: "wdth" 112;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.filmIndex {
+  font-size: 1em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ================= interface ================= */
+
+.ui {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  mix-blend-mode: difference; /* paper over black, black over the stripes */
+  pointer-events: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ui a,
+.ui button {
+  pointer-events: auto;
+}
+
+.topbar {
+  position: absolute;
+  top: var(--ui);
+  right: var(--ui);
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 3vw, 44px);
+}
+
+.logo {
+  height: clamp(30px, 3.2vw, 46px);
+  width: auto;
+  display: none; /* the headline is the brand on this hero; shown on phones below */
+}
+
+.nav {
+  display: flex;
+  gap: clamp(18px, 2.6vw, 36px);
+}
+
+.nav a {
+  position: relative;
+  color: var(--paper);
+  text-decoration: none;
+  padding: 4px 0;
+}
+
+.nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--paper);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.5s var(--ease);
+}
+
+.nav a:hover::after,
+.nav a:focus-visible::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.rail {
+  position: absolute;
+  left: var(--ui);
+  top: 50%;
+  margin: 0;
+  writing-mode: vertical-rl;
+  transform: translateY(-50%) rotate(180deg);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+/* centred with insets, not transforms: framer owns this element's transform */
+.pager {
+  position: absolute;
+  right: var(--ui);
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.pagerDot {
+  width: 11px;
+  height: 11px;
+  padding: 0;
+  border: 1.5px solid var(--paper);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.35s var(--ease), transform 0.35s var(--ease);
+}
+
+.pagerDot:hover {
+  transform: scale(1.35);
+}
+
+.pagerOn {
+  background: var(--paper);
+}
+
+.pagerCount {
+  margin-top: 8px;
+  writing-mode: vertical-rl;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.ctaLeft,
+.ctaRight {
+  position: absolute;
+  bottom: var(--ui);
+}
+
+.ctaLeft {
+  left: var(--ui);
+}
+
+.ctaRight {
+  right: var(--ui);
+}
+
+.magnet {
+  display: inline-block;
+  will-change: transform;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 22px 0 18px;
+  border-radius: 999px;
+  background: rgba(247, 242, 238, 0.14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--paper);
+  text-decoration: none;
+  transition: background-color 0.45s var(--ease), color 0.45s var(--ease);
+}
+
+.pill span {
+  font-size: 15px;
+  transition: transform 0.45s var(--ease);
+}
+
+.pill:hover,
+.pill:focus-visible {
+  background: var(--paper);
+  color: #000;
+}
+
+.pill:hover span {
+  transform: rotate(45deg);
+}
+
+.round {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  border: 1.5px solid var(--paper);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--paper);
+  cursor: pointer;
+  transition: background-color 0.45s var(--ease), color 0.45s var(--ease);
+}
+
+.round svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  transform: translateX(1px);
+}
+
+.round:hover,
+.round:focus-visible {
+  background: var(--paper);
+  color: #000;
+}
+
+/* ================= marks ================= */
+
+.mark {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.mPlusL {
+  left: calc(var(--ui) + 2px);
+  top: 22%;
+}
+
+.mChevL {
+  left: calc(var(--ui) + 2px);
+  bottom: 22%;
+  font-size: 26px;
+}
+
+.mPlusR {
+  right: calc(var(--ui) * 3);
+  top: 20%;
+}
+
+.mDots {
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin: 0 auto;
+  bottom: calc(var(--ui) + 14px);
+}
+
+.mDots i {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--paper);
+  border-radius: 50%;
+}
+
+.mDots i + i {
+  background: var(--paper);
+}
+
+.mChevR {
+  right: calc(var(--ui) * 3);
+  bottom: 20%;
+  font-size: 20px;
+  letter-spacing: -0.05em;
+}
+
+/* ================= takeover panel ================= */
+
+.panel {
+  position: absolute;
+  left: var(--ui);
+  bottom: var(--ui);
+  z-index: 6;
+  max-width: min(460px, calc(100% - var(--ui) * 2));
+  padding: 26px 28px 28px;
+  background: var(--paper);
+  color: #000;
+}
+
+.panelBody {
+  margin: 0 0 22px;
+  font-size: clamp(17px, 1.5vw, 22px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.panelCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: #000;
+  color: var(--paper);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: gap 0.45s var(--ease);
+}
+
+.panelCta:hover {
+  gap: 16px;
+}
+
+/* ================= play cursor ================= */
+
+.cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 20;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.cursorTag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--paper);
+  color: #000;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  word-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cursorTag svg {
+  width: 11px;
+  height: 11px;
+  fill: currentColor;
+}
+
+/* ================= touch & small screens ================= */
+
+@media (hover: none) {
+  .film {
+    cursor: pointer;
+  }
+  .cursor {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    left: var(--ui);
+    justify-content: space-between;
+  }
+  .logo {
+    display: block;
+    height: 30px;
+  }
+  .filmLogo,
+  .caption {
+    display: none;
+  }
+  .rail,
+  .mPlusL,
+  .mChevL,
+  .mChevR,
+  .mPlusR,
+  .mDots,
+  .pagerCount {
+    display: none;
+  }
+  .pager {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--ui) + 64px);
+    flex-direction: row;
+    gap: 7px;
+  }
+  .pagerDot {
+    width: 8px;
+    height: 8px;
+    border-width: 1.25px;
+  }
+  .pill {
+    height: 44px;
+    padding: 0 18px 0 15px;
+  }
+  .round {
+    width: 50px;
+    height: 50px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav a::after,
+  .pill,
+  .round,
+  .pagerDot {
+    transition: none;
+  }
+}
