@@ -112,24 +112,14 @@
   inset: 0;
 }
 
-.reelVideo {
+.poster {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  background: #111;
-}
-
-/* the white band that rides the edge of a wipe */
-.band {
-  position: absolute;
-  top: -10%;
-  height: 120%;
-  width: 7%;
-  background: var(--accent);
-  transform: skewX(-17deg) translateX(-100%);
-  z-index: 3;
-  pointer-events: none;
+  filter: grayscale(1) contrast(1.08);
 }
 
 .filmUi {
@@ -440,46 +430,6 @@
   bottom: 20%;
   font-size: 20px;
   letter-spacing: -0.05em;
-}
-
-/* ================= takeover panel ================= */
-
-.panel {
-  position: absolute;
-  left: var(--ui);
-  bottom: var(--ui);
-  z-index: 6;
-  max-width: min(460px, calc(100% - var(--ui) * 2));
-  padding: 26px 28px 28px;
-  background: var(--paper);
-  color: #000;
-}
-
-.panelBody {
-  margin: 0 0 22px;
-  font-size: clamp(17px, 1.5vw, 22px);
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-}
-
-.panelCta {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 18px;
-  background: #000;
-  color: var(--paper);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-decoration: none;
-  transition: gap 0.45s var(--ease);
-}
-
-.panelCta:hover {
-  gap: 16px;
 }
 
 /* ================= play cursor ================= */

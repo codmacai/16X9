@@ -12,11 +12,9 @@ import {
 } from "react";
 import {
   AnimatePresence,
-  cubicBezier,
   motion,
   useMotionValue,
   useReducedMotion,
-  useScroll,
   useSpring,
   useTransform,
   type MotionValue,
@@ -30,18 +28,16 @@ import styles from "./hero8.module.css";
 // ===========================================================================
 // HERO 8 — "16x9 & beyond", after the chevron poster reference.
 //
-// A white "‹" bracket and "›" arrow wrap a showreel window, slashes cut in from
-// the corners, and the headline sits above and below the film. Everything
-// enters in sequence, leans with the pointer, the arrow nudges forward now and
-// then, the reel cycles with a diagonal wipe, and scrolling pulls the stripes
-// away and grows the film to full screen (Hero-config `takeover`).
+// A white "‹" bracket and "›" arrow wrap a poster window, slashes cut in from
+// the corners, and the headline sits above and below it. Everything enters in
+// sequence, leans with the pointer, the arrow nudges forward now and then, and
+// the black-and-white posters cut from one to the next every few seconds.
 //
 // The stripe colour is one token: --accent in hero8.module.css.
 // ===========================================================================
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
-const scrollEase = cubicBezier(0.65, 0, 0.35, 1);
 
 const NAV = [
   { label: "Work", href: "#work" },
@@ -50,7 +46,7 @@ const NAV = [
 ] as const;
 const RAIL = "16X9 · Bringing brands to life";
 const LOGO_SRC = "/logo.png";
-const CYCLE_MS = 6000; // how long each film holds before the next wipes in
+const CYCLE_MS = 2500; // how long each poster holds before cutting to the next
 
 // Entrance, in seconds
 const T = { grids: 0.1, stripes: 0.25, film: 0.75, top: 1.0, bottom: 1.25, film_ui: 1.6, ui: 1.5, nudge: 3.2 };
@@ -58,7 +54,6 @@ const T = { grids: 0.1, stripes: 0.25, film: 0.75, top: 1.0, bottom: 1.25, film_
 // Pointer depth, in stage units per unit of pointer travel (-1 … 1)
 const DEPTH = { grids: 10, stripes: 22, film: 9, words: 16 };
 
-type Geo = { vw: number; vh: number; film: { left: number; top: number; width: number; height: number } };
 
 // ---------------------------------------------------------------------------
 // client-only values without effects (no hydration mismatch, no setState-in-effect)
@@ -99,13 +94,9 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
   const stage = fitStage(vw, vh);
   const L = stage.layout;
   const s = stage.scale;
-  const takeover = variant.takeover.enabled && !reduce;
 
-  const sectionRef = useRef<HTMLElement>(null);
   const filmRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [current, setCurrent] = useState(0);
-  const [swaps, setSwaps] = useState(0);
   const [hoverFilm, setHoverFilm] = useState(false);
   const [project, setProject] = useState<OpenProject | null>(null);
 
@@ -114,7 +105,6 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
       const next = ((i % clips.length) + clips.length) % clips.length;
       if (next === current) return;
       setCurrent(next);
-      setSwaps((n) => n + 1);
     },
     [clips.length, current]
   );
@@ -127,14 +117,6 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
     }, CYCLE_MS);
     return () => window.clearTimeout(t);
   }, [current, reduce, project, hoverFilm, go]);
-
-  // ---- the hero film rests while the full player is open ----
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    if (project) v.pause();
-    else v.play().catch(() => {});
-  }, [project]);
 
   // ---- pointer: one pair of springs feeds every layer's depth ----
   const px = useMotionValue(0);
@@ -152,50 +134,19 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
     return () => window.removeEventListener("pointermove", onMove);
   }, [px, py, reduce]);
 
-  // ---- scroll: 0 = the poster, 1 = the film full screen ----
-  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end end"] });
-  const e = useTransform(scrollYProgress, [0, 0.55], [0, 1], { clamp: true, ease: scrollEase });
-  const fade = useTransform(e, [0, 0.6], [1, 0]);
-  const panelOpacity = useTransform(scrollYProgress, [0.62, 0.8], [0, 1]);
-  const panelY = useTransform(scrollYProgress, [0.62, 0.8], [40, 0]);
-
-  // film geometry (viewport px), kept in a motion value so the scroll maths follows resizes
+  // film geometry (viewport px)
   const film = {
     left: stage.left + L.film.x * s,
     top: stage.top + L.film.y * s,
     width: L.film.w * s,
     height: L.film.h * s,
   };
-  const geo = useMotionValue<Geo>({ vw, vh, film });
-  useEffect(() => {
-    geo.set({ vw, vh, film: { left: film.left, top: film.top, width: film.width, height: film.height } });
-  }, [geo, vw, vh, film.left, film.top, film.width, film.height]);
+  const filmX = useTransform(spx, (v) => v * DEPTH.film * s);
+  const filmY = useTransform(spy, (v) => v * DEPTH.film * s);
 
-  const filmX = useTransform([e, geo, spx] as MotionValue[], ([t, g, p]: unknown[]) => {
-    const k = t as number;
-    const G = g as Geo;
-    return k * (G.vw / 2 - (G.film.left + G.film.width / 2)) + (p as number) * DEPTH.film * s * (1 - k);
-  });
-  const filmY = useTransform([e, geo, spy] as MotionValue[], ([t, g, p]: unknown[]) => {
-    const k = t as number;
-    const G = g as Geo;
-    return k * (G.vh / 2 - (G.film.top + G.film.height / 2)) + (p as number) * DEPTH.film * s * (1 - k);
-  });
-  const filmScale = useTransform([e, geo] as MotionValue[], ([t, g]: unknown[]) => {
-    const G = g as Geo;
-    const full = Math.max(G.vw / G.film.width, G.vh / G.film.height);
-    return 1 + (t as number) * (full - 1);
-  });
-  const grey = useTransform(e, (t) => `grayscale(${1 - t}) contrast(${1.08 - t * 0.08})`);
-
-  // stripes: pushed out to their side on scroll, and lean with the pointer
-  const pushL = useTransform([e, spx] as MotionValue[], ([t, x]: unknown[]) => -(t as number) * L.W * 0.75 + (x as number) * DEPTH.stripes);
-  const pushR = useTransform([e, spx] as MotionValue[], ([t, x]: unknown[]) => (t as number) * L.W * 0.75 + (x as number) * DEPTH.stripes);
+  // stripes lean with the pointer
+  const stripeX = useTransform(spx, (x) => x * DEPTH.stripes);
   const stripeY = useTransform(spy, (y) => y * DEPTH.stripes * 0.6);
-
-  // the headline parts on scroll: the top word rises away, the bottom one sinks
-  const topDrift = useTransform(e, (t) => -t * vh * 0.4);
-  const bottomDrift = useTransform(e, (t) => t * vh * 0.4);
 
   const openFilm = () => {
     const el = filmRef.current;
@@ -205,7 +156,7 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
     setProject({
       index: current,
       rect: { top: r.top, left: r.left, width: r.width, height: r.height },
-      time: videoRef.current?.currentTime ?? 0,
+      time: 0,
     });
   };
   const closeProject = useCallback(() => setProject(null), []);
@@ -215,9 +166,7 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
 
   return (
     <section
-      ref={sectionRef}
       className={styles.root}
-      style={{ height: takeover ? `${variant.takeover.scrollLength}svh` : "100svh" }}
       aria-label="16x9 & beyond"
     >
       <div className={styles.sticky}>
@@ -225,7 +174,7 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
         <div className={styles.stage} style={{ left: stage.left, top: stage.top, width: stage.w, height: stage.h }}>
           {/* dot grids, furthest back */}
           {L.grids.map((g, i) => (
-            <Parallax key={i} x={spx} y={spy} depth={DEPTH.grids * s} fade={fade}>
+            <Parallax key={i} x={spx} y={spy} depth={DEPTH.grids * s}>
               <motion.div
                 className={styles.grid}
                 style={{ left: pct(g.x, L.W), top: pct(g.y, L.H), width: pct(g.w, L.W), height: pct(g.h, L.H), backgroundSize: `${14 * s}px ${14 * s}px` }}
@@ -237,12 +186,12 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
 
           {/* the stripes */}
           <svg className={styles.stripes} viewBox={`0 0 ${L.W} ${L.H}`} aria-hidden="true">
-            <motion.g style={{ x: pushL, y: stripeY }}>
+            <motion.g style={{ x: stripeX, y: stripeY }}>
               {L.stripes.filter((st) => st.side === -1).map((st, i) => (
                 <StripeShape key={`l${i}`} stripe={st} order={i * 2} reduce={reduce} hug={hoverFilm} />
               ))}
             </motion.g>
-            <motion.g style={{ x: pushR, y: stripeY }}>
+            <motion.g style={{ x: stripeX, y: stripeY }}>
               {L.stripes.filter((st) => st.side === 1).map((st, i) => (
                 <StripeShape key={`r${i}`} stripe={st} order={i * 2 + 1} reduce={reduce} hug={hoverFilm} />
               ))}
@@ -250,15 +199,15 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
           </svg>
 
           {/* the headline: above and below the film */}
-          <Headline word={L.top} layout={L} s={s} delay={T.top} reduce={reduce} x={spx} y={spy} drift={topDrift} fade={fade} />
-          <Headline word={L.bottom} layout={L} s={s} delay={T.bottom} reduce={reduce} x={spx} y={spy} drift={bottomDrift} fade={fade} />
+          <Headline word={L.top} layout={L} s={s} delay={T.top} reduce={reduce} x={spx} y={spy} />
+          <Headline word={L.bottom} layout={L} s={s} delay={T.bottom} reduce={reduce} x={spx} y={spy} />
         </div>
 
         {/* ================= THE FILM WINDOW (viewport-positioned so it can grow to full screen) ================= */}
         <motion.div
           ref={filmRef}
           className={styles.film}
-          style={{ left: film.left, top: film.top, width: film.width, height: film.height, x: filmX, y: filmY, scale: filmScale }}
+          style={{ left: film.left, top: film.top, width: film.width, height: film.height, x: filmX, y: filmY }}
           initial={reduce ? false : { clipPath: "inset(50% 0% 50% 0%)" }}
           animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: { delay: T.film, duration: 1.1, ease: EASE_CINE } }}
           onPointerEnter={(ev) => ev.pointerType === "mouse" && setHoverFilm(true)}
@@ -266,47 +215,27 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
           onClick={openFilm}
           role="button"
           tabIndex={0}
-          aria-label={`Play ${clip.title}`}
+          aria-label={`Open ${clip.title}`}
           onKeyDown={(ev) => (ev.key === "Enter" || ev.key === " ") && (ev.preventDefault(), openFilm())}
         >
-          <AnimatePresence initial={false}>
-            <motion.div
-              key={clip.src}
-              className={styles.reel}
-              initial={{ clipPath: "polygon(0% 0%, 0% 0%, -30% 100%, -30% 100%)", zIndex: 2 }}
-              animate={{ clipPath: "polygon(0% 0%, 130% 0%, 100% 100%, -30% 100%)", zIndex: 2, transition: { duration: 1, ease: EASE_CINE } }}
-              exit={{ zIndex: 1, transition: { duration: 1 } }}
-            >
-              <motion.video
-                ref={(el) => {
-                  if (el) videoRef.current = el;
-                }}
-                className={styles.reelVideo}
-                style={{ filter: grey }}
-                src={clip.src}
-                poster={posterFor(clip.src)}
-                autoPlay={!reduce}
-                muted
-                loop
-                playsInline
-                preload="auto"
+          {/* black-and-white posters, stacked; the current one shows — a straight cut, no transition */}
+          <div className={styles.reel}>
+            {clips.map((c, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={c.src}
+                src={posterFor(c.src)}
+                alt=""
+                className={styles.poster}
+                style={{ opacity: i === current ? 1 : 0 }}
+                decoding="async"
+                fetchPriority={i === 0 ? "high" : "low"}
               />
-            </motion.div>
-          </AnimatePresence>
-
-          {/* a white band rides the edge of each wipe */}
-          {swaps > 0 && !reduce && (
-            <motion.span
-              key={`band-${swaps}`}
-              className={styles.band}
-              initial={{ left: "-30%" }}
-              animate={{ left: "130%", transition: { duration: 1, ease: EASE_CINE } }}
-              aria-hidden="true"
-            />
-          )}
+            ))}
+          </div>
 
           {/* inside the film: the line top left, the logo top right, the film's name along the bottom */}
-          <motion.div className={styles.filmUi} style={{ fontSize: Math.max(10, 12 * s), opacity: fade }}>
+          <div className={styles.filmUi} style={{ fontSize: Math.max(10, 12 * s) }}>
             <motion.p
               className={styles.caption}
               initial={reduce ? false : { opacity: 0, x: -16 }}
@@ -322,25 +251,21 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
               animate={{ opacity: 1, scale: 1, transition: { delay: T.film_ui + 0.1, duration: 0.9, ease: EASE } }}
             />
             <div className={styles.filmFoot}>
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.p
-                  key={clip.title}
-                  className={styles.filmTitle}
-                  style={{ fontSize: Math.max(17, 30 * s) }}
-                  initial={reduce ? { opacity: 0 } : { y: "70%", opacity: 0 }}
-                  animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: EASE, delay: swaps === 0 && !reduce ? T.film_ui + 0.15 : 0.35 } }}
-                  exit={{ y: "-70%", opacity: 0, transition: { duration: 0.35, ease: EASE_CINE } }}
-                >
-                  {clip.title}
-                </motion.p>
-              </AnimatePresence>
+              <motion.p
+                className={styles.filmTitle}
+                style={{ fontSize: Math.max(17, 30 * s) }}
+                initial={reduce ? false : { y: "70%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: EASE, delay: T.film_ui + 0.15 } }}
+              >
+                {clip.title}
+              </motion.p>
               <span className={styles.filmIndex}>{String(current + 1).padStart(2, "0")}</span>
             </div>
-          </motion.div>
+          </div>
         </motion.div>
 
         {/* ================= UI: top bar, rails, marks, buttons ================= */}
-        <motion.div className={styles.ui} style={{ opacity: fade }}>
+        <motion.div className={styles.ui}>
           <motion.header
             className={styles.topbar}
             initial={reduce ? false : { opacity: 0, y: -14 }}
@@ -415,20 +340,6 @@ function Hero({ vw, vh }: { vw: number; vh: number }) {
           </motion.div>
         </motion.div>
 
-        {/* ================= TAKEOVER PANEL (arrives once the film is full screen) ================= */}
-        {takeover && (
-          <motion.aside
-            className={styles.panel}
-            style={{ opacity: panelOpacity, y: panelY, pointerEvents: "auto" }}
-            aria-label="About the work"
-          >
-            <p className={styles.panelBody}>{variant.takeover.body}</p>
-            <a className={styles.panelCta} href={variant.takeover.ctaHref}>
-              {variant.takeover.ctaLabel} <span aria-hidden="true">↗</span>
-            </a>
-          </motion.aside>
-        )}
-
         <PlayCursor show={hoverFilm && !project} />
       </div>
 
@@ -493,8 +404,6 @@ function Headline({
   reduce,
   x,
   y,
-  drift,
-  fade,
 }: {
   word: Word;
   layout: Layout;
@@ -503,12 +412,10 @@ function Headline({
   reduce: boolean;
   x: MotionValue<number>;
   y: MotionValue<number>;
-  drift: MotionValue<number>;
-  fade: MotionValue<number>;
 }) {
   const size = word.size * s;
   const tx = useTransform(x, (v) => v * DEPTH.words * s);
-  const ty = useTransform([y, drift] as MotionValue[], ([v, d]: unknown[]) => (v as number) * DEPTH.words * s + (d as number));
+  const ty = useTransform(y, (v) => v * DEPTH.words * s);
   const BASELINE = 0.84; // where the baseline sits inside a line-height:1 box, as a fraction of the font size
   return (
     <motion.h2
@@ -519,7 +426,6 @@ function Headline({
         ...(word.align === "left" ? { left: word.x * s } : { right: (layout.W - word.x) * s }),
         x: tx,
         y: ty,
-        opacity: fade,
       }}
       aria-label={word.text}
     >
@@ -578,19 +484,17 @@ function Parallax({
   x,
   y,
   depth,
-  fade,
   children,
 }: {
   x: MotionValue<number>;
   y: MotionValue<number>;
   depth: number;
-  fade: MotionValue<number>;
   children: ReactNode;
 }) {
   const tx = useTransform(x, (v) => v * depth);
   const ty = useTransform(y, (v) => v * depth);
   return (
-    <motion.div className={styles.layer} style={{ x: tx, y: ty, opacity: fade }}>
+    <motion.div className={styles.layer} style={{ x: tx, y: ty }}>
       {children}
     </motion.div>
   );
