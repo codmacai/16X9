@@ -58,17 +58,27 @@ const fragment = /* glsl */ `
   uniform sampler2D uMap;
   uniform float uFade;
   uniform float uEdge;
+  uniform float uFocus; // 1 = the panel you're pointing at, 0 = the rest while one is
+  uniform float uDim;   // how far the rest dim while a panel has focus
   varying vec2 vUv;
   varying float vFacing;
   varying float vY;
   void main() {
     // seen from inside (round the back) the image is mirrored, as in the reference
     vec3 c = texture2D(uMap, vUv).rgb;
+
+    // the grade: a touch more contrast and colour, cool shadows, warm highlights
+    c = clamp((c - 0.5) * 1.1 + 0.5, 0.0, 1.0);
+    float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    c = mix(vec3(l), c, 1.22);
+    c *= mix(vec3(0.9, 0.98, 1.08), vec3(1.07, 1.0, 0.9), smoothstep(0.05, 0.7, l));
+
     float f = vFacing;
     float light = f > 0.0 ? mix(0.7, 1.0, smoothstep(0.0, 0.9, f)) : mix(0.5, 0.72, smoothstep(0.0, 0.9, -f));
+    light *= mix(1.0 - uDim, 1.12, uFocus);
     // the ends of the ribbon dissolve into the black, top and bottom
     float ends = 1.0 - smoothstep(uEdge - 0.55, uEdge, abs(vY));
-    gl_FragColor = vec4(c * light * ends * uFade, 1.0);
+    gl_FragColor = vec4(max(c, 0.0) * light * ends * uFade, 1.0);
     #include <colorspace_fragment>
   }
 `;
@@ -90,6 +100,8 @@ export function makePanel(clip: number, map: THREE.Texture, edge: number): Panel
       uMap: { value: map },
       uFade: { value: 0 },
       uEdge: { value: edge },
+      uFocus: { value: 0 },
+      uDim: { value: 0 },
     },
   });
   const mesh = new THREE.Mesh(geometry, material);
@@ -104,3 +116,10 @@ export function panelStart(i: number, travel: number) {
 }
 
 export const centreAngle = (start: number) => start + SPIRAL.arc / 2;
+
+/** A point on a panel (u along the arc, v up the panel, 0–1), in the spiral's own space. */
+export function panelPoint(start: number, u: number, v: number, out: THREE.Vector3) {
+  const a = start + u * SPIRAL.arc;
+  const mid = start + SPIRAL.arc / 2;
+  return out.set(Math.sin(a) * SPIRAL.radius, (v - 0.5) * SPIRAL.height - mid * SPIRAL.pitch, Math.cos(a) * SPIRAL.radius);
+}
