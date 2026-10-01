@@ -21,7 +21,7 @@ import {
   useSpring,
   type TargetAndTransition,
 } from "framer-motion";
-import { Archivo, Instrument_Serif, Inter_Tight } from "next/font/google";
+import { Archivo, Inter_Tight } from "next/font/google";
 import Link from "next/link";
 import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-config";
 import ProjectView, { type OpenProject } from "./project-view";
@@ -39,10 +39,8 @@ const SUBHEAD = ["Turn target audience into", "visitors"]; // two lines, as set
 // Inter Tight: a Swiss, International-Style grotesk. Loaded for hero 7 only (it
 // overrides --font-sans inside this section), so the other heroes keep Archivo.
 const interTight = Inter_Tight({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-// The heading and menu: Archivo at its widest and light, an extended grotesk,
-// with one word set in Instrument Serif italic for contrast.
+// The heading and menu: Archivo at its widest and light, an extended grotesk.
 const archivo = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wide", display: "swap" });
-const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-serif", display: "swap" });
 const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 
 // ===========================================================================
@@ -590,17 +588,11 @@ function Heading({
         initial={reduce ? false : { opacity: 0, y: 12 }}
         animate={show ? { opacity: 1, y: 0, transition: { delay: base, duration: 1.3, ease: EASE } } : out}
       >
-        {lines.map((l, i) => {
-          if (i < lines.length - 1) return <span key={l} className={styles.headLine}>{l}</span>;
-          // the last word turns serif and italic
-          const cut = l.lastIndexOf(" ");
-          return (
-            <span key={l} className={styles.headLine}>
-              {l.slice(0, cut + 1)}
-              <em className={styles.headSerif}>{l.slice(cut + 1)}</em>
-            </span>
-          );
-        })}
+        {lines.map((l) => (
+          <span key={l} className={styles.headLine}>
+            {l}
+          </span>
+        ))}
       </motion.p>
       <motion.p
         className={styles.headTag}
@@ -631,7 +623,7 @@ export default function DepthHero({ variantId }: { variantId?: string }) {
     [isClient, variantId]
   );
 
-  if (!variant) return <section className={`${styles.page} ${interTight.variable} ${archivo.variable} ${serif.variable}`} aria-hidden="true" />;
+  if (!variant) return <section className={`${styles.page} ${interTight.variable} ${archivo.variable}`} aria-hidden="true" />;
   return <DepthInner key={variant.id} variant={variant} />;
 }
 
@@ -1030,7 +1022,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       : { initial: from, animate: { ...to, transition: { delay, duration, ease: EASE } } };
 
   return (
-    <section className={`${styles.page} ${interTight.variable} ${archivo.variable} ${serif.variable}`} aria-label={mark} style={menuOpen ? { touchAction: "none" } : undefined}>
+    <section className={`${styles.page} ${interTight.variable} ${archivo.variable}`} aria-label={mark} style={menuOpen ? { touchAction: "none" } : undefined}>
       {/* ================= The depth gallery: rushing behind the letterbox ================= */}
 
       <motion.div

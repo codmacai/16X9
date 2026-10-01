@@ -403,19 +403,6 @@
     white-space: nowrap;
   }
 
-  /* the one word in serif italic, lowercase, a touch larger to match the caps */
-  .headSerif {
-    font-family: var(--font-serif, "Instrument Serif"), Georgia, serif;
-    font-style: italic;
-    font-weight: 400;
-    font-stretch: normal;
-    font-variation-settings: normal;
-    font-size: 1.16em;
-    line-height: 0;
-    letter-spacing: -0.02em;
-    text-transform: none;
-  }
-
   .headTag {
     position: relative;
     margin: 0;
