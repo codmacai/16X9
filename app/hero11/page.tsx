@@ -7,8 +7,9 @@ import styles from "./hero11.module.css";
 
 // ===========================================================================
 // HERO 11 — the drawer. A navigation hero after the file-divider reference,
-// turned horizontal: a black brand band at the top, a paper sheet with the
-// line, and three folders stacked down the screen like files in a drawer,
+// turned horizontal: a black top bar, a paper sheet carrying the line (an
+// editorial meta row, the headline with a film playing inside it, a short
+// lede), and three folders stacked down the screen like files in a drawer,
 // each with a numbered tab. Point at a folder and it is pulled up out of the
 // stack: its film turns from black-and-white to colour and plays, its label
 // and a way in come forward, and the other folders sink back. Each folder is
@@ -24,6 +25,14 @@ const FOLDERS = [
   { no: "03", label: "Services", line: "Production · Post · Strategy", href: "#services", clip: "/clips/clip-02.mp4", tab: 0.91 },
 ] as const;
 
+const HERO = {
+  studio: "16X9 — Video production studio",
+  place: "Dubai, United Arab Emirates",
+  headline: ["Bringing brands", "to life"],
+  line: "Films, campaigns and content for brands that want to be seen — and remembered.",
+  reel: "/clips/clip-10.mp4", // the film playing inside the headline
+};
+
 const EASE = [0.16, 1, 0.3, 1] as const;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
 
@@ -35,7 +44,7 @@ export default function Hero11Page() {
 
   return (
     <section className={`${styles.root} ${wide.variable}`} aria-label="16x9 — Bringing brands to life">
-      {/* ================= the brand band ================= */}
+      {/* ================= the top bar ================= */}
       <motion.header
         className={styles.band}
         initial={reduce ? false : { y: "-100%" }}
@@ -45,36 +54,86 @@ export default function Hero11Page() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_SRC} alt="16x9" />
         </a>
-        <p className={styles.bandMid}>Video production · Dubai</p>
-        <p className={styles.bandEnd}>
-          Index <span>(03)</span>
-        </p>
+        <div className={styles.bandEnd}>
+          <a href="#contact" className={styles.talk}>
+            <span className={styles.talkRoll}>
+              <span>Let&apos;s talk</span>
+              <span aria-hidden="true">Let&apos;s talk</span>
+            </span>
+            <span className={styles.talkArrow} aria-hidden="true">
+              ↗
+            </span>
+          </a>
+          {/* the menu: not wired up yet */}
+          <button type="button" className={styles.burger} aria-label="Menu">
+            <span />
+            <span />
+          </button>
+        </div>
       </motion.header>
 
-      {/* ================= the paper sheet with the line ================= */}
+      {/* ================= the paper sheet: the hero's line ================= */}
       <motion.div
         className={styles.sheet}
         // the sheet unrolls down from under the band
         initial={reduce ? false : { clipPath: "inset(0% 0% 100% 0%)" }}
         animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: { delay: 0.3, duration: 1.15, ease: EASE_CINE } }}
       >
-        <p className={styles.sheetSide}>
-          <span>From brief</span>
-          <span>to screen</span>
-        </p>
-        <h1 className={styles.headline}>
-          {["Bringing brands", "to life"].map((line, i) => (
-            <span key={line} className={styles.mask}>
+        {/* an editorial line across the top of the sheet */}
+        <motion.div
+          className={styles.info}
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1, transition: { delay: 1.0, duration: 1, ease: EASE } }}
+        >
+          <span>{HERO.studio}</span>
+          <span className={styles.infoPlace}>{HERO.place}</span>
+          <Clock />
+          <motion.span
+            className={styles.infoRule}
+            initial={reduce ? false : { scaleX: 0 }}
+            animate={{ scaleX: 1, transition: { delay: 0.95, duration: 1.4, ease: EASE_CINE } }}
+            aria-hidden="true"
+          />
+        </motion.div>
+
+        <div className={styles.lockup}>
+          <h1 className={styles.headline}>
+            <span className={styles.mask}>
               <motion.span
                 className={styles.line}
                 initial={reduce ? false : { y: "105%" }}
-                animate={{ y: 0, transition: { delay: 0.7 + i * 0.12, duration: 1.1, ease: EASE } }}
+                animate={{ y: 0, transition: { delay: 0.75, duration: 1.15, ease: EASE } }}
               >
-                {line}
+                {HERO.headline[0]}
               </motion.span>
             </span>
-          ))}
-        </h1>
+            <span className={`${styles.mask} ${styles.maskRow}`}>
+              <motion.span
+                className={styles.line}
+                initial={reduce ? false : { y: "105%" }}
+                animate={{ y: 0, transition: { delay: 0.87, duration: 1.15, ease: EASE } }}
+              >
+                {HERO.headline[1]}
+              </motion.span>
+              {/* a film playing inside the line */}
+              <motion.span
+                className={styles.reel}
+                initial={reduce ? false : { width: 0, opacity: 0 }}
+                animate={{ width: "2.05em", opacity: 1, transition: { delay: 1.35, duration: 1.1, ease: EASE_CINE } }}
+                aria-hidden="true"
+              >
+                <video src={HERO.reel} poster={stillFor(HERO.reel)} muted loop playsInline autoPlay={!reduce} preload="metadata" />
+              </motion.span>
+            </span>
+          </h1>
+          <motion.p
+            className={styles.lede}
+            initial={reduce ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0, transition: { delay: 1.55, duration: 1.1, ease: EASE } }}
+          >
+            {HERO.line}
+          </motion.p>
+        </div>
       </motion.div>
 
       {/* ================= the folders ================= */}
@@ -134,7 +193,7 @@ function Folder({
       initial={reduce ? false : { y: "110%" }}
       animate={{
         // pulled up out of the stack; the folders in front of it make way, the ones behind stay put
-        y: on ? "-10vh" : hover !== null && index > hover ? "2.5vh" : 0,
+        y: on ? "-7vh" : hover !== null && index > hover ? "2.5vh" : 0,
         transition: on || away ? { type: "spring", stiffness: 140, damping: 20, mass: 0.9 } : { delay: 0.55 + index * 0.14, duration: 1.15, ease: EASE_CINE },
       }}
       onPointerEnter={(e) => e.pointerType === "mouse" && onHover(index)}
@@ -171,6 +230,32 @@ function Folder({
         </span>
       </span>
     </motion.a>
+  );
+}
+
+// ===========================================================================
+// CLOCK — the time in Dubai, ticking
+// ===========================================================================
+const dubaiTime = () =>
+  new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(
+    new Date()
+  );
+
+function Clock() {
+  const [time, setTime] = useState("");
+  useEffect(() => {
+    const tick = () => setTime(dubaiTime());
+    const first = window.setTimeout(tick, 0);
+    const id = window.setInterval(tick, 1000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(id);
+    };
+  }, []);
+  return (
+    <span className={styles.infoTime}>
+      <i className={styles.dot} aria-hidden="true" /> DXB <span suppressHydrationWarning>{time || "--:--:--"}</span>
+    </span>
   );
 }
 

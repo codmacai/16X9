@@ -7,9 +7,9 @@
   --ink: #0a0a0a;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --ui: clamp(18px, 2.6vw, 40px);
-  --sheet: 12%;
-  --f0: 40%;
-  --step: 20%;
+  --sheet: 9%;
+  --f0: 49%;
+  --step: 17.5%;
   --th: clamp(30px, 4.4vh, 44px); /* tab height */
   --tw: 15%; /* tab width */
   position: relative;
@@ -26,7 +26,7 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* ================= the brand band ================= */
+/* ================= the top bar ================= */
 
 .band {
   position: absolute;
@@ -35,18 +35,14 @@
   right: 0;
   z-index: 1;
   height: calc(var(--sheet) + 2px);
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 var(--ui);
   background: var(--ink);
   font-size: 11px;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-}
-
-.band p {
-  margin: 0;
 }
 
 .logo img {
@@ -55,21 +51,104 @@
   width: auto;
 }
 
-.bandMid {
-  opacity: 0.7;
-}
-
 .bandEnd {
-  justify-self: end;
-  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 2.4vw, 36px);
 }
 
-.bandEnd span {
-  margin-left: 6px;
-  font-variant-numeric: tabular-nums;
+/* "Let's talk": the words roll to a second copy on hover */
+.talk {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--paper);
+  text-decoration: none;
 }
 
-/* ================= the paper sheet ================= */
+.talkRoll {
+  position: relative;
+  display: inline-grid;
+  overflow: hidden;
+  height: 1.3em;
+  line-height: 1.3em;
+}
+
+.talkRoll span {
+  grid-area: 1 / 1;
+  transition: transform 0.6s var(--ease);
+}
+
+.talkRoll span + span {
+  transform: translateY(105%);
+}
+
+.talk:hover .talkRoll span,
+.talk:focus-visible .talkRoll span {
+  transform: translateY(-105%);
+}
+
+.talk:hover .talkRoll span + span,
+.talk:focus-visible .talkRoll span + span {
+  transform: none;
+}
+
+.talkArrow {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgb(247 242 238 / 0.5);
+  border-radius: 50%;
+  font-size: 12px;
+  letter-spacing: 0;
+  transition: background-color 0.5s var(--ease), color 0.5s var(--ease), transform 0.6s var(--ease);
+}
+
+.talk:hover .talkArrow,
+.talk:focus-visible .talkArrow {
+  background: var(--paper);
+  color: var(--ink);
+  transform: rotate(45deg);
+}
+
+.burger {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 7px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.burger span {
+  display: block;
+  width: 28px;
+  height: 1.5px;
+  background: var(--paper);
+  transition: width 0.5s var(--ease);
+}
+
+.burger span + span {
+  width: 17px;
+}
+
+.burger:hover span + span {
+  width: 28px;
+}
+
+.talk:focus-visible,
+.burger:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 4px;
+}
+
+/* ================= the paper sheet: the hero's line ================= */
 
 .sheet {
   position: absolute;
@@ -78,11 +157,7 @@
   right: 0;
   bottom: 0;
   z-index: 2;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 32px;
-  padding: clamp(18px, 3vh, 30px) var(--ui) 0;
+  padding: 0 var(--ui);
   background:
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
     var(--paper);
@@ -90,14 +165,74 @@
   box-shadow: 0 -18px 40px rgb(0 0 0 / 0.5);
 }
 
+/* studio · place · local time, over a hairline */
+.info {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: clamp(12px, 1.9vh, 20px) 0;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.info > span {
+  opacity: 0.62;
+}
+
+.infoPlace {
+  text-align: center;
+}
+
+.infoTime {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e1142b;
+  animation: blink 1.6s ease-in-out infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.infoRule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: rgb(10 10 10 / 0.18);
+  transform-origin: left;
+  opacity: 1 !important;
+}
+
+/* the headline, left; the lede, bottom right */
+.lockup {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 40px;
+  padding-top: clamp(10px, 2vh, 22px);
+}
+
 .headline {
-  order: 2;
   margin: 0;
-  text-align: right;
-  font-size: clamp(34px, 4.6vw, 86px);
+  font-size: min(clamp(42px, 6.4vw, 118px), 10.5vh);
   font-weight: 300;
-  line-height: 0.98;
-  letter-spacing: -0.03em;
+  line-height: 0.96;
+  letter-spacing: -0.035em;
   text-transform: uppercase;
 }
 
@@ -107,22 +242,46 @@
   padding-bottom: 0.04em;
 }
 
+/* the second line carries the film */
+.maskRow {
+  display: flex;
+  align-items: center;
+  gap: 0.28em;
+}
+
 .line {
   display: block;
   white-space: nowrap;
 }
 
-.sheetSide {
-  order: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding-top: 0.6em;
-  font-size: 11px;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  opacity: 0.6;
+/* a film playing inside the line: a capsule the height of the capitals */
+.reel {
+  position: relative;
+  display: block;
+  flex: none;
+  height: 0.74em;
+  margin-top: 0.02em;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #111 url("/clips/stills/clip-10.webp") center / cover no-repeat;
+}
+
+.reel video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lede {
+  max-width: 300px;
+  margin: 0 0 0.6em;
+  font-size: clamp(12px, 0.95vw, 14px);
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  opacity: 0.72;
 }
 
 /* ================= the folders ================= */
@@ -364,32 +523,35 @@
 
 @media (max-width: 760px) {
   .root {
-    --sheet: 9%;
-    --f0: 40%;
-    --step: 20%;
+    --sheet: 8%;
+    --f0: 47%;
+    --step: 18%;
     --tw: 34%;
   }
-  .bandMid {
+  .info {
+    font-size: 9px;
+    letter-spacing: 0.16em;
+  }
+  .talk {
     display: none;
   }
-  .band {
-    grid-template-columns: 1fr 1fr;
+  .info {
+    grid-template-columns: 1fr auto;
   }
-  .sheet {
+  .infoPlace {
+    display: none;
+  }
+  .lockup {
     flex-direction: column;
-    gap: 14px;
+    align-items: flex-start;
+    gap: 12px;
   }
   .headline {
-    order: 1;
-    text-align: left;
-    font-size: 8.4vw;
+    font-size: 8.6vw;
   }
-  .sheetSide {
-    order: 2;
-    flex-direction: row;
-    gap: 6px;
-    padding-top: 0;
-    font-size: 10px;
+  .lede {
+    max-width: none;
+    font-size: 12px;
   }
   .tab {
     padding: 2px 16px 0;
@@ -404,6 +566,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
   .still,
   .video,
   .title,
