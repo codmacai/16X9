@@ -22,6 +22,7 @@ import {
 } from "framer-motion";
 import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-config";
 import ProjectView, { type OpenProject } from "./project-view";
+import { liveBudget, posterFor, WallPlayback } from "./wall-playback";
 import styles from "./depthhero.module.css";
 
 
@@ -68,7 +69,12 @@ const ARRIVAL = { length: 2.6, peak: 2.4 };
 
 const LANES_DESKTOP = 8;
 const LANES_MOBILE = 4;
-const TILES_PER_LANE = 9;
+const PLANE = { width: 2.4, height: 2.5 }; // the tilted plane, in viewport widths / heights (see .plane)
+const GAP = { desktop: 14, mobile: 9 }; // must match --gap
+
+/** Just enough tiles per lane for one copy to cover the plane's height (the loop needs that). */
+const tilesPerLane = (vw: number, vh: number, lanes: number, gap: number) =>
+  Math.min(10, Math.max(5, Math.ceil((vh * PLANE.height) / ((vw * PLANE.width) / lanes + gap)) + 1));
 const RATIOS = ["3 / 4", "16 / 10", "4 / 5", "1 / 1", "2 / 3", "16 / 9", "5 / 6"];
 
 // The mark
@@ -82,9 +88,6 @@ const PAD_BOTTOM = 3.8;
 const CAP = 0.727; // Inter Tight cap height, as a fraction of the font size
 const TRACK = -0.03; // letter spacing, in em
 const MARK_WEIGHT = 700;
-
-const GRAIN =
-  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")";
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -106,61 +109,78 @@ const arrivalAt = (t: number) => {
 };
 
 // ===========================================================================
-// TILE — one film on the wall. Loads when it comes on screen, pauses when it
-// leaves. Hover lifts it (CSS); click opens it full screen from this spot.
+// TILE — one film on the wall. It always shows a still poster; WallPlayback
+// lets only a few tiles at a time mount a live <video>, which fades in over
+// the poster once it is actually playing. Hover lifts it (CSS); click opens it.
 // ===========================================================================
 type TileProps = {
+  id: string;
   clip: Clip;
   index: number;
   ratio: string;
-  reduce: boolean;
-  onHover: (index: number | null) => void;
+  playback: WallPlayback;
+  onHover: (id: string | null, index: number | null) => void;
   onOpen: (index: number, el: HTMLElement, time: number) => void;
 };
 
-const Tile = memo(function Tile({ clip, index, ratio, reduce, onHover, onOpen }: TileProps) {
-  const ref = useRef<HTMLVideoElement>(null);
-  const [failed, setFailed] = useState(false);
+const Tile = memo(function Tile({ id, clip, index, ratio, playback, onHover, onOpen }: TileProps) {
+  const tileRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [live, setLive] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [poster, setPoster] = useState(true);
 
   useEffect(() => {
-    const v = ref.current;
-    if (!v || failed) return;
+    const el = tileRef.current;
+    if (!el) return;
+    return playback.register(id, el, (on) => {
+      setLive(on);
+      if (!on) setPlaying(false);
+    });
+  }, [id, playback]);
+
+  // iOS needs the muted attribute (not just the property) before it will autoplay.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!live || !v) return;
     v.muted = true;
     v.setAttribute("muted", "");
-    v.setAttribute("playsinline", "");
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          if (!v.getAttribute("src")) v.src = clip.src;
-          if (!reduce) v.play().catch(() => {});
-        } else {
-          v.pause();
-        }
-      },
-      { rootMargin: "-6% 0px 0px 0px" }
-    );
-    io.observe(v);
-    return () => io.disconnect();
-  }, [clip.src, reduce, failed]);
+    v.play().catch(() => {});
+  }, [live]);
 
   return (
     <div
+      ref={tileRef}
       className={styles.tile}
       style={{ aspectRatio: ratio }}
-      onPointerEnter={(e) => e.pointerType === "mouse" && onHover(index)}
-      onPointerLeave={() => onHover(null)}
-      onClick={(e) => onOpen(index, e.currentTarget, ref.current?.currentTime ?? 0)}
+      onPointerEnter={(e) => e.pointerType === "mouse" && onHover(id, index)}
+      onPointerLeave={() => onHover(null, null)}
+      onClick={(e) => onOpen(index, e.currentTarget, videoRef.current?.currentTime ?? 0)}
     >
-      {!failed && (
+      {poster && (
+        // A tiny static still (~5 KB); next/image would add a request per tile size for no gain here.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          className={styles.tilePoster}
+          src={posterFor(clip.src)}
+          alt=""
+          decoding="async"
+          draggable={false}
+          onError={() => setPoster(false)}
+        />
+      )}
+      {live && (
         <video
-          ref={ref}
-          className={styles.tileVideo}
+          ref={videoRef}
+          className={`${styles.tileVideo} ${playing ? styles.tileVideoOn : ""}`}
+          src={clip.src}
           muted
           loop
           playsInline
-          preload={reduce ? "metadata" : "none"}
+          autoPlay
+          preload="auto"
           disablePictureInPicture
-          onError={() => setFailed(true)}
+          onPlaying={() => setPlaying(true)}
         />
       )}
     </div>
@@ -402,7 +422,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const mark = variant.wordmark ?? "16X9";
   const reduce = !!useReducedMotion();
 
-  const [laneCount, setLaneCount] = useState(LANES_DESKTOP);
+  const [grid, setGrid] = useState({ lanes: LANES_DESKTOP, perLane: 7 });
+  const laneCount = grid.lanes;
+  const playback = useMemo(() => new WallPlayback(), []);
   const [opened, setOpened] = useState(false);
   const [project, setProject] = useState<OpenProject | null>(null);
   const labelRef = useRef<CursorLabelHandle>(null);
@@ -426,38 +448,67 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   // Hover never touches DepthInner state: it flips a ref for the camera loop
   // and hands the clip to the cursor label, so the wall itself never re-renders.
   const onHover = useCallback(
-    (index: number | null) => {
+    (id: string | null, index: number | null) => {
       hoverRef.current = index !== null;
+      playback.setHovered(id);
       labelRef.current?.show(index === null ? null : clips[index]);
     },
-    [clips]
+    [clips, playback]
   );
   const closeProject = useCallback(() => setProject(null), []);
   const onOpen = useCallback((index: number, el: HTMLElement, time: number) => {
     const r = el.getBoundingClientRect();
     hoverRef.current = false;
+    playback.setHovered(null);
     labelRef.current?.show(null);
     setProject({ index, rect: { top: r.top, left: r.left, width: r.width, height: r.height }, time });
+  }, [playback]);
+
+  // Lanes and tiles per lane follow the screen, so the wall never builds more tiles than it shows.
+  useEffect(() => {
+    let raf = 0;
+    const sync = () => {
+      const small = window.innerWidth <= 760;
+      const lanes = small ? LANES_MOBILE : LANES_DESKTOP;
+      const perLane = tilesPerLane(window.innerWidth, window.innerHeight, lanes, small ? GAP.mobile : GAP.desktop);
+      setGrid((g) => (g.lanes === lanes && g.perLane === perLane ? g : { lanes, perLane }));
+    };
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(sync);
+    };
+    sync();
+    window.addEventListener("resize", onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+    };
   }, []);
 
+  // Live video budget for this device; nothing plays while a film is open or the tab is hidden.
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 760px)");
-    const sync = () => setLaneCount(mq.matches ? LANES_MOBILE : LANES_DESKTOP);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
+    playback.start(liveBudget());
+    const onVis = () => playback.setPaused(document.hidden || projectRef.current);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      playback.stop();
+    };
+  }, [playback]);
+  useEffect(() => {
+    playback.setPaused(project !== null || document.hidden);
+  }, [project, playback]);
 
   const lanes = useMemo(
     () =>
       Array.from({ length: laneCount }, (_, l) => ({
         speed: 0.86 + ((l * 5) % 7) * 0.05,
-        items: Array.from({ length: TILES_PER_LANE }, (_, t) => ({
+        items: Array.from({ length: grid.perLane }, (_, t) => ({
           index: (l * 3 + t * 7) % clips.length,
           ratio: RATIOS[(l * 2 + t) % RATIOS.length],
         })),
       })),
-    [laneCount, clips]
+    [laneCount, grid.perLane, clips]
   );
 
   // ---- the camera: one loop drives every lane ----
@@ -493,6 +544,11 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       const holding = hoverRef.current && now - lastMoveRef.current < HOLD_MS;
       const target = projectRef.current ? 0 : holding ? HOVER_SPEED : 1;
       speed += (target - speed) * Math.min(1, dt * SPEED_EASE);
+      if (speed < 0.0005 && target === 0) {
+        // frozen behind an open film: no work, no DOM writes
+        raf = requestAnimationFrame(step);
+        return;
+      }
       for (let l = 0; l < n; l++) {
         const h = heights[l];
         if (!h) continue;
@@ -562,10 +618,11 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
                   lane.items.map((it, t) => (
                     <Tile
                       key={`${copy}-${t}`}
+                      id={`${l}-${copy}-${t}`}
                       clip={clips[it.index]}
                       index={it.index}
                       ratio={it.ratio}
-                      reduce={reduce}
+                      playback={playback}
                       onHover={onHover}
                       onOpen={onOpen}
                     />
@@ -577,12 +634,10 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         </div>
       </motion.div>
 
-      <div className={styles.fog} aria-hidden="true" />
-      <div className={styles.spot} aria-hidden="true" />
-      <div className={styles.shade} aria-hidden="true" />
-      <div className={styles.vignette} aria-hidden="true" />
+      {/* one layer for the whole grade, one for the grain */}
+      <div className={styles.grade} aria-hidden="true" />
       <div className={styles.grainWrap} aria-hidden="true">
-        <div className={styles.grain} style={{ backgroundImage: GRAIN }} />
+        <div className={styles.grain} />
       </div>
 
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
