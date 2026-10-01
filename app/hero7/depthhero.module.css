@@ -72,8 +72,7 @@
     gap: var(--gap);
     overflow: hidden;
     transform-origin: 50% 100%;
-    transform: translateX(var(--px)) rotateX(calc(52deg + var(--py)));
-    transition: transform 1.8s var(--ease);
+    transform: rotateX(52deg); /* the lean toward the pointer is eased and written by JS */
   }
   
   .lane {
@@ -89,52 +88,25 @@
     will-change: transform;
   }
   
+  /* Each film is printed like a frame on a contact sheet: a white hairline
+     edge, its number and runtime in the top corners, its title at the foot.
+     Hover (.tileOn, set from JS) brings it up: the shade lifts, the edge goes
+     solid, a glare follows the pointer and the title rises in. The tilt itself
+     is eased and written by JS, so no transform transitions live here. */
   .tile {
     position: relative;
     width: 100%;
     margin: 0 0 var(--gap);
-    border-radius: 10px;
+    border-radius: 8px;
     overflow: hidden;
     background: radial-gradient(120% 90% at 30% 25%, #1c1c1c 0%, #080808 72%);
     cursor: pointer;
     contain: layout paint; /* a tile's changes never ripple out to the rest of the wall */
-    --tx: 0;
-    --ty: 0;
-    --gx: 50%;
-    --gy: 50%;
-    /* the resting pose (set per tile): raised and tilted, sunk, or flat */
-    --rx: 0deg;
-    --ry: 0deg;
-    --rz: 0deg;
-    --s: 1;
-    transform: perspective(700px) rotateX(var(--rx)) rotateY(var(--ry)) rotate(var(--rz)) scale(var(--s));
-    transition: transform 0.55s var(--ease);
+    container-type: inline-size; /* its print scales with the tile (cqw) */
   }
 
-  /* raised: it casts a shadow onto the wall */
-  .tileLift {
-    z-index: 2;
-    box-shadow: 0 22px 40px -12px rgb(0 0 0 / 0.75);
-  }
-
-  .tile.tileLift::after {
-    box-shadow: inset 0 0 0 2px var(--paper);
-  }
-
-  /* sunk: smaller and a little darker, further back */
-  .tileSink::before {
-    opacity: 0.38;
-  }
-
-  /* a soft glare that follows the pointer across the hovered film */
-  .tileGlare {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    background: radial-gradient(circle at var(--gx) var(--gy), rgb(255 255 255 / 0.17), rgb(255 255 255 / 0.04) 30%, transparent 55%);
-    opacity: 0;
-    transition: opacity 0.45s var(--ease);
-    pointer-events: none;
+  .tileOn {
+    z-index: 3;
   }
 
   /* Dim the film with an overlay, not a filter: changing its opacity on hover
@@ -145,8 +117,8 @@
     inset: 0;
     z-index: 1;
     background: #000;
-    opacity: 0.12;
-    transition: opacity 0.55s var(--ease);
+    opacity: 0.16;
+    transition: opacity 0.6s var(--ease);
     pointer-events: none;
   }
 
@@ -154,10 +126,10 @@
     content: "";
     position: absolute;
     inset: 0;
-    z-index: 2;
+    z-index: 4;
     border-radius: inherit;
-    box-shadow: inset 0 0 0 1.25px rgb(247 242 238 / 0.8); /* every film gets a white edge */
-    transition: box-shadow 0.55s var(--ease);
+    box-shadow: inset 0 0 0 1px rgb(247 242 238 / 0.62); /* every film has a white hairline edge */
+    transition: box-shadow 0.6s var(--ease);
     pointer-events: none;
   }
 
@@ -180,34 +152,92 @@
     opacity: 1;
   }
 
-  /* Hover: the tile lifts, tilts toward the pointer and comes up to full
-     brightness; every other film dims, like a spotlight. Overlays only, so the
-     dimming is compositor work, not a repaint. */
-  @media (hover: hover) {
-    .tile:hover {
-      z-index: 3;
-      transform: perspective(700px) rotateX(calc(var(--ty) * -9deg)) rotateY(calc(var(--tx) * 11deg)) scale(1.09);
-      transition: transform 0.35s var(--ease);
-    }
-
-    .tile:hover::before {
-      opacity: 0;
-    }
-
-    .tile:hover::after {
-      box-shadow: inset 0 0 0 1.5px rgb(247 242 238 / 0.85);
-    }
-
-    .tile:hover .tileGlare {
-      opacity: 1;
-    }
-
-    /* the spotlight: a class set from JS (cheaper than :has on every hover) */
-    .spot .tile:not(:hover)::before {
-      opacity: 0.6;
-    }
+  /* a soft glare, moved across the hovered film by JS (a transform: nothing repaints) */
+  .tileGlare {
+    position: absolute;
+    left: -30%;
+    top: -30%;
+    width: 160%;
+    height: 160%;
+    z-index: 2;
+    background: radial-gradient(circle at center, rgb(255 250 244 / 0.2), rgb(255 250 244 / 0.05) 20%, transparent 40%);
+    opacity: 0;
+    transition: opacity 0.5s var(--ease);
+    pointer-events: none;
   }
 
+  /* a shade at the foot so the title reads */
+  .tileScrim {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.62) 0%, rgb(0 0 0 / 0.2) 30%, transparent 52%);
+    opacity: 0;
+    transition: opacity 0.6s var(--ease);
+    pointer-events: none;
+  }
+
+  .tileMeta {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: max(8px, 4.5cqw) max(9px, 5cqw);
+    color: var(--paper);
+    pointer-events: none;
+  }
+
+  .tileTop {
+    display: flex;
+    justify-content: space-between;
+    font-size: max(9px, 3.3cqw);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.72;
+    text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
+    transition: opacity 0.6s var(--ease);
+  }
+
+  .tileTitleMask {
+    display: block;
+    overflow: hidden;
+    padding-bottom: 0.08em;
+  }
+
+  .tileTitle {
+    display: block;
+    font-size: max(13px, 7cqw);
+    font-weight: 500;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    text-transform: uppercase;
+    transform: translateY(105%);
+    transition: transform 0.7s var(--ease);
+  }
+
+  .tileOn::before {
+    opacity: 0;
+  }
+
+  .tileOn::after {
+    box-shadow: inset 0 0 0 1.5px var(--paper);
+  }
+
+  .tileOn .tileGlare,
+  .tileOn .tileScrim,
+  .tileOn .tileTop {
+    opacity: 1;
+  }
+
+  .tileOn .tileTitle {
+    transform: none;
+  }
+
+  /* touch has no hover: films keep just their number and runtime (the title
+     is in the player a tap away), so the wall stays quiet behind the heading */
   /* ================= Grade ================= */
   
   .grade {
@@ -226,32 +256,31 @@
       linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 0.86) 9%, rgb(0 0 0 / 0.35) 28%, transparent 46%);
   }
 
-  /* the pointer's light on the wall */
-  .light {
+  /* the lamp: the wall rests in soft shadow, with a pool of light at the pointer.
+     One full-screen layer; JS moves the light's centre (--lx/--ly). */
+  .lamp {
     position: absolute;
-    left: 0;
-    top: 0;
+    inset: 0;
     z-index: 1;
-    width: 0;
-    height: 0;
     pointer-events: none;
-    transform: translate3d(50vw, 50vh, 0);
-    transition: transform 0.6s var(--ease);
-    will-change: transform;
   }
 
-  .light::before {
-    content: "";
+  .lampLight {
+    --lx: 50vw;
+    --ly: 50vh;
     position: absolute;
-    left: -38vmax;
-    top: -38vmax;
-    width: 76vmax;
-    height: 76vmax;
-    background: radial-gradient(circle, rgb(255 246 236 / 0.11), rgb(255 246 236 / 0.04) 30%, transparent 60%);
+    inset: 0;
+    background: radial-gradient(
+      circle at var(--lx) var(--ly),
+      rgb(255 248 240 / 0.07) 0,
+      transparent 16vmax,
+      rgb(0 0 0 / 0.22) 30vmax,
+      rgb(0 0 0 / 0.42) 52vmax
+    );
   }
 
   @media (hover: none) {
-    .light {
+    .lamp {
       display: none;
     }
   }
@@ -649,56 +678,45 @@
     will-change: transform;
   }
 
-  /* A small cut of the mark: a sharp white block with the name in bold,
-     tight uppercase and the length in the corner like the ©. Solid black type
-     (not a knockout) so it stays readable even when it passes over the mark. */
-  .cursorTag {
+  /* over a film: a round paper badge, "PLAY FILM" turning around its rim */
+  .cursorDisc {
     position: absolute;
-    top: 14px;
-    left: 14px;
-    display: flex;
-    align-items: flex-end;
-    gap: 14px;
-    padding: 9px 10px 8px 12px;
-    background: #fff;
+    left: -46px;
+    top: -46px;
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    background: var(--paper);
     color: #000;
-    white-space: nowrap;
+    box-shadow: 0 10px 40px rgb(0 0 0 / 0.35);
   }
 
-  .cursorTitle {
-    display: inline-flex;
-    overflow: hidden;
-    font-size: clamp(15px, 1.25vw, 20px);
-    font-weight: 700;
-    line-height: 0.92;
-    letter-spacing: -0.03em;
-    padding-top: 0.08em;
-  }
-
-  .cursorTitle span {
-    display: block;
-  }
-
-  /* the length sits in the corner, like the © on the mark */
-  .cursorDur {
-    font-size: 10px;
+  .cursorRing {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+    font-size: 9.5px;
     font-weight: 600;
-    line-height: 1;
-    letter-spacing: 0.02em;
-    margin-bottom: 1px;
+    letter-spacing: 0.08em;
+    animation: spin 12s linear infinite;
   }
 
-  /* a white play triangle, centred on the pointer, replaces the arrow
-     while over a tile */
   .cursorPlay {
     position: absolute;
-    top: -8px;
-    left: -6px;
-    width: 14px;
-    height: 16px;
-    fill: var(--paper);
-    filter: drop-shadow(0 1px 6px rgb(0 0 0 / 0.55));
-    overflow: visible;
+    left: 50%;
+    top: 50%;
+    width: 13px;
+    height: 15px;
+    margin: -7.5px 0 0 -5px;
+    fill: currentColor;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   @media (hover: hover) {
@@ -1040,10 +1058,7 @@
     .clientsTrack {
       animation: none;
     }
-    .light {
-      display: none;
-    }
-    .plane {
-      transition: none;
+    .cursorRing {
+      animation: none;
     }
   }

@@ -74,14 +74,14 @@ const EASE_SMOOTH = [0.65, 0, 0.35, 1] as const; // symmetrical, for the fold
 
 // Speeds are in screen-heights per second.
 const CRAWL = 0.3;
-const SURGE = { first: T.leave + 1.6, every: 4.6, length: 1.6, peak: 2.2 };
+const SURGE = { first: T.leave + 1.6, every: 4.6, length: 1.8, peak: 1.8 };
 // Drag to slide: how far the wall moves per pixel dragged, the cap on the glide
 // it's thrown with (screen-heights per second), and how fast that glide settles.
 const PUSH = { drag: 1.7, max: 9, decay: 2.4, threshold: 6 };
 // How fast the wall runs while a tile is hovered (0 = stopped, 1 = full speed),
 // and how quickly it eases between speeds.
-const HOVER_SPEED = 0.06;
-const SPEED_EASE = 5;
+const HOVER_SPEED = 0; // the wall stops under a film you're pointing at, so it never slides away
+const SPEED_EASE = 3.2; // gentle: the wall brakes and pulls away, never snaps
 // The wall only holds while the visitor is actively pointing. A resting mouse
 // lets it run again, otherwise it would stall whenever the cursor sits on the page.
 const HOLD_MS = 1800;
@@ -95,18 +95,13 @@ const GAP = { desktop: 14, mobile: 9 }; // must match --gap
 /** Just enough tiles per lane for one copy to cover the plane's height (the loop needs that). */
 const tilesPerLane = (vw: number, vh: number, lanes: number, gap: number) =>
   Math.min(10, Math.max(5, Math.ceil((vh * PLANE.height) / ((vw * PLANE.width) / lanes + gap)) + 1));
-/**
- * How a tile sits on the wall at rest: some are raised and tilted, some sunk
- * low, the rest lie flat. Deterministic per slot, so it never reshuffles.
- */
-type Pose = { kind: "lift" | "sink" | "flat"; rx: number; ry: number; rz: number; s: number };
-function poseFor(l: number, t: number): Pose {
-  const h = (l * 7 + t * 13 + ((l * t) % 5)) % 10;
-  const side = (l + t) % 2 === 0 ? 1 : -1;
-  if (h < 3) return { kind: "lift", rx: 7, ry: side * (7 + h * 2), rz: side * (1.5 + h), s: 1.05 };
-  if (h < 5) return { kind: "sink", rx: 0, ry: 0, rz: 0, s: 0.88 };
-  return { kind: "flat", rx: 0, ry: 0, rz: 0, s: 1 };
-}
+// Hover feel: how far the film turns toward the pointer (deg), how far it comes
+// forward, and how quickly it eases there (per second). Only a film you wait on
+// for INTENT_MS starts loading its video.
+const TILT = { x: 9, y: 11, scale: 1.06, ease: 9 };
+const INTENT_MS = 160;
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
 const RATIOS = ["3 / 4", "16 / 10", "4 / 5", "1 / 1", "2 / 3", "16 / 9", "5 / 6"];
 
 // The mark
@@ -164,22 +159,23 @@ const arrivalAt = (t: number) => {
 };
 
 // ===========================================================================
-// TILE — one film on the wall. It always shows a still poster; WallPlayback
-// lets only a few tiles at a time mount a live <video>, which fades in over
-// the poster once it is actually playing. Hover lifts it (CSS); click opens it.
+// TILE — one film on the wall, printed like a frame on a contact sheet: a white
+// hairline edge, its number and runtime in the corners, and its title, which
+// rises in when you point at it. It always shows a still poster; WallPlayback
+// lets only a few tiles at a time mount a live <video>, which fades in over the
+// poster once it's playing. Hover is driven from DepthInner (one listener, one
+// animation loop), so a tile has no hover handlers of its own.
 // ===========================================================================
 type TileProps = {
   id: string;
   clip: Clip;
   index: number;
   ratio: string;
-  pose: Pose;
   playback: WallPlayback;
-  onHover: (id: string | null, index: number | null) => void;
   onOpen: (index: number, el: HTMLElement, time: number) => void;
 };
 
-const Tile = memo(function Tile({ id, clip, index, ratio, pose, playback, onHover, onOpen }: TileProps) {
+const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: TileProps) {
   const tileRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [live, setLive] = useState(false);
@@ -207,36 +203,9 @@ const Tile = memo(function Tile({ id, clip, index, ratio, pose, playback, onHove
   return (
     <div
       ref={tileRef}
-      className={`${styles.tile} ${pose.kind === "lift" ? styles.tileLift : pose.kind === "sink" ? styles.tileSink : ""}`}
-      style={
-        {
-          aspectRatio: ratio,
-          "--rx": `${pose.rx}deg`,
-          "--ry": `${pose.ry}deg`,
-          "--rz": `${pose.rz}deg`,
-          "--s": pose.s,
-        } as React.CSSProperties
-      }
-      onPointerEnter={(e) => e.pointerType === "mouse" && onHover(id, index)}
-      // tilt toward the pointer and move the glare with it: CSS variables on this
-      // one tile, so nothing re-renders
-      onPointerMove={(e) => {
-        if (e.pointerType !== "mouse") return;
-        const el = e.currentTarget;
-        const r = el.getBoundingClientRect();
-        const nx = (e.clientX - r.left) / r.width;
-        const ny = (e.clientY - r.top) / r.height;
-        el.style.setProperty("--tx", (nx * 2 - 1).toFixed(3));
-        el.style.setProperty("--ty", (ny * 2 - 1).toFixed(3));
-        el.style.setProperty("--gx", `${(nx * 100).toFixed(1)}%`);
-        el.style.setProperty("--gy", `${(ny * 100).toFixed(1)}%`);
-      }}
-      onPointerLeave={(e) => {
-        const el = e.currentTarget;
-        el.style.setProperty("--tx", "0");
-        el.style.setProperty("--ty", "0");
-        onHover(null, null);
-      }}
+      className={styles.tile}
+      style={{ aspectRatio: ratio }}
+      data-index={index}
       onClick={(e) => onOpen(index, e.currentTarget, videoRef.current?.currentTime ?? 0)}
     >
       {poster && (
@@ -266,27 +235,39 @@ const Tile = memo(function Tile({ id, clip, index, ratio, pose, playback, onHove
         />
       )}
       <span className={styles.tileGlare} aria-hidden="true" />
+      <span className={styles.tileScrim} aria-hidden="true" />
+      <span className={styles.tileMeta} aria-hidden="true">
+        <span className={styles.tileTop}>
+          <span>{pad2(index + 1)}</span>
+          <span>{clip.duration}</span>
+        </span>
+        <span className={styles.tileTitleMask}>
+          <span className={styles.tileTitle}>{clip.title}</span>
+        </span>
+      </span>
     </div>
   );
 });
 
 // ===========================================================================
-// CURSOR LABEL — a small white block, cut like the 16X9 mark, that trails the
-// pointer over a tile with the film's name and length.
-// It owns its own state (set through a ref), so hovering never re-renders the
-// wall; the pointer position lives in motion values, so following it never
-// re-renders anything at all.
+// CURSOR — over a film the arrow becomes a round paper badge: a play mark in
+// the middle and "PLAY FILM" turning slowly around its rim. It springs in once
+// and stays while you glide from film to film (the film's own title is printed
+// on the tile). State is set through a ref, so hovering never re-renders the
+// wall, and the position lives in motion values, so following the pointer
+// never re-renders anything at all.
 // ===========================================================================
 type CursorLabelHandle = { show: (clip: Clip | null) => void };
 
 function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
-  const [clip, setClip] = useState<Clip | null>(null);
-  useImperativeHandle(ref, () => ({ show: setClip }), []);
+  const [on, setOn] = useState(false);
+  useImperativeHandle(ref, () => ({ show: (clip) => setOn(clip !== null) }), []);
+  const ringId = `ring-${useId().replace(/:/g, "")}`;
 
   const x = useMotionValue(-200);
   const y = useMotionValue(-200);
-  const sx = useSpring(x, { stiffness: 900, damping: 60, mass: 0.4 });
-  const sy = useSpring(y, { stiffness: 900, damping: 60, mass: 0.4 });
+  const sx = useSpring(x, { stiffness: 520, damping: 42, mass: 0.5 });
+  const sy = useSpring(y, { stiffness: 520, damping: 42, mass: 0.5 });
 
   useEffect(() => {
     const move = (e: PointerEvent) => {
@@ -300,42 +281,27 @@ function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
   return (
     <motion.div className={styles.cursor} style={{ x: sx, y: sy }} aria-hidden="true">
       <AnimatePresence>
-        {clip && (
-          <motion.svg
-            key="play"
-            className={styles.cursorPlay}
-            viewBox="0 0 12 14"
-            initial={{ scale: 0, rotate: -90 }}
-            animate={{ scale: 1, rotate: 0, transition: { duration: 0.4, ease: EASE } }}
-            exit={{ scale: 0, transition: { duration: 0.2 } }}
-          >
-            <path d="M0 0L12 7L0 14Z" />
-          </motion.svg>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {clip && (
+        {on && (
           <motion.div
-            key="label"
-            className={styles.cursorTag}
-            // an edit-style wipe: in from the left, off to the right
-            initial={{ clipPath: "inset(0% 100% 0% 0%)" }}
-            animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: { duration: 0.42, ease: EASE_CINE } }}
-            exit={{ clipPath: "inset(0% 0% 0% 100%)", transition: { duration: 0.28, ease: EASE_CINE } }}
+            key="disc"
+            className={styles.cursorDisc}
+            initial={{ scale: 0.2, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1, transition: { type: "spring", stiffness: 320, damping: 26, mass: 0.7 } }}
+            exit={{ scale: 0.2, opacity: 0, transition: { duration: 0.28, ease: EASE_CINE } }}
           >
-            <span className={styles.cursorTitle}>
-              <AnimatePresence mode="popLayout" initial={false}>
-                <motion.span
-                  key={clip.title}
-                  initial={{ y: "105%" }}
-                  animate={{ y: 0, transition: { duration: 0.45, ease: EASE } }}
-                  exit={{ y: "-105%", transition: { duration: 0.3, ease: EASE } }}
-                >
-                  {clip.title}
-                </motion.span>
-              </AnimatePresence>
-            </span>
-            <span className={styles.cursorDur}>{clip.duration}</span>
+            <svg className={styles.cursorRing} viewBox="0 0 100 100">
+              <defs>
+                <path id={ringId} d="M50,50 m-37,0 a37,37 0 1,1 74,0 a37,37 0 1,1 -74,0" />
+              </defs>
+              <text>
+                <textPath href={`#${ringId}`} textLength="230" lengthAdjust="spacing">
+                  PLAY FILM · PLAY FILM · PLAY FILM ·
+                </textPath>
+              </text>
+            </svg>
+            <svg className={styles.cursorPlay} viewBox="0 0 12 14">
+              <path d="M0 0L12 7L0 14Z" />
+            </svg>
           </motion.div>
         )}
       </AnimatePresence>
@@ -979,54 +945,23 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const draggingRef = useRef(false); // a drag is in progress: the wall follows it, hover is off
   const dragAccRef = useRef(0); // wall travel dragged since the last frame, in px
   const planeRef = useRef<HTMLDivElement>(null);
-  const spotTimer = useRef(0);
   const warpRef = useRef<HTMLDivElement>(null);
-  const lightRef = useRef<HTMLDivElement>(null);
+  const lampRef = useRef<HTMLDivElement>(null);
+  // set by the hover controller below: drop whatever film is hovered
+  const clearHoverRef = useRef<() => void>(() => {});
   useEffect(() => {
     menuRef.current = menuOpen;
   }, [menuOpen]);
   useEffect(() => {
     projectRef.current = project !== null;
   }, [project]);
-  useEffect(() => {
-    const onMove = (e: PointerEvent) => {
-      if (e.pointerType === "mouse") lastMoveRef.current = performance.now();
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    return () => window.removeEventListener("pointermove", onMove);
-  }, []);
-
-  // Hover never touches DepthInner state: it flips a ref for the camera loop
-  // and hands the clip to the cursor label, so the wall itself never re-renders.
-  // The spotlight (every other film dims) is one class on the plane. Leaving a
-  // tile waits a beat before lifting it, so gliding from tile to tile doesn't
-  // flicker the whole wall.
-  const setSpot = useCallback((on: boolean) => {
-    window.clearTimeout(spotTimer.current);
-    const plane = planeRef.current;
-    if (!plane) return;
-    if (on) plane.classList.add(styles.spot);
-    else spotTimer.current = window.setTimeout(() => plane.classList.remove(styles.spot), 160);
-  }, []);
-  const onHover = useCallback(
-    (id: string | null, index: number | null) => {
-      if (draggingRef.current) return; // tiles sliding under a drag don't count as hovers
-      hoverRef.current = index !== null;
-      playback.setHovered(id);
-      labelRef.current?.show(index === null ? null : clips[index]);
-      setSpot(index !== null);
-    },
-    [clips, playback, setSpot]
-  );
-  const closeProject = useCallback(() => setProject(null), []);
+    const closeProject = useCallback(() => setProject(null), []);
   const onOpen = useCallback((index: number, el: HTMLElement, time: number) => {
     if (draggedRef.current) return; // that was a drag through the wall, not a click
     const r = el.getBoundingClientRect();
-    hoverRef.current = false;
-    playback.setHovered(null);
-    labelRef.current?.show(null);
+    clearHoverRef.current();
     setProject({ index, rect: { top: r.top, left: r.left, width: r.width, height: r.height }, time });
-  }, [playback]);
+  }, []);
 
   // Lanes and tiles per lane follow the screen, so the wall never builds more tiles than it shows.
   useEffect(() => {
@@ -1070,7 +1005,6 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         items: Array.from({ length: grid.perLane }, (_, t) => ({
           index: (l * 3 + t * 7) % clips.length,
           ratio: RATIOS[(l * 2 + t) % RATIOS.length],
-          pose: poseFor(l, t),
         })),
       })),
     [laneCount, grid.perLane, clips]
@@ -1162,10 +1096,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       draggingRef.current = true;
       draggedRef.current = true;
       scene.classList.add(styles.dragging);
-      hoverRef.current = false;
-      playback.setHovered(null);
-      labelRef.current?.show(null);
-      setSpot(false);
+      clearHoverRef.current();
     };
     const onDown = (e: PointerEvent) => {
       if (e.button !== 0 || menuRef.current || projectRef.current) return;
@@ -1211,34 +1142,155 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [reduce, playback, setSpot]);
-
-  // The wall leans a little toward the pointer
-  useEffect(() => {
-    if (reduce) return;
-    const el = sceneRef.current;
-    if (!el) return;
-    let raf = 0;
-    const onMove = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") return;
-      const nx = (e.clientX / window.innerWidth) * 2 - 1;
-      const ny = (e.clientY / window.innerHeight) * 2 - 1;
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        el.style.setProperty("--px", `${(-nx * 2.5).toFixed(2)}vw`);
-        el.style.setProperty("--py", `${(ny * 2).toFixed(2)}deg`);
-        const light = lightRef.current;
-        if (light) light.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
-      });
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("pointermove", onMove);
-    };
   }, [reduce]);
 
-  const enter = (delay: number, from: TargetAndTransition, to: TargetAndTransition, duration = 1.1) =>
+  // ---- Hover and pointer motion: one listener, one animation loop ----
+  // Hover follows the real mouse only: a film becomes "hovered" when the pointer
+  // moves onto it, never because the wall carried it under a resting cursor, and
+  // it lets go once the mouse has rested for HOLD_MS (the wall then runs on).
+  // Everything that follows the pointer (the hovered film's tilt and glare, the
+  // lamp, the wall's lean) is eased toward its target every frame and written
+  // straight to the DOM: no CSS transitions restarting on every mouse move.
+  useEffect(() => {
+    const plane = planeRef.current;
+    const lamp = lampRef.current;
+    const fine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    type Tilt = {
+      glare: HTMLElement | null;
+      on: boolean;
+      rx: number; ry: number; s: number; gx: number; gy: number; // current
+      trx: number; try: number; tgx: number; tgy: number; // target
+    };
+    const tilts = new Map<HTMLElement, Tilt>();
+    let hovered: HTMLElement | null = null;
+    let intent = 0;
+    let lastMove = -Infinity;
+    const p = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    const lampAt = { ...p };
+    const lean = { x: 0, y: 0 };
+    let leanCss = "";
+
+    const setHover = (el: HTMLElement | null) => {
+      if (el === hovered) return;
+      if (hovered) {
+        hovered.classList.remove(styles.tileOn);
+        const t = tilts.get(hovered);
+        if (t) t.on = false;
+      }
+      hovered = el;
+      window.clearTimeout(intent);
+      if (!el) {
+        hoverRef.current = false;
+        playback.setHovered(null);
+        labelRef.current?.show(null);
+        return;
+      }
+      el.classList.add(styles.tileOn);
+      const t = tilts.get(el);
+      if (t) t.on = true;
+      else
+        tilts.set(el, {
+          glare: el.querySelector<HTMLElement>(`.${styles.tileGlare}`),
+          on: true,
+          rx: 0, ry: 0, s: 1, gx: 0.5, gy: 0.5,
+          trx: 0, try: 0, tgx: 0.5, tgy: 0.5,
+        });
+      hoverRef.current = true;
+      labelRef.current?.show(clips[Number(el.dataset.index)] ?? null);
+      const id = el.dataset.tile ?? null;
+      intent = window.setTimeout(() => playback.setHovered(id), INTENT_MS);
+    };
+    clearHoverRef.current = () => setHover(null);
+
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return;
+      lastMove = performance.now();
+      lastMoveRef.current = lastMove;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      if (!fine || draggingRef.current || menuRef.current || projectRef.current) return setHover(null);
+      const el = (e.target as Element | null)?.closest?.<HTMLElement>("[data-tile]") ?? null;
+      setHover(el);
+      const t = el && tilts.get(el);
+      if (!el || !t) return;
+      const r = el.getBoundingClientRect();
+      const nx = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+      const ny = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+      t.trx = (0.5 - ny) * TILT.x;
+      t.try = (nx - 0.5) * TILT.y;
+      t.tgx = nx;
+      t.tgy = ny;
+    };
+    const onLeave = () => setHover(null);
+    window.addEventListener("pointermove", onMove, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onLeave);
+
+    let raf = 0;
+    let last = performance.now();
+    const frame = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      // a resting mouse lets go of the film, and the wall runs again
+      if (hovered && now - lastMove > HOLD_MS) setHover(null);
+
+      // the lamp trails the pointer
+      if (lamp && fine) {
+        const k = 1 - Math.exp(-dt * 6);
+        const dx = p.x - lampAt.x;
+        const dy = p.y - lampAt.y;
+        if (Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3) {
+          lampAt.x += dx * k;
+          lampAt.y += dy * k;
+          lamp.style.setProperty("--lx", `${lampAt.x.toFixed(1)}px`);
+          lamp.style.setProperty("--ly", `${lampAt.y.toFixed(1)}px`);
+        }
+      }
+
+      // the wall leans a little toward the pointer, slowly
+      if (plane && fine && !reduce) {
+        const k = 1 - Math.exp(-dt * 2.2);
+        lean.x += ((p.x / window.innerWidth) * 2 - 1 - lean.x) * k;
+        lean.y += ((p.y / window.innerHeight) * 2 - 1 - lean.y) * k;
+        const css = `translateX(${(-lean.x * 2.5).toFixed(3)}vw) rotateX(${(52 + lean.y * 2).toFixed(3)}deg)`;
+        if (css !== leanCss) {
+          plane.style.transform = css;
+          leanCss = css;
+        }
+      }
+
+      // the hovered film turns toward the pointer and comes forward; the one you
+      // left settles back, then its inline transform is dropped
+      const k = 1 - Math.exp(-dt * TILT.ease);
+      tilts.forEach((t, el) => {
+        const on = t.on && !reduce;
+        t.rx += ((on ? t.trx : 0) - t.rx) * k;
+        t.ry += ((on ? t.try : 0) - t.ry) * k;
+        t.s += ((on ? TILT.scale : 1) - t.s) * k;
+        t.gx += (t.tgx - t.gx) * k;
+        t.gy += (t.tgy - t.gy) * k;
+        if (!t.on && Math.abs(t.rx) < 0.01 && Math.abs(t.ry) < 0.01 && Math.abs(t.s - 1) < 0.0003) {
+          el.style.transform = "";
+          if (t.glare) t.glare.style.transform = "";
+          tilts.delete(el);
+          return;
+        }
+        el.style.transform = `perspective(900px) rotateX(${t.rx.toFixed(2)}deg) rotateY(${t.ry.toFixed(2)}deg) scale(${t.s.toFixed(4)})`;
+        if (t.glare)
+          t.glare.style.transform = `translate3d(${((t.gx - 0.5) * 62.5).toFixed(2)}%, ${((t.gy - 0.5) * 62.5).toFixed(2)}%, 0)`;
+      });
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(intent);
+      window.removeEventListener("pointermove", onMove);
+      document.documentElement.removeEventListener("pointerleave", onLeave);
+      setHover(null);
+    };
+  }, [clips, playback, reduce]);
+
+    const enter = (delay: number, from: TargetAndTransition, to: TargetAndTransition, duration = 1.1) =>
     reduce
       ? { initial: false as const }
       : { initial: from, animate: { ...to, transition: { delay, duration, ease: EASE } } };
@@ -1272,9 +1324,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
                       clip={clips[it.index]}
                       index={it.index}
                       ratio={it.ratio}
-                      pose={it.pose}
                       playback={playback}
-                      onHover={onHover}
                       onOpen={onOpen}
                     />
                   ))
@@ -1288,8 +1338,16 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
       {/* one layer for the whole grade */}
       <div className={styles.grade} aria-hidden="true" />
-      {/* a soft light that follows the pointer across the wall */}
-      <div ref={lightRef} className={styles.light} aria-hidden="true" />
+      {/* the lamp: the wall rests in shadow and a soft pool of light follows the
+          pointer, so the films near it come up. One full-screen layer. */}
+      <motion.div
+        className={styles.lamp}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: gone && !menuOpen ? 1 : 0, transition: { duration: 1.6, ease: EASE } }}
+        aria-hidden="true"
+      >
+        <div ref={lampRef} className={styles.lampLight} />
+      </motion.div>
 
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
       <div className={styles.copy}>
@@ -1325,10 +1383,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           onClick={() => {
             if (!menuOpen) {
               setMenuKey((k) => k + 1);
-              // the wall goes quiet under the menu: no hover label, no hold
-              hoverRef.current = false;
-              playback.setHovered(null);
-              labelRef.current?.show(null);
+              // the wall goes quiet under the menu: no hover, no hold
+              clearHoverRef.current();
             }
             setMenuOpen(!menuOpen);
           }}
