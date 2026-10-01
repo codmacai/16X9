@@ -110,6 +110,8 @@ const MENU = [
 const MENU_T = { letters: 0.5, split: 0.46, spread: 0.85, words: 1.0, collapse: 0.6, collapseAt: 0.18, join: 0.8 };
 const BAR_H = 0.15; // each bar's height, as a fraction of the card's width
 const BAR_GAP = 0.018; // gap between bars, same unit
+// The wheel: neighbours' scale and opacity, how long a turn takes, and what counts as a turn.
+const WHEEL = { side: 0.62, fade: 0.38, turnS: 0.7, cooldown: 420, wheelStep: 40, swipe: 36 };
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -336,11 +338,14 @@ function Mark({
   mark,
   reduce,
   menuOpen,
+  menuKey,
   onNavigate,
 }: {
   mark: string;
   reduce: boolean;
   menuOpen: boolean;
+  /** changes every time the menu opens, so the wheel starts fresh on WORK */
+  menuKey: number;
   onNavigate: () => void;
 }) {
   const [menuFs, setMenuFs] = useState(0);
@@ -488,7 +493,7 @@ function Mark({
         ) : null}
 
         {box && menuFs > 0 ? (
-          <Menu box={box} fs={menuFs} open={menuOpen} reduce={reduce} onNavigate={onNavigate} />
+          <Menu key={menuKey} box={box} fs={menuFs} open={menuOpen} reduce={reduce} onNavigate={onNavigate} />
         ) : null}
       </motion.div>
 
@@ -536,10 +541,18 @@ function Mark({
 }
 
 // ===========================================================================
-// MENU BARS — three white bars that start out tiling the card exactly, then
-// spread into a stack with WORK / SERVICES / CONTACT cut clean through them
-// (same knockout as the mark) and a small index in the corner like the ©.
+// MENU WHEEL — the card becomes a wheel of white bars. The active link sits in
+// the middle at full size with its words cut through the white like the mark;
+// the ones before and after sit above and below, smaller and faded. Scroll,
+// swipe or ↑/↓ turn the wheel (it loops); click a faded bar to bring it to the
+// middle; click the middle one to go there.
+//
+// The wheel is drawn as a window of slots k = cursor-3 … cursor+3. A slot's
+// key is k itself, so turning the wheel only shifts each slot's offset and
+// framer animates the move; slots that leave the window are already invisible.
 // ===========================================================================
+const mod = (a: number, n: number) => ((a % n) + n) % n;
+
 function Menu({
   box,
   fs,
@@ -554,76 +567,179 @@ function Menu({
   onNavigate: () => void;
 }) {
   const uid = useId().replace(/:/g, "");
+  const [cursor, setCursor] = useState(0); // unbounded; the active item is MENU[mod(cursor)]
+  const [turned, setTurned] = useState(false); // once the wheel has turned, moves are quick (no open choreography)
+  const wheelAcc = useRef(0);
+  const lastTurn = useRef(0);
+  const swipe = useRef<{ y: number; moved: boolean } | null>(null);
+
+  const n = MENU.length;
   const barH = box.w * BAR_H;
   const gap = box.w * BAR_GAP;
-  const stackH = MENU.length * barH + (MENU.length - 1) * gap;
-  const stackTop = (box.h - stackH) / 2; // centred on the card
-  const band = box.h / MENU.length; // each bar's slice of the card when closed
-  const base = (barH + fs * CAP) / 2; // word baseline inside a bar
+  const centerTop = (box.h - barH) / 2; // the active bar sits where the card's middle was
+  const step = barH * (0.5 + WHEEL.side / 2) + gap; // centre-to-centre distance to a neighbour
+  const base = (barH + fs * CAP) / 2;
   const indexSize = Math.max(10, box.w * 0.022);
 
+  const turn = useCallback((dir: number) => {
+    const now = performance.now();
+    if (now - lastTurn.current < WHEEL.cooldown) return;
+    lastTurn.current = now;
+    setTurned(true);
+    setCursor((c) => c + dir);
+  }, []);
+
+  // keyboard: ↑ / ↓ turn the wheel while the menu is open
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        turn(1);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        turn(-1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, turn]);
+
+  // Scroll and swipe anywhere on the screen turn the wheel while the menu is open.
+  // The wheel listener is non-passive so the page never scrolls underneath.
+  useEffect(() => {
+    if (!open) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      wheelAcc.current += e.deltaY;
+      if (Math.abs(wheelAcc.current) >= WHEEL.wheelStep) {
+        turn(Math.sign(wheelAcc.current));
+        wheelAcc.current = 0;
+      }
+    };
+    // a swipe: touch events on phones (pointer events get cancelled by the browser's
+    // own gesture handling), a mouse drag on desktop
+    const start = (y: number) => {
+      swipe.current = { y, moved: false };
+    };
+    const end = (y: number) => {
+      const s = swipe.current;
+      if (!s) return;
+      const dy = y - s.y;
+      if (Math.abs(dy) > WHEEL.swipe) {
+        s.moved = true;
+        turn(dy < 0 ? 1 : -1); // swipe up = next
+      }
+    };
+    const onTouchStart = (e: TouchEvent) => start(e.touches[0].clientY);
+    const onTouchEnd = (e: TouchEvent) => end(e.changedTouches[0].clientY);
+    const onMouseDown = (e: PointerEvent) => e.pointerType === "mouse" && start(e.clientY);
+    const onMouseUp = (e: PointerEvent) => e.pointerType === "mouse" && end(e.clientY);
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener("pointerdown", onMouseDown);
+    window.addEventListener("pointerup", onMouseUp);
+    return () => {
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("pointerdown", onMouseDown);
+      window.removeEventListener("pointerup", onMouseUp);
+    };
+  }, [open, turn]);
+
+  const slots = [];
+  for (let k = cursor - 3; k <= cursor + 3; k++) slots.push(k);
+
   return (
-    <nav id="hero7-menu" className={styles.menu} aria-label="Main" aria-hidden={!open} style={{ pointerEvents: open ? "auto" : "none" }}>
-      {MENU.map((item, i) => {
-        const top = stackTop + i * (barH + gap);
-        const maskId = `m-${uid}-${i}`;
-        // closed: sitting on its slice of the card, squashed to the slice's height, invisible
-        const closed = {
-          y: i * band - top,
-          scaleY: band / barH,
-          opacity: 0,
-          transition: reduce
-            ? { duration: 0 }
-            : {
-                opacity: { duration: 0, delay: MENU_T.join },
-                default: { duration: MENU_T.collapse, ease: EASE_CINE, delay: MENU_T.collapseAt },
-              },
-        };
+    <nav
+      id="hero7-menu"
+      className={styles.menu}
+      aria-label="Main"
+      aria-hidden={!open}
+      style={{ pointerEvents: open ? "auto" : "none" }}
+    >
+      {slots.map((k) => {
+        const o = k - cursor; // -3 … 3, 0 = active
+        const i = mod(k, n);
+        const item = MENU[i];
+        const far = Math.abs(o) >= 2;
+        const s = o === 0 ? 1 : WHEEL.side * (far ? 0.85 : 1);
+        const maskId = `m-${uid}-${k}`;
+
+        // open: placed on the wheel. closed: the active bar covers the card, the rest fold into it.
         const opened = {
-          y: 0,
-          scaleY: 1,
-          opacity: 1,
-          transition: reduce
-            ? { duration: 0 }
-            : {
-                opacity: { duration: 0, delay: MENU_T.split },
-                default: { duration: MENU_T.spread, ease: EASE_CINE, delay: MENU_T.split + i * 0.04 },
-              },
+          y: o === 0 ? 0 : Math.sign(o) * (step + (far ? (Math.abs(o) - 1) * step * WHEEL.side : 0)),
+          scaleX: s,
+          scaleY: s,
+          opacity: o === 0 ? 1 : far ? 0 : WHEEL.fade,
         };
+        const closed =
+          o === 0
+            ? { y: 0, scaleX: 1, scaleY: box.h / barH, opacity: 0 }
+            : { y: 0, scaleX: s, scaleY: 0, opacity: 0 };
+
+        const openTransition = reduce
+          ? { duration: 0 }
+          : turned
+            ? { duration: WHEEL.turnS, ease: EASE }
+            : {
+                opacity: { duration: o === 0 ? 0 : 0.5, delay: o === 0 ? MENU_T.split : MENU_T.split + 0.25 },
+                default: { duration: MENU_T.spread, ease: EASE_CINE, delay: MENU_T.split },
+              };
+        const closeTransition = reduce
+          ? { duration: 0 }
+          : {
+              opacity: { duration: o === 0 ? 0 : 0.3, delay: o === 0 ? MENU_T.join : 0 },
+              default: { duration: MENU_T.collapse, ease: EASE_CINE, delay: MENU_T.collapseAt },
+            };
         const wordIn = reduce
           ? { duration: 0 }
           : open
-            ? { duration: 0.8, ease: EASE, delay: MENU_T.words + i * 0.07 }
+            ? { duration: 0.8, ease: EASE, delay: turned ? 0 : MENU_T.words }
             : { duration: 0.3, ease: EASE_CINE };
 
         return (
           <motion.div
-            key={item.label}
+            key={k}
             className={styles.bar}
-            style={{ top, height: barH, transformOrigin: "50% 0%" }}
-            initial={false}
-            animate={open ? opened : closed}
+            style={{ top: centerTop, height: barH, transformOrigin: "50% 50%", zIndex: 10 - Math.abs(o) }}
+            initial={closed}
+            animate={open ? { ...opened, transition: openTransition } : { ...closed, transition: closeTransition }}
           >
-            <motion.a
+            <a
               href={item.href}
-              className={styles.barLink}
+              className={`${styles.barLink} ${o === 0 ? styles.barActive : ""}`}
               aria-label={item.label}
-              tabIndex={open ? 0 : -1}
-              onClick={onNavigate}
-              whileHover={reduce ? undefined : { x: box.w * 0.025 }}
-              transition={{ duration: 0.5, ease: EASE }}
+              aria-current={o === 0 ? "page" : undefined}
+              tabIndex={open && o === 0 ? 0 : -1}
+              onClick={(e) => {
+                if (swipe.current?.moved) {
+                  e.preventDefault(); // that was a swipe, not a tap
+                  swipe.current = null;
+                  return;
+                }
+                if (o !== 0) {
+                  e.preventDefault(); // a faded bar comes to the middle first
+                  setTurned(true);
+                  lastTurn.current = performance.now();
+                  setCursor((c) => c + o);
+                  return;
+                }
+                onNavigate();
+              }}
             >
               <svg aria-hidden viewBox={`0 0 ${box.w} ${barH}`} preserveAspectRatio="none">
                 <defs>
                   <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={box.w} height={barH}>
                     <rect width={box.w} height={barH} fill="#fff" />
-                    {/* the word rises into the bar from below its edge */}
                     <motion.text
                       x={box.pl}
                       y={base}
                       fill="#000"
                       style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: fs, letterSpacing: `${TRACK}em` }}
-                      initial={false}
+                      initial={{ y: barH }}
                       animate={{ y: open ? 0 : barH }}
                       transition={wordIn}
                     >
@@ -635,7 +751,7 @@ function Menu({
                       textAnchor="end"
                       fill="#000"
                       style={{ fontFamily: FONT, fontWeight: 600, fontSize: indexSize }}
-                      initial={false}
+                      initial={{ opacity: 0 }}
                       animate={{ opacity: open ? 1 : 0 }}
                       transition={wordIn}
                     >
@@ -645,10 +761,21 @@ function Menu({
                 </defs>
                 <rect width={box.w} height={barH} fill={COBALT} mask={`url(#${maskId})`} />
               </svg>
-            </motion.a>
+            </a>
           </motion.div>
         );
       })}
+
+      {/* a quiet hint under the wheel */}
+      <motion.p
+        className={styles.wheelHint}
+        style={{ top: centerTop + barH / 2 + step + (barH * WHEEL.side) / 2 + gap * 1.6 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: open ? 1 : 0, transition: { duration: 0.5, delay: open && !turned ? MENU_T.words + 0.3 : 0 } }}
+        aria-hidden="true"
+      >
+        Scroll or swipe
+      </motion.p>
     </nav>
   );
 }
@@ -678,6 +805,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const [opened, setOpened] = useState(false);
   const [project, setProject] = useState<OpenProject | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuKey, setMenuKey] = useState(0);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   // Esc closes the menu
@@ -856,12 +984,13 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       : { initial: from, animate: { ...to, transition: { delay, duration, ease: EASE } } };
 
   return (
-    <section className={styles.page} aria-label={mark}>
+    <section className={styles.page} aria-label={mark} style={menuOpen ? { touchAction: "none" } : undefined}>
       {/* ================= The depth gallery: rushing behind the letterbox ================= */}
 
       <motion.div
         ref={sceneRef}
         className={styles.scene}
+        style={menuOpen ? { pointerEvents: "none", touchAction: "none" } : undefined}
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
       >
@@ -902,7 +1031,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         <h1 className={styles.sr}>
           {mark} {MARK_SUB}. {LEFT_LINE}. {RIGHT_LINES.join(" ")}.
         </h1>
-        <Mark mark={mark} reduce={reduce} menuOpen={menuOpen} onNavigate={closeMenu} />
+        <Mark mark={mark} reduce={reduce} menuOpen={menuOpen} menuKey={menuKey} onNavigate={closeMenu} />
       </div>
 
       {/* ================= Top bar: logo left, burger right ================= */}
@@ -920,7 +1049,16 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           aria-label={menuOpen ? "Close menu" : "Open menu"}
           aria-expanded={menuOpen}
           aria-controls="hero7-menu"
-          onClick={() => setMenuOpen((o) => !o)}
+          onClick={() => {
+            if (!menuOpen) {
+              setMenuKey((k) => k + 1);
+              // the wall goes quiet under the menu: no hover label, no hold
+              hoverRef.current = false;
+              playback.setHovered(null);
+              labelRef.current?.show(null);
+            }
+            setMenuOpen(!menuOpen);
+          }}
         >
           <span />
           <span />

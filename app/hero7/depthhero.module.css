@@ -247,11 +247,27 @@
     height: 100%;
   }
 
-  /* hovering one bar lets the wall show through the others */
+  .barLink {
+    transition: transform 0.6s var(--ease);
+  }
+
+  /* the middle bar leans out a touch under the pointer */
   @media (hover: hover) {
-    .menu:hover .barLink:not(:hover) {
-      opacity: 0.45;
+    .barActive:hover {
+      transform: translateX(2%);
     }
+  }
+
+  .wheelHint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0;
+    color: rgb(247 242 238 / 0.5);
+    font-size: clamp(10px, 0.9vw, 12px);
+    letter-spacing: 0.06em;
+    text-align: center;
+    pointer-events: none;
   }
 
   .barLink:focus-visible {
