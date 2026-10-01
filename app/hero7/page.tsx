@@ -29,21 +29,24 @@ import styles from "./depthhero.module.css";
 // ===========================================================================
 // COPY
 // ===========================================================================
-const LEFT_LINE = "BRINGING BRANDS TO LIFE";
 const MARK_SUB = "& BEYOND"; // tiny tag on the same line as the mark, cut into the card
-const RIGHT_LINES = ["Turn target audience", "into your viewers"];
+// The heading and tagline that take the card's place come from Hero-config (headline, sub).
+const HINT = { mouse: "Hover a film · Click to watch · Scroll to fly", touch: "Tap a film · Swipe to fly" };
 const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 
 // ===========================================================================
 // SEQUENCE, in seconds
 // 1. OPENING: on black, the letterbox parts top and bottom. Behind it the
 //    depth gallery is already rushing forward, and it brakes as the frame opens.
-// 2. The 16X9 card appears on a hard cut, like an edit. No animation.
-// 3. The lines settle in under the card.
+// 2. The 16X9 card opens out of a slit and its letters rise into it.
+// 3. It holds, then the letters lift out and the card folds down to a white
+//    line, and the heading and tagline rise out of that line.
 // 4. The client strip fades in.
 // After that the wall surges forward every few seconds like a dolly push.
-// Hovering a tile holds the wall still and lifts the tile; clicking it opens
-// the film full screen (see project-view.tsx).
+// Scrolling (or dragging on a phone) pushes it faster, forwards or back, and
+// it coasts back to its own pace. Hovering a tile holds the wall, tilts the
+// tile toward the pointer and dims the rest; clicking it opens the film full
+// screen (see project-view.tsx).
 // ===========================================================================
 const EASE = [0.16, 1, 0.3, 1] as const;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
@@ -51,14 +54,21 @@ const EASE_CINE = [0.76, 0, 0.24, 1] as const;
 const T = {
   open: 0.3, // letterbox starts to part
   wall: 0.3, // depth gallery is rushing behind the letterbox
-  card: 1.9, // the card cuts in
-  lines: 2.05, // left line and right lines
+  card: 1.55, // the card opens out of a slit
+  letters: 2.05, // its letters rise into it
+  lines: 2.05, // top bar
+  leave: 4.4, // the card leaves: letters lift out, it folds to a line
   clients: 2.8, // logo strip
 };
+// The card's exit, relative to T.leave
+const LEAVE = { letters: 0.5, fold: 0.42, foldS: 0.62, head: 1.0 };
 
 // Speeds are in screen-heights per second.
-const CRAWL = 0.13;
-const SURGE = { first: T.card + 3.4, every: 5.8, length: 1.7, peak: 1.5 };
+const CRAWL = 0.3;
+const SURGE = { first: T.leave + 1.6, every: 4.6, length: 1.6, peak: 2.2 };
+// Scroll / drag push: screen-heights per second added per unit of input, its cap,
+// and how fast it coasts back down (per second).
+const PUSH = { wheel: 0.0045, drag: 0.014, max: 7, decay: 1.9 };
 // How fast the wall runs while a tile is hovered (0 = stopped, 1 = full speed),
 // and how quickly it eases between speeds.
 const HOVER_SPEED = 0.06;
@@ -178,7 +188,25 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onHover, onO
       className={styles.tile}
       style={{ aspectRatio: ratio }}
       onPointerEnter={(e) => e.pointerType === "mouse" && onHover(id, index)}
-      onPointerLeave={() => onHover(null, null)}
+      // tilt toward the pointer and move the glare with it: CSS variables on this
+      // one tile, so nothing re-renders
+      onPointerMove={(e) => {
+        if (e.pointerType !== "mouse") return;
+        const el = e.currentTarget;
+        const r = el.getBoundingClientRect();
+        const nx = (e.clientX - r.left) / r.width;
+        const ny = (e.clientY - r.top) / r.height;
+        el.style.setProperty("--tx", (nx * 2 - 1).toFixed(3));
+        el.style.setProperty("--ty", (ny * 2 - 1).toFixed(3));
+        el.style.setProperty("--gx", `${(nx * 100).toFixed(1)}%`);
+        el.style.setProperty("--gy", `${(ny * 100).toFixed(1)}%`);
+      }}
+      onPointerLeave={(e) => {
+        const el = e.currentTarget;
+        el.style.setProperty("--tx", "0");
+        el.style.setProperty("--ty", "0");
+        onHover(null, null);
+      }}
       onClick={(e) => onOpen(index, e.currentTarget, videoRef.current?.currentTime ?? 0)}
     >
       {poster && (
@@ -207,6 +235,7 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onHover, onO
           onPlaying={() => setPlaying(true)}
         />
       )}
+      <span className={styles.tileGlare} aria-hidden="true" />
     </div>
   );
 });
@@ -308,8 +337,10 @@ function Letterbox({ onDone }: { onDone: () => void }) {
 }
 
 // ===========================================================================
-// THE MARK — a block with 16X9 and © cut clean through it. No animation of
-// its own: it cuts in whole at T.card. The wall behind shows through the letters.
+// THE MARK — a block with 16X9 and © cut clean through it; the wall behind
+// shows through the letters. It opens out of a slit at T.card and its letters
+// rise in; once `gone`, the letters lift out and the block folds down to a
+// line. The block stays in the layout either way: the menu grows out of it.
 // ===========================================================================
 type Box = {
   w: number;
@@ -337,12 +368,15 @@ function wordWidth100(word: string, family: string) {
 function Mark({
   mark,
   reduce,
+  gone,
   menuOpen,
   menuKey,
   onNavigate,
 }: {
   mark: string;
   reduce: boolean;
+  /** the card has made way for the heading */
+  gone: boolean;
   menuOpen: boolean;
   /** changes every time the menu opens, so the wheel starts fresh on WORK */
   menuKey: number;
@@ -406,15 +440,7 @@ function Mark({
 
   return (
     <div className={styles.wm}>
-      {/* hard cut: hidden, then on, with no transition */}
-      <motion.div
-        ref={blockRef}
-        className={styles.wmBlock}
-        style={{ padding: `${PAD_TOP}cqw ${PAD_X}cqw ${PAD_BOTTOM}cqw` }}
-        initial={reduce ? false : { opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: T.card, duration: 0 }}
-      >
+      <div ref={blockRef} className={styles.wmBlock} style={{ padding: `${PAD_TOP}cqw ${PAD_X}cqw ${PAD_BOTTOM}cqw` }}>
         <span
           ref={probeRef}
           aria-hidden
@@ -435,6 +461,25 @@ function Mark({
         <span aria-hidden className={styles.wmSpacer} style={{ height: box ? box.area : "12cqw" }} />
 
         {box && fontSize ? (
+          // the card's face: opens out of a slit, and later folds down to a line and goes
+          <motion.div
+            className={styles.wmFace}
+            initial={reduce ? { opacity: gone ? 0 : 1 } : { clipPath: "inset(50% 0% 50% 0%)", scaleY: 1, opacity: 1 }}
+            animate={
+              gone
+                ? {
+                    scaleY: 0.012,
+                    opacity: 0,
+                    transition: reduce
+                      ? { duration: 0 }
+                      : {
+                          scaleY: { delay: LEAVE.fold, duration: LEAVE.foldS, ease: EASE_CINE },
+                          opacity: { delay: LEAVE.fold + LEAVE.foldS, duration: 0 },
+                        },
+                  }
+                : { clipPath: "inset(0% 0% 0% 0%)", scaleY: 1, opacity: 1, transition: { delay: T.card, duration: 0.95, ease: EASE_CINE } }
+            }
+          >
           <motion.svg
             aria-hidden
             className={styles.wmCut}
@@ -447,16 +492,19 @@ function Mark({
             <defs>
               <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={box.w} height={box.h}>
                 <rect width={box.w} height={box.h} fill="#fff" />
-                {/* the letters rise out of the card when the menu opens, and settle back on close */}
+                {/* the letters rise into the card, lift out when it leaves or the menu
+                    opens, and settle back when the menu closes */}
                 <motion.g
-                  initial={false}
-                  animate={{ y: menuOpen ? -box.h : 0 }}
+                  initial={reduce ? false : { y: box.h }}
+                  animate={{ y: menuOpen || gone ? -box.h : 0 }}
                   transition={
                     reduce
                       ? { duration: 0 }
                       : menuOpen
                         ? { duration: MENU_T.letters, ease: EASE_CINE }
-                        : { duration: 0.75, ease: EASE, delay: MENU_T.join }
+                        : gone
+                          ? { duration: LEAVE.letters, ease: EASE_CINE }
+                          : { duration: 0.9, ease: EASE, delay: menuKey > 0 ? MENU_T.join : T.letters }
                   }
                 >
                 <text
@@ -490,52 +538,13 @@ function Mark({
             </defs>
             <rect width={box.w} height={box.h} fill={COBALT} mask={`url(#${maskId})`} />
           </motion.svg>
+          </motion.div>
         ) : null}
 
         {box && menuFs > 0 ? (
           <Menu key={menuKey} box={box} fs={menuFs} open={menuOpen} reduce={reduce} onNavigate={onNavigate} />
         ) : null}
-      </motion.div>
-
-      {/* Under the block: the line on the left, two lines on the right (all uppercase via CSS) */}
-      <motion.div
-        className={styles.wmUnder}
-        initial={false}
-        animate={{ opacity: menuOpen ? 0 : 1, y: menuOpen ? 14 : 0 }}
-        transition={
-          reduce
-            ? { duration: 0 }
-            : menuOpen
-              ? { duration: 0.4, ease: EASE_CINE }
-              : { duration: 0.8, ease: EASE, delay: MENU_T.join + 0.15 }
-        }
-      >
-        <span className={styles.wmLineMask}>
-          <motion.span
-            className={styles.wmLine}
-            initial={reduce ? false : { y: "110%" }}
-            animate={{ y: 0 }}
-            transition={{ duration: 1.2, ease: EASE, delay: T.lines }}
-          >
-            {LEFT_LINE}
-          </motion.span>
-        </span>
-
-        <p className={styles.wmRight}>
-          {RIGHT_LINES.map((l, i) => (
-            <span key={l} className={styles.wmRightMask}>
-              <motion.span
-                className={styles.wmRightLine}
-                initial={reduce ? false : { y: "110%" }}
-                animate={{ y: 0 }}
-                transition={{ duration: 1.1, ease: EASE, delay: T.lines + 0.2 + i * 0.1 }}
-              >
-                {l}
-              </motion.span>
-            </span>
-          ))}
-        </p>
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -781,6 +790,101 @@ function Menu({
 }
 
 // ===========================================================================
+// HEADING — takes the card's place. A white line (where the card folded down)
+// draws in to a short rule; the headline rises out above it and the tagline,
+// a white block like the card, wipes in below. Then a quiet hint.
+// ===========================================================================
+function Heading({
+  lines,
+  tagline,
+  show,
+  first,
+  reduce,
+}: {
+  lines: string[];
+  tagline: string;
+  show: boolean;
+  /** the first reveal waits for the card to fold and plays in full; later ones (after the menu) are quick */
+  first: boolean;
+  reduce: boolean;
+}) {
+  // the rule takes over from the card's line the moment it lands
+  const base = reduce ? 0 : first ? LEAVE.fold + LEAVE.foldS : 0;
+  const k = reduce ? 0 : first ? 1 : 0.5; // stagger scale
+  const hidden = { duration: reduce ? 0 : 0.35, ease: EASE_CINE };
+  const touch = typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
+  return (
+    <div className={styles.head} aria-hidden="true">
+      <motion.span
+        className={styles.headShade}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: show ? 1 : 0, transition: { delay: show ? base * 0.6 : 0, duration: show ? 1.4 : 0.4, ease: EASE } }}
+      />
+      {/* the rule is the only thing in flow, so it sits exactly where the card's middle was */}
+      <div className={styles.headCenter}>
+        <p className={styles.headTitle}>
+          {lines.map((l, i) => (
+            <span key={l} className={styles.headMask}>
+              <motion.span
+                className={styles.headLine}
+                initial={reduce ? false : { y: "112%" }}
+                animate={
+                  show
+                    ? { y: 0, transition: { delay: base + k * (0.12 + i * 0.12), duration: 1.15, ease: EASE } }
+                    : { y: "112%", transition: hidden }
+                }
+              >
+                {l}
+              </motion.span>
+            </span>
+          ))}
+        </p>
+        <motion.span
+          className={styles.headRule}
+          initial={reduce ? false : { scaleX: 1, opacity: 0 }}
+          animate={
+            show
+              ? {
+                  scaleX: 0.07,
+                  opacity: 1,
+                  transition: {
+                    opacity: { delay: base, duration: 0 },
+                    scaleX: { delay: base + k * 0.08, duration: 0.95, ease: EASE_CINE },
+                  },
+                }
+              : { opacity: 0, transition: hidden }
+          }
+        />
+        <div className={styles.headBelow}>
+          <motion.p
+            className={styles.headTag}
+            initial={reduce ? false : { clipPath: "inset(0% 100% 0% 0%)" }}
+            animate={
+              show
+                ? { clipPath: "inset(0% 0% 0% 0%)", transition: { delay: base + k * 0.5, duration: 0.7, ease: EASE_CINE } }
+                : { clipPath: "inset(0% 0% 0% 100%)", transition: hidden }
+            }
+          >
+            {tagline}
+          </motion.p>
+          <motion.p
+            className={styles.headHint}
+            initial={reduce ? false : { opacity: 0, y: 8 }}
+            animate={
+              show
+                ? { opacity: 1, y: 0, transition: { delay: base + k * 1.15, duration: 0.9, ease: EASE } }
+                : { opacity: 0, transition: hidden }
+            }
+          >
+            {touch ? HINT.touch : HINT.mouse}
+          </motion.p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===========================================================================
 // HERO — films and clients come from Hero-config (URL ?hero=, dates, default)
 // ===========================================================================
 export default function DepthHero({ variantId }: { variantId?: string }) {
@@ -808,6 +912,14 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const [menuKey, setMenuKey] = useState(0);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
+  // the card holds, then makes way for the heading
+  const [gone, setGone] = useState(reduce);
+  useEffect(() => {
+    if (reduce) return;
+    const t = window.setTimeout(() => setGone(true), T.leave * 1000);
+    return () => window.clearTimeout(t);
+  }, [reduce]);
+
   // Esc closes the menu
   useEffect(() => {
     if (!menuOpen) return;
@@ -821,7 +933,17 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   // Read by the camera loop: is a tile under the pointer, is a film open, when did the pointer last move.
   const hoverRef = useRef(false);
   const projectRef = useRef(false);
+  const menuRef = useRef(false);
   const lastMoveRef = useRef(-Infinity);
+  // Scroll / drag push on the wall (screen-heights per second), and whether the
+  // last touch was a drag (so it doesn't also open the tile under the finger).
+  const pushRef = useRef(0);
+  const draggedRef = useRef(false);
+  const warpRef = useRef<HTMLDivElement>(null);
+  const lightRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    menuRef.current = menuOpen;
+  }, [menuOpen]);
   useEffect(() => {
     projectRef.current = project !== null;
   }, [project]);
@@ -845,6 +967,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   );
   const closeProject = useCallback(() => setProject(null), []);
   const onOpen = useCallback((index: number, el: HTMLElement, time: number) => {
+    if (draggedRef.current) return; // that touch was a drag through the wall, not a tap
     const r = el.getBoundingClientRect();
     hoverRef.current = false;
     playback.setHovered(null);
@@ -914,6 +1037,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       const h = heights[l];
       if (el && h) el.style.transform = `translate3d(0, ${(pos[l] - h).toFixed(1)}px, 0)`;
     };
+    const warp = warpRef.current;
+    let warpShown = 0;
     tracks.forEach((_, l) => place(l));
     window.addEventListener("resize", measure);
     if (reduce) return () => window.removeEventListener("resize", measure);
@@ -932,6 +1057,14 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       const holding = hoverRef.current && now - lastMoveRef.current < HOLD_MS;
       const target = projectRef.current ? 0 : holding ? HOVER_SPEED : 1;
       speed += (target - speed) * Math.min(1, dt * SPEED_EASE);
+      // the push coasts back down; while it lasts the camera leans in a touch
+      pushRef.current *= Math.exp(-PUSH.decay * dt);
+      if (Math.abs(pushRef.current) < 0.001) pushRef.current = 0;
+      const w = Math.min(1, Math.abs(pushRef.current) / 4);
+      if (warp && Math.abs(w - warpShown) > 0.004) {
+        warpShown = w;
+        warp.style.transform = `scale(${(1 + w * 0.06).toFixed(4)})`;
+      }
       if (speed < 0.0005 && target === 0) {
         // frozen behind an open film: no work, no DOM writes
         raf = requestAnimationFrame(step);
@@ -942,8 +1075,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         if (!h) continue;
         const lag = Math.abs(l - (n - 1) / 2) * 0.09; // centre lanes push first
         const surge = variant.swap ? surgeAt(t - lag) * SURGE.peak : 0;
-        const v = (CRAWL + surge + arrivalAt(t - lag) * ARRIVAL.peak) * vh * lanes[l].speed * speed;
-        pos[l] = (pos[l] + v * dt) % h;
+        const v = (CRAWL + surge + arrivalAt(t - lag) * ARRIVAL.peak + pushRef.current) * vh * lanes[l].speed * speed;
+        pos[l] = (((pos[l] + v * dt) % h) + h) % h; // runs either way
         place(l);
       }
       raf = requestAnimationFrame(step);
@@ -954,6 +1087,39 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       window.removeEventListener("resize", measure);
     };
   }, [laneCount, lanes, reduce, variant.swap]);
+
+  // Scroll or drag to push the wall: forward or back, then it coasts to its own pace.
+  useEffect(() => {
+    if (reduce) return;
+    const add = (v: number) => {
+      if (menuRef.current || projectRef.current) return;
+      pushRef.current = Math.max(-PUSH.max, Math.min(PUSH.max, pushRef.current + v));
+    };
+    const onWheel = (e: WheelEvent) => add(e.deltaY * (e.deltaMode === 1 ? 16 : 1) * PUSH.wheel);
+    let lastY = 0;
+    let travel = 0;
+    const onStart = (e: TouchEvent) => {
+      lastY = e.touches[0].clientY;
+      travel = 0;
+      draggedRef.current = false;
+    };
+    const onMove = (e: TouchEvent) => {
+      const y = e.touches[0].clientY;
+      const dy = lastY - y; // finger up = forward
+      lastY = y;
+      travel += Math.abs(dy);
+      if (travel > 10) draggedRef.current = true;
+      add(dy * PUSH.drag);
+    };
+    window.addEventListener("wheel", onWheel, { passive: true });
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchmove", onMove);
+    };
+  }, [reduce]);
 
   // The wall leans a little toward the pointer
   useEffect(() => {
@@ -969,6 +1135,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       raf = requestAnimationFrame(() => {
         el.style.setProperty("--px", `${(-nx * 2.5).toFixed(2)}vw`);
         el.style.setProperty("--py", `${(ny * 2).toFixed(2)}deg`);
+        const light = lightRef.current;
+        if (light) light.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
       });
     };
     window.addEventListener("pointermove", onMove, { passive: true });
@@ -994,6 +1162,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
       >
+        <div ref={warpRef} className={styles.warp}>
         <div className={styles.plane}>
           {lanes.map((lane, l) => (
             <div key={l} className={styles.lane}>
@@ -1021,17 +1190,27 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
             </div>
           ))}
         </div>
+        </div>
       </motion.div>
 
       {/* one layer for the whole grade */}
       <div className={styles.grade} aria-hidden="true" />
+      {/* a soft light that follows the pointer across the wall */}
+      <div ref={lightRef} className={styles.light} aria-hidden="true" />
 
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
       <div className={styles.copy}>
         <h1 className={styles.sr}>
-          {mark} {MARK_SUB}. {LEFT_LINE}. {RIGHT_LINES.join(" ")}.
+          {mark} {MARK_SUB}. {variant.headline.join(" ")}. {variant.sub}.
         </h1>
-        <Mark mark={mark} reduce={reduce} menuOpen={menuOpen} menuKey={menuKey} onNavigate={closeMenu} />
+        <Heading
+          lines={variant.headline}
+          tagline={variant.sub}
+          show={gone && !menuOpen}
+          first={menuKey === 0}
+          reduce={reduce}
+        />
+        <Mark mark={mark} reduce={reduce} gone={gone} menuOpen={menuOpen} menuKey={menuKey} onNavigate={closeMenu} />
       </div>
 
       {/* ================= Top bar: logo left, burger right ================= */}
