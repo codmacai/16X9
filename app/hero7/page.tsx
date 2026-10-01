@@ -1,6 +1,17 @@
 "use client";
 
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Ref,
+} from "react";
 import {
   AnimatePresence,
   motion,
@@ -135,7 +146,7 @@ const Tile = memo(function Tile({ clip, index, ratio, reduce, onHover, onOpen }:
   return (
     <div
       className={styles.tile}
-      style={{ aspectRatio: ratio, ["--accent" as string]: clip.accent }}
+      style={{ aspectRatio: ratio }}
       onPointerEnter={(e) => e.pointerType === "mouse" && onHover(index)}
       onPointerLeave={() => onHover(null)}
       onClick={(e) => onOpen(index, e.currentTarget, ref.current?.currentTime ?? 0)}
@@ -157,13 +168,21 @@ const Tile = memo(function Tile({ clip, index, ratio, reduce, onHover, onOpen }:
 });
 
 // ===========================================================================
-// CURSOR LABEL — a small pill that trails the pointer over a tile
+// CURSOR LABEL — a small black pill that trails the pointer over a tile.
+// It owns its own state (set through a ref), so hovering never re-renders the
+// wall; the pointer position lives in motion values, so following it never
+// re-renders anything at all.
 // ===========================================================================
-function CursorLabel({ clip }: { clip: Clip | null }) {
+type CursorLabelHandle = { show: (clip: Clip | null) => void };
+
+function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
+  const [clip, setClip] = useState<Clip | null>(null);
+  useImperativeHandle(ref, () => ({ show: setClip }), []);
+
   const x = useMotionValue(-200);
   const y = useMotionValue(-200);
-  const sx = useSpring(x, { stiffness: 520, damping: 42, mass: 0.6 });
-  const sy = useSpring(y, { stiffness: 520, damping: 42, mass: 0.6 });
+  const sx = useSpring(x, { stiffness: 900, damping: 60, mass: 0.4 });
+  const sy = useSpring(y, { stiffness: 900, damping: 60, mass: 0.4 });
 
   useEffect(() => {
     const move = (e: PointerEvent) => {
@@ -181,19 +200,18 @@ function CursorLabel({ clip }: { clip: Clip | null }) {
           <motion.div
             key="label"
             className={styles.cursorPill}
-            style={{ ["--accent" as string]: clip.accent }}
-            initial={{ opacity: 0, scale: 0.6, y: 6 }}
-            animate={{ opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 420, damping: 30 } }}
-            exit={{ opacity: 0, scale: 0.7, transition: { duration: 0.15 } }}
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1, transition: { duration: 0.35, ease: EASE } }}
+            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
           >
             <span className={styles.cursorPlay} />
             <span className={styles.cursorText}>
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.span
                   key={clip.title}
-                  initial={{ y: "100%", opacity: 0 }}
-                  animate={{ y: 0, opacity: 1, transition: { duration: 0.35, ease: EASE } }}
-                  exit={{ y: "-100%", opacity: 0, transition: { duration: 0.2 } }}
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0, transition: { duration: 0.4, ease: EASE } }}
+                  exit={{ y: "-100%", transition: { duration: 0.25, ease: EASE } }}
                 >
                   {clip.title}
                 </motion.span>
@@ -374,8 +392,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
   const [laneCount, setLaneCount] = useState(LANES_DESKTOP);
   const [opened, setOpened] = useState(false);
-  const [hovered, setHovered] = useState<number | null>(null);
   const [project, setProject] = useState<OpenProject | null>(null);
+  const labelRef = useRef<CursorLabelHandle>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
   // Read by the camera loop: is a tile under the pointer, is a film open, when did the pointer last move.
@@ -383,9 +401,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const projectRef = useRef(false);
   const lastMoveRef = useRef(-Infinity);
   useEffect(() => {
-    hoverRef.current = hovered !== null;
     projectRef.current = project !== null;
-  }, [hovered, project]);
+  }, [project]);
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       if (e.pointerType === "mouse") lastMoveRef.current = performance.now();
@@ -394,10 +411,20 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     return () => window.removeEventListener("pointermove", onMove);
   }, []);
 
-  const onHover = useCallback((index: number | null) => setHovered(index), []);
+  // Hover never touches DepthInner state: it flips a ref for the camera loop
+  // and hands the clip to the cursor label, so the wall itself never re-renders.
+  const onHover = useCallback(
+    (index: number | null) => {
+      hoverRef.current = index !== null;
+      labelRef.current?.show(index === null ? null : clips[index]);
+    },
+    [clips]
+  );
+  const closeProject = useCallback(() => setProject(null), []);
   const onOpen = useCallback((index: number, el: HTMLElement, time: number) => {
     const r = el.getBoundingClientRect();
-    setHovered(null);
+    hoverRef.current = false;
+    labelRef.current?.show(null);
     setProject({ index, rect: { top: r.top, left: r.left, width: r.width, height: r.height }, time });
   }, []);
 
@@ -506,7 +533,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
       <motion.div
         ref={sceneRef}
-        className={`${styles.scene} ${hovered !== null ? styles.sceneFocus : ""}`}
+        className={styles.scene}
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
       >
@@ -586,9 +613,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       </motion.div>
 
       {/* ================= Hover label and the full-screen project ================= */}
-      <CursorLabel clip={hovered !== null && !project ? clips[hovered] : null} />
+      <CursorLabel ref={labelRef} />
       <AnimatePresence>
-        {project && <ProjectView key="project" clips={clips} open={project} onClose={() => setProject(null)} />}
+        {project && <ProjectView key="project" clips={clips} open={project} onClose={closeProject} />}
       </AnimatePresence>
 
       {/* ================= Opening ================= */}

@@ -76,54 +76,57 @@
     overflow: hidden;
     background: radial-gradient(120% 90% at 30% 25%, #1c1c1c 0%, #080808 72%);
     cursor: pointer;
-    transition:
-      transform 0.6s var(--ease),
-      box-shadow 0.6s var(--ease);
+    transition: transform 0.55s var(--ease);
   }
-  
+
+  /* Dim the film with an overlay, not a filter: changing its opacity on hover
+     is compositor-only, where a filter change repaints the video. */
+  .tile::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: #000;
+    opacity: 0.4;
+    transition: opacity 0.55s var(--ease);
+    pointer-events: none;
+  }
+
   .tile::after {
     content: "";
     position: absolute;
     inset: 0;
+    z-index: 2;
     border-radius: inherit;
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+    transition: box-shadow 0.55s var(--ease);
+    pointer-events: none;
   }
-  
+
   .tileVideo {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    filter: brightness(0.62) saturate(0.85) contrast(1.06);
-    transition: filter 0.6s var(--ease);
   }
 
-  /* Hover: the tile lifts off the wall and comes up to full colour,
-     while the rest of the wall drops back a little. */
+  /* Hover: the tile lifts a touch and comes up to full brightness. */
   @media (hover: hover) {
     .tile:hover {
       z-index: 3;
-      transform: scale(1.07);
-      box-shadow:
-        0 40px 70px -24px rgb(0 0 0 / 0.95),
-        0 0 0 1px rgb(255 255 255 / 0.4),
-        0 0 60px -10px var(--accent, transparent);
+      transform: scale(1.05);
+    }
+
+    .tile:hover::before {
+      opacity: 0;
     }
 
     .tile:hover::after {
-      box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28);
-    }
-
-    .tile:hover .tileVideo {
-      filter: brightness(1.02) saturate(1.05) contrast(1.02);
-    }
-
-    .sceneFocus .tile:not(:hover) .tileVideo {
-      filter: brightness(0.38) saturate(0.6) contrast(1.06);
+      box-shadow: inset 0 0 0 1px rgb(247 242 238 / 0.55);
     }
   }
-  
+
   /* ================= Grade ================= */
   
   .fog,
@@ -440,33 +443,32 @@
     top: 0;
     left: 0;
     pointer-events: none;
+    will-change: transform;
   }
 
   .cursorPill {
     position: absolute;
-    top: 18px;
-    left: 18px;
+    top: 16px;
+    left: 16px;
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 9px 14px 9px 10px;
+    padding: 8px 14px 8px 8px;
+    border: 1px solid rgb(247 242 238 / 0.22);
     border-radius: 999px;
-    background: rgb(247 242 238 / 0.94);
-    color: #0a0a0a;
-    box-shadow: 0 14px 40px -12px rgb(0 0 0 / 0.7);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
+    background: #000;
+    color: var(--paper);
     transform-origin: 0 0;
     white-space: nowrap;
   }
 
   .cursorPlay {
+    position: relative;
+    flex: none;
     width: 22px;
     height: 22px;
-    flex: none;
     border-radius: 50%;
-    background: #0a0a0a;
-    position: relative;
+    background: var(--paper);
   }
 
   .cursorPlay::after {
@@ -474,7 +476,7 @@
     position: absolute;
     left: 8px;
     top: 6px;
-    border-left: 8px solid var(--accent, #fff);
+    border-left: 8px solid #000;
     border-top: 5px solid transparent;
     border-bottom: 5px solid transparent;
   }
@@ -482,8 +484,8 @@
   .cursorText {
     display: inline-flex;
     overflow: hidden;
-    font-size: 13px;
-    line-height: 1.2;
+    font-size: 12px;
+    line-height: 1.15;
     letter-spacing: -0.01em;
   }
 
@@ -493,32 +495,31 @@
 
   .cursorDur {
     font-size: 11px;
-    opacity: 0.5;
-    letter-spacing: 0.02em;
+    color: rgb(247 242 238 / 0.5);
   }
 
-  /* ================= Project view (full screen film) ================= */
+  /* ================= Project view: centred film card ================= */
 
   .pv {
     position: fixed;
     inset: 0;
     z-index: 30;
+    color: var(--paper);
   }
 
   .pvBackdrop {
     position: absolute;
     inset: 0;
-    background: rgb(0 0 0 / 0.72);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
+    background: rgb(0 0 0 / 0.9);
   }
 
-  .pvFrame {
+  .pvCard {
     position: fixed;
     overflow: hidden;
+    border-radius: 28px;
     background: #000;
-    box-shadow: 0 40px 120px -20px rgb(0 0 0 / 0.9);
-    will-change: top, left, width, height;
+    transform-origin: 50% 50%;
+    will-change: transform, clip-path;
   }
 
   .pvVideo {
@@ -527,132 +528,70 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    cursor: pointer;
   }
 
-  .pvGrade {
+  .pvIdle,
+  .pvIdle .pvVideo {
+    cursor: none;
+  }
+
+  .pvShade {
     position: absolute;
     inset: 0;
     pointer-events: none;
     background:
-      linear-gradient(to bottom, rgb(0 0 0 / 0.55) 0%, transparent 22%),
-      linear-gradient(to top, rgb(0 0 0 / 0.8) 0%, rgb(0 0 0 / 0.35) 30%, transparent 55%);
+      linear-gradient(to bottom, rgb(0 0 0 / 0.45) 0%, transparent 20%),
+      linear-gradient(to top, rgb(0 0 0 / 0.85) 0%, rgb(0 0 0 / 0.4) 26%, transparent 48%);
+    transition: opacity 0.6s var(--ease);
   }
 
-  .pvUi {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: clamp(18px, 3vh, 32px) clamp(20px, 3.5vw, 56px) clamp(26px, 5vh, 56px);
-    color: var(--paper, #f7f2ee);
+  .pvIdle .pvShade {
+    opacity: 0.35;
   }
 
   .pvTop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    padding: clamp(16px, 2.4vw, 34px) clamp(18px, 2.6vw, 38px);
+    pointer-events: none;
   }
 
   .pvCount {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 0;
-    font-size: clamp(11px, 1vw, 13px);
-    letter-spacing: 0.08em;
+    font-size: clamp(11px, 0.95vw, 13px);
+    letter-spacing: 0.04em;
+    color: rgb(247 242 238 / 0.75);
   }
 
-  .pvCountNum {
-    opacity: 0.55;
-  }
-
-  .pvDot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--accent, #fff);
-    box-shadow: 0 0 14px var(--accent, #fff);
-  }
-
-  .pvActions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .pvPill {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    height: 44px;
-    padding: 0 18px;
-    border: 1px solid rgb(247 242 238 / 0.28);
-    border-radius: 999px;
-    background: rgb(0 0 0 / 0.25);
-    color: inherit;
-    font: inherit;
-    font-size: 12px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    cursor: pointer;
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-    transition: background 0.3s, border-color 0.3s;
-  }
-
-  .pvPill:hover {
-    background: rgb(247 242 238 / 0.12);
-    border-color: rgb(247 242 238 / 0.6);
-  }
-
-  .pvBars {
-    display: inline-flex;
-    align-items: flex-end;
-    gap: 2px;
-    height: 12px;
-  }
-
-  .pvBars i {
-    width: 2px;
-    height: 3px;
-    background: currentColor;
-    border-radius: 1px;
-  }
-
-  .pvBarsOn i {
-    animation: eq 0.9s ease-in-out infinite;
-  }
-
-  .pvBarsOn i:nth-child(2) {
-    animation-delay: -0.3s;
-  }
-
-  .pvBarsOn i:nth-child(3) {
-    animation-delay: -0.6s;
+  .pvCount i {
+    font-style: normal;
+    color: rgb(247 242 238 / 0.35);
   }
 
   .pvClose {
     position: relative;
-    width: 44px;
-    height: 44px;
-    border: 1px solid rgb(247 242 238 / 0.28);
+    width: clamp(42px, 3.6vw, 56px);
+    height: clamp(42px, 3.6vw, 56px);
+    border: 1px solid rgb(247 242 238 / 0.35);
     border-radius: 50%;
-    background: rgb(0 0 0 / 0.25);
-    color: inherit;
+    background: rgb(0 0 0 / 0.35);
+    color: var(--paper);
     cursor: pointer;
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-    transition: transform 0.5s var(--ease, ease), background 0.3s, border-color 0.3s;
+    pointer-events: auto;
   }
 
   .pvClose span {
     position: absolute;
-    left: 13px;
-    right: 13px;
+    left: 30%;
+    right: 30%;
     top: 50%;
     height: 1.5px;
+    margin-top: -0.75px;
     background: currentColor;
   }
 
@@ -664,131 +603,184 @@
     transform: rotate(-45deg);
   }
 
-  .pvClose:hover {
-    transform: rotate(90deg);
-    background: rgb(247 242 238 / 0.12);
-    border-color: rgb(247 242 238 / 0.6);
-  }
-
-  .pvClose:focus-visible,
-  .pvPill:focus-visible,
-  .pvArrow:focus-visible {
-    outline: 2px solid var(--paper, #f7f2ee);
-    outline-offset: 3px;
-  }
-
   .pvBottom {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 24px;
-  }
-
-  .pvTitleWrap {
-    min-width: 0;
-  }
-
-  .pvTitle {
-    display: flex;
-    flex-wrap: wrap;
-    column-gap: 0.22em;
-    margin: 0;
-    font-size: clamp(40px, 8.5vw, 140px);
-    font-weight: 700;
-    line-height: 0.9;
-    letter-spacing: -0.04em;
-    text-transform: uppercase;
-  }
-
-  .pvWordMask {
-    display: inline-block;
-    overflow: hidden;
-    padding-bottom: 0.06em;
-  }
-
-  .pvWord {
-    display: inline-block;
-  }
-
-  .pvMeta {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 14px 0 0;
-    font-size: clamp(11px, 1vw, 13px);
-    letter-spacing: 0.08em;
-    opacity: 0.75;
-  }
-
-  .pvSep {
-    width: 28px;
-    height: 1px;
-    background: currentColor;
-    opacity: 0.6;
-  }
-
-  .pvNav {
-    display: flex;
-    gap: 10px;
-    flex: none;
-  }
-
-  .pvArrow {
-    display: grid;
-    place-items: center;
-    width: clamp(48px, 4.4vw, 64px);
-    height: clamp(48px, 4.4vw, 64px);
-    border: 1px solid rgb(247 242 238 / 0.28);
-    border-radius: 50%;
-    background: rgb(0 0 0 / 0.25);
-    color: inherit;
-    cursor: pointer;
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-    transition: background 0.35s, border-color 0.35s, color 0.35s;
-  }
-
-  .pvArrow svg {
-    width: 20px;
-    height: 20px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.6;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    transition: transform 0.4s var(--ease, ease);
-  }
-
-  .pvArrow:hover {
-    background: var(--paper, #f7f2ee);
-    border-color: var(--paper, #f7f2ee);
-    color: #0a0a0a;
-  }
-
-  .pvArrow:hover svg {
-    transform: scale(1.12);
-  }
-
-  .pvProgress {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    height: 2px;
-    background: rgb(247 242 238 / 0.14);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(10px, 1.4vw, 20px);
+    padding: 0 clamp(18px, 8%, 140px) clamp(18px, 3vw, 44px);
+    pointer-events: none;
   }
 
-  .pvProgress span {
+  .pvTitle {
+    margin: 0;
+    font-size: clamp(18px, 2.5vw, 40px);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    text-align: center;
+    text-shadow: 0 2px 24px rgb(0 0 0 / 0.5);
+  }
+
+  .pvTitleMask {
     display: block;
-    height: 100%;
-    background: var(--accent, #fff);
+    overflow: hidden;
+    padding: 0.06em 0 0.1em;
+  }
+
+  .pvTitleLine {
+    display: block;
+  }
+
+  .pvBar {
+    display: flex;
+    align-items: center;
+    gap: clamp(12px, 2.2vw, 40px);
+    width: 100%;
+    pointer-events: auto;
+  }
+
+  .pvPlay {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--paper);
+    cursor: pointer;
+  }
+
+  .pvPlay svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+  }
+
+  .pvTime {
+    flex: none;
+    min-width: 5ch;
+    font-size: clamp(11px, 1vw, 14px);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: rgb(247 242 238 / 0.9);
+  }
+
+  .pvTrack {
+    position: relative;
+    flex: 1;
+    height: 24px;
+    cursor: pointer;
+    touch-action: none;
+  }
+
+  .pvTrackLine,
+  .pvTrackFill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+  }
+
+  /* the unplayed part is a fine dotted line, the played part solid */
+  .pvTrackLine {
+    background-image: linear-gradient(to right, rgb(247 242 238 / 0.45) 50%, transparent 50%);
+    background-size: 5px 1px;
+  }
+
+  .pvTrackFill {
+    height: 1.5px;
+    margin-top: -0.25px;
+    background: var(--paper);
     transform-origin: 0 50%;
   }
 
+  .pvTrackDot {
+    position: absolute;
+    top: 50%;
+    width: 9px;
+    height: 9px;
+    margin: -4.5px 0 0 -4.5px;
+    border-radius: 50%;
+    background: var(--paper);
+    transition: transform 0.3s var(--ease);
+  }
+
+  .pvTrack:hover .pvTrackDot {
+    transform: scale(1.5);
+  }
+
+  .pvSound {
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--paper);
+    font: inherit;
+    font-size: clamp(11px, 1vw, 15px);
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .pvNav {
+    position: fixed;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: clamp(14px, 2vh, 24px);
+    font-size: clamp(11px, 0.95vw, 13px);
+    letter-spacing: 0.04em;
+  }
+
+  .pvNav button {
+    display: inline-flex;
+    gap: 8px;
+    padding: 6px 0;
+    border: 0;
+    background: none;
+    color: rgb(247 242 238 / 0.7);
+    font: inherit;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.3s;
+  }
+
+  .pvNav button:hover {
+    color: var(--paper);
+  }
+
+  .pvHint {
+    color: rgb(247 242 238 / 0.3);
+  }
+
+  .pvClose:focus-visible,
+  .pvPlay:focus-visible,
+  .pvSound:focus-visible,
+  .pvNav button:focus-visible {
+    outline: 2px solid var(--paper);
+    outline-offset: 3px;
+  }
+
   @media (max-width: 760px) {
-    .pvBottom {
-      flex-direction: column;
-      align-items: flex-start;
+    .pvCard {
+      border-radius: 18px;
+    }
+
+    .pvBar {
+      gap: 10px;
+    }
+
+    .pvHint {
+      display: none;
     }
   }
 
@@ -800,16 +792,6 @@
     }
   }
   
-  @keyframes eq {
-    0%,
-    100% {
-      height: 3px;
-    }
-    50% {
-      height: 12px;
-    }
-  }
-
   @keyframes grain {
     0%,
     100% {
