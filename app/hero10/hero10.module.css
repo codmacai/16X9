@@ -1,0 +1,515 @@
+/* HERO 10 — the screening room. Black, paper white, and the films' own light.
+   --c0/--c1/--c2: the colour each screen is throwing (r g b), set from JS.
+   --g0/--g1/--g2: how bright each screen is (0–1), eased by CSS. */
+
+@property --g0 { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --g1 { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --g2 { syntax: "<number>"; inherits: true; initial-value: 0; }
+
+.root {
+  --paper: #f7f2ee;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ui: clamp(18px, 2.6vw, 40px);
+  position: relative;
+  width: 100%;
+  background: #030303;
+  color: var(--paper);
+  font-family: var(--font-sans, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sticky {
+  --c0: 255 90 60;
+  --c1: 60 200 255;
+  --c2: 123 224 106;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  background: #030303;
+  transition: --g0 0.9s var(--ease), --g1 0.9s var(--ease), --g2 0.9s var(--ease);
+}
+
+/* ================= stage (z 0) ================= */
+
+.stage {
+  position: absolute;
+  inset: -4%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* the floor catches each screen's light */
+.floor {
+  --fx0: 22%;
+  --fx2: 78%;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(34% 70% at var(--fx0) 0%, rgb(var(--c0) / calc(0.4 * var(--g0))), transparent 72%),
+    radial-gradient(38% 80% at 50% 0%, rgb(var(--c1) / calc(0.44 * var(--g1))), transparent 72%),
+    radial-gradient(34% 70% at var(--fx2) 0%, rgb(var(--c2) / calc(0.4 * var(--g2))), transparent 72%),
+    linear-gradient(to bottom, #0b0b0b, #030303 60%);
+  /* the floor fades in from the dark, no hard horizon */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%);
+  mask-image: linear-gradient(to bottom, transparent, #000 18%);
+}
+
+/* a little light in the air above the screens, and the room's corners in shadow */
+.haze {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 45% at 50% 34%, rgb(var(--c1) / calc(0.07 * var(--g1))), transparent 70%),
+    radial-gradient(120% 90% at 50% 40%, transparent 55%, rgb(0 0 0 / 0.8) 100%);
+}
+
+/* ================= screens (z 10) ================= */
+
+/* flat on purpose: each screen is angled on its own under the shared perspective,
+   so nothing is depth-sorted (which let playing videos draw over the labels) */
+.screens {
+  position: absolute;
+  z-index: 10;
+  will-change: transform;
+}
+
+.screen {
+  position: absolute;
+  cursor: none;
+  outline: none;
+  transition:
+    left 0.9s var(--ease),
+    top 0.9s var(--ease),
+    width 0.9s var(--ease),
+    height 0.9s var(--ease);
+  will-change: transform;
+}
+
+.screen:focus-visible .glass {
+  outline: 1px solid var(--paper);
+  outline-offset: 6px;
+}
+
+.screenHidden {
+  visibility: hidden;
+}
+
+/* the light a screen throws into the room (on the stage, behind the screens) */
+.glow {
+  position: absolute;
+  transform: scale(1.9, 2.1);
+  background: radial-gradient(closest-side, rgb(var(--c) / calc(0.24 * var(--g))), transparent);
+  transition: left 0.9s var(--ease), top 0.9s var(--ease);
+}
+
+.glass {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #0d0d0d;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* dims the screen when another one has your attention */
+.shade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0.08;
+  transition: opacity 0.8s var(--ease);
+}
+
+.screenDim .shade {
+  opacity: 0.62;
+}
+
+/* the cut between films: a short dip to black */
+.dip {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.dipOn {
+  opacity: 1;
+}
+
+/* the projector's first light as it switches on */
+.flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+}
+
+.label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 0.9em);
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+  font-weight: 400;
+  font-stretch: 108%;
+  font-variation-settings: "wdth" 108;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.6s var(--ease);
+}
+
+.labelFilm {
+  opacity: 0.5;
+}
+
+.screenDim .label {
+  opacity: 0.35;
+}
+
+/* ================= audience (z 20) ================= */
+
+.audienceLayer {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+.audienceIn {
+  position: absolute;
+  inset: 0;
+}
+
+.audience {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.personFill {
+  fill: #030303;
+}
+
+/* everyone breathes a little, at their own pace */
+.person {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: breathe 6s ease-in-out infinite;
+}
+
+.lean {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+/* a couple of people glance across now and then */
+.glance {
+  animation: glance 11s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.4%); }
+}
+
+@keyframes glance {
+  0%, 70%, 100% { transform: rotate(0deg); }
+  76%, 88% { transform: rotate(-4deg); }
+}
+
+/* ================= interface (z 30) ================= */
+
+.ui {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  font-size: 11px;
+  font-weight: 400;
+  font-stretch: 108%;
+  font-variation-settings: "wdth" 108;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.ui a,
+.ui button {
+  pointer-events: auto;
+}
+
+.topbar {
+  position: absolute;
+  top: var(--ui);
+  left: var(--ui);
+  right: var(--ui);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  height: clamp(28px, 2.6vw, 38px);
+  width: auto;
+}
+
+.nav {
+  display: flex;
+  gap: clamp(20px, 2.8vw, 44px);
+}
+
+.nav a {
+  position: relative;
+  padding: 4px 0;
+  color: var(--paper);
+  text-decoration: none;
+}
+
+.nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--paper);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.6s var(--ease);
+}
+
+.nav a:hover::after,
+.nav a:focus-visible::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.footer {
+  position: absolute;
+  left: var(--ui);
+  right: var(--ui);
+  bottom: var(--ui);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 16px;
+}
+
+.footer p {
+  margin: 0;
+}
+
+.footLeft {
+  opacity: 0.7;
+}
+
+.footRight {
+  justify-self: end;
+  opacity: 0.7;
+}
+
+.scroll {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.scrollLine {
+  position: relative;
+  width: 1px;
+  height: 42px;
+  overflow: hidden;
+  background: rgb(247 242 238 / 0.2);
+}
+
+.scrollLine::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: var(--paper);
+  animation: drip 2.2s cubic-bezier(0.76, 0, 0.24, 1) infinite;
+}
+
+@keyframes drip {
+  0% { transform: translateY(-100%); }
+  60%, 100% { transform: translateY(100%); }
+}
+
+.dots {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 1px solid var(--paper);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.4s var(--ease);
+}
+
+.dotOn {
+  background: var(--paper);
+}
+
+/* ================= arrival: inside the screen ================= */
+
+.arrival {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 2vh, 20px);
+  text-align: center;
+  background: radial-gradient(ellipse at center, rgb(0 0 0 / 0.45), rgb(0 0 0 / 0.15) 70%);
+}
+
+.arrivalEyebrow,
+.arrivalMeta {
+  margin: 0;
+  font-size: 11px;
+  font-stretch: 108%;
+  font-variation-settings: "wdth" 108;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.arrivalTitle {
+  margin: 0;
+  font-size: clamp(48px, 8vw, 150px);
+  font-weight: 300;
+  font-stretch: 108%;
+  font-variation-settings: "wdth" 108;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+}
+
+.arrivalCta {
+  margin-top: 10px;
+  padding: 14px 26px;
+  border: 1px solid rgb(247 242 238 / 0.6);
+  border-radius: 999px;
+  color: var(--paper);
+  font-size: 11px;
+  font-stretch: 108%;
+  font-variation-settings: "wdth" 108;
+  letter-spacing: 0.22em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: background-color 0.5s var(--ease), color 0.5s var(--ease);
+}
+
+.arrivalCta:hover,
+.arrivalCta:focus-visible {
+  background: var(--paper);
+  color: #000;
+}
+
+/* ================= cursor ================= */
+
+.cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.ring {
+  position: absolute;
+  left: -27px;
+  top: -27px;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgb(247 242 238 / 0.9);
+  border-radius: 50%;
+}
+
+.ringPlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 11px;
+  margin: -5.5px 0 0 -3.5px;
+  fill: var(--paper);
+}
+
+.ringLabel {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-stretch: 108%;
+  font-variation-settings: "wdth" 108;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ================= touch, phones, reduced motion ================= */
+
+@media (hover: none) {
+  .screen {
+    cursor: pointer;
+  }
+  .cursor {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .footLeft {
+    display: none;
+  }
+  .footer {
+    grid-template-columns: 1fr auto 1fr;
+  }
+  .footer::before {
+    content: "";
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .person,
+  .glance,
+  .scrollLine::after {
+    animation: none;
+  }
+  .sticky {
+    transition: none;
+  }
+}
