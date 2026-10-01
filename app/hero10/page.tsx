@@ -109,7 +109,7 @@ function SpiralHero() {
     const edge = tall ? 1.9 : 1.35; // phones are tall: the ribbon runs further before it fades
     const panels: Panel[] = Array.from({ length: SPIRAL.count }, (_, i) => {
       const clip = i % clips.length;
-      const p = makePanel(clip, stills[clip], edge);
+      const p = makePanel(clip, stills[clip], edge, (i * 0.618) % 1);
       group.add(p.mesh);
       return p;
     });
@@ -313,12 +313,16 @@ function SpiralHero() {
       const fade = f * f * (3 - 2 * f);
       dim += ((focused ? 0.42 : 0) - dim) * (1 - Math.exp(-dt * 6));
       const kf = 1 - Math.exp(-dt * 6);
+      const kl = 1 - Math.exp(-dt * 4.5); // the lift is a little slower than the light, so it feels weighty
       panels.forEach((p, i) => {
         const u = p.material.uniforms;
         u.uStart.value = panelStart(i, travel);
         u.uFade.value = fade;
         u.uDim.value = dim;
-        u.uFocus.value += ((p === focused ? 1 : 0) - (u.uFocus.value as number)) * kf;
+        u.uTime.value = age;
+        const on = p === focused ? 1 : 0;
+        u.uFocus.value += (on - (u.uFocus.value as number)) * kf;
+        u.uLift.value += (on - (u.uLift.value as number)) * kl;
       });
       const k = 1 - Math.exp(-dt * 2);
       lean.x += (lean.tx - lean.x) * k;
@@ -327,6 +331,11 @@ function SpiralHero() {
       group.rotation.x = SPIRAL.tilt.x + lean.y * 0.03;
       group.rotation.z = SPIRAL.tilt.z;
       group.updateMatrixWorld();
+      // tiles are see-through at the glow, so draw them back to front
+      panels.forEach((p) => {
+        panelPoint(p.material.uniforms.uStart.value as number, 0.5, 0.5, v3).applyMatrix4(group.matrixWorld);
+        p.mesh.renderOrder = -Math.round(v3.distanceTo(camera.position) * 1000) + (p === focused ? 100000 : 0);
+      });
       renderer.render(scene, camera);
       raf = requestAnimationFrame(frame);
     };
