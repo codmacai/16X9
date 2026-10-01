@@ -30,6 +30,7 @@ import styles from "./depthhero.module.css";
 // COPY
 // ===========================================================================
 const LEFT_LINE = "BRINGING BRANDS TO LIFE";
+const MARK_SUB = "& BEYOND"; // tiny tag on the same line as the mark, cut into the card
 const RIGHT_LINES = ["Turn target audience", "into your viewers"];
 const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 
@@ -88,6 +89,10 @@ const PAD_BOTTOM = 3.8;
 const CAP = 0.727; // Inter Tight cap height, as a fraction of the font size
 const TRACK = -0.03; // letter spacing, in em
 const MARK_WEIGHT = 700;
+// "& BEYOND" on the mark's line: its size and the space before it, as fractions of
+// the 16X9 font size. The card keeps its original size; 16X9 shrinks to make room.
+const SUB_SCALE = 0.17;
+const SUB_GAP = 0.07;
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -287,20 +292,37 @@ function Letterbox({ onDone }: { onDone: () => void }) {
 // THE MARK — a block with 16X9 and © cut clean through it. No animation of
 // its own: it cuts in whole at T.card. The wall behind shows through the letters.
 // ===========================================================================
-type Box = { w: number; h: number; pl: number; pr: number; pt: number; pb: number };
+type Box = {
+  w: number;
+  h: number;
+  pl: number;
+  pr: number;
+  pt: number;
+  pb: number;
+  /** height of the lettering area: what 16X9 alone would fill, so the card never changes size */
+  area: number;
+  /** shared baseline for 16X9 and the tag, centred in that area */
+  base: number;
+  /** where the tag starts */
+  subX: number;
+};
 
 function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
   const maskId = `dh-cut-${useId().replace(/:/g, "")}`;
   const blockRef = useRef<HTMLDivElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
+  const subProbeRef = useRef<HTMLSpanElement>(null);
   const [fontSize, setFontSize] = useState<number | null>(null);
   const [box, setBox] = useState<Box | null>(null);
 
-  // Fit the letters to 90% of the block's inner width; re-fit on resize and font load.
+  // The card is sized as if 16X9 alone filled 90% of its inner width (its original
+  // size). 16X9 + the tag then share that same 90%, sitting on one baseline,
+  // centred in the card. Re-fit on resize and font load.
   useIsoLayoutEffect(() => {
     const block = blockRef.current;
     const probe = probeRef.current;
-    if (!block || !probe) return;
+    const subProbe = subProbeRef.current;
+    if (!block || !probe || !subProbe) return;
     const fit = () => {
       const cs = getComputedStyle(block);
       const pl = parseFloat(cs.paddingLeft);
@@ -309,11 +331,24 @@ function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
       const pb = parseFloat(cs.paddingBottom);
       const w = block.clientWidth;
       const inner = w - pl - pr;
-      const tw = probe.getBoundingClientRect().width; // measured at 100px
-      if (tw > 0 && inner > 0) {
-        const fs = (100 * inner * 0.9) / tw;
+      const tw = probe.getBoundingClientRect().width; // 16X9 measured at 100px
+      const ts = subProbe.getBoundingClientRect().width; // the tag measured at 100px
+      if (tw > 0 && ts > 0 && inner > 0) {
+        const original = (100 * inner * 0.9) / tw; // the font size 16X9 had on its own
+        const area = original * CAP;
+        const fs = (100 * inner * 0.9) / (tw + 100 * SUB_GAP + ts * SUB_SCALE);
         setFontSize(fs);
-        setBox({ w, h: pt + pb + fs * CAP, pl, pr, pt, pb });
+        setBox({
+          w,
+          h: pt + pb + area,
+          pl,
+          pr,
+          pt,
+          pb,
+          area,
+          base: pt + (area + fs * CAP) / 2,
+          subX: pl + (fs * tw) / 100 + fs * SUB_GAP,
+        });
       }
     };
     fit();
@@ -342,8 +377,16 @@ function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
         >
           {mark}
         </span>
+        <span
+          ref={subProbeRef}
+          aria-hidden
+          className={styles.wmProbe}
+          style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: 100, letterSpacing: `${TRACK}em` }}
+        >
+          {MARK_SUB}
+        </span>
 
-        <span aria-hidden className={styles.wmSpacer} style={{ height: fontSize ? fontSize * CAP : "12cqw" }} />
+        <span aria-hidden className={styles.wmSpacer} style={{ height: box ? box.area : "12cqw" }} />
 
         {box && fontSize ? (
           <svg aria-hidden className={styles.wmCut} viewBox={`0 0 ${box.w} ${box.h}`} preserveAspectRatio="none">
@@ -352,11 +395,20 @@ function Mark({ mark, reduce }: { mark: string; reduce: boolean }) {
                 <rect width={box.w} height={box.h} fill="#fff" />
                 <text
                   x={box.pl}
-                  y={box.pt + fontSize * CAP}
+                  y={box.base}
                   fill="#000"
                   style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize, letterSpacing: `${TRACK}em` }}
                 >
                   {mark}
+                </text>
+                {/* & BEYOND: tiny, on the same baseline, right after the mark */}
+                <text
+                  x={box.subX}
+                  y={box.base}
+                  fill="#000"
+                  style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: fontSize * SUB_SCALE, letterSpacing: `${TRACK}em` }}
+                >
+                  {MARK_SUB}
                 </text>
                 <text
                   x={box.w - box.pr * 0.45}
@@ -643,7 +695,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
       <div className={styles.copy}>
         <h1 className={styles.sr}>
-          {mark}. {LEFT_LINE}. {RIGHT_LINES.join(" ")}.
+          {mark} {MARK_SUB}. {LEFT_LINE}. {RIGHT_LINES.join(" ")}.
         </h1>
         <Mark mark={mark} reduce={reduce} />
       </div>
