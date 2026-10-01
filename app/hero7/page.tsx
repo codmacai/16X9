@@ -70,8 +70,8 @@ const T = {
   clients: 2.8, // logo strip
 };
 // The card's exit, relative to T.leave
-const LEAVE = { letters: 0.7, fold: 0.32, foldS: 0.9 };
-const EASE_SMOOTH = [0.65, 0, 0.35, 1] as const; // symmetrical, for the fold
+// The card's exit: it eases back and fades out; the heading fades in over it.
+const LEAVE = { fade: 1.1, headAt: 0.35 };
 
 // Speeds are in screen-heights per second.
 const CRAWL = 0.3;
@@ -447,24 +447,14 @@ function Mark({
         <span aria-hidden className={styles.wmSpacer} style={{ height: box ? box.area : "12cqw" }} />
 
         {box && fontSize ? (
-          // the card's face: opens out of a slit, and later folds down to a line and goes
+          // the card's face: opens out of a slit, and later eases back and fades away
           <motion.div
             className={styles.wmFace}
-            initial={reduce ? { opacity: gone ? 0 : 1 } : { clipPath: "inset(50% 0% 50% 0%)", scaleY: 1, opacity: 1 }}
+            initial={reduce ? { opacity: gone ? 0 : 1 } : { clipPath: "inset(50% 0% 50% 0%)", scale: 1, opacity: 1 }}
             animate={
               gone
-                ? {
-                    scaleY: 0.012,
-                    opacity: 0,
-                    transition: reduce
-                      ? { duration: 0 }
-                      : {
-                          scaleY: { delay: LEAVE.fold, duration: LEAVE.foldS, ease: EASE_SMOOTH },
-                          // stays until the heading's rule is drawn over it, then fades
-                          opacity: { delay: LEAVE.fold + LEAVE.foldS + 0.02, duration: 0.2 },
-                        },
-                  }
-                : { clipPath: "inset(0% 0% 0% 0%)", scaleY: 1, opacity: 1, transition: { delay: T.card, duration: 0.95, ease: EASE_CINE } }
+                ? { scale: 0.96, opacity: 0, transition: { duration: reduce ? 0 : LEAVE.fade, ease: "easeInOut" } }
+                : { clipPath: "inset(0% 0% 0% 0%)", scale: 1, opacity: 1, transition: { delay: T.card, duration: 0.95, ease: EASE_CINE } }
             }
           >
           <motion.svg
@@ -479,19 +469,17 @@ function Mark({
             <defs>
               <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={box.w} height={box.h}>
                 <rect width={box.w} height={box.h} fill="#fff" />
-                {/* the letters rise into the card, lift out when it leaves or the menu
-                    opens, and settle back when the menu closes */}
+                {/* the letters rise into the card, lift out when the menu opens, and
+                    settle back when it closes (they stay put while the card fades) */}
                 <motion.g
                   initial={reduce ? false : { y: box.h }}
-                  animate={{ y: menuOpen || gone ? -box.h : 0 }}
+                  animate={{ y: menuOpen ? -box.h : 0 }}
                   transition={
                     reduce
                       ? { duration: 0 }
                       : menuOpen
                         ? { duration: MENU_T.letters, ease: EASE_CINE }
-                        : gone
-                          ? { duration: LEAVE.letters, ease: EASE_CINE }
-                          : { duration: 0.9, ease: EASE, delay: menuKey > 0 ? MENU_T.join : T.letters }
+                        : { duration: 0.9, ease: EASE, delay: menuKey > 0 ? MENU_T.join : T.letters }
                   }
                 >
                 <text
@@ -777,9 +765,8 @@ function Menu({
 }
 
 // ===========================================================================
-// HEADING — takes the card's place. The card folds down to a white line; that
-// line draws in to a short rule, and the heading fades in above it, huge and
-// extended across the wall, with the line under it fading in a beat later.
+// HEADING — takes the card's place, centred on the screen. As the card eases
+// back and fades, the heading fades in over it, and the line under it follows.
 // ===========================================================================
 function Heading({
   lines,
@@ -791,63 +778,39 @@ function Heading({
   lines: string[];
   tagline: string[];
   show: boolean;
-  /** the first reveal waits for the card to fold; later ones (after the menu) are quick */
+  /** the first reveal crossfades with the card; later ones (after the menu) are quick */
   first: boolean;
   reduce: boolean;
 }) {
-  // the rule takes over from the card's line the moment it lands
-  const base = reduce ? 0 : first ? LEAVE.fold + LEAVE.foldS : 0;
+  const base = reduce ? 0 : first ? LEAVE.headAt : 0;
   const out = { opacity: 0, transition: { duration: reduce ? 0 : 0.35, ease: EASE_CINE } };
   return (
     <div className={styles.head} aria-hidden="true">
       <motion.span
         className={styles.headShade}
         initial={{ opacity: 0 }}
-        animate={show ? { opacity: 1, transition: { delay: base * 0.6, duration: 1.6, ease: EASE } } : out}
+        animate={show ? { opacity: 1, transition: { duration: 1.6, ease: EASE } } : out}
       />
-      {/* the rule is the only thing in flow, so it sits exactly where the card's middle was */}
-      <div className={styles.headCenter}>
-        <div className={styles.headAbove}>
-          <motion.p
-            className={styles.headTitle}
-            initial={reduce ? false : { opacity: 0, y: 10 }}
-            animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.1), duration: 1.4, ease: EASE } } : out}
-          >
-            {lines.map((l) => (
-              <span key={l} className={styles.headLine}>
-                {l}
-              </span>
-            ))}
-          </motion.p>
-        </div>
-        <motion.span
-          className={styles.headRule}
-          initial={reduce ? false : { scaleX: 1, opacity: 0 }}
-          animate={
-            show
-              ? {
-                  scaleX: 0.07,
-                  opacity: 1,
-                  transition: {
-                    opacity: { delay: Math.max(0, base - 0.1), duration: 0.15 },
-                    scaleX: { delay: base + (reduce ? 0 : 0.04), duration: 1.15, ease: EASE },
-                  },
-                }
-              : out
-          }
-        />
-        <div className={styles.headBelow}>
-          <motion.p
-            className={styles.headTag}
-            initial={reduce ? false : { opacity: 0, y: 8 }}
-            animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.45), duration: 1.2, ease: EASE } } : out}
-          >
-            {tagline.map((l) => (
-              <span key={l}>{l}</span>
-            ))}
-          </motion.p>
-        </div>
-      </div>
+      <motion.p
+        className={styles.headTitle}
+        initial={reduce ? false : { opacity: 0, y: 12 }}
+        animate={show ? { opacity: 1, y: 0, transition: { delay: base, duration: 1.3, ease: EASE } } : out}
+      >
+        {lines.map((l) => (
+          <span key={l} className={styles.headLine}>
+            {l}
+          </span>
+        ))}
+      </motion.p>
+      <motion.p
+        className={styles.headTag}
+        initial={reduce ? false : { opacity: 0, y: 8 }}
+        animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.3), duration: 1.2, ease: EASE } } : out}
+      >
+        {tagline.map((l) => (
+          <span key={l}>{l}</span>
+        ))}
+      </motion.p>
     </div>
   );
 }
