@@ -96,44 +96,77 @@
      Hover (.tileOn, set from JS) brings it up: the shade lifts, the edge goes
      solid, a glare follows the pointer and the title rises in. The tilt itself
      is eased and written by JS, so no transform transitions live here. */
+  /* Each film is a folder from the menu: card stock cut with a tab (its
+     number and runtime), the film framed inside in black and white, its title
+     top left. Hover (.tileOn, set from JS) brings the film into colour and
+     "Play →" forward; the tilt is eased and written by JS. Sizes are in cqw
+     (% of the tile's width), so every tile is cut the same at any size. */
   .tile {
+    --th: 9cqw; /* tab height */
+    --pad: 2.6cqw; /* card stock around the film */
     position: relative;
     width: 100%;
     margin: 0 0 var(--gap);
-    border-radius: 8px;
-    overflow: hidden;
-    background: radial-gradient(120% 90% at 30% 25%, #1c1c1c 0%, #080808 72%);
     cursor: pointer;
     contain: layout paint; /* a tile's changes never ripple out to the rest of the wall */
-    container-type: inline-size; /* its print scales with the tile (cqw) */
+    container-type: inline-size; /* the tile is the container its parts measure against */
+  }
+
+  /* card stock, cut with an angled tab at the left */
+  .tileStock {
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(
+      0 var(--th),
+      6cqw var(--th),
+      9cqw 0,
+      52cqw 0,
+      55cqw var(--th),
+      100% var(--th),
+      100% 100%,
+      0 100%
+    );
+    background:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+      linear-gradient(to bottom, #e9e4df, #cfc9c3 60%);
   }
 
   .tileOn {
     z-index: 3;
   }
 
-  /* Dim the film with an overlay, not a filter: changing its opacity on hover
-     is compositor-only, where a filter change repaints the video. */
-  .tile::before {
-    content: "";
+  /* the tab's print */
+  .tileTab {
     position: absolute;
-    inset: 0;
-    z-index: 1;
-    background: #000;
-    opacity: 0.16;
-    transition: opacity 0.6s var(--ease);
-    pointer-events: none;
+    top: 0;
+    left: 9cqw;
+    width: 43cqw;
+    height: var(--th);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4cqw 2.4cqw 0;
+    color: #0a0a0a;
+    font-size: max(8px, 3.2cqw);
+    letter-spacing: 0.18em;
+    font-variant-numeric: tabular-nums;
   }
 
-  .tile::after {
-    content: "";
+  .tileTab span:first-child {
+    opacity: 0.6;
+  }
+
+  /* the film, framed in the card */
+  .tileWindow {
     position: absolute;
-    inset: 0;
-    z-index: 4;
-    border-radius: inherit;
-    box-shadow: inset 0 0 0 1px rgb(247 242 238 / 0.62); /* every film has a white hairline edge */
-    transition: box-shadow 0.6s var(--ease);
-    pointer-events: none;
+    top: calc(var(--th) + var(--pad));
+    left: var(--pad);
+    right: var(--pad);
+    bottom: var(--pad);
+    overflow: hidden;
+    border-radius: 2px;
+    background: #111;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
   }
 
   .tilePoster,
@@ -143,12 +176,15 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    /* black and white at rest, as in the menu */
+    filter: grayscale(1) contrast(1.08) brightness(0.72);
+    transform: scale(1.06);
+    transition: filter 0.9s var(--ease), transform 1.4s var(--ease), opacity 0.6s var(--ease);
   }
 
   /* the live film fades in over the still once it is actually playing */
   .tileVideo {
     opacity: 0;
-    transition: opacity 0.6s var(--ease);
   }
 
   .tileVideoOn {
@@ -169,14 +205,12 @@
     pointer-events: none;
   }
 
-  /* a shade at the foot so the title reads */
+  /* shade at the top so the title reads, as in the menu */
   .tileScrim {
     position: absolute;
     inset: 0;
     z-index: 2;
-    background: linear-gradient(to top, rgb(0 0 0 / 0.62) 0%, rgb(0 0 0 / 0.2) 30%, transparent 52%);
-    opacity: 0;
-    transition: opacity 0.6s var(--ease);
+    background: linear-gradient(to bottom, rgb(0 0 0 / 0.55), transparent 55%);
     pointer-events: none;
   }
 
@@ -185,62 +219,64 @@
     inset: 0;
     z-index: 3;
     display: flex;
-    flex-direction: column;
+    align-items: flex-start;
     justify-content: space-between;
-    padding: max(8px, 4.5cqw) max(9px, 5cqw);
+    gap: 3cqw;
+    padding: 4cqw 4.5cqw;
     color: var(--paper);
     pointer-events: none;
   }
 
-  .tileTop {
-    display: flex;
-    justify-content: space-between;
-    font-size: max(9px, 3.3cqw);
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    font-variant-numeric: tabular-nums;
-    opacity: 0.72;
-    text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
-    transition: opacity 0.6s var(--ease);
-  }
-
-  .tileTitleMask {
-    display: block;
-    overflow: hidden;
-    padding-bottom: 0.08em;
-  }
-
+  /* the title: light capitals, as the menu's folder labels */
   .tileTitle {
     display: block;
-    font-size: max(13px, 7cqw);
-    font-weight: 500;
-    line-height: 1.02;
-    letter-spacing: -0.025em;
+    font-size: max(12px, 7.4cqw);
+    font-weight: 300;
+    line-height: 0.98;
+    letter-spacing: -0.03em;
     text-transform: uppercase;
-    transform: translateY(105%);
-    transition: transform 0.7s var(--ease);
+    transition: transform 0.9s var(--ease);
   }
 
-  .tileOn::before {
+  .tileEnter {
+    flex: none;
+    padding-top: 0.6em;
+    font-size: max(8px, 3cqw);
+    letter-spacing: 0.22em;
+    white-space: nowrap;
     opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
   }
 
-  .tileOn::after {
-    box-shadow: inset 0 0 0 1.5px var(--paper);
+  /* ---- pointed at: colour, the way in ---- */
+  .tileOn .tilePoster,
+  .tileOn .tileVideo {
+    filter: grayscale(0) contrast(1.04) brightness(1);
+    transform: scale(1);
   }
 
-  .tileOn .tileGlare,
-  .tileOn .tileScrim,
-  .tileOn .tileTop {
+  .tileOn .tileGlare {
     opacity: 1;
   }
 
   .tileOn .tileTitle {
+    transform: translateX(0.12em);
+  }
+
+  .tileOn .tileEnter {
+    opacity: 1;
     transform: none;
   }
 
-  /* touch has no hover: films keep just their number and runtime (the title
-     is in the player a tap away), so the wall stays quiet behind the heading */
+  /* touch has no hover: as in the menu, the films show in colour, a little dimmed */
+  @media (hover: none) {
+    .tilePoster,
+    .tileVideo {
+      filter: contrast(1.04) brightness(0.8);
+    }
+  }
+
   /* ================= Grade ================= */
   
   .grade {

@@ -149,9 +149,10 @@ const arrivalAt = (t: number) => {
 };
 
 // ===========================================================================
-// TILE — one film on the wall, printed like a frame on a contact sheet: a white
-// hairline edge, its number and runtime in the corners, and its title, which
-// rises in when you point at it. It always shows a still poster; WallPlayback
+// TILE — one film on the wall, made like a folder in the menu: card stock with
+// a tab carrying its number and runtime, the film framed inside it in black
+// and white, and its title set top left. Pointing at it brings the film into
+// colour and "Play →" forward. It always shows a still poster; WallPlayback
 // lets only a few tiles at a time mount a live <video>, which fades in over the
 // poster once it's playing. Hover is driven from DepthInner (one listener, one
 // animation loop), so a tile has no hover handlers of its own.
@@ -198,41 +199,50 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: Ti
       data-index={index}
       onClick={(e) => onOpen(index, e.currentTarget, videoRef.current?.currentTime ?? 0)}
     >
-      {poster && (
-        // A tiny static still (~5 KB); next/image would add a request per tile size for no gain here.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          className={styles.tilePoster}
-          src={posterFor(clip.src)}
-          alt=""
-          decoding="async"
-          draggable={false}
-          onError={() => setPoster(false)}
-        />
-      )}
-      {live && (
-        <video
-          ref={videoRef}
-          className={`${styles.tileVideo} ${playing ? styles.tileVideoOn : ""}`}
-          src={clip.src}
-          muted
-          loop
-          playsInline
-          autoPlay
-          preload="auto"
-          disablePictureInPicture
-          onPlaying={() => setPlaying(true)}
-        />
-      )}
-      <span className={styles.tileGlare} aria-hidden="true" />
-      <span className={styles.tileScrim} aria-hidden="true" />
-      <span className={styles.tileMeta} aria-hidden="true">
-        <span className={styles.tileTop}>
-          <span>{pad2(index + 1)}</span>
-          <span>{clip.duration}</span>
-        </span>
-        <span className={styles.tileTitleMask}>
+      {/* card stock, cut with the tab (its own layer, so its cut is measured
+          against the tile's width) */}
+      <span className={styles.tileStock} aria-hidden="true" />
+      {/* the folder's tab: number and runtime */}
+      <span className={styles.tileTab} aria-hidden="true">
+        <span>{pad2(index + 1)}</span>
+        <span>{clip.duration}</span>
+      </span>
+
+      {/* the film, framed in the card: black and white until you point at it */}
+      <span className={styles.tileWindow}>
+        {poster && (
+          // A tiny static still (~5 KB); next/image would add a request per tile size for no gain here.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            className={styles.tilePoster}
+            src={posterFor(clip.src)}
+            alt=""
+            decoding="async"
+            draggable={false}
+            onError={() => setPoster(false)}
+          />
+        )}
+        {live && (
+          <video
+            ref={videoRef}
+            className={`${styles.tileVideo} ${playing ? styles.tileVideoOn : ""}`}
+            src={clip.src}
+            muted
+            loop
+            playsInline
+            autoPlay
+            preload="auto"
+            disablePictureInPicture
+            onPlaying={() => setPlaying(true)}
+          />
+        )}
+        <span className={styles.tileGlare} aria-hidden="true" />
+        <span className={styles.tileScrim} aria-hidden="true" />
+        <span className={styles.tileMeta} aria-hidden="true">
           <span className={styles.tileTitle}>{clip.title}</span>
+          <span className={styles.tileEnter}>
+            Play <span>→</span>
+          </span>
         </span>
       </span>
     </div>
