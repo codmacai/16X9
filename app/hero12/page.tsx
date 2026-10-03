@@ -626,6 +626,20 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     return () => window.clearTimeout(t);
   }, [reduce]);
 
+  // Nothing responds until the entrance has played out: the letterbox, the
+  // card, and the heading fading in over it. Then the hero is live.
+  const SETTLE_S = T.leave + LEAVE.headAt + 1.3;
+  const [ready, setReady] = useState(reduce);
+  const readyRef = useRef(reduce);
+  useEffect(() => {
+    if (reduce) return;
+    const t = window.setTimeout(() => {
+      readyRef.current = true;
+      setReady(true);
+    }, SETTLE_S * 1000);
+    return () => window.clearTimeout(t);
+  }, [reduce, SETTLE_S]);
+
   // Esc closes the menu
   useEffect(() => {
     if (!menuOpen) return;
@@ -660,6 +674,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   }, [project]);
     const closeProject = useCallback(() => setProject(null), []);
   const onOpen = useCallback((index: number, el: HTMLElement, time: number) => {
+    if (!readyRef.current) return; // still settling
     if (draggedRef.current) return; // that was a drag through the wall, not a click
     const r = el.getBoundingClientRect();
     clearHoverRef.current();
@@ -802,7 +817,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       clearHoverRef.current();
     };
     const onDown = (e: PointerEvent) => {
-      if (e.button !== 0 || menuRef.current || projectRef.current) return;
+      if (e.button !== 0 || !readyRef.current || menuRef.current || projectRef.current) return;
       id = e.pointerId;
       lastY = e.clientY;
       lastT = performance.now();
@@ -911,7 +926,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       lastMoveRef.current = lastMove;
       p.x = e.clientX;
       p.y = e.clientY;
-      if (!fine || draggingRef.current || menuRef.current || projectRef.current) return setHover(null);
+      if (!fine || !readyRef.current || draggingRef.current || menuRef.current || projectRef.current) return setHover(null);
       const el = (e.target as Element | null)?.closest?.<HTMLElement>("[data-tile]") ?? null;
       setHover(el);
       const t = el && tilts.get(el);
@@ -1005,7 +1020,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       <motion.div
         ref={sceneRef}
         className={styles.scene}
-        style={menuOpen ? { pointerEvents: "none", touchAction: "none" } : undefined}
+        style={menuOpen || !ready ? { pointerEvents: "none", touchAction: "none" } : undefined}
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
       >
@@ -1087,7 +1102,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           aria-label={menuOpen ? "Close menu" : "Open menu"}
           aria-expanded={menuOpen}
           aria-controls="hero12-menu"
+          disabled={!ready}
           onClick={() => {
+            if (!readyRef.current) return;
             if (!menuOpen) {
               setMenuKey((k) => k + 1);
               // the wall goes quiet under the menu: no hover, no hold

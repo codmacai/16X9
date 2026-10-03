@@ -130,13 +130,13 @@
     inset: 0;
     z-index: 4;
     border-radius: inherit;
-    box-shadow: inset 0 0 0 2px rgb(247 242 238 / 0.85);
+    box-shadow: inset 0 0 0 4px rgb(247 242 238 / 0.88);
     transition: box-shadow 0.6s var(--ease);
     pointer-events: none;
   }
 
   .tileOn::after {
-    box-shadow: inset 0 0 0 2.5px var(--paper);
+    box-shadow: inset 0 0 0 5px var(--paper);
   }
 
   .tilePoster,
@@ -192,7 +192,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 3cqw;
-    padding: 4cqw 4.5cqw;
+    padding: max(11px, 5cqw) max(12px, 5.5cqw);
     color: var(--paper);
     pointer-events: none;
   }
@@ -248,7 +248,7 @@
     z-index: 3;
     display: flex;
     justify-content: space-between;
-    padding: 0 4.5cqw 3.6cqw;
+    padding: 0 max(12px, 5.5cqw) max(10px, 4.6cqw);
     color: var(--paper);
     font-size: max(8px, 3cqw);
     letter-spacing: 0.2em;
@@ -626,6 +626,11 @@
   .burgerOpen span + span {
     width: 28px;
     transform: translateY(-4.25px) rotate(-45deg);
+  }
+
+  /* the burger waits for the hero to settle */
+  .burger:disabled {
+    cursor: default;
   }
 
   .burger:focus-visible {
