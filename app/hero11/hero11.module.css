@@ -23,6 +23,8 @@
   font-family: var(--font-wide, "Archivo"), var(--font-sans), "Helvetica Neue", Arial, sans-serif;
   font-stretch: 108%;
   font-variation-settings: "wdth" 108;
+  font-weight: 400;
+  text-transform: none; /* its own casing, even when opened inside another hero */
   -webkit-font-smoothing: antialiased;
 }
 
@@ -112,6 +114,44 @@
   transform: rotate(45deg);
 }
 
+/* close (when the drawer is a menu): two lines crossed into an X */
+.close {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.close span {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  height: 1.5px;
+  background: var(--paper);
+  transition: transform 0.6s var(--ease);
+}
+
+.close span:first-child {
+  transform: rotate(45deg);
+}
+
+.close span:last-child {
+  transform: rotate(-45deg);
+}
+
+.close:hover span:first-child {
+  transform: rotate(135deg);
+}
+
+.close:hover span:last-child {
+  transform: rotate(45deg);
+}
+
+.close:focus-visible,
 .talk:focus-visible {
   outline: 1px solid var(--paper);
   outline-offset: 4px;

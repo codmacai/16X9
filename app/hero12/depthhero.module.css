@@ -1,0 +1,1052 @@
+/* 16X9 depth wall. Black, white and one white block.
+   One typeface throughout: Inter Tight (normal width), bold and uppercase,
+   loaded in layout.tsx as --font-sans. Matches the FEVER COAST reference. */
+
+   .page {
+    --paper: #f7f2ee;
+    --gap: 14px;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100svh;
+    min-height: 560px;
+    overflow: hidden;
+    background: #000;
+    color: var(--paper);
+    font-family: var(--font-sans, "Inter Tight"), "Helvetica Neue", Arial, sans-serif;
+    font-weight: 400;
+    text-transform: uppercase;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  @media (max-width: 760px) {
+    .page {
+      --gap: 9px;
+    }
+  }
+  
+  /* ================= The depth gallery =================
+     A plane wider and taller than the screen, tilted back from its bottom edge.
+     Perspective is sized in vh so it always runs past the top and both sides. */
+  
+  .scene {
+    --px: 0vw;
+    --py: 0deg;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none; /* the wall takes drags itself */
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* mid-drag: the tiles stop taking the pointer, so nothing pops as they slide past */
+  .dragging {
+    cursor: grabbing;
+  }
+
+  .dragging .tile {
+    pointer-events: none;
+  }
+
+  /* holds the perspective; the camera loop scales it a touch while the wall is pushed */
+  .warp {
+    position: absolute;
+    inset: 0;
+    perspective: 155vh;
+    perspective-origin: 50% 0%;
+    transform-origin: 50% 45%;
+    will-change: transform;
+  }
+  
+  .plane {
+    position: absolute;
+    left: 50%;
+    bottom: -20vh;
+    width: 240vw;
+    height: 250vh;
+    margin-left: -120vw;
+    display: flex;
+    gap: var(--gap);
+    overflow: hidden;
+    transform-origin: 50% 100%;
+    transform: rotateX(52deg); /* the lean toward the pointer is eased and written by JS */
+  }
+  
+  .lane {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  
+  /* moved every frame by the camera loop in depthhero.tsx */
+  .track {
+    display: flex;
+    flex-direction: column;
+    will-change: transform;
+  }
+  
+  /* Each film is printed like a frame on a contact sheet: a white hairline
+     edge, its number and runtime in the top corners, its title at the foot.
+     Hover (.tileOn, set from JS) brings it up: the shade lifts, the edge goes
+     solid, a glare follows the pointer and the title rises in. The tilt itself
+     is eased and written by JS, so no transform transitions live here. */
+  .tile {
+    position: relative;
+    width: 100%;
+    margin: 0 0 var(--gap);
+    border-radius: 8px;
+    overflow: hidden;
+    background: radial-gradient(120% 90% at 30% 25%, #1c1c1c 0%, #080808 72%);
+    cursor: pointer;
+    contain: layout paint; /* a tile's changes never ripple out to the rest of the wall */
+    container-type: inline-size; /* its print scales with the tile (cqw) */
+  }
+
+  .tileOn {
+    z-index: 3;
+  }
+
+  /* Dim the film with an overlay, not a filter: changing its opacity on hover
+     is compositor-only, where a filter change repaints the video. */
+  .tile::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: #000;
+    opacity: 0.16;
+    transition: opacity 0.6s var(--ease);
+    pointer-events: none;
+  }
+
+  .tile::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgb(247 242 238 / 0.62); /* every film has a white hairline edge */
+    transition: box-shadow 0.6s var(--ease);
+    pointer-events: none;
+  }
+
+  .tilePoster,
+  .tileVideo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* the live film fades in over the still once it is actually playing */
+  .tileVideo {
+    opacity: 0;
+    transition: opacity 0.6s var(--ease);
+  }
+
+  .tileVideoOn {
+    opacity: 1;
+  }
+
+  /* a soft glare, moved across the hovered film by JS (a transform: nothing repaints) */
+  .tileGlare {
+    position: absolute;
+    left: -30%;
+    top: -30%;
+    width: 160%;
+    height: 160%;
+    z-index: 2;
+    background: radial-gradient(circle at center, rgb(255 250 244 / 0.2), rgb(255 250 244 / 0.05) 20%, transparent 40%);
+    opacity: 0;
+    transition: opacity 0.5s var(--ease);
+    pointer-events: none;
+  }
+
+  /* a shade at the foot so the title reads */
+  .tileScrim {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.62) 0%, rgb(0 0 0 / 0.2) 30%, transparent 52%);
+    opacity: 0;
+    transition: opacity 0.6s var(--ease);
+    pointer-events: none;
+  }
+
+  .tileMeta {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: max(8px, 4.5cqw) max(9px, 5cqw);
+    color: var(--paper);
+    pointer-events: none;
+  }
+
+  .tileTop {
+    display: flex;
+    justify-content: space-between;
+    font-size: max(9px, 3.3cqw);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.72;
+    text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
+    transition: opacity 0.6s var(--ease);
+  }
+
+  .tileTitleMask {
+    display: block;
+    overflow: hidden;
+    padding-bottom: 0.08em;
+  }
+
+  .tileTitle {
+    display: block;
+    font-size: max(13px, 7cqw);
+    font-weight: 500;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    text-transform: uppercase;
+    transform: translateY(105%);
+    transition: transform 0.7s var(--ease);
+  }
+
+  .tileOn::before {
+    opacity: 0;
+  }
+
+  .tileOn::after {
+    box-shadow: inset 0 0 0 1.5px var(--paper);
+  }
+
+  .tileOn .tileGlare,
+  .tileOn .tileScrim,
+  .tileOn .tileTop {
+    opacity: 1;
+  }
+
+  .tileOn .tileTitle {
+    transform: none;
+  }
+
+  /* touch has no hover: films keep just their number and runtime (the title
+     is in the player a tap away), so the wall stays quiet behind the heading */
+  /* ================= Grade ================= */
+  
+  .grade {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* Fog at the top, a soft spot behind the card, shade at the foot and a
+     vignette, painted as ONE layer instead of four stacked full-screen ones. */
+  .grade {
+    background:
+      radial-gradient(ellipse 85% 75% at 50% 55%, transparent 50%, rgb(0 0 0 / 0.72) 100%),
+      linear-gradient(to top, #000 0%, rgb(0 0 0 / 0.8) 14%, transparent 40%),
+      radial-gradient(ellipse 50% 40% at 50% 50%, rgb(0 0 0 / 0.2) 0%, rgb(0 0 0 / 0.08) 55%, transparent 85%),
+      linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 0.86) 9%, rgb(0 0 0 / 0.35) 28%, transparent 46%);
+  }
+
+  /* the lamp: the wall rests in soft shadow, with a pool of light at the pointer.
+     One full-screen layer; JS moves the light's centre (--lx/--ly). */
+  .lamp {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .lampLight {
+    --lx: 50vw;
+    --ly: 50vh;
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at var(--lx) var(--ly),
+      rgb(255 248 240 / 0.07) 0,
+      transparent 16vmax,
+      rgb(0 0 0 / 0.22) 30vmax,
+      rgb(0 0 0 / 0.42) 52vmax
+    );
+  }
+
+  @media (hover: none) {
+    .lamp {
+      display: none;
+    }
+  }
+
+  /* ================= Middle ================= */
+  
+  .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  
+  .copy {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 6vh;
+    pointer-events: none;
+  }
+  
+  .wm {
+    position: relative;
+    width: 88vw;
+    container-type: inline-size; /* cqw units are % of this width */
+    text-align: left;
+  }
+  
+  @media (min-width: 640px) {
+    .wm {
+      width: min(62vw, 980px);
+    }
+  }
+  
+  .wmBlock {
+    position: relative;
+  }
+  
+  .wmProbe {
+    position: absolute;
+    left: 0;
+    top: 0;
+    visibility: hidden;
+    white-space: nowrap;
+  }
+  
+  .wmSpacer {
+    display: block;
+  }
+  
+  .wmFace {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 50%;
+    will-change: transform, clip-path;
+  }
+
+  .wmCut {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ---- the heading that takes the card's place ---- */
+  /* the heading: extended and heavy, the line under it small and spaced */
+  /* centred on the screen, where the card was */
+  .head {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(20px, 3.6vh, 40px);
+    padding: 0 3vw 6vh;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  /* a soft dark pool behind the words so they read over the moving wall */
+  .headShade {
+    position: absolute;
+    left: 50%;
+    top: 47%;
+    width: min(130vw, 1800px);
+    height: 80vh;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse at center, rgb(0 0 0 / 0.55) 0%, rgb(0 0 0 / 0.3) 40%, transparent 70%);
+  }
+
+  .headTitle {
+    position: relative;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: var(--font-wide, "Archivo"), var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+    font-size: clamp(32px, 5.4vw, 104px);
+    font-weight: 300;
+    font-stretch: 108%;
+    font-variation-settings: "wdth" 108;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    text-transform: uppercase;
+    color: var(--paper);
+    text-shadow: 0 4px 40px rgb(0 0 0 / 0.35);
+  }
+
+  .headLine {
+    display: block;
+    white-space: nowrap;
+  }
+
+  .headTag {
+    position: relative;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: var(--font-wide, "Archivo"), var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+    font-size: clamp(11px, 0.9vw, 15px);
+    font-weight: 400;
+    font-stretch: 105%;
+    font-variation-settings: "wdth" 105;
+    line-height: 1.6;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: rgb(247 242 238 / 0.92);
+    text-shadow: 0 2px 18px rgb(0 0 0 / 0.6);
+  }
+
+  /* phones: the first line breaks so the heading can stay big */
+  @media (max-width: 640px) {
+    .headTitle {
+      font-size: 10.4vw;
+    }
+    .headLine {
+      white-space: normal;
+    }
+  }
+
+  /* ---- the menu: a veil over the moving wall and three large links ---- */
+  .nav {
+    position: fixed;
+    inset: 0;
+    z-index: 9; /* under the top bar, so the burger stays reachable */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, rgb(0 0 0 / 0.78) 0%, rgb(0 0 0 / 0.9) 70%);
+  }
+
+  .navList {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(4px, 1.2vh, 14px);
+  }
+
+  .navLink {
+    position: relative;
+    display: block;
+    color: var(--paper);
+    text-decoration: none;
+    outline: none;
+    transition: opacity 0.5s var(--ease);
+  }
+
+  /* pointing at one link fades the others back */
+  @media (hover: hover) {
+    .navList:hover .navLink:not(:hover) {
+      opacity: 0.28;
+    }
+  }
+
+  .navMask {
+    display: block;
+    overflow: hidden;
+    padding: 0.04em 0.1em 0.02em;
+  }
+
+  .navWord {
+    position: relative;
+    display: block;
+    font-family: var(--font-wide, "Archivo"), var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+    font-size: clamp(40px, 6vw, 112px);
+    font-weight: 300;
+    font-stretch: 108%;
+    font-variation-settings: "wdth" 108;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    text-transform: uppercase;
+  }
+
+  /* a small index, set at the top-left of each word */
+  .navIndex {
+    display: inline-block;
+    vertical-align: top;
+    margin: 0.55em 0.7em 0 0;
+    font-family: var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+    font-size: clamp(10px, 0.85vw, 13px);
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    opacity: 0.55;
+  }
+
+  .navLink::after {
+    content: "";
+    position: absolute;
+    left: 0.1em;
+    right: 0.1em;
+    bottom: 0;
+    height: 2px;
+    background: var(--paper);
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.6s var(--ease);
+  }
+
+  .navLink:hover::after,
+  .navLink:focus-visible::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+
+
+  /* ================= Top bar ================= */
+  
+  .topbar {
+    position: absolute;
+    z-index: 10; /* above the grade and card, below the opening letterbox (20) */
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: clamp(18px, 3vh, 32px) clamp(20px, 3.5vw, 56px);
+    pointer-events: none;
+  }
+  
+  .logo,
+  .burger {
+    pointer-events: auto;
+  }
+  
+  .logo {
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  /* Big logo: adjust the height values to taste */
+  .logoImg {
+    display: block;
+    height: clamp(40px, 6vw, 84px);
+    width: auto;
+  }
+  
+  .burger {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 7px;
+    width: 48px;
+    height: 48px;
+    padding: 0 8px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    color: var(--paper);
+  }
+  
+  .burger span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: currentColor;
+    border-radius: 2px;
+    transition: transform 0.4s var(--ease), opacity 0.3s;
+  }
+  
+  .burger:hover span:nth-child(2) {
+    transform: scaleX(0.6);
+    transform-origin: right;
+  }
+  
+  /* open: the outer lines cross into an X, the middle one folds away */
+  .burgerOpen span:nth-child(1) {
+    transform: translateY(9px) rotate(45deg);
+  }
+
+  .burgerOpen span:nth-child(2),
+  .burgerOpen:hover span:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+
+  .burgerOpen span:nth-child(3) {
+    transform: translateY(-9px) rotate(-45deg);
+  }
+
+  .burger:focus-visible {
+    outline: 2px solid var(--paper);
+    outline-offset: 4px;
+  }
+  
+  /* ================= Logo strip ================= */
+  
+  .clients {
+    position: absolute;
+    z-index: 2;
+    left: 0;
+    right: 0;
+    bottom: clamp(28px, 6vh, 64px);
+    padding: 18px 0;
+    border-top: 1px solid rgb(247 242 238 / 0.1);
+    border-bottom: 1px solid rgb(247 242 238 / 0.1);
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent);
+  }
+  
+  .clientsTrack {
+    display: flex;
+    align-items: center;
+    gap: clamp(48px, 6vw, 96px);
+    width: max-content;
+    animation: marquee 40s linear infinite;
+  }
+  
+  .clientsTrack span {
+    color: rgb(247 242 238 / 0.6);
+    font-family: var(--font-wide, "Archivo"), var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+    font-size: clamp(11px, 0.9vw, 14px);
+    font-weight: 400;
+    font-stretch: 108%;
+    font-variation-settings: "wdth" 108;
+    line-height: 1;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  
+  /* ================= Opening: the letterbox ================= */
+  
+  .bars {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+  }
+  
+  .barTop,
+  .barBottom {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 50.5%;
+    background: #000;
+    will-change: transform;
+  }
+  
+  .barTop {
+    top: 0;
+    transform-origin: 50% 0%;
+  }
+  
+  .barBottom {
+    bottom: 0;
+    transform-origin: 50% 100%;
+  }
+  
+  /* ================= Cursor label ================= */
+
+  .cursor {
+    position: fixed;
+    z-index: 15;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  /* over a film: a thin paper ring with a small play mark */
+  .cursorDisc {
+    position: absolute;
+    left: -27px;
+    top: -27px;
+    width: 54px;
+    height: 54px;
+    border: 1px solid rgb(247 242 238 / 0.9);
+    border-radius: 50%;
+  }
+
+  .cursorPlay {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 9px;
+    height: 11px;
+    margin: -5.5px 0 0 -3.5px;
+    fill: var(--paper);
+  }
+
+  @media (hover: hover) {
+    .tile {
+      cursor: none;
+    }
+  }
+
+  /* ================= Project view: the film, dressed like the landing ================= */
+
+  .pv {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    color: var(--paper);
+    font-weight: 400;
+    text-transform: uppercase;
+    outline: none;
+  }
+
+  .pvBackdrop {
+    position: absolute;
+    inset: 0;
+    background: #000; /* solid, so nothing of the landing ghosts through */
+  }
+
+  /* same geometry as the landing top bar */
+  .pvTopbar {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: clamp(18px, 3vh, 32px) clamp(20px, 3.5vw, 56px);
+    pointer-events: none;
+  }
+
+  /* the burger, its lines crossed into an X */
+  .pvClose {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--paper);
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .pvClose span {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    top: 50%;
+    height: 2px;
+    margin-top: -1px;
+    background: currentColor;
+    border-radius: 2px;
+    transition: transform 0.5s var(--ease);
+  }
+
+  .pvClose span:first-child {
+    transform: rotate(45deg);
+  }
+
+  .pvClose span:last-child {
+    transform: rotate(-45deg);
+  }
+
+  .pvClose:hover span:first-child {
+    transform: rotate(135deg);
+  }
+
+  .pvClose:hover span:last-child {
+    transform: rotate(45deg);
+  }
+
+  /* the frame: sharp corners, like the 16X9 card */
+  .pvFrame {
+    position: fixed;
+    z-index: 1;
+    overflow: hidden;
+    background: #000;
+    transform-origin: 50% 50%;
+    will-change: transform, clip-path;
+  }
+
+  .pvVideo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: pointer;
+  }
+
+  .pvIdle,
+  .pvIdle .pvVideo {
+    cursor: none;
+  }
+
+  .pvShade {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.7) 0%, rgb(0 0 0 / 0.25) 16%, transparent 32%);
+    transition: opacity 0.6s var(--ease);
+  }
+
+  .pvIdle .pvShade {
+    opacity: 0;
+  }
+
+  .pvBar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: #000;
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  .pvBarTop {
+    top: 0;
+    transform-origin: 50% 0%;
+  }
+
+  .pvBarBottom {
+    bottom: 0;
+    transform-origin: 50% 100%;
+  }
+
+  /* the transport: one strip of bold type along the foot of the film */
+  .pvTransport {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: clamp(14px, 2.4vw, 36px);
+    padding: clamp(12px, 1.6vw, 22px) clamp(14px, 2vw, 28px);
+    font-size: clamp(11px, 0.95vw, 14px);
+    letter-spacing: -0.01em;
+  }
+
+  .pvText {
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--paper);
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.3s;
+  }
+
+  .pvText:hover {
+    opacity: 0.6;
+  }
+
+  .pvTime {
+    flex: none;
+    display: inline-flex;
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pvTime i {
+    font-style: normal;
+    opacity: 0.4;
+  }
+
+  .pvTrack {
+    position: relative;
+    flex: 1;
+    height: 22px;
+    cursor: pointer;
+    touch-action: none;
+  }
+
+  .pvTrackLine,
+  .pvTrackFill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+  }
+
+  .pvTrackLine {
+    height: 1px;
+    background: rgb(247 242 238 / 0.3);
+  }
+
+  .pvTrackFill {
+    height: 2px;
+    margin-top: -0.5px;
+    background: var(--paper);
+    transform-origin: 0 50%;
+  }
+
+  /* under the frame: title left, two small lines right, like the mark's lines */
+  .pvUnder {
+    position: fixed;
+    z-index: 1;
+    padding-top: clamp(12px, 1.6vw, 22px);
+  }
+
+  .pvUnderRow {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .pvTitle {
+    margin: 0;
+    font-family: var(--font-wide, "Archivo"), var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+    font-weight: 300;
+    font-stretch: 108%;
+    font-variation-settings: "wdth" 108;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    text-shadow: 0 2px 24px rgb(0 0 0 / 0.5);
+  }
+
+  .pvMeta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin: 0;
+    padding-top: 0.3em;
+    color: rgb(247 242 238 / 0.85);
+    font-size: clamp(12px, 1.2vw, 18px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    text-align: right;
+  }
+
+  .pvMask {
+    display: block;
+    overflow: hidden;
+    padding: 0.04em 0 0.08em;
+  }
+
+  .pvLine {
+    display: block;
+    white-space: nowrap;
+  }
+
+  /* foot strip: the client strip's hairlines, holding prev / esc / next */
+  .pvStrip {
+    position: absolute;
+    z-index: 1;
+    left: 0;
+    right: 0;
+    bottom: clamp(28px, 6vh, 64px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px clamp(20px, 3.5vw, 56px);
+    border-top: 1px solid rgb(247 242 238 / 0.1);
+    border-bottom: 1px solid rgb(247 242 238 / 0.1);
+    font-size: clamp(14px, 1.3vw, 20px);
+    letter-spacing: -0.02em;
+  }
+
+  .pvStrip button {
+    display: inline-flex;
+    gap: 10px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: rgb(247 242 238 / 0.62);
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.3s;
+  }
+
+  .pvStrip button:hover {
+    color: var(--paper);
+  }
+
+  .pvHint {
+    color: rgb(247 242 238 / 0.3);
+  }
+
+  .pvClose:focus-visible,
+  .pvText:focus-visible,
+  .pvStrip button:focus-visible {
+    outline: 2px solid var(--paper);
+    outline-offset: 4px;
+  }
+
+  @media (max-width: 760px) {
+    .pvUnderRow {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .pvMeta {
+      align-items: flex-start;
+      text-align: left;
+      padding-top: 0;
+    }
+
+    .pvTransport {
+      gap: 12px;
+    }
+
+    .pvHint {
+      display: none;
+    }
+  }
+
+  /* ================= Motion ================= */
+  
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  
+  
+  @media (max-width: 760px) {
+    .copy,
+    .head {
+      padding-bottom: 14vh;
+    }
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    .clientsTrack {
+      animation: none;
+    }
+  }
+
+  /* ---- the menu: the hero 11 drawer, full screen over everything ---- */
+  .menuSheet {
+    position: fixed;
+    inset: 0;
+    z-index: 40; /* above the top bar (10), the letterbox (20) and the player (30) */
+    overflow: hidden;
+    background: #0a0a0a;
+  }
+
