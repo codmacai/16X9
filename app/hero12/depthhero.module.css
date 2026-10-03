@@ -1,11 +1,12 @@
-/* 16X9 depth wall. Black, white and one white block.
-   One typeface throughout: Inter Tight (normal width), bold and uppercase,
-   loaded in layout.tsx as --font-sans. Matches the FEVER COAST reference. */
+/* HERO 12 — hero 7's depth wall, with the interface matched to the hero 11
+   menu: one typeface (Archivo, slightly wide), small spaced capitals for the
+   labels, the same top bar, the editorial line and the paper ring cursor. */
 
    .page {
     --paper: #f7f2ee;
     --gap: 14px;
     --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --ui: clamp(18px, 2.6vw, 40px); /* the menu's margin */
     position: relative;
     width: 100%;
     height: 100vh;
@@ -14,7 +15,9 @@
     overflow: hidden;
     background: #000;
     color: var(--paper);
-    font-family: var(--font-sans, "Inter Tight"), "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--font-wide, "Archivo"), var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+    font-stretch: 108%;
+    font-variation-settings: "wdth" 108;
     font-weight: 400;
     text-transform: uppercase;
     -webkit-font-smoothing: antialiased;
@@ -527,78 +530,210 @@
     top: 0;
     left: 0;
     right: 0;
+    height: clamp(64px, 9vh, 88px);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: clamp(18px, 3vh, 32px) clamp(20px, 3.5vw, 56px);
+    padding: 0 var(--ui);
     pointer-events: none;
+    font-size: 11px;
+    letter-spacing: 0.22em;
   }
-  
+
   .logo,
-  .burger {
+  .barEnd {
     pointer-events: auto;
   }
-  
+
   .logo {
     display: inline-flex;
     align-items: center;
   }
-  
-  /* Big logo: adjust the height values to taste */
+
+  /* the menu's logo size */
   .logoImg {
     display: block;
-    height: clamp(40px, 6vw, 84px);
+    height: clamp(40px, 4vw, 60px);
     width: auto;
   }
-  
+
+  .barEnd {
+    display: flex;
+    align-items: center;
+    gap: clamp(18px, 2.4vw, 36px);
+  }
+
+  /* "Let's talk": the words roll to a second copy on hover (as in the menu) */
+  .talk {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--paper);
+    text-decoration: none;
+  }
+
+  .talkRoll {
+    position: relative;
+    display: inline-grid;
+    overflow: hidden;
+    height: 1.3em;
+    line-height: 1.3em;
+  }
+
+  .talkRoll span {
+    grid-area: 1 / 1;
+    transition: transform 0.6s var(--ease);
+  }
+
+  .talkRoll span + span {
+    transform: translateY(105%);
+  }
+
+  .talk:hover .talkRoll span,
+  .talk:focus-visible .talkRoll span {
+    transform: translateY(-105%);
+  }
+
+  .talk:hover .talkRoll span + span,
+  .talk:focus-visible .talkRoll span + span {
+    transform: none;
+  }
+
+  .talkArrow {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgb(247 242 238 / 0.5);
+    border-radius: 50%;
+    font-size: 12px;
+    letter-spacing: 0;
+    transition: background-color 0.5s var(--ease), color 0.5s var(--ease), transform 0.6s var(--ease);
+  }
+
+  .talk:hover .talkArrow,
+  .talk:focus-visible .talkArrow {
+    background: var(--paper);
+    color: #000;
+    transform: rotate(45deg);
+  }
+
+  /* two thin lines, the lower one shorter; it lengthens on hover */
   .burger {
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     justify-content: center;
     gap: 7px;
-    width: 48px;
-    height: 48px;
-    padding: 0 8px;
-    background: transparent;
+    width: 40px;
+    height: 40px;
+    padding: 0;
     border: 0;
+    background: none;
     cursor: pointer;
-    color: var(--paper);
   }
-  
+
   .burger span {
     display: block;
-    width: 100%;
-    height: 2px;
-    background: currentColor;
-    border-radius: 2px;
-    transition: transform 0.4s var(--ease), opacity 0.3s;
-  }
-  
-  .burger:hover span:nth-child(2) {
-    transform: scaleX(0.6);
-    transform-origin: right;
-  }
-  
-  /* open: the outer lines cross into an X, the middle one folds away */
-  .burgerOpen span:nth-child(1) {
-    transform: translateY(9px) rotate(45deg);
+    width: 28px;
+    height: 1.5px;
+    background: var(--paper);
+    transition: width 0.5s var(--ease), transform 0.5s var(--ease);
   }
 
-  .burgerOpen span:nth-child(2),
-  .burgerOpen:hover span:nth-child(2) {
-    opacity: 0;
-    transform: scaleX(0);
+  .burger span + span {
+    width: 17px;
   }
 
-  .burgerOpen span:nth-child(3) {
-    transform: translateY(-9px) rotate(-45deg);
+  .burger:hover span + span {
+    width: 28px;
   }
 
+  .burgerOpen span:first-child {
+    transform: translateY(4.25px) rotate(45deg);
+  }
+
+  .burgerOpen span + span {
+    width: 28px;
+    transform: translateY(-4.25px) rotate(-45deg);
+  }
+
+  .talk:focus-visible,
   .burger:focus-visible {
-    outline: 2px solid var(--paper);
+    outline: 1px solid var(--paper);
     outline-offset: 4px;
   }
-  
+
+  /* ================= The editorial line (as in the menu) ================= */
+
+  .info {
+    position: absolute;
+    z-index: 10;
+    top: clamp(64px, 9vh, 88px);
+    left: var(--ui);
+    right: var(--ui);
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 0 0 clamp(12px, 1.9vh, 20px);
+    font-size: 10.5px;
+    letter-spacing: 0.22em;
+    pointer-events: none;
+  }
+
+  .info > span {
+    opacity: 0.62;
+  }
+
+  .infoPlace {
+    text-align: center;
+  }
+
+  .infoTime {
+    justify-self: end;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #e1142b;
+    animation: blink 1.6s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    50% {
+      opacity: 0.2;
+    }
+  }
+
+  .infoRule {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: rgb(247 242 238 / 0.18);
+    transform-origin: left;
+    opacity: 1 !important;
+  }
+
+  @media (max-width: 760px) {
+    .talk,
+    .infoPlace {
+      display: none;
+    }
+    .info {
+      grid-template-columns: 1fr auto;
+      font-size: 9px;
+      letter-spacing: 0.16em;
+    }
+  }
+
   /* ================= Logo strip ================= */
   
   .clients {
@@ -631,7 +766,7 @@
     font-stretch: 108%;
     font-variation-settings: "wdth" 108;
     line-height: 1;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     white-space: nowrap;
   }
@@ -685,6 +820,18 @@
     height: 54px;
     border: 1px solid rgb(247 242 238 / 0.9);
     border-radius: 50%;
+  }
+
+  /* the film's name beside the ring, as the menu names its folders */
+  .cursorName {
+    position: absolute;
+    left: calc(100% + 14px);
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    white-space: nowrap;
+    text-shadow: 0 1px 12px rgb(0 0 0 / 0.7);
   }
 
   .cursorPlay {

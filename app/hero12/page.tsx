@@ -248,8 +248,9 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: Ti
 type CursorLabelHandle = { show: (clip: Clip | null) => void };
 
 function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
-  const [on, setOn] = useState(false);
-  useImperativeHandle(ref, () => ({ show: (clip) => setOn(clip !== null) }), []);
+  const [title, setTitle] = useState<string | null>(null);
+  useImperativeHandle(ref, () => ({ show: (clip) => setTitle(clip ? clip.title : null) }), []);
+  const on = title !== null;
 
   const x = useMotionValue(-200);
   const y = useMotionValue(-200);
@@ -279,10 +280,33 @@ function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
             <svg className={styles.cursorPlay} viewBox="0 0 12 14">
               <path d="M0 0L12 7L0 14Z" />
             </svg>
+            <span className={styles.cursorName}>{title}</span>
           </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+// ===========================================================================
+// CLOCK — the time in Dubai, ticking (as in the menu)
+// ===========================================================================
+function Clock() {
+  const [time, setTime] = useState("");
+  useEffect(() => {
+    const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const tick = () => setTime(fmt.format(new Date()));
+    const first = window.setTimeout(tick, 0);
+    const id = window.setInterval(tick, 1000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(id);
+    };
+  }, []);
+  return (
+    <span className={styles.infoTime}>
+      <i className={styles.dot} aria-hidden="true" /> DXB {time || "--:--:--"}
+    </span>
   );
 }
 
@@ -1073,6 +1097,16 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           <img src={LOGO_SRC} alt={mark} className={styles.logoImg} />
         </Link>
 
+        <div className={styles.barEnd}>
+        <a href="#contact" className={styles.talk}>
+          <span className={styles.talkRoll}>
+            <span>Let&apos;s talk</span>
+            <span aria-hidden="true">Let&apos;s talk</span>
+          </span>
+          <span className={styles.talkArrow} aria-hidden="true">
+            ↗
+          </span>
+        </a>
         <button
           type="button"
           className={`${styles.burger} ${menuOpen ? styles.burgerOpen : ""}`}
@@ -1090,9 +1124,21 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         >
           <span />
           <span />
-          <span />
         </button>
+        </div>
       </motion.header>
+
+      {/* ================= the editorial line, as in the menu ================= */}
+      <motion.div className={styles.info} {...enter(T.lines + 0.15, { opacity: 0 }, { opacity: 1 }, 1.2)}>
+        <span>16X9 — Video production studio</span>
+        <span className={styles.infoPlace}>Dubai, United Arab Emirates</span>
+        <Clock />
+        <motion.span
+          className={styles.infoRule}
+          {...enter(T.lines + 0.1, { scaleX: 0 }, { scaleX: 1 }, 1.4)}
+          aria-hidden="true"
+        />
+      </motion.div>
 
       {/* ================= Logo strip ================= */}
       <motion.div
