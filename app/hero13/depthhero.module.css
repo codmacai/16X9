@@ -1,11 +1,12 @@
-/* 16X9 depth wall. Black, white and one white block.
-   One typeface throughout: Inter Tight (normal width), bold and uppercase,
-   loaded in layout.tsx as --font-sans. Matches the FEVER COAST reference. */
+/* HERO 13 — the final hero 12, tuned to run smoothly: hero 7's depth wall, with the interface matched to the hero 11
+   menu: one typeface (Archivo, slightly wide), small spaced capitals for the
+   labels, the same top bar, the editorial line and the paper ring cursor. */
 
    .page {
     --paper: #f7f2ee;
     --gap: 14px;
     --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --ui: clamp(18px, 2.6vw, 40px); /* the menu's margin */
     position: relative;
     width: 100%;
     height: 100vh;
@@ -14,7 +15,9 @@
     overflow: hidden;
     background: #000;
     color: var(--paper);
-    font-family: var(--font-sans, "Inter Tight"), "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--font-wide, "Archivo"), var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+    font-stretch: 108%;
+    font-variation-settings: "wdth" 108;
     font-weight: 400;
     text-transform: uppercase;
     -webkit-font-smoothing: antialiased;
@@ -40,6 +43,11 @@
     touch-action: none; /* the wall takes drags itself */
     user-select: none;
     -webkit-user-select: none;
+  }
+
+  /* under the open menu: the wall isn't drawn at all */
+  .sceneHidden {
+    visibility: hidden;
   }
 
   /* mid-drag: the tiles stop taking the pointer, so nothing pops as they slide past */
@@ -73,6 +81,7 @@
     overflow: hidden;
     transform-origin: 50% 100%;
     transform: rotateX(52deg); /* the lean toward the pointer is eased and written by JS */
+    will-change: transform;
   }
   
   .lane {
@@ -93,33 +102,32 @@
      Hover (.tileOn, set from JS) brings it up: the shade lifts, the edge goes
      solid, a glare follows the pointer and the title rises in. The tilt itself
      is eased and written by JS, so no transform transitions live here. */
+  /* Each film in the menu's language, without the folder cut: a white border,
+     the film in black and white, its title top left in light capitals, number
+     and runtime at the foot. Hover (.tileOn, set from JS) brings the film into
+     colour and "Play →" forward; the tilt is eased and written by JS. Sizes in
+     cqw resolve against the tile (its children are inside the container). */
   .tile {
     position: relative;
     width: 100%;
     margin: 0 0 var(--gap);
-    border-radius: 8px;
+    border-radius: 4px;
     overflow: hidden;
-    background: radial-gradient(120% 90% at 30% 25%, #1c1c1c 0%, #080808 72%);
+    background: #111;
     cursor: pointer;
     contain: layout paint; /* a tile's changes never ripple out to the rest of the wall */
-    container-type: inline-size; /* its print scales with the tile (cqw) */
+    container-type: inline-size;
   }
 
   .tileOn {
     z-index: 3;
   }
 
-  /* Dim the film with an overlay, not a filter: changing its opacity on hover
-     is compositor-only, where a filter change repaints the video. */
-  .tile::before {
-    content: "";
+  /* the film fills the tile; the white border is drawn over it */
+  .tileWindow {
     position: absolute;
     inset: 0;
-    z-index: 1;
-    background: #000;
-    opacity: 0.16;
-    transition: opacity 0.6s var(--ease);
-    pointer-events: none;
+    overflow: hidden;
   }
 
   .tile::after {
@@ -128,9 +136,13 @@
     inset: 0;
     z-index: 4;
     border-radius: inherit;
-    box-shadow: inset 0 0 0 1px rgb(247 242 238 / 0.62); /* every film has a white hairline edge */
-    transition: box-shadow 0.6s var(--ease);
+    border: 4px solid rgb(247 242 238 / 0.82);
+    transition: border-color 0.6s var(--ease);
     pointer-events: none;
+  }
+
+  .tileOn::after {
+    border-color: var(--paper);
   }
 
   .tilePoster,
@@ -140,12 +152,21 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: opacity 0.9s var(--ease);
   }
 
-  /* the live film fades in over the still once it is actually playing */
+  /* the still is black and white at rest, baked into the file (no CSS filter, so
+     the moving wall never has to repaint one); the colour still fades in over it */
+  .tilePosterColour {
+    opacity: 0;
+  }
+
+  /* the live film fades in over the still once it is actually playing. It is
+     the only thing still filtered, and only a few play at a time. */
   .tileVideo {
     opacity: 0;
-    transition: opacity 0.6s var(--ease);
+    filter: grayscale(1) contrast(1.08) brightness(0.72);
+    transition: opacity 0.6s var(--ease), filter 0.9s var(--ease);
   }
 
   .tileVideoOn {
@@ -166,14 +187,12 @@
     pointer-events: none;
   }
 
-  /* a shade at the foot so the title reads */
+  /* shade at the top so the title reads, as in the menu */
   .tileScrim {
     position: absolute;
     inset: 0;
     z-index: 2;
-    background: linear-gradient(to top, rgb(0 0 0 / 0.62) 0%, rgb(0 0 0 / 0.2) 30%, transparent 52%);
-    opacity: 0;
-    transition: opacity 0.6s var(--ease);
+    background: linear-gradient(to bottom, rgb(0 0 0 / 0.55), transparent 55%);
     pointer-events: none;
   }
 
@@ -182,62 +201,95 @@
     inset: 0;
     z-index: 3;
     display: flex;
-    flex-direction: column;
+    align-items: flex-start;
     justify-content: space-between;
-    padding: max(8px, 4.5cqw) max(9px, 5cqw);
+    gap: 3cqw;
+    padding: max(11px, 5cqw) max(12px, 5.5cqw);
     color: var(--paper);
     pointer-events: none;
   }
 
-  .tileTop {
-    display: flex;
-    justify-content: space-between;
-    font-size: max(9px, 3.3cqw);
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    font-variant-numeric: tabular-nums;
-    opacity: 0.72;
-    text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
-    transition: opacity 0.6s var(--ease);
-  }
-
-  .tileTitleMask {
-    display: block;
-    overflow: hidden;
-    padding-bottom: 0.08em;
-  }
-
+  /* the title: light capitals, as the menu's folder labels */
   .tileTitle {
     display: block;
-    font-size: max(13px, 7cqw);
-    font-weight: 500;
-    line-height: 1.02;
-    letter-spacing: -0.025em;
+    font-size: max(12px, 7.4cqw);
+    font-weight: 300;
+    line-height: 0.98;
+    letter-spacing: -0.03em;
     text-transform: uppercase;
-    transform: translateY(105%);
-    transition: transform 0.7s var(--ease);
+    transition: transform 0.9s var(--ease);
   }
 
-  .tileOn::before {
+  .tileEnter {
+    flex: none;
+    padding-top: 0.6em;
+    font-size: max(8px, 3cqw);
+    letter-spacing: 0.22em;
+    white-space: nowrap;
     opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
   }
 
-  .tileOn::after {
-    box-shadow: inset 0 0 0 1.5px var(--paper);
+  /* ---- pointed at: colour, the way in ---- */
+  .tileOn .tilePosterColour {
+    opacity: 1;
   }
 
-  .tileOn .tileGlare,
-  .tileOn .tileScrim,
-  .tileOn .tileTop {
+  .tileOn .tileVideo {
+    filter: none;
+  }
+
+  .tileOn .tileGlare {
     opacity: 1;
   }
 
   .tileOn .tileTitle {
+    transform: translateX(0.12em);
+  }
+
+  .tileOn .tileEnter {
+    opacity: 1;
     transform: none;
   }
 
-  /* touch has no hover: films keep just their number and runtime (the title
-     is in the player a tap away), so the wall stays quiet behind the heading */
+  /* number and runtime at the foot */
+  .tileFoot {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 max(12px, 5.5cqw) max(10px, 4.6cqw);
+    color: var(--paper);
+    font-size: max(8px, 3cqw);
+    letter-spacing: 0.2em;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
+    text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
+    pointer-events: none;
+  }
+
+  /* touch has no hover: as in the menu, the films show in colour, a little dimmed */
+  @media (hover: none) {
+    .tilePosterGray,
+    .tileGlare {
+      display: none;
+    }
+    .tilePosterColour {
+      opacity: 1;
+    }
+    .tileVideo {
+      filter: none;
+    }
+    /* the dim is painted once with the tile, not filtered every frame */
+    .tileScrim {
+      background: linear-gradient(to bottom, rgb(0 0 0 / 0.6), rgb(0 0 0 / 0.18) 55%);
+    }
+  }
+
   /* ================= Grade ================= */
   
   .grade {
@@ -265,18 +317,15 @@
     pointer-events: none;
   }
 
+  /* drawn into a small canvas and stretched to the screen: the light is soft,
+     so the stretch can't be seen, and moving it costs a few thousand pixels a
+     frame instead of repainting the whole screen */
   .lampLight {
-    --lx: 50vw;
-    --ly: 50vh;
     position: absolute;
     inset: 0;
-    background: radial-gradient(
-      circle at var(--lx) var(--ly),
-      rgb(255 248 240 / 0.07) 0,
-      transparent 16vmax,
-      rgb(0 0 0 / 0.22) 30vmax,
-      rgb(0 0 0 / 0.42) 52vmax
-    );
+    width: 100%;
+    height: 100%;
+    display: block;
   }
 
   @media (hover: none) {
@@ -527,78 +576,89 @@
     top: 0;
     left: 0;
     right: 0;
+    height: clamp(64px, 9vh, 88px);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: clamp(18px, 3vh, 32px) clamp(20px, 3.5vw, 56px);
+    padding: 0 var(--ui);
     pointer-events: none;
+    font-size: 11px;
+    letter-spacing: 0.22em;
   }
-  
+
   .logo,
-  .burger {
+  .barEnd {
     pointer-events: auto;
   }
-  
+
   .logo {
     display: inline-flex;
     align-items: center;
   }
-  
-  /* Big logo: adjust the height values to taste */
+
+  /* the menu's logo size */
   .logoImg {
     display: block;
-    height: clamp(40px, 6vw, 84px);
+    height: clamp(40px, 4vw, 60px);
     width: auto;
   }
-  
+
+  .barEnd {
+    display: flex;
+    align-items: center;
+    gap: clamp(18px, 2.4vw, 36px);
+  }
+
+  /* two thin lines, the lower one shorter; it lengthens on hover */
   .burger {
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     justify-content: center;
     gap: 7px;
-    width: 48px;
-    height: 48px;
-    padding: 0 8px;
-    background: transparent;
+    width: 40px;
+    height: 40px;
+    padding: 0;
     border: 0;
+    background: none;
     cursor: pointer;
-    color: var(--paper);
   }
-  
+
   .burger span {
     display: block;
-    width: 100%;
-    height: 2px;
-    background: currentColor;
-    border-radius: 2px;
-    transition: transform 0.4s var(--ease), opacity 0.3s;
-  }
-  
-  .burger:hover span:nth-child(2) {
-    transform: scaleX(0.6);
-    transform-origin: right;
-  }
-  
-  /* open: the outer lines cross into an X, the middle one folds away */
-  .burgerOpen span:nth-child(1) {
-    transform: translateY(9px) rotate(45deg);
+    width: 28px;
+    height: 1.5px;
+    background: var(--paper);
+    transition: width 0.5s var(--ease), transform 0.5s var(--ease);
   }
 
-  .burgerOpen span:nth-child(2),
-  .burgerOpen:hover span:nth-child(2) {
-    opacity: 0;
-    transform: scaleX(0);
+  .burger span + span {
+    width: 17px;
   }
 
-  .burgerOpen span:nth-child(3) {
-    transform: translateY(-9px) rotate(-45deg);
+  .burger:hover span + span {
+    width: 28px;
+  }
+
+  .burgerOpen span:first-child {
+    transform: translateY(4.25px) rotate(45deg);
+  }
+
+  .burgerOpen span + span {
+    width: 28px;
+    transform: translateY(-4.25px) rotate(-45deg);
+  }
+
+  /* the burger waits for the hero to settle */
+  .burger:disabled {
+    cursor: default;
   }
 
   .burger:focus-visible {
-    outline: 2px solid var(--paper);
+    outline: 1px solid var(--paper);
     outline-offset: 4px;
   }
-  
+
   /* ================= Logo strip ================= */
   
   .clients {
@@ -621,6 +681,7 @@
     gap: clamp(48px, 6vw, 96px);
     width: max-content;
     animation: marquee 40s linear infinite;
+    will-change: transform;
   }
   
   .clientsTrack span {
@@ -631,7 +692,7 @@
     font-stretch: 108%;
     font-variation-settings: "wdth" 108;
     line-height: 1;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     white-space: nowrap;
   }
@@ -685,6 +746,18 @@
     height: 54px;
     border: 1px solid rgb(247 242 238 / 0.9);
     border-radius: 50%;
+  }
+
+  /* the film's name beside the ring, as the menu names its folders */
+  .cursorName {
+    position: absolute;
+    left: calc(100% + 14px);
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    white-space: nowrap;
+    text-shadow: 0 1px 12px rgb(0 0 0 / 0.7);
   }
 
   .cursorPlay {

@@ -40,7 +40,7 @@ const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.we
 
 /**
  * The drawer. On its own (/hero11) it is the page's hero; given `onClose` it is
- * a full-screen menu (/hero12), and the top bar carries a close button.
+ * a full-screen menu (/hero12, /hero13), and the top bar carries a close button.
  */
 export default function Drawer({ onClose }: { onClose?: () => void }) {
   const reduce = !!useReducedMotion();
