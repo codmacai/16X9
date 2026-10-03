@@ -149,10 +149,10 @@ const arrivalAt = (t: number) => {
 };
 
 // ===========================================================================
-// TILE — one film on the wall, made like a folder in the menu: card stock with
-// a tab carrying its number and runtime, the film framed inside it in black
-// and white, and its title set top left. Pointing at it brings the film into
-// colour and "Play →" forward. It always shows a still poster; WallPlayback
+// TILE — one film on the wall, in the menu's language without the folder
+// cut: a white border, the film in black and white, its title top left in
+// light capitals, number and runtime at the foot. Pointing at it brings the
+// film into colour and "Play →" forward. It always shows a still poster; WallPlayback
 // lets only a few tiles at a time mount a live <video>, which fades in over the
 // poster once it's playing. Hover is driven from DepthInner (one listener, one
 // animation loop), so a tile has no hover handlers of its own.
@@ -199,16 +199,7 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: Ti
       data-index={index}
       onClick={(e) => onOpen(index, e.currentTarget, videoRef.current?.currentTime ?? 0)}
     >
-      {/* card stock, cut with the tab (its own layer, so its cut is measured
-          against the tile's width) */}
-      <span className={styles.tileStock} aria-hidden="true" />
-      {/* the folder's tab: number and runtime */}
-      <span className={styles.tileTab} aria-hidden="true">
-        <span>{pad2(index + 1)}</span>
-        <span>{clip.duration}</span>
-      </span>
-
-      {/* the film, framed in the card: black and white until you point at it */}
+      {/* the film, in a white border: black and white until you point at it */}
       <span className={styles.tileWindow}>
         {poster && (
           // A tiny static still (~5 KB); next/image would add a request per tile size for no gain here.
@@ -243,6 +234,10 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: Ti
           <span className={styles.tileEnter}>
             Play <span>→</span>
           </span>
+        </span>
+        <span className={styles.tileFoot} aria-hidden="true">
+          <span>{pad2(index + 1)}</span>
+          <span>{clip.duration}</span>
         </span>
       </span>
     </div>
@@ -295,28 +290,6 @@ function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
         )}
       </AnimatePresence>
     </motion.div>
-  );
-}
-
-// ===========================================================================
-// CLOCK — the time in Dubai, ticking (as in the menu)
-// ===========================================================================
-function Clock() {
-  const [time, setTime] = useState("");
-  useEffect(() => {
-    const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    const tick = () => setTime(fmt.format(new Date()));
-    const first = window.setTimeout(tick, 0);
-    const id = window.setInterval(tick, 1000);
-    return () => {
-      window.clearTimeout(first);
-      window.clearInterval(id);
-    };
-  }, []);
-  return (
-    <span className={styles.infoTime}>
-      <i className={styles.dot} aria-hidden="true" /> DXB {time || "--:--:--"}
-    </span>
   );
 }
 
@@ -1108,15 +1081,6 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         </Link>
 
         <div className={styles.barEnd}>
-        <a href="#contact" className={styles.talk}>
-          <span className={styles.talkRoll}>
-            <span>Let&apos;s talk</span>
-            <span aria-hidden="true">Let&apos;s talk</span>
-          </span>
-          <span className={styles.talkArrow} aria-hidden="true">
-            ↗
-          </span>
-        </a>
         <button
           type="button"
           className={`${styles.burger} ${menuOpen ? styles.burgerOpen : ""}`}
@@ -1137,18 +1101,6 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         </button>
         </div>
       </motion.header>
-
-      {/* ================= the editorial line, as in the menu ================= */}
-      <motion.div className={styles.info} {...enter(T.lines + 0.15, { opacity: 0 }, { opacity: 1 }, 1.2)}>
-        <span>16X9 — Video production studio</span>
-        <span className={styles.infoPlace}>Dubai, United Arab Emirates</span>
-        <Clock />
-        <motion.span
-          className={styles.infoRule}
-          {...enter(T.lines + 0.1, { scaleX: 0 }, { scaleX: 1 }, 1.4)}
-          aria-hidden="true"
-        />
-      </motion.div>
 
       {/* ================= Logo strip ================= */}
       <motion.div

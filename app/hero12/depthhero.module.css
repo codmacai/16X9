@@ -96,77 +96,47 @@
      Hover (.tileOn, set from JS) brings it up: the shade lifts, the edge goes
      solid, a glare follows the pointer and the title rises in. The tilt itself
      is eased and written by JS, so no transform transitions live here. */
-  /* Each film is a folder from the menu: card stock cut with a tab (its
-     number and runtime), the film framed inside in black and white, its title
-     top left. Hover (.tileOn, set from JS) brings the film into colour and
-     "Play →" forward; the tilt is eased and written by JS. Sizes are in cqw
-     (% of the tile's width), so every tile is cut the same at any size. */
+  /* Each film in the menu's language, without the folder cut: a white border,
+     the film in black and white, its title top left in light capitals, number
+     and runtime at the foot. Hover (.tileOn, set from JS) brings the film into
+     colour and "Play →" forward; the tilt is eased and written by JS. Sizes in
+     cqw resolve against the tile (its children are inside the container). */
   .tile {
-    --th: 9cqw; /* tab height */
-    --pad: 2.6cqw; /* card stock around the film */
     position: relative;
     width: 100%;
     margin: 0 0 var(--gap);
+    border-radius: 4px;
+    overflow: hidden;
+    background: #111;
     cursor: pointer;
     contain: layout paint; /* a tile's changes never ripple out to the rest of the wall */
-    container-type: inline-size; /* the tile is the container its parts measure against */
-  }
-
-  /* card stock, cut with an angled tab at the left */
-  .tileStock {
-    position: absolute;
-    inset: 0;
-    clip-path: polygon(
-      0 var(--th),
-      6cqw var(--th),
-      9cqw 0,
-      52cqw 0,
-      55cqw var(--th),
-      100% var(--th),
-      100% 100%,
-      0 100%
-    );
-    background:
-      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
-      linear-gradient(to bottom, #e9e4df, #cfc9c3 60%);
+    container-type: inline-size;
   }
 
   .tileOn {
     z-index: 3;
   }
 
-  /* the tab's print */
-  .tileTab {
-    position: absolute;
-    top: 0;
-    left: 9cqw;
-    width: 43cqw;
-    height: var(--th);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.4cqw 2.4cqw 0;
-    color: #0a0a0a;
-    font-size: max(8px, 3.2cqw);
-    letter-spacing: 0.18em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .tileTab span:first-child {
-    opacity: 0.6;
-  }
-
-  /* the film, framed in the card */
+  /* the film fills the tile; the white border is drawn over it */
   .tileWindow {
     position: absolute;
-    top: calc(var(--th) + var(--pad));
-    left: var(--pad);
-    right: var(--pad);
-    bottom: var(--pad);
+    inset: 0;
     overflow: hidden;
-    border-radius: 2px;
-    background: #111;
-    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
+  }
+
+  .tile::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 2px rgb(247 242 238 / 0.85);
+    transition: box-shadow 0.6s var(--ease);
+    pointer-events: none;
+  }
+
+  .tileOn::after {
+    box-shadow: inset 0 0 0 2.5px var(--paper);
   }
 
   .tilePoster,
@@ -267,6 +237,25 @@
   .tileOn .tileEnter {
     opacity: 1;
     transform: none;
+  }
+
+  /* number and runtime at the foot */
+  .tileFoot {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 4.5cqw 3.6cqw;
+    color: var(--paper);
+    font-size: max(8px, 3cqw);
+    letter-spacing: 0.2em;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
+    text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
+    pointer-events: none;
   }
 
   /* touch has no hover: as in the menu, the films show in colour, a little dimmed */
@@ -599,61 +588,6 @@
     gap: clamp(18px, 2.4vw, 36px);
   }
 
-  /* "Let's talk": the words roll to a second copy on hover (as in the menu) */
-  .talk {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--paper);
-    text-decoration: none;
-  }
-
-  .talkRoll {
-    position: relative;
-    display: inline-grid;
-    overflow: hidden;
-    height: 1.3em;
-    line-height: 1.3em;
-  }
-
-  .talkRoll span {
-    grid-area: 1 / 1;
-    transition: transform 0.6s var(--ease);
-  }
-
-  .talkRoll span + span {
-    transform: translateY(105%);
-  }
-
-  .talk:hover .talkRoll span,
-  .talk:focus-visible .talkRoll span {
-    transform: translateY(-105%);
-  }
-
-  .talk:hover .talkRoll span + span,
-  .talk:focus-visible .talkRoll span + span {
-    transform: none;
-  }
-
-  .talkArrow {
-    display: grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    border: 1px solid rgb(247 242 238 / 0.5);
-    border-radius: 50%;
-    font-size: 12px;
-    letter-spacing: 0;
-    transition: background-color 0.5s var(--ease), color 0.5s var(--ease), transform 0.6s var(--ease);
-  }
-
-  .talk:hover .talkArrow,
-  .talk:focus-visible .talkArrow {
-    background: var(--paper);
-    color: #000;
-    transform: rotate(45deg);
-  }
-
   /* two thin lines, the lower one shorter; it lengthens on hover */
   .burger {
     display: flex;
@@ -694,80 +628,9 @@
     transform: translateY(-4.25px) rotate(-45deg);
   }
 
-  .talk:focus-visible,
   .burger:focus-visible {
     outline: 1px solid var(--paper);
     outline-offset: 4px;
-  }
-
-  /* ================= The editorial line (as in the menu) ================= */
-
-  .info {
-    position: absolute;
-    z-index: 10;
-    top: clamp(64px, 9vh, 88px);
-    left: var(--ui);
-    right: var(--ui);
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    padding: 0 0 clamp(12px, 1.9vh, 20px);
-    font-size: 10.5px;
-    letter-spacing: 0.22em;
-    pointer-events: none;
-  }
-
-  .info > span {
-    opacity: 0.62;
-  }
-
-  .infoPlace {
-    text-align: center;
-  }
-
-  .infoTime {
-    justify-self: end;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #e1142b;
-    animation: blink 1.6s ease-in-out infinite;
-  }
-
-  @keyframes blink {
-    50% {
-      opacity: 0.2;
-    }
-  }
-
-  .infoRule {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 1px;
-    background: rgb(247 242 238 / 0.18);
-    transform-origin: left;
-    opacity: 1 !important;
-  }
-
-  @media (max-width: 760px) {
-    .talk,
-    .infoPlace {
-      display: none;
-    }
-    .info {
-      grid-template-columns: 1fr auto;
-      font-size: 9px;
-      letter-spacing: 0.16em;
-    }
   }
 
   /* ================= Logo strip ================= */
