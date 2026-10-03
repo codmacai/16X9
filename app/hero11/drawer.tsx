@@ -210,8 +210,13 @@ function Folder({
 
         {/* the film, framed in the card */}
         <span className={styles.window}>
+          {/* black and white baked into its own file; hover fades the colour one in
+              over it, so nothing is filtered or repainted while the folder moves */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={styles.still} src={folder.poster} alt="" draggable={false} />
+          <img className={`${styles.still} ${styles.stillGray}`} src={folder.poster.replace(/\/([^/]+)$/, "/gray/$1")} alt="" draggable={false} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className={`${styles.still} ${styles.stillColour}`} src={folder.poster} alt="" draggable={false} />
+          <span className={styles.windowDim} aria-hidden="true" />
           <span className={styles.windowShade} aria-hidden="true" />
 
           <span className={styles.caption}>

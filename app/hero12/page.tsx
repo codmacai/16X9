@@ -102,6 +102,9 @@ const tilesPerLane = (vw: number, vh: number, lanes: number, gap: number) =>
 // for INTENT_MS starts loading its video.
 const TILT = { x: 9, y: 11, scale: 1.06, ease: 9 };
 const INTENT_MS = 160;
+const LAMP_RES = 8; // the lamp is drawn at 1/8 of the screen and stretched
+/** The baked black-and-white still: /clips/clip-01.mp4 -> /clips/posters-gray/clip-01.webp */
+const grayPosterFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/posters-gray/$1.webp");
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
 const RATIOS = ["3 / 4", "16 / 10", "4 / 5", "1 / 1", "2 / 3", "16 / 9", "5 / 6"];
@@ -202,16 +205,28 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: Ti
       {/* the film, in a white border: black and white until you point at it */}
       <span className={styles.tileWindow}>
         {poster && (
-          // A tiny static still (~5 KB); next/image would add a request per tile size for no gain here.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            className={styles.tilePoster}
-            src={posterFor(clip.src)}
-            alt=""
-            decoding="async"
-            draggable={false}
-            onError={() => setPoster(false)}
-          />
+          <>
+            {/* Two tiny stills (~5 KB each): the black-and-white one is baked, not a
+                CSS filter, so the wall never repaints a filter as it moves. Hover just
+                fades the colour one in over it (opacity only, nothing repaints). */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className={`${styles.tilePoster} ${styles.tilePosterGray}`}
+              src={grayPosterFor(clip.src)}
+              alt=""
+              decoding="async"
+              draggable={false}
+              onError={() => setPoster(false)}
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className={`${styles.tilePoster} ${styles.tilePosterColour}`}
+              src={posterFor(clip.src)}
+              alt=""
+              decoding="async"
+              draggable={false}
+            />
+          </>
         )}
         {live && (
           <video
@@ -640,6 +655,20 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     return () => window.clearTimeout(t);
   }, [reduce, SETTLE_S]);
 
+  // Once the menu's wipe has closed over the screen, the wall underneath stops
+  // and isn't drawn at all; it comes back the moment the menu starts to close.
+  const [coveredKey, setCoveredKey] = useState(-1);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const t = window.setTimeout(() => setCoveredKey(menuKey), reduce ? 0 : 950);
+    return () => window.clearTimeout(t);
+  }, [menuOpen, menuKey, reduce]);
+  const wallHidden = menuOpen && coveredKey === menuKey;
+  const wallHiddenRef = useRef(false);
+  useEffect(() => {
+    wallHiddenRef.current = wallHidden;
+  }, [wallHidden]);
+
   // Esc closes the menu
   useEffect(() => {
     if (!menuOpen) return;
@@ -663,7 +692,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const dragAccRef = useRef(0); // wall travel dragged since the last frame, in px
   const planeRef = useRef<HTMLDivElement>(null);
   const warpRef = useRef<HTMLDivElement>(null);
-  const lampRef = useRef<HTMLDivElement>(null);
+  const lampRef = useRef<HTMLCanvasElement>(null);
   // set by the hover controller below: drop whatever film is hovered
   const clearHoverRef = useRef<() => void>(() => {});
   useEffect(() => {
@@ -703,18 +732,23 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   }, []);
 
   // Live video budget for this device; nothing plays while a film is open or the tab is hidden.
+  const pausedRef = useRef(true);
   useEffect(() => {
     playback.start(liveBudget());
-    const onVis = () => playback.setPaused(document.hidden || projectRef.current);
+    playback.setPaused(true);
+    const onVis = () => playback.setPaused(document.hidden || pausedRef.current);
     document.addEventListener("visibilitychange", onVis);
     return () => {
       document.removeEventListener("visibilitychange", onVis);
       playback.stop();
     };
   }, [playback]);
+  // Videos wait for the entrance to finish (decoding them mid-entrance is what
+  // stutters), and stop under an open film or the menu.
   useEffect(() => {
-    playback.setPaused(project !== null || document.hidden);
-  }, [project, playback]);
+    pausedRef.current = !ready || project !== null || wallHidden;
+    playback.setPaused(pausedRef.current || document.hidden);
+  }, [ready, project, wallHidden, playback]);
 
   const lanes = useMemo(
     () =>
@@ -762,7 +796,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       // Ease toward it so the wall glides to a hold and back, never snaps.
       const holding = hoverRef.current && now - lastMoveRef.current < HOLD_MS;
       // while dragged, the wall goes only where the pointer takes it
-      const target = projectRef.current || draggingRef.current ? 0 : holding ? HOVER_SPEED : 1;
+      const target = projectRef.current || wallHiddenRef.current || draggingRef.current ? 0 : holding ? HOVER_SPEED : 1;
       const drag = dragAccRef.current;
       dragAccRef.current = 0;
       speed += (target - speed) * Math.min(1, dt * SPEED_EASE);
@@ -888,6 +922,40 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     const lean = { x: 0, y: 0 };
     let leanCss = "";
 
+    // The lamp is drawn at 1/LAMP_RES of the screen and stretched: a soft light,
+    // so nobody can see the difference, at a sliver of the cost.
+    const ctx = lamp && fine ? lamp.getContext("2d", { alpha: true }) : null;
+    let lampW = 0;
+    let lampH = 0;
+    let lampDirty = true;
+    const sizeLamp = () => {
+      if (!lamp || !ctx) return;
+      lampW = Math.max(16, Math.round(window.innerWidth / LAMP_RES));
+      lampH = Math.max(16, Math.round(window.innerHeight / LAMP_RES));
+      lamp.width = lampW;
+      lamp.height = lampH;
+      lampDirty = true;
+    };
+    const drawLamp = () => {
+      if (!ctx) return;
+      const sx = lampW / window.innerWidth;
+      const vmax = Math.max(lampW, lampH) / 100;
+      const x = lampAt.x * sx;
+      const y = lampAt.y * (lampH / window.innerHeight);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 52 * vmax);
+      g.addColorStop(0, "rgba(255,248,240,0.07)");
+      g.addColorStop(16 / 52, "rgba(255,248,240,0)");
+      g.addColorStop(16 / 52, "rgba(0,0,0,0)");
+      g.addColorStop(30 / 52, "rgba(0,0,0,0.22)");
+      g.addColorStop(1, "rgba(0,0,0,0.42)");
+      ctx.clearRect(0, 0, lampW, lampH);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, lampW, lampH);
+      lampDirty = false;
+    };
+    sizeLamp();
+    window.addEventListener("resize", sizeLamp);
+
     const setHover = (el: HTMLElement | null) => {
       if (el === hovered) return;
       if (hovered) {
@@ -906,13 +974,18 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       el.classList.add(styles.tileOn);
       const t = tilts.get(el);
       if (t) t.on = true;
-      else
+      else {
+        const glare = el.querySelector<HTMLElement>(`.${styles.tileGlare}`);
+        // its own layer while it tilts, so turning it never repaints the lane it sits in
+        el.style.willChange = "transform";
+        if (glare) glare.style.willChange = "transform";
         tilts.set(el, {
-          glare: el.querySelector<HTMLElement>(`.${styles.tileGlare}`),
+          glare,
           on: true,
           rx: 0, ry: 0, s: 1, gx: 0.5, gy: 0.5,
           trx: 0, try: 0, tgx: 0.5, tgy: 0.5,
         });
+      }
       hoverRef.current = true;
       labelRef.current?.show(clips[Number(el.dataset.index)] ?? null);
       const id = el.dataset.tile ?? null;
@@ -951,17 +1024,17 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       // a resting mouse lets go of the film, and the wall runs again
       if (hovered && now - lastMove > HOLD_MS) setHover(null);
 
-      // the lamp trails the pointer
-      if (lamp && fine) {
+      // the lamp trails the pointer (redrawn only while it moves)
+      if (ctx) {
         const k = 1 - Math.exp(-dt * 6);
         const dx = p.x - lampAt.x;
         const dy = p.y - lampAt.y;
         if (Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3) {
           lampAt.x += dx * k;
           lampAt.y += dy * k;
-          lamp.style.setProperty("--lx", `${lampAt.x.toFixed(1)}px`);
-          lamp.style.setProperty("--ly", `${lampAt.y.toFixed(1)}px`);
+          lampDirty = true;
         }
+        if (lampDirty) drawLamp();
       }
 
       // the wall leans a little toward the pointer, slowly
@@ -988,7 +1061,11 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         t.gy += (t.tgy - t.gy) * k;
         if (!t.on && Math.abs(t.rx) < 0.01 && Math.abs(t.ry) < 0.01 && Math.abs(t.s - 1) < 0.0003) {
           el.style.transform = "";
-          if (t.glare) t.glare.style.transform = "";
+          el.style.willChange = "";
+          if (t.glare) {
+            t.glare.style.transform = "";
+            t.glare.style.willChange = "";
+          }
           tilts.delete(el);
           return;
         }
@@ -1003,6 +1080,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       cancelAnimationFrame(raf);
       window.clearTimeout(intent);
       window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("resize", sizeLamp);
       document.documentElement.removeEventListener("pointerleave", onLeave);
       setHover(null);
     };
@@ -1019,7 +1097,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
       <motion.div
         ref={sceneRef}
-        className={styles.scene}
+        className={`${styles.scene} ${wallHidden ? styles.sceneHidden : ""}`}
         style={menuOpen || !ready ? { pointerEvents: "none", touchAction: "none" } : undefined}
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
@@ -1064,7 +1142,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         animate={{ opacity: gone && !menuOpen ? 1 : 0, transition: { duration: 1.6, ease: EASE } }}
         aria-hidden="true"
       >
-        <div ref={lampRef} className={styles.lampLight} />
+        <canvas ref={lampRef} className={styles.lampLight} />
       </motion.div>
 
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}

@@ -308,9 +308,20 @@
   text-decoration: none;
   outline: none;
   cursor: none;
-  /* a shadow cast up onto the folder behind */
-  filter: drop-shadow(0 -10px 22px rgb(0 0 0 / 0.55));
   will-change: transform;
+}
+
+/* a shadow cast up onto the folder behind: a soft band painted once along the
+   top edge, not a drop-shadow filter re-run over the whole folder as it moves */
+.folder::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--th) - 34px);
+  height: 34px;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.12) 55%, transparent);
+  pointer-events: none;
 }
 
 /* card stock, cut with the tab */
@@ -381,14 +392,24 @@
   object-fit: cover;
   transform: scale(1.06);
   transition:
-    filter 0.9s var(--ease),
     transform 1.4s var(--ease),
-    opacity 0.6s var(--ease);
+    opacity 0.9s var(--ease);
+  will-change: transform, opacity; /* its own layer: the zoom and fade never repaint the folder */
 }
 
-/* black and white at rest */
-.still {
-  filter: grayscale(1) contrast(1.08) brightness(0.72);
+/* black and white at rest (baked into the file); colour fades in over it */
+.stillColour {
+  opacity: 0;
+}
+
+/* the others sink back into the dark: a black veil, faded */
+.windowDim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.9s var(--ease);
+  pointer-events: none;
 }
 
 .windowShade {
@@ -448,8 +469,11 @@
 
 /* ---- pulled up: colour, motion, the way in ---- */
 .folderOn .still {
-  filter: grayscale(0) contrast(1.04) brightness(1);
   transform: scale(1);
+}
+
+.folderOn .stillColour {
+  opacity: 1;
 }
 
 .folderOn .title {
@@ -462,8 +486,8 @@
 }
 
 /* the others sink back into the dark */
-.folderAway .still {
-  filter: grayscale(1) contrast(1.08) brightness(0.4);
+.folderAway .windowDim {
+  opacity: 0.44;
 }
 
 /* ================= cursor ================= */
@@ -515,8 +539,14 @@
     display: none;
   }
   /* no hover: show the films in colour, a little dimmed */
-  .still {
-    filter: contrast(1.04) brightness(0.8);
+  .stillGray {
+    display: none;
+  }
+  .stillColour {
+    opacity: 1;
+  }
+  .windowDim {
+    opacity: 0.2;
   }
 }
 

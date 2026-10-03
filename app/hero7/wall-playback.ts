@@ -132,11 +132,16 @@ export class WallPlayback {
         this.live.delete(id);
       }
     });
+    // Start at most one new video per pass (plus the hovered one): spinning up
+    // several decoders in the same frame is what makes the wall hitch, so they
+    // come on one at a time, a pass apart.
+    let started = 0;
     want.forEach((id) => {
-      if (!this.live.has(id)) {
-        this.tiles.get(id)?.set(true);
-        this.live.add(id);
-      }
+      if (this.live.has(id)) return;
+      if (id !== this.hovered && started >= 1) return;
+      if (id !== this.hovered) started++;
+      this.tiles.get(id)?.set(true);
+      this.live.add(id);
     });
   }
 }
