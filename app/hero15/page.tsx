@@ -21,10 +21,17 @@ import {
   type AnimationPlaybackControls,
 } from "framer-motion";
 import { Archivo } from "next/font/google";
-import styles from "./hero14.module.css";
+import styles from "./hero15.module.css";
 
 // ===========================================================================
-// HERO 14 — the homepage. "Stories beyond the frame", played out on screen.
+// HERO 15 — hero 14 with a very minimal frame and the format as type.
+//
+// The picture is square-cornered, held by a single hairline set just outside
+// it whose lines run on past the corners, like construction lines on a
+// drawing. Behind the frame the format itself is set huge in outline, 16:9
+// or 9:16, and rolls to the next as the frame turns.
+//
+// From hero 14: "Stories beyond the frame", played out on screen.
 //
 // A frame floats in a dark room, the whole film inside it, and the film's
 // own light spills out beyond the frame and fills the room, the way a screen
@@ -147,6 +154,11 @@ const MORPH_BEYOND = 1.75; // into or out of Beyond
 const DWELL = 6.5; // seconds on each format before the next
 const PAN = 3; // how far Beyond lets you look around, in % of the screen
 
+// the hairline frame: how far it sits outside the picture, and how far its
+// lines run on past the corners (px)
+const LINE_GAP = 14;
+const LINE_RUN = 12;
+
 const EASE = [0.16, 1, 0.3, 1] as const;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
 
@@ -178,7 +190,7 @@ const noopSubscribe = () => () => {};
 type FrameState = { angle: number; s: number; wx: number; o: number; d: number };
 type Engine = { go: (i: number) => void; inside: (x: number, y: number) => boolean; refresh: () => void };
 
-export default function Hero14() {
+export default function Hero15() {
   const reduce = !!useReducedMotion();
   const isClient = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const portraitScreen = useSyncExternalStore(
@@ -206,6 +218,7 @@ export default function Hero14() {
   const frameRef = useRef<HTMLDivElement>(null);
   const filmsRef = useRef<HTMLDivElement>(null);
   const shadowRef = useRef<HTMLSpanElement>(null);
+  const hairRef = useRef<HTMLDivElement>(null);
   const spacerRef = useRef<HTMLSpanElement>(null);
   const composeRef = useRef<HTMLDivElement>(null);
   const line1Ref = useRef<HTMLSpanElement>(null);
@@ -230,16 +243,18 @@ export default function Hero14() {
     const frame = frameRef.current;
     const films = filmsRef.current;
     const shadow = shadowRef.current;
+    const hair = hairRef.current;
     const spacer = spacerRef.current;
     const compose = composeRef.current;
     const l1 = line1Ref.current;
     const l2 = line2Ref.current;
-    if (!root || !frame || !films || !shadow || !spacer || !compose || !l1 || !l2) return;
+    if (!root || !frame || !films || !shadow || !hair || !spacer || !compose || !l1 || !l2) return;
 
     // The frame's resting size and place come from the layout (the gap held
     // open between the two halves of the line), so CSS is the one source.
     const geo = { cx: 0, cy: 0, W: 1, H: 1, vw: 1, vh: 1, left: 0, top: 0, roomTop: 0, roomBottom: 0 };
     const filmBase = new Map<HTMLVideoElement, { w: number; h: number; css: string }>();
+    let hairKey = "";
     const measure = () => {
       const r = root.getBoundingClientRect();
       const s = spacer.getBoundingClientRect();
@@ -269,6 +284,25 @@ export default function Hero14() {
         v.style.marginTop = `${-h / 2}px`;
         filmBase.set(v, { w, h, css: "" });
       });
+      // the hairline: one image at the resting size, redrawn only when that changes
+      // (tighter on a phone, where the picture runs nearly edge to edge)
+      const gap = Math.min(LINE_GAP, geo.vw * 0.022);
+      const run = Math.min(LINE_RUN, geo.vw * 0.018);
+      const hk = `${geo.W.toFixed(1)}x${geo.H.toFixed(1)}x${gap.toFixed(1)}`;
+      if (hk !== hairKey) {
+        hairKey = hk;
+        const ox = geo.W / 2 + gap;
+        const oy = geo.H / 2 + gap;
+        const hwid = 2 * (ox + run);
+        const hhgt = 2 * (oy + run);
+        const a = run; // the lines' inner edges, in the image
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${hwid}" height="${hhgt}" viewBox="0 0 ${hwid} ${hhgt}" shape-rendering="crispEdges"><g fill="rgb(247 242 238)" fill-opacity="0.55"><rect x="0" y="${a}" width="${hwid}" height="1"/><rect x="0" y="${hhgt - a - 1}" width="${hwid}" height="1"/><rect x="${a}" y="0" width="1" height="${hhgt}"/><rect x="${hwid - a - 1}" y="0" width="1" height="${hhgt}"/></g></svg>`;
+        hair.style.backgroundImage = `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")`;
+        hair.style.width = `${hwid}px`;
+        hair.style.height = `${hhgt}px`;
+        hair.style.marginLeft = `${-hwid / 2}px`;
+        hair.style.marginTop = `${-hhgt / 2}px`;
+      }
       // the shadow is drawn once at the resting size, then scaled with the frame
       shadow.style.width = `${geo.W}px`;
       shadow.style.height = `${geo.H}px`;
@@ -348,6 +382,13 @@ export default function Hero14() {
       shadow.style.transform = `translate3d(${f1(cx)}px, ${f1(cy)}px, 0) ${turn} scale(${(st.s * st.wx).toFixed(4)}, ${(st.s * st.o).toFixed(4)})`;
       shadow.style.opacity = String(st.d);
 
+      // the hairline frame: drawn once (see measure), turned and scaled evenly
+      // with the frame; it fades in once the picture has opened
+      hair.style.transform = `translate3d(${f1(cx)}px, ${f1(cy)}px, 0) ${turn} scale(${st.s.toFixed(4)})`;
+      hair.style.opacity = String(st.d);
+      const hidden = st.d < 0.005 ? "hidden" : "";
+      if (hair.style.visibility !== hidden) hair.style.visibility = hidden;
+
       // The film stays upright and fills the frame: scaled to cover the frame's
       // upright bounds, which at rest are the frame itself, so the whole film
       // shows. The opening doesn't shrink it (the slit opens onto it at full
@@ -397,6 +438,9 @@ export default function Hero14() {
       const from = { ...st };
       const keys = Object.keys(target) as (keyof FrameState)[];
       running[ch] = true;
+      // the hairline is its own layer while the frame moves; at rest it is
+      // drawn again at its final size, so it stays a crisp 1px
+      if (ch === "frame") hair.style.willChange = "transform";
       tweens[ch] = animate(0, 1, {
         duration,
         delay,
@@ -412,6 +456,7 @@ export default function Hero14() {
         },
         onComplete: () => {
           running[ch] = false;
+          if (ch === "frame") hair.style.willChange = "auto";
         },
       });
     };
@@ -708,6 +753,20 @@ export default function Hero14() {
       <div className={styles.vignette} aria-hidden="true" />
 
       {/* ================= the frame, and the whole film in it ================= */}
+      {/* the format, set huge in outline behind the frame */}
+      <div className={styles.numerals} aria-hidden="true">
+        {MODES.map((md, i) =>
+          md.beyond ? null : (
+            <span
+              key={md.key}
+              className={`${styles.numeral} ${i === mode ? styles.numeralOn : i < mode ? styles.numeralGone : ""}`}
+            >
+              {md.label.replace("×", ":")}
+            </span>
+          )
+        )}
+      </div>
+
       <span ref={shadowRef} className={styles.shadow} aria-hidden="true" />
       <div ref={frameRef} className={styles.frame} aria-hidden="true">
         <div ref={filmsRef} className={styles.films}>
@@ -735,6 +794,8 @@ export default function Hero14() {
             })}
         </div>
       </div>
+
+      <div ref={hairRef} className={styles.hair} aria-hidden="true" />
 
       {/* in Beyond, a little shade so the line reads on the open film */}
       <div className={styles.shade} aria-hidden="true" />

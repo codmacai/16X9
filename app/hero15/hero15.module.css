@@ -1,4 +1,5 @@
-/* HERO 14 — the homepage. "Stories beyond the frame": a frame floats in a
+/* HERO 15 — hero 14 with a very minimal hairline frame and the format set
+   huge in outline behind it. From hero 14: the homepage. "Stories beyond the frame": a frame floats in a
    dark room with the whole film inside it, and the film's light spills out
    beyond the frame and fills the room. Black, paper and film; light wide type. */
 
@@ -12,7 +13,7 @@
   --fw: min(44vw, calc((100svh - 420px) * 1.78));
   --hs: clamp(30px, min(6.2vw, 10.5vh), 120px); /* the line */
   --gap: clamp(12px, 2.2vh, 26px);
-  --r: clamp(10px, 0.9vw, 16px); /* the frame's corners */
+  --r: 0px; /* square: the hairline does the framing */
   position: relative;
   width: 100%;
   height: 100vh;
@@ -86,7 +87,66 @@
     linear-gradient(to top, rgb(0 0 0 / 0.85), rgb(0 0 0 / 0.35) 20%, transparent 34%);
 }
 
+/* ================= the format, in outline ================= */
+
+/* 16:9 or 9:16, huge and hairline, sitting in the room behind the frame; it
+   rolls up and away as the next rises in. Painted once each; only moved. */
+.numerals {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--top);
+  bottom: var(--bottom);
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.numeral {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-size: clamp(150px, 31vw, 560px);
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: 1px rgb(247 242 238 / 0.2);
+  transform: translate(-50%, -38%);
+  opacity: 0;
+  will-change: transform, opacity; /* drawn once; the roll only moves it */
+  transition:
+    transform 1.4s var(--ease),
+    opacity 0.9s var(--ease);
+}
+
+/* gone: rises up and away */
+.numeralGone {
+  transform: translate(-50%, -62%);
+}
+
+/* on screen, once the room is lit */
+.root[data-lit] .numeralOn {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+  transition-delay: 0.25s;
+}
+
 /* ================= the frame ================= */
+
+/* the hairline: one image the engine draws at the frame's resting size, set
+   just outside the picture with its lines running on past the corners */
+.hair {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  background: no-repeat 0 0 / 100% 100%;
+  transform-origin: 50% 50%;
+  opacity: 0;
+  pointer-events: none;
+}
 
 /* its shadow: drawn once at the frame's resting size, then turned and scaled with it */
 .shadow {
@@ -526,6 +586,10 @@
 /* ================= phones ================= */
 
 @media (max-width: 760px) {
+  .numeral {
+    font-size: 46vw;
+  }
+
   .root {
     --top: 72px;
     --bottom: 196px;
