@@ -1,0 +1,689 @@
+/* HERO 14 — the homepage. "Stories beyond the frame": one film fills the
+   screen; a frame over it shows the story at full light, and beyond the frame
+   it carries on in shadow. Black, paper and film; light wide type. */
+
+.root {
+  --paper: #f7f2ee;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ui: clamp(18px, 2.6vw, 40px); /* the margin */
+  --top: clamp(64px, 10vh, 96px); /* the top bar */
+  --bottom: clamp(124px, 17vh, 156px); /* the format strip */
+  /* the frame at rest (16×9): its width; the engine reads it from .spacer */
+  --fw: min(44vw, calc((100svh - 420px) * 1.78));
+  --hs: clamp(30px, min(6.2vw, 10.5vh), 120px); /* the line */
+  --gap: clamp(12px, 2.2vh, 26px);
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  min-height: 560px;
+  overflow: hidden;
+  background: #000;
+  color: var(--paper);
+  font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+  font-stretch: 108%;
+  font-variation-settings: "wdth" 108;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  touch-action: pan-y; /* sideways swipes change the format */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* over the frame, the ring replaces the arrow */
+.onFrame {
+  cursor: none;
+}
+
+/* ================= the film ================= */
+
+/* a touch larger than the screen, so Beyond can look around without an edge */
+.films {
+  position: absolute;
+  inset: 0;
+  transform: scale(1.08);
+  will-change: transform;
+}
+
+.film {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  /* the outgoing film stays put under the incoming one, then drops away */
+  transition: opacity 0s 1.5s;
+}
+
+.filmOn {
+  z-index: 1;
+  opacity: 1;
+  transition: opacity 0.9s var(--ease) 0.45s;
+}
+
+/* beyond the frame: the film in shadow. Four solid panels round the frame,
+   in the frame's own space (the engine places and turns this group); the group
+   is faded as one, so where panels overlap it stays one even shade. */
+.veil {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 1;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.veilPart {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: #000;
+  will-change: transform;
+}
+
+/* before the engine runs, one panel covers the whole screen: black */
+.veilBelow {
+  width: 800vmax;
+  height: 400vmax;
+  transform: translate(-400vmax, 0);
+}
+
+/* for the bar and the strip to read on any frame */
+.shade {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgb(0 0 0 / 0.5), transparent 20%),
+    linear-gradient(to top, rgb(0 0 0 / 0.78), rgb(0 0 0 / 0.3) 18%, transparent 30%);
+}
+
+/* in Beyond the film is all light: a soft pool of shade keeps the line legible */
+.shadeBeyond {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(ellipse 62% 46% at 50% 47%, rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.16) 55%, transparent 80%);
+  opacity: 0;
+  transition: opacity 1.4s var(--ease);
+}
+
+.isBeyond .shadeBeyond {
+  opacity: 1;
+}
+
+/* ================= the frame ================= */
+
+/* a hairline round the frame: four 1px lines the engine stretches */
+.edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.edgeLine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  background: rgb(247 242 238 / 0.3);
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.marks {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* a corner mark: its corner sits on the point the engine places it at */
+.mark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18px;
+  height: 18px;
+  border-top: 1.5px solid var(--paper);
+  border-left: 1.5px solid var(--paper);
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* the viewfinder: four small readings at the frame's corners, past the marks */
+.hud {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  color: rgb(247 242 238 / 0.8);
+  font-size: 10px;
+  line-height: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 0.5);
+  opacity: 0;
+}
+
+.hudTL,
+.hudTR,
+.hudBL,
+.hudBR {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.hudTL > span,
+.hudTR > span,
+.hudBL > span,
+.hudBR > span {
+  position: absolute;
+  white-space: nowrap;
+}
+
+.hudTL > span {
+  left: 30px;
+  bottom: 4px;
+}
+
+.hudTR > span {
+  right: 30px;
+  bottom: 4px;
+}
+
+.hudBL > span {
+  left: 30px;
+  top: 4px;
+}
+
+.hudBR > span {
+  right: 30px;
+  top: 4px;
+}
+
+.hud > div {
+  transition: opacity 0.6s var(--ease);
+}
+
+/* while the frame turns, the readings step aside */
+.hudAway > div {
+  opacity: 0;
+  transition: opacity 0.2s var(--ease);
+}
+
+/* a new reading eases in when the format changes */
+.hudSwap {
+  animation: hudIn 0.7s var(--ease) both;
+}
+
+@keyframes hudIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* the recording light */
+.rec {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 6px 1px 0;
+  border-radius: 50%;
+  background: #e1142b;
+  vertical-align: middle;
+  animation: rec 1.6s ease-in-out infinite;
+}
+
+@keyframes rec {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* ================= the line ================= */
+
+.compose {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--top);
+  bottom: var(--bottom);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.logline {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap);
+  font-size: var(--hs);
+  font-weight: 300;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* each half rides the slit in the opening (moved by the engine) */
+.line {
+  display: block;
+  will-change: transform;
+}
+
+.mask {
+  display: block;
+  overflow: hidden;
+  padding: 0.06em 0.08em 0.08em;
+}
+
+.words {
+  display: block;
+  white-space: nowrap;
+  text-shadow: 0 4px 40px rgb(0 0 0 / 0.35);
+}
+
+/* the frame's place, held open between the two halves */
+.spacer {
+  display: block;
+  flex: none;
+  width: var(--fw);
+  height: calc(var(--fw) * 0.5625);
+}
+
+/* ================= top bar ================= */
+
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  height: var(--top);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.logo img {
+  display: block;
+  height: clamp(36px, 3.8vw, 56px);
+  width: auto;
+}
+
+.nav {
+  display: flex;
+  gap: clamp(22px, 3vw, 48px);
+}
+
+.navLink {
+  color: var(--paper);
+  text-decoration: none;
+}
+
+/* the words roll to a second copy on hover */
+.roll {
+  position: relative;
+  display: inline-grid;
+  overflow: hidden;
+  height: 1.3em;
+  line-height: 1.3em;
+}
+
+.roll span {
+  grid-area: 1 / 1;
+  transition: transform 0.6s var(--ease);
+}
+
+.roll span + span {
+  transform: translateY(105%);
+}
+
+.navLink:hover .roll span,
+.navLink:focus-visible .roll span {
+  transform: translateY(-105%);
+}
+
+.navLink:hover .roll span + span,
+.navLink:focus-visible .roll span + span {
+  transform: none;
+}
+
+.navLink:focus-visible,
+.logo:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 6px;
+}
+
+/* ================= the three formats ================= */
+
+.formats {
+  position: absolute;
+  left: var(--ui);
+  right: var(--ui);
+  bottom: var(--ui);
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(16px, 2.6vw, 44px);
+}
+
+.format {
+  position: relative;
+  padding-top: 18px;
+  opacity: 0.42;
+  transition: opacity 0.6s var(--ease);
+}
+
+.formatOn,
+.format:hover,
+.format:focus-within {
+  opacity: 1;
+}
+
+/* a hairline; the format on screen fills it as its time runs */
+.formatBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: rgb(247 242 238 / 0.24);
+  overflow: hidden;
+}
+
+.formatFill {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  will-change: transform;
+}
+
+/* the whole column picks the format */
+.formatPick {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.formatPick::after {
+  content: "";
+  position: absolute;
+  inset: -6px 0 -6px;
+}
+
+.formatPick:disabled {
+  cursor: default;
+}
+
+.formatPick:focus-visible {
+  outline: none;
+}
+
+.format:has(.formatPick:focus-visible) .formatLabel {
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 1px;
+}
+
+/* the x in 16x9: light and lowercase */
+.by {
+  margin: 0 0.06em;
+  font-size: 0.78em;
+  font-weight: 200;
+  text-transform: lowercase;
+  opacity: 0.8;
+}
+
+.formatNo {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+.formatLabel {
+  font-size: clamp(20px, 1.9vw, 32px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.formatLine {
+  margin: 12px 0 0;
+  font-size: 10.5px;
+  line-height: 1.75;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.formatLine span {
+  display: block;
+  opacity: 0.55;
+}
+
+/* the way in, on the format on screen */
+.formatGo {
+  position: absolute;
+  z-index: 1;
+  top: 22px;
+  right: 0;
+  color: var(--paper);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-decoration: none;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+  pointer-events: none;
+}
+
+.formatOn .formatGo {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.formatGo span {
+  display: inline-block;
+  transition: transform 0.5s var(--ease);
+}
+
+.formatGo:hover span,
+.formatGo:focus-visible span {
+  transform: translateX(4px);
+}
+
+.formatGo:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 4px;
+}
+
+/* ================= phones: the format's line above the strip ================= */
+
+.caption {
+  display: none;
+}
+
+/* ================= cursor ================= */
+
+.cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 30;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.ring {
+  position: absolute;
+  left: -30px;
+  top: -30px;
+  width: 60px;
+  height: 60px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgb(247 242 238 / 0.9);
+  border-radius: 50%;
+  color: var(--paper);
+}
+
+.ringArrow {
+  font-size: 15px;
+}
+
+.ringLabel {
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 0.6);
+}
+
+@media (hover: none) {
+  .cursor {
+    display: none;
+  }
+}
+
+/* ================= phones ================= */
+
+@media (max-width: 760px) {
+  .root {
+    --top: 72px;
+    --bottom: 196px;
+    --fw: min(86vw, calc((100svh - 330px) * 1.78));
+    --hs: 8.6vw;
+    --gap: 14px;
+  }
+
+  .topbar {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+  }
+
+  .nav {
+    gap: 18px;
+  }
+
+  .hud {
+    font-size: 9px;
+    letter-spacing: 0.16em;
+  }
+
+  .hudBL,
+  .hudBR {
+    display: none; /* the caption carries the film's line on a phone */
+  }
+
+  .formats {
+    gap: 12px;
+  }
+
+  .format {
+    padding-top: 14px;
+  }
+
+  .formatPick {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .formatLabel {
+    font-size: 17px;
+  }
+
+  .formatLine,
+  .formatGo {
+    display: none;
+  }
+
+  .caption {
+    position: absolute;
+    left: var(--ui);
+    right: var(--ui);
+    bottom: calc(var(--ui) + 74px);
+    z-index: 5;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .captionText {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.7;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    animation: hudIn 0.7s var(--ease) both;
+  }
+
+  .captionText span {
+    display: block;
+    opacity: 0.55;
+  }
+
+  .captionGo {
+    flex: none;
+    color: var(--paper);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rec,
+  .hudSwap,
+  .captionText {
+    animation: none;
+  }
+  .film,
+  .filmOn {
+    transition: none;
+  }
+}
