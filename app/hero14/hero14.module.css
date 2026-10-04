@@ -1,6 +1,6 @@
-/* HERO 14 — the homepage. "Stories beyond the frame": one film fills the
-   screen; a frame over it shows the story at full light, and beyond the frame
-   it carries on in shadow. Black, paper and film; light wide type. */
+/* HERO 14 — the homepage. "Stories beyond the frame": a frame floats in a
+   dark room with the whole film inside it, and the film's light spills out
+   beyond the frame and fills the room. Black, paper and film; light wide type. */
 
 .root {
   --paper: #f7f2ee;
@@ -12,6 +12,7 @@
   --fw: min(44vw, calc((100svh - 420px) * 1.78));
   --hs: clamp(30px, min(6.2vw, 10.5vh), 120px); /* the line */
   --gap: clamp(12px, 2.2vh, 26px);
+  --r: clamp(10px, 0.9vw, 16px); /* the frame's corners */
   position: relative;
   width: 100%;
   height: 100vh;
@@ -30,15 +31,96 @@
   -webkit-user-select: none;
 }
 
-/* over the frame, the ring replaces the arrow */
-.onFrame {
+/* over the frame, the ring replaces the arrow (set by the engine) */
+.root[data-on-frame] {
   cursor: none;
 }
 
-/* ================= the film ================= */
+/* ================= the room, lit by the film ================= */
 
-/* the films sit at the frame's centre (placed by the engine); each is laid
-   out at the frame's resting size and scaled to fill it */
+/* The film's light: a tiny pre-blurred copy of the film, stretched to the
+   screen (soft by construction, no blur filter). It comes up after the
+   opening and goes down in Beyond (data-lit, set by the engine); each film
+   fades on its own, so the room never needs an offscreen pass. */
+.light {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.lightFilm {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  transform: scale(1.2); /* past the edges, so its border never shows */
+  opacity: 0;
+  transition: opacity 0s 1.5s;
+}
+
+.lightOn {
+  z-index: 1;
+  transition: opacity 1.2s var(--ease) 0.35s;
+}
+
+.root[data-lit] .lightOn {
+  opacity: 0.62;
+}
+
+/* the room's edges fall away into shadow, the bar and strip sit on dark, and
+   a fine grain makes the light read as projected, not digital. One layer,
+   painted once (and never over the film). */
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.07 0 0 0 -0.01'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    radial-gradient(ellipse 72% 68% at 50% 46%, rgb(0 0 0 / 0.08) 0%, rgb(0 0 0 / 0.4) 55%, rgb(0 0 0 / 0.88) 100%),
+    linear-gradient(to bottom, rgb(0 0 0 / 0.55), transparent 22%),
+    linear-gradient(to top, rgb(0 0 0 / 0.85), rgb(0 0 0 / 0.35) 20%, transparent 34%);
+}
+
+/* ================= the frame ================= */
+
+/* its shadow: drawn once at the frame's resting size, then turned and scaled with it */
+.shadow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  border-radius: var(--r);
+  box-shadow:
+    0 50px 110px -20px rgb(0 0 0 / 0.75),
+    0 16px 40px -8px rgb(0 0 0 / 0.5);
+  transform-origin: 50% 50%;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* the window: sized to the frame and turned by the engine; it clips the film */
+.frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  overflow: hidden;
+  border-radius: var(--r);
+  transform-origin: 50% 50%;
+  pointer-events: none;
+  will-change: transform;
+  /* no background: it is resized every frame, so it paints nothing (the
+     film's poster covers it until the film plays) */
+}
+
+/* the films sit at the frame's centre, turned back upright (by the engine);
+   each is laid out at the frame's resting size and scaled to fill it */
 .films {
   position: absolute;
   left: 0;
@@ -69,214 +151,45 @@
   transition: opacity 0.9s var(--ease) 0.45s;
 }
 
-/* black round the frame: four solid panels, in the frame's own space (the
-   engine places and turns this group), overlapping at the corners */
-.veil {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 0;
-  height: 0;
-  z-index: 1;
-  pointer-events: none;
-  will-change: transform;
-}
-
-.veilPart {
-  position: absolute;
-  left: 0;
-  top: 0;
-  background: #000;
-  will-change: transform;
-}
-
-/* before the engine runs, one panel covers the whole screen: black */
-.veilBelow {
-  width: 800vmax;
-  height: 400vmax;
-  transform: translate(-400vmax, 0);
-}
-
-/* light spilling softly from the frame onto the black: drawn once at the
-   frame's resting size, then scaled and turned with it */
-.glow {
-  position: absolute;
-  left: 0;
-  top: 0;
-  box-shadow:
-    0 0 60px 0 rgb(247 242 238 / 0.07),
-    0 0 180px 40px rgb(247 242 238 / 0.05);
-  opacity: 0;
-  will-change: transform, opacity;
-}
-
-/* in Beyond, for the bar and the strip to read on any frame */
+/* in Beyond the film is the whole room: one layer of shade so the bar, the
+   line and the strip read on it */
 .shade {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 4;
   pointer-events: none;
   opacity: 0;
   transition: opacity 1.4s var(--ease);
   background:
+    radial-gradient(ellipse 62% 46% at 50% 47%, rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.16) 55%, transparent 80%),
     linear-gradient(to bottom, rgb(0 0 0 / 0.5), transparent 20%),
     linear-gradient(to top, rgb(0 0 0 / 0.78), rgb(0 0 0 / 0.3) 18%, transparent 30%);
 }
 
-/* in Beyond the film is all light: a soft pool of shade keeps the line legible */
-.shadeBeyond {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  background: radial-gradient(ellipse 62% 46% at 50% 47%, rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.16) 55%, transparent 80%);
-  opacity: 0;
-  transition: opacity 1.4s var(--ease);
-}
-
-.isBeyond .shade,
-.isBeyond .shadeBeyond {
+.isBeyond .shade {
   opacity: 1;
 }
 
-/* ================= the frame ================= */
+/* and the room behind it steps out of the way */
+.vignette {
+  transition: opacity 1.2s var(--ease);
+}
 
-/* a hairline round the frame: four 1px lines the engine stretches */
-.edge {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 0;
-  height: 0;
-  z-index: 3;
-  pointer-events: none;
+.isBeyond .vignette {
   opacity: 0;
-  will-change: transform, opacity;
+  transition-delay: 0.9s;
 }
 
-.edgeLine {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 1px;
-  height: 1px;
-  background: rgb(247 242 238 / 0.3);
-  transform-origin: 0 0;
-  will-change: transform;
+/* once the frame has opened past the screen its corners are out of sight:
+   square them, so the film needs no rounded clip (data-open, set by the engine) */
+.root[data-open] .frame {
+  border-radius: 0;
 }
 
-.marks {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  opacity: 0;
-}
-
-/* a corner mark: its corner sits on the point the engine places it at */
-.mark {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 18px;
-  height: 18px;
-  border-top: 1.5px solid var(--paper);
-  border-left: 1.5px solid var(--paper);
-  transform-origin: 0 0;
-  will-change: transform;
-}
-
-/* the viewfinder: four small readings at the frame's corners, past the marks */
-.hud {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  color: rgb(247 242 238 / 0.8);
-  font-size: 10px;
-  line-height: 12px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 10px rgb(0 0 0 / 0.5);
-  opacity: 0;
-}
-
-.hudTL,
-.hudTR,
-.hudBL,
-.hudBR {
-  position: absolute;
-  left: 0;
-  top: 0;
-  will-change: transform;
-}
-
-.hudTL > span,
-.hudTR > span,
-.hudBL > span,
-.hudBR > span {
-  position: absolute;
-  white-space: nowrap;
-}
-
-.hudTL > span {
-  left: 30px;
-  bottom: 4px;
-}
-
-.hudTR > span {
-  right: 30px;
-  bottom: 4px;
-}
-
-.hudBL > span {
-  left: 30px;
-  top: 4px;
-}
-
-.hudBR > span {
-  right: 30px;
-  top: 4px;
-}
-
-.hud > div {
-  transition: opacity 0.6s var(--ease);
-}
-
-/* while the frame turns, the readings step aside */
-.hudAway > div {
-  opacity: 0;
-  transition: opacity 0.2s var(--ease);
-}
-
-/* a new reading eases in when the format changes */
-.hudSwap {
-  animation: hudIn 0.7s var(--ease) both;
-}
-
-@keyframes hudIn {
+@keyframes fadeUp {
   from {
     opacity: 0;
     transform: translateY(4px);
-  }
-}
-
-/* the recording light */
-.rec {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin: 0 6px 1px 0;
-  border-radius: 50%;
-  background: #e1142b;
-  vertical-align: middle;
-  animation: rec 1.6s ease-in-out infinite;
-}
-
-@keyframes rec {
-  50% {
-    opacity: 0.25;
   }
 }
 
@@ -288,7 +201,7 @@
   right: 0;
   top: var(--top);
   bottom: var(--bottom);
-  z-index: 4;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -324,7 +237,7 @@
 .words {
   display: block;
   white-space: nowrap;
-  text-shadow: 0 4px 40px rgb(0 0 0 / 0.35);
+  text-shadow: 0 2px 34px rgb(0 0 0 / 0.45);
 }
 
 /* the frame's place, held open between the two halves */
@@ -342,7 +255,7 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 5;
+  z-index: 6;
   height: var(--top);
   display: flex;
   align-items: center;
@@ -410,7 +323,7 @@
   left: var(--ui);
   right: var(--ui);
   bottom: var(--ui);
-  z-index: 5;
+  z-index: 6;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: clamp(16px, 2.6vw, 44px);
@@ -630,15 +543,7 @@
     gap: 18px;
   }
 
-  .hud {
-    font-size: 9px;
-    letter-spacing: 0.16em;
-  }
 
-  .hudBL,
-  .hudBR {
-    display: none; /* the caption carries the film's line on a phone */
-  }
 
   .formats {
     gap: 12px;
@@ -667,7 +572,7 @@
     left: var(--ui);
     right: var(--ui);
     bottom: calc(var(--ui) + 74px);
-    z-index: 5;
+    z-index: 6;
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
@@ -680,7 +585,7 @@
     line-height: 1.7;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    animation: hudIn 0.7s var(--ease) both;
+    animation: fadeUp 0.7s var(--ease) both;
   }
 
   .captionText span {
@@ -699,13 +604,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rec,
-  .hudSwap,
   .captionText {
     animation: none;
   }
   .film,
-  .filmOn {
+  .filmOn,
+  .lightFilm,
+  .lightOn {
     transition: none;
   }
 }

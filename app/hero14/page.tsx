@@ -26,22 +26,24 @@ import styles from "./hero14.module.css";
 // ===========================================================================
 // HERO 14 — the homepage. "Stories beyond the frame", played out on screen.
 //
-// A viewfinder frame on black, and the whole film inside it. The frame is
-// the navigation: it holds 16×9, turns a quarter like a phone going vertical
-// to become 9×16 (the film stays upright and fills it), and for Beyond it
-// opens past the edges of the screen: the film breaks out of the frame, and
-// the visitor can look around it with the pointer. The three cycle on their
-// own; the strip at the foot picks one, and each leads to its page.
+// A frame floats in a dark room, the whole film inside it, and the film's
+// own light spills out beyond the frame and fills the room, the way a screen
+// lights a cinema. The frame is the navigation: it holds 16×9, turns a quarter
+// like a phone going vertical to become 9×16 (the film stays upright and
+// fills it), and for Beyond it opens past the edges of the screen: the film
+// breaks out of the frame, and the visitor can look around it with the
+// pointer. The three cycle on their own; the strip at the foot picks one,
+// and each leads to its page.
 //
 // Opening: on black the line rises, a slit of light opens between its two
-// halves and pushes them apart into the frame, then the corner marks close in
-// and light spills softly round it.
+// halves and pushes them apart into the frame, then the film's light spills
+// out into the room.
 //
-// Everything that moves per frame is a transform or an opacity, so the
-// compositor does it all: the film is scaled, never resized, and the black
-// round the frame is four solid panels that slide, never a shape that is
-// redrawn. No filters, no blend modes, and one
-// film playing at a time.
+// Smooth everywhere: what moves per frame is a transform, an opacity or the
+// frame's clip. The light is a tiny pre-blurred copy of each film (192×108,
+// ~25 KB) stretched to the screen: no blur filter, nearly free to decode.
+// Films are laid out once and only scaled; one film (and its light) plays at
+// a time.
 // ===========================================================================
 
 const wide = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wide", display: "swap" });
@@ -54,25 +56,29 @@ const NAV = [
   { label: "Contact", href: "#contact" },
 ];
 
-// Each film comes in two cuts: one for wide screens and a lighter one for
-// portrait screens (phones). `aspect` is the file's width / height.
+// Each film comes in two cuts, one for wide screens and a lighter one for
+// portrait screens (phones), plus its light: the tiny blurred copy that fills
+// the room. `aspect` is the cut's width / height.
 type Cut = { src: string; poster: string; aspect: number };
-type Film = { desk: Cut; small: Cut };
+type Film = { desk: Cut; small: Cut; light: string };
 const F = "/hero14/films";
 const VERTICAL_ASPECT = 608 / 1080;
 const FILMS: Record<"wide" | "vertical" | "beyond", Film> = {
   wide: {
     desk: { src: `${F}/wide-1080.mp4`, poster: `${F}/wide.webp`, aspect: 16 / 9 },
     small: { src: `${F}/wide-540.mp4`, poster: `${F}/wide-540.webp`, aspect: 16 / 9 },
+    light: `${F}/wide-light.mp4`,
   },
   vertical: {
     desk: { src: `${F}/vertical-m.mp4`, poster: `${F}/vertical-m.webp`, aspect: VERTICAL_ASPECT },
     small: { src: `${F}/vertical-m.mp4`, poster: `${F}/vertical-m.webp`, aspect: VERTICAL_ASPECT },
+    light: `${F}/vertical-light.mp4`,
   },
   beyond: {
     desk: { src: `${F}/beyond-1080.mp4`, poster: `${F}/beyond.webp`, aspect: 16 / 9 },
     // full screen on a phone: the vertical crop
     small: { src: `${F}/beyond-m.mp4`, poster: `${F}/beyond-m.webp`, aspect: VERTICAL_ASPECT },
+    light: `${F}/beyond-light.mp4`,
   },
 };
 
@@ -80,13 +86,9 @@ type Mode = {
   key: string;
   no: string;
   label: string;
-  /** what the viewfinder reads, top left of the frame */
-  hud: string;
   line: string;
   detail: string;
   href: string;
-  /** the film's caption, bottom left of the frame */
-  title: string;
   film: Film;
   portrait: boolean;
   beyond: boolean;
@@ -97,11 +99,9 @@ const MODES: Mode[] = [
     key: "16x9",
     no: "01",
     label: "16×9",
-    hud: "16 : 9",
     line: "Films for the big screen",
     detail: "TVCs · Brand films · Documentaries",
     href: "#16x9",
-    title: "Desert — brand film",
     film: FILMS.wide,
     portrait: false,
     beyond: false,
@@ -110,11 +110,9 @@ const MODES: Mode[] = [
     key: "9x16",
     no: "02",
     label: "9×16",
-    hud: "9 : 16",
     line: "Stories made for the scroll",
     detail: "Social · Branded content",
     href: "#9x16",
-    title: "Movement — social cut",
     film: FILMS.vertical,
     portrait: true,
     beyond: false,
@@ -123,11 +121,9 @@ const MODES: Mode[] = [
     key: "beyond",
     no: "03",
     label: "Beyond",
-    hud: "Beyond",
     line: "Stories you step into",
     detail: "Immersive · Interactive",
     href: "#beyond",
-    title: "Dubai — look around",
     film: FILMS.beyond,
     portrait: false,
     beyond: true,
@@ -141,14 +137,14 @@ const T = {
   slitDur: 0.65,
   open: 2.1, // the slit opens into the frame
   openDur: 1.25,
-  marks: 2.95, // corner marks and viewfinder close in
+  depth: 2.9, // the frame lifts off the dark (its shadow)
+  light: 3.0, // the film's light spills out into the room
   ui: 3.3, // top bar and format strip
   settle: 4.7, // from here the hero answers the pointer
 };
 const MORPH = 1.45; // 16×9 ⇄ 9×16
 const MORPH_BEYOND = 1.75; // into or out of Beyond
 const DWELL = 6.5; // seconds on each format before the next
-const MARK_GAP = 10; // corner marks sit this far outside the frame
 const PAN = 3; // how far Beyond lets you look around, in % of the screen
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -169,10 +165,6 @@ function Ratio({ text }: { text: string }) {
   );
 }
 
-const pad2 = (n: number) => String(n).padStart(2, "0");
-const timecode = (frame: number) =>
-  `TC 00:${pad2(Math.floor(frame / 1500) % 60)}:${pad2(Math.floor(frame / 25) % 60)}:${pad2(frame % 25)}`;
-
 // Portrait screens get the small cut of each film.
 const PORTRAIT_Q = "(max-aspect-ratio: 1/1)";
 const subscribePortrait = (cb: () => void) => {
@@ -182,7 +174,8 @@ const subscribePortrait = (cb: () => void) => {
 };
 const noopSubscribe = () => () => {};
 
-type FrameState = { angle: number; s: number; wx: number; o: number; g: number; bo: number };
+/** The frame: its turn, scale, how far open (width, height) and how far lifted. */
+type FrameState = { angle: number; s: number; wx: number; o: number; d: number };
 type Engine = { go: (i: number) => void; inside: (x: number, y: number) => boolean; refresh: () => void };
 
 export default function Hero14() {
@@ -210,23 +203,16 @@ export default function Hero14() {
   }, [reduce]);
 
   const rootRef = useRef<HTMLElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   const filmsRef = useRef<HTMLDivElement>(null);
-  const veilRef = useRef<HTMLDivElement>(null);
-  const edgeRef = useRef<HTMLDivElement>(null);
-  const glowRef = useRef<HTMLSpanElement>(null);
-  const partRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const lineRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const marksRef = useRef<HTMLDivElement>(null);
-  const hudRef = useRef<HTMLDivElement>(null);
+  const shadowRef = useRef<HTMLSpanElement>(null);
   const spacerRef = useRef<HTMLSpanElement>(null);
   const composeRef = useRef<HTMLDivElement>(null);
   const line1Ref = useRef<HTMLSpanElement>(null);
   const line2Ref = useRef<HTMLSpanElement>(null);
-  const tcRef = useRef<HTMLSpanElement>(null);
-  const markRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const hudRefs = useRef<(HTMLDivElement | null)[]>([]);
   const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const lightRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const cursorRef = useRef<CursorHandle>(null);
   const engineRef = useRef<Engine | null>(null);
   const modeRef = useRef(0);
@@ -238,28 +224,22 @@ export default function Hero14() {
     pausedRef.current = frameHoverRef.current || stripHoverRef.current;
   };
 
-  // ---- the frame: one engine draws the window, its marks and the viewfinder ----
+  // ---- the frame: one engine places the window, the film in it and its shadow ----
   useEffect(() => {
     const root = rootRef.current;
-    const veil = veilRef.current;
-    const edge = edgeRef.current;
-    const marks = marksRef.current;
-    const hud = hudRef.current;
+    const frame = frameRef.current;
+    const films = filmsRef.current;
+    const shadow = shadowRef.current;
     const spacer = spacerRef.current;
+    const compose = composeRef.current;
     const l1 = line1Ref.current;
     const l2 = line2Ref.current;
-    const compose = composeRef.current;
-    if (!root || !veil || !edge || !marks || !hud || !spacer || !l1 || !l2 || !compose) return;
-    const markEls = markRefs.current;
-    const parts = partRefs.current;
-    const lines = lineRefs.current;
-    const hudEls = hudRefs.current;
+    if (!root || !frame || !films || !shadow || !spacer || !compose || !l1 || !l2) return;
 
     // The frame's resting size and place come from the layout (the gap held
     // open between the two halves of the line), so CSS is the one source.
-    const geo = { cx: 0, cy: 0, W: 1, H: 1, vw: 1, vh: 1, left: 0, top: 0, roomTop: 0, roomBottom: 0, B: 1 };
+    const geo = { cx: 0, cy: 0, W: 1, H: 1, vw: 1, vh: 1, left: 0, top: 0, roomTop: 0, roomBottom: 0 };
     const filmBase = new Map<HTMLVideoElement, { w: number; h: number; css: string }>();
-    const glow = glowRef.current;
     const measure = () => {
       const r = root.getBoundingClientRect();
       const s = spacer.getBoundingClientRect();
@@ -275,18 +255,6 @@ export default function Hero14() {
       const c = compose.getBoundingClientRect();
       geo.roomTop = c.top - r.top;
       geo.roomBottom = c.bottom - r.top;
-      // Each veil panel reaches this far out from its edge of the frame, enough
-      // to cover the screen at any turn. Panels overlap at the corners; the veil
-      // is faded as one group, so the overlaps never show.
-      const B = Math.ceil(2 * Math.hypot(r.width, r.height));
-      if (B !== geo.B) {
-        geo.B = B;
-        parts.forEach((el, i) => {
-          if (!el) return;
-          el.style.width = `${i < 2 ? 2 * B : B}px`;
-          el.style.height = `${i < 2 ? B : 2 * B}px`;
-        });
-      }
       // Each film is laid out once at the frame's resting size in its own
       // shape (so its poster is drawn sharp), then only ever scaled.
       filmBase.clear();
@@ -301,28 +269,26 @@ export default function Hero14() {
         v.style.marginTop = `${-h / 2}px`;
         filmBase.set(v, { w, h, css: "" });
       });
-      if (glow) {
-        glow.style.width = `${geo.W}px`;
-        glow.style.height = `${geo.H}px`;
-        glow.style.marginLeft = `${-geo.W / 2}px`;
-        glow.style.marginTop = `${-geo.H / 2}px`;
-      }
+      // the shadow is drawn once at the resting size, then scaled with the frame
+      shadow.style.width = `${geo.W}px`;
+      shadow.style.height = `${geo.H}px`;
+      shadow.style.marginLeft = `${-geo.W / 2}px`;
+      shadow.style.marginTop = `${-geo.H / 2}px`;
     };
     measure();
 
     const st: FrameState = reduce
-      ? { angle: 0, s: 1, wx: 1, o: 1, g: MARK_GAP, bo: 1 }
-      : { angle: 0, s: 1, wx: 0, o: 0, g: 40, bo: 0 };
+      ? { angle: 0, s: 1, wx: 1, o: 1, d: 1 }
+      : { angle: 0, s: 1, wx: 0, o: 0, d: 0 };
     let angleTarget = 0;
-    let hudTimer = 0;
     let current = 0;
     let prog = 0;
 
     const scaleFor = (i: number) => {
       const md = MODES[i];
       const { cx, cy, W, H, vw, vh } = geo;
-      // Beyond: past every edge of the screen, with room to spare for the marks
-      if (md.beyond) return Math.max((2 * Math.max(cx, vw - cx)) / W, (2 * Math.max(cy, vh - cy)) / H) * 1.2;
+      // Beyond: past every edge of the screen
+      if (md.beyond) return Math.max((2 * Math.max(cx, vw - cx)) / W, (2 * Math.max(cy, vh - cy)) / H) * 1.15;
       // 9×16: as tall as the room between the top bar and the strip allows
       if (md.portrait) {
         const room = 2 * (Math.min(cy - geo.roomTop, geo.roomBottom - cy) - 8);
@@ -331,8 +297,30 @@ export default function Hero14() {
       return 1;
     };
 
+    // The film sits in the frame's own space: centred in it and turned back
+    // upright. `place` is where it is; `pan` is Beyond's look-around.
+    const place = { hw: 0, hh: 0, angle: 0 };
+    const pan = { x: 0, y: 0 };
+    let filmsCss = "";
+    const placeFilms = () => {
+      const rad = (place.angle * Math.PI) / 180;
+      const c = Math.cos(rad);
+      const sn = Math.sin(rad);
+      const px = (pan.x / 100) * geo.vw;
+      const py = (pan.y / 100) * geo.vh;
+      // the screen-space pan, turned into the frame's space
+      const x = place.hw + px * c + py * sn;
+      const y = place.hh - px * sn + py * c;
+      const css = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotate(${(-place.angle).toFixed(3)}deg)`;
+      if (css !== filmsCss) {
+        films.style.transform = css;
+        filmsCss = css;
+      }
+    };
+
     const f1 = (n: number) => n.toFixed(1);
-    let lastBase = "";
+    let lastW = "";
+    let lastH = "";
     let lastOff = Number.NaN;
     const render = () => {
       const { cx, cy, W, H, vw, vh } = geo;
@@ -341,53 +329,29 @@ export default function Hero14() {
       const rad = (st.angle * Math.PI) / 180;
       const c = Math.cos(rad);
       const sn = Math.sin(rad);
-      const B = geo.B;
+      const turn = `rotate(${st.angle.toFixed(3)}deg)`;
 
-      // The veil and the hairline live in the frame's own space: placed at its
-      // centre and turned with it, so every piece inside only slides.
-      const base = `translate3d(${f1(cx)}px, ${f1(cy)}px, 0) rotate(${st.angle.toFixed(3)}deg)`;
-      if (base !== lastBase) {
-        veil.style.transform = base;
-        edge.style.transform = base;
-        lastBase = base;
+      // the window: sized to the frame, turned about its centre; it clips the film
+      const w = f1(hw * 2);
+      const h = f1(hh * 2);
+      if (w !== lastW) {
+        frame.style.width = `${w}px`;
+        lastW = w;
       }
-      // the veil: four solid panels, one off each side of the frame
-      const panels: [number, number][] = [
-        [-B, -hh - B], // above
-        [-B, hh], // below
-        [-hw - B, -B], // left
-        [hw, -B], // right
-      ];
-      panels.forEach(([x, y], i) => {
-        const el = parts[i];
-        if (el) el.style.transform = `translate3d(${f1(x)}px, ${f1(y)}px, 0)`;
-      });
-      // the hairline: four 1px lines, stretched to the frame's sides
-      const w = Math.max(0, hw * 2);
-      const h = Math.max(0, hh * 2);
-      const sides: [number, number, number, number][] = [
-        [-hw, -hh, w, 1],
-        [-hw, hh - 1, w, 1],
-        [-hw, -hh, 1, h],
-        [hw - 1, -hh, 1, h],
-      ];
-      sides.forEach(([x, y, sx, sy], i) => {
-        const el = lines[i];
-        if (el) el.style.transform = `translate3d(${f1(x)}px, ${f1(y)}px, 0) scale(${f1(sx)}, ${f1(sy)})`;
-      });
-      edge.style.opacity = String(st.bo);
-      // the light spilling round the frame
-      if (glow) {
-        glow.style.transform = `scale(${(st.s * st.wx).toFixed(4)}, ${(st.s * st.o).toFixed(4)})`;
-        glow.style.opacity = String(st.bo);
+      if (h !== lastH) {
+        frame.style.height = `${h}px`;
+        lastH = h;
       }
+      frame.style.transform = `translate3d(${f1(cx - hw)}px, ${f1(cy - hh)}px, 0) ${turn}`;
+
+      // its shadow, lifting it off the room
+      shadow.style.transform = `translate3d(${f1(cx)}px, ${f1(cy)}px, 0) ${turn} scale(${(st.s * st.wx).toFixed(4)}, ${(st.s * st.o).toFixed(4)})`;
+      shadow.style.opacity = String(st.d);
 
       // The film stays upright and fills the frame: scaled to cover the frame's
       // upright bounds, which at rest are the frame itself, so the whole film
-      // shows. (While the frame turns, the black round it trims the corners.)
-      // The frame's opening in the intro doesn't shrink the film: the slit opens
-      // onto it at full size. In Beyond the film covers the screen, with a
-      // little room to look around.
+      // shows. The opening doesn't shrink it (the slit opens onto it at full
+      // size). In Beyond it covers the screen, with a little room to look around.
       const hwN = (W * st.s) / 2;
       const hhN = (H * st.s) / 2;
       const hx = Math.min(Math.abs(c) * hwN + Math.abs(sn) * hhN, Math.max(cx, vw - cx) * 1.08);
@@ -399,36 +363,10 @@ export default function Hero14() {
           b.css = css;
         }
       });
-
-      // corner marks, turning with the frame
-      const g = st.g;
-      const corners: [number, number, number][] = [
-        [-hw - g, -hh - g, 0],
-        [hw + g, -hh - g, 90],
-        [hw + g, hh + g, 180],
-        [-hw - g, hh + g, 270],
-      ];
-      corners.forEach(([x, y, r], i) => {
-        const el = markEls[i];
-        if (el)
-          el.style.transform = `translate3d(${f1(cx + x * c - y * sn)}px, ${f1(cy + x * sn + y * c)}px, 0) rotate(${(st.angle + r).toFixed(2)}deg)`;
-      });
-      marks.style.opacity = String(st.bo);
-
-      // the viewfinder reads at the corners of the frame's upright bounds
-      const ex = Math.abs(c) * hw + Math.abs(sn) * hh;
-      const ey = Math.abs(sn) * hw + Math.abs(c) * hh;
-      const spots: [number, number][] = [
-        [cx - ex, cy - ey],
-        [cx + ex, cy - ey],
-        [cx - ex, cy + ey],
-        [cx + ex, cy + ey],
-      ];
-      spots.forEach(([x, y], i) => {
-        const el = hudEls[i];
-        if (el) el.style.transform = `translate3d(${f1(x)}px, ${f1(y)}px, 0)`;
-      });
-      hud.style.opacity = String(st.bo);
+      place.hw = hw;
+      place.hh = hh;
+      place.angle = st.angle;
+      placeFilms();
 
       // in the opening, the two halves of the line ride the slit apart
       const off = Math.round((1 - st.o) * (H / 2) * 10) / 10;
@@ -439,11 +377,12 @@ export default function Hero14() {
       }
     };
 
-    // Two channels so the marks can move while the frame does.
-    const tweens: Partial<Record<"frame" | "marks", AnimationPlaybackControls>> = {};
-    const running = { frame: false, marks: false };
+    // Two channels so the shadow can move while the frame does.
+    type Channel = "frame" | "depth";
+    const tweens: Partial<Record<Channel, AnimationPlaybackControls>> = {};
+    const running = { frame: false, depth: false };
     const to = (
-      ch: "frame" | "marks",
+      ch: Channel,
       target: Partial<FrameState>,
       duration: number,
       ease: readonly [number, number, number, number],
@@ -477,6 +416,17 @@ export default function Hero14() {
       });
     };
 
+    // the room's light: off in Beyond (the film is the room there)
+    let lightTimer = 0;
+    let openTimer = 0;
+    const setLight = (on: boolean, delay = 0) => {
+      window.clearTimeout(lightTimer);
+      lightTimer = window.setTimeout(() => {
+        if (on) root.dataset.lit = "";
+        else delete root.dataset.lit;
+      }, reduce ? 0 : delay * 1000);
+    };
+
     const go = (i: number) => {
       if (i === current) return;
       const md = MODES[i];
@@ -485,13 +435,18 @@ export default function Hero14() {
       const portraitNow = ((Math.round(angleTarget / 90) % 2) + 2) % 2 === 1;
       if (md.portrait !== portraitNow) angleTarget += 90;
       const dur = md.beyond || was.beyond ? MORPH_BEYOND : MORPH;
-      // the viewfinder steps aside while the frame turns, and reads again once it lands
-      hud.classList.add(styles.hudAway);
-      window.clearTimeout(hudTimer);
-      hudTimer = window.setTimeout(() => hud.classList.remove(styles.hudAway), dur * 820);
       to("frame", { angle: angleTarget, s: scaleFor(i), wx: 1, o: 1 }, dur, EASE_CINE);
-      if (md.beyond) to("marks", { bo: 0, g: 40 }, 0.7, EASE);
-      else to("marks", { bo: 1, g: MARK_GAP }, 0.9, EASE, was.beyond ? dur * 0.55 : 0);
+      window.clearTimeout(openTimer);
+      if (md.beyond) {
+        to("depth", { d: 0 }, 0.8, EASE);
+        setLight(false, dur * 0.7);
+        // past the screen's edges: the corners can square off unseen
+        openTimer = window.setTimeout(() => (root.dataset.open = ""), dur * 650);
+      } else {
+        delete root.dataset.open;
+        to("depth", { d: 1 }, 0.9, EASE, was.beyond ? dur * 0.5 : 0);
+        if (was.beyond) setLight(true);
+      }
       current = i;
       prog = 0;
       barRefs.current.forEach((b) => b && (b.style.transform = "scaleX(0)"));
@@ -518,10 +473,13 @@ export default function Hero14() {
     // ---- the opening ----
     const timers: number[] = [];
     const later = (t: number, fn: () => void) => timers.push(window.setTimeout(fn, t * 1000));
-    if (!reduce) {
+    if (reduce) {
+      setLight(true);
+    } else {
       later(T.slit, () => to("frame", { wx: 1, o: Math.min(1, 2 / geo.H) }, T.slitDur, EASE_CINE));
       later(T.open, () => to("frame", { o: 1 }, T.openDur, EASE_CINE));
-      later(T.marks, () => to("marks", { bo: 1, g: MARK_GAP }, 1.1, EASE));
+      later(T.depth, () => to("depth", { d: 1 }, 1.4, EASE));
+      later(T.light, () => setLight(true));
     }
 
     // ---- resize: re-measure, and hold the current format's size ----
@@ -542,9 +500,10 @@ export default function Hero14() {
     const setOnFrame = (on: boolean) => {
       if (on === onFrame) return;
       onFrame = on;
-      root.classList.toggle(styles.onFrame, on);
-      const md = MODES[current];
-      cursorRef.current?.show(on ? cursorLabel(md) : null);
+      // a data attribute, not a class: React owns the class list and would wipe it
+      if (on) root.dataset.onFrame = "";
+      else delete root.dataset.onFrame;
+      cursorRef.current?.show(on ? cursorLabel(MODES[current]) : null);
     };
     const onMove = (e: PointerEvent) => {
       p.x = e.clientX - geo.left;
@@ -566,14 +525,10 @@ export default function Hero14() {
     window.addEventListener("pointermove", onMove, { passive: true });
     document.documentElement.addEventListener("pointerleave", onLeave);
 
-    // ---- one loop: the cycle's progress, Beyond's look-around, the timecode ----
+    // ---- one loop: the cycle's progress and Beyond's look-around ----
     let raf = 0;
     let last = performance.now();
-    let lastFrame = -1;
     let lastMode = current;
-    const pan = { x: 0, y: 0 };
-    let panCss = "";
-    const films = filmsRef.current;
     const loop = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
@@ -591,10 +546,7 @@ export default function Hero14() {
       // the label changes with the format even if the pointer rests on the frame
       if (lastMode !== current) {
         lastMode = current;
-        if (onFrame) {
-          const md = MODES[current];
-          cursorRef.current?.show(cursorLabel(md));
-        }
+        if (onFrame) cursorRef.current?.show(cursorLabel(MODES[current]));
       }
 
       let tx = 0;
@@ -612,25 +564,7 @@ export default function Hero14() {
       const k = 1 - Math.exp(-dt * 2.2);
       pan.x += (tx - pan.x) * k;
       pan.y += (ty - pan.y) * k;
-      if (films) {
-        const fx = geo.cx + (pan.x / 100) * geo.vw;
-        const fy = geo.cy + (pan.y / 100) * geo.vh;
-        const css = `translate3d(${fx.toFixed(1)}px, ${fy.toFixed(1)}px, 0)`;
-        if (css !== panCss) {
-          films.style.transform = css;
-          panCss = css;
-        }
-      }
-
-      const v = videoRefs.current[current];
-      const tc = tcRef.current;
-      if (v && tc) {
-        const fr = Math.floor(v.currentTime * 25);
-        if (fr !== lastFrame) {
-          lastFrame = fr;
-          tc.textContent = timecode(fr);
-        }
-      }
+      placeFilms();
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -638,13 +572,16 @@ export default function Hero14() {
     return () => {
       cancelAnimationFrame(raf);
       timers.forEach((t) => window.clearTimeout(t));
-      window.clearTimeout(hudTimer);
       tweens.frame?.stop();
-      tweens.marks?.stop();
+      tweens.depth?.stop();
       ro.disconnect();
       window.removeEventListener("pointermove", onMove);
       document.documentElement.removeEventListener("pointerleave", onLeave);
-      root.classList.remove(styles.onFrame);
+      delete root.dataset.onFrame;
+      delete root.dataset.lit;
+      delete root.dataset.open;
+      window.clearTimeout(lightTimer);
+      window.clearTimeout(openTimer);
       engineRef.current = null;
     };
   }, [reduce]);
@@ -660,20 +597,24 @@ export default function Hero14() {
     engineRef.current?.go(mode);
   }, [mode]);
 
-  // its film starts from the top and fades in over the last; the last one stops after
+  // its film (and its light) start from the top and fade in over the last;
+  // the last ones stop once they're covered
   useEffect(() => {
-    const vids = videoRefs.current;
-    const v = vids[mode];
-    if (v) {
+    const all = [videoRefs.current, lightRefs.current];
+    all.forEach((list) => {
+      const v = list[mode];
+      if (!v) return;
       v.muted = true;
       v.setAttribute("muted", ""); // iOS wants the attribute before it will autoplay
       v.currentTime = 0;
       v.play().catch(() => {});
-    }
+    });
     const t = window.setTimeout(() => {
-      vids.forEach((o, i) => {
-        if (o && i !== mode) o.pause();
-      });
+      all.forEach((list) =>
+        list.forEach((o, i) => {
+          if (o && i !== mode) o.pause();
+        })
+      );
     }, 1600);
     return () => window.clearTimeout(t);
   }, [mode, isClient, portraitScreen]);
@@ -744,88 +685,59 @@ export default function Hero14() {
       onPointerDown={onDown}
       onPointerUp={onUp}
     >
-      {/* ================= the film: inside the frame ================= */}
-      <div ref={filmsRef} className={styles.films} aria-hidden="true">
+      {/* ================= the room, lit by the film ================= */}
+      <div className={styles.light} aria-hidden="true">
         {isClient &&
           MODES.map((md, i) => (
             <video
               key={md.key}
               ref={(el) => {
-                videoRefs.current[i] = el;
+                lightRefs.current[i] = el;
               }}
-              className={`${styles.film} ${i === mode ? styles.filmOn : ""}`}
-              src={(portraitScreen ? md.film.small : md.film.desk).src}
-              poster={(portraitScreen ? md.film.small : md.film.desk).poster}
-              data-aspect={(portraitScreen ? md.film.small : md.film.desk).aspect}
+              className={`${styles.lightFilm} ${i === mode ? styles.lightOn : ""}`}
+              src={md.film.light}
               muted
               loop
               playsInline
               autoPlay={i === 0 && !reduce}
-              preload={i === 0 ? "auto" : "metadata"}
+              preload="auto"
               disablePictureInPicture
             />
           ))}
       </div>
+      <div className={styles.vignette} aria-hidden="true" />
 
-      {/* black round the frame (and the light spilling from it) */}
-      <div ref={veilRef} className={styles.veil} aria-hidden="true">
-        {["Above", "Below", "Left", "Right"].map((side, i) => (
-          <span
-            key={side}
-            ref={(el) => {
-              partRefs.current[i] = el;
-            }}
-            className={`${styles.veilPart} ${styles[`veil${side}`]}`}
-          />
-        ))}
-        <span ref={glowRef} className={styles.glow} />
+      {/* ================= the frame, and the whole film in it ================= */}
+      <span ref={shadowRef} className={styles.shadow} aria-hidden="true" />
+      <div ref={frameRef} className={styles.frame} aria-hidden="true">
+        <div ref={filmsRef} className={styles.films}>
+          {isClient &&
+            MODES.map((md, i) => {
+              const cut = portraitScreen ? md.film.small : md.film.desk;
+              return (
+                <video
+                  key={md.key}
+                  ref={(el) => {
+                    videoRefs.current[i] = el;
+                  }}
+                  className={`${styles.film} ${i === mode ? styles.filmOn : ""}`}
+                  src={cut.src}
+                  poster={cut.poster}
+                  data-aspect={cut.aspect}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay={i === 0 && !reduce}
+                  preload={i === 0 ? "auto" : "metadata"}
+                  disablePictureInPicture
+                />
+              );
+            })}
+        </div>
       </div>
+
+      {/* in Beyond, a little shade so the line reads on the open film */}
       <div className={styles.shade} aria-hidden="true" />
-      <div className={styles.shadeBeyond} aria-hidden="true" />
-
-      {/* ================= the frame: hairline, corner marks, viewfinder ================= */}
-      <div ref={edgeRef} className={styles.edge} aria-hidden="true">
-        {[0, 1, 2, 3].map((i) => (
-          <span
-            key={i}
-            ref={(el) => {
-              lineRefs.current[i] = el;
-            }}
-            className={styles.edgeLine}
-          />
-        ))}
-      </div>
-      <div ref={marksRef} className={styles.marks} aria-hidden="true">
-        {[0, 1, 2, 3].map((i) => (
-          <span
-            key={i}
-            ref={(el) => {
-              markRefs.current[i] = el;
-            }}
-            className={styles.mark}
-          />
-        ))}
-      </div>
-      <div ref={hudRef} className={styles.hud} aria-hidden="true">
-        <div ref={(el) => void (hudRefs.current[0] = el)} className={styles.hudTL}>
-          <span key={`a${mode}`} className={styles.hudSwap}>
-            <i className={styles.rec} /> {m.hud}
-          </span>
-        </div>
-        <div ref={(el) => void (hudRefs.current[1] = el)} className={styles.hudTR}>
-          <span ref={tcRef}>TC 00:00:00:00</span>
-        </div>
-        <div ref={(el) => void (hudRefs.current[2] = el)} className={styles.hudBL}>
-          <span key={`b${mode}`} className={styles.hudSwap}>
-            {m.title}
-          </span>
-        </div>
-        <div ref={(el) => void (hudRefs.current[3] = el)} className={styles.hudBR}>
-          <span key={`c${mode}`} className={styles.hudSwap}>
-            {m.no} / {pad2(MODES.length)}
-          </span>
-        </div>
-      </div>
 
       {/* ================= the line, split by the frame ================= */}
       <div ref={composeRef} className={styles.compose}>
