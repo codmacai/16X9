@@ -9,11 +9,17 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { animate, motion, useReducedMotion, type AnimationPlaybackControls } from "framer-motion";
-import { Manrope, Unbounded } from "next/font/google";
+import { Archivo } from "next/font/google";
 import styles from "./hero19.module.css";
 
 // ===========================================================================
-// HERO 19 — the 16x9 site, sister to 9x16.studio.
+// HERO 19 — the 16x9 site, sister to 9x16.studio, in black and white.
+//
+// Now full page (no display), white paper and black ink, set in our wide
+// Archivo: the 9x16 grid as faint rules, the crop-box frame with square
+// handles, and the aspect-ratio toolbar as the switcher.
+//
+// (Earlier: sister to 9x16.studio.)
 //
 // 9x16 lives inside a phone on a top-down street; 16x9 lives inside a
 // widescreen display on a Dubai highway, its status bar reading 16:09. Same
@@ -29,8 +35,7 @@ import styles from "./hero19.module.css";
 // the film inside only scaled; one film plays at a time.
 // ===========================================================================
 
-const display = Unbounded({ subsets: ["latin"], weight: ["600", "700"], variable: "--font-display", display: "swap" });
-const body = Manrope({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-body", display: "swap" });
+const wide = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wide", display: "swap" });
 
 type Cut = { src: string; poster: string; aspect: number };
 type Film = { desk: Cut; small: Cut };
@@ -165,7 +170,9 @@ export default function Hero19() {
     const device = deviceRef.current;
     const root = rootRef.current;
     if (!device || !root) return;
-    const set = () => root.style.setProperty("--u", `${device.clientWidth / 100}px`);
+    // a 16:9 unit: the page is laid out as if fitted to a 16:9 screen
+    const set = () =>
+      root.style.setProperty("--u", `${Math.min(device.clientWidth / 100, device.clientHeight / 56.25)}px`);
     set();
     const ro = new ResizeObserver(set);
     ro.observe(device);
@@ -433,50 +440,20 @@ export default function Hero19() {
   return (
     <section
       ref={rootRef}
-      className={`${styles.root} ${display.variable} ${body.variable} ${m.shape === "beyond" ? styles.isBeyond : ""}`}
+      className={`${styles.root} ${wide.variable} ${m.shape === "beyond" ? styles.isBeyond : ""}`}
       aria-label="16x9 & Beyond — stories beyond the frame"
       onPointerDown={onDown}
       onPointerUp={onUp}
     >
-      {/* ================= the world ================= */}
-      <motion.div
-        className={styles.world}
-        aria-hidden="true"
-        initial={reduce ? false : { opacity: 0 }}
-        animate={{ opacity: 1, transition: { duration: 1.8, ease: EASE } }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hero19/world.webp" alt="" />
-      </motion.div>
-      <div className={styles.worldShade} aria-hidden="true" />
-
       {/* ================= the display ================= */}
       <motion.div
         ref={deviceRef}
         className={styles.device}
-        initial={reduce ? false : { opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0, transition: { delay: T.device, duration: 1.2, ease: EASE } }}
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1, transition: { delay: T.device, duration: 0.8, ease: EASE } }}
       >
         <div className={styles.screen}>
           <div className={styles.grid} aria-hidden="true" />
-
-          {/* the status bar: it's 16:09 */}
-          <div className={styles.status} aria-hidden="true">
-            <span>16:09</span>
-            <span className={styles.statusIcons}>
-              <svg viewBox="0 0 18 12">
-                <rect x="0" y="8" width="3" height="4" />
-                <rect x="5" y="5.5" width="3" height="6.5" />
-                <rect x="10" y="3" width="3" height="9" />
-                <rect x="15" y="0" width="3" height="12" />
-              </svg>
-              <svg viewBox="0 0 26 12">
-                <rect x="0.75" y="0.75" width="21.5" height="10.5" rx="3" fill="none" strokeWidth="1.5" />
-                <rect x="3" y="3" width="15" height="6" rx="1.5" />
-                <rect x="23.5" y="4" width="2" height="4" rx="1" />
-              </svg>
-            </span>
-          </div>
 
           <motion.header className={styles.bar} {...rise(T.words - 0.2, -10)}>
             <a href="#top" aria-label="16x9 & Beyond — home">
