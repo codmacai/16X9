@@ -9,10 +9,11 @@
   --top: clamp(64px, 10vh, 96px); /* the top bar */
   --bottom: clamp(124px, 17vh, 156px); /* the format strip */
   /* the frame at rest (16×9): its width; the engine reads it from .spacer */
-  --fw: min(44vw, calc((100svh - 420px) * 1.78));
+  --fw: min(42vw, calc((100svh - 500px) * 1.78));
   --hs: clamp(30px, min(6.2vw, 10.5vh), 120px); /* the line */
-  --gap: clamp(12px, 2.2vh, 26px);
-  --r: clamp(10px, 0.9vw, 16px); /* the frame's corners */
+  /* the line clears the strip's edge band (14% of the picture's height) */
+  --gap: calc(var(--fw) * 0.07875 + clamp(10px, 1.6vh, 18px));
+  --r: 2px; /* the corners of a film gate */
   position: relative;
   width: 100%;
   height: 100vh;
@@ -88,22 +89,6 @@
 
 /* ================= the frame ================= */
 
-/* its shadow: drawn once at the frame's resting size, then turned and scaled with it */
-.shadow {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 2;
-  border-radius: var(--r);
-  box-shadow:
-    0 50px 110px -20px rgb(0 0 0 / 0.75),
-    0 16px 40px -8px rgb(0 0 0 / 0.5);
-  transform-origin: 50% 50%;
-  opacity: 0;
-  pointer-events: none;
-  will-change: transform, opacity;
-}
-
 /* the window: sized to the frame and turned by the engine; it clips the film */
 .frame {
   position: absolute;
@@ -117,6 +102,19 @@
   will-change: transform;
   /* no background: it is resized every frame, so it paints nothing (the
      film's poster covers it until the film plays) */
+}
+
+/* the strip of film round the picture: an SVG the engine draws once at the
+   frame's resting size, then turns and scales with the frame */
+.strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  transform-origin: 50% 50%;
+  background: no-repeat 0 0 / 100% 100%;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* the films sit at the frame's centre, turned back upright (by the engine);
@@ -529,9 +527,9 @@
   .root {
     --top: 72px;
     --bottom: 196px;
-    --fw: min(86vw, calc((100svh - 330px) * 1.78));
+    --fw: min(84vw, calc((100svh - 380px) * 1.78));
     --hs: 8.6vw;
-    --gap: 14px;
+    --gap: calc(var(--fw) * 0.07875 + 10px);
   }
 
   .topbar {

@@ -26,11 +26,14 @@ import styles from "./hero14.module.css";
 // ===========================================================================
 // HERO 14 — the homepage. "Stories beyond the frame", played out on screen.
 //
-// A frame floats in a dark room, the whole film inside it, and the film's
-// own light spills out beyond the frame and fills the room, the way a screen
-// lights a cinema. The frame is the navigation: it holds 16×9, turns a quarter
-// like a phone going vertical to become 9×16 (the film stays upright and
-// fills it), and for Beyond it opens past the edges of the screen: the film
+// A frame of film floats in a dark room, the whole picture inside it: a strip
+// of motion-picture stock with its sprocket holes, running on into the next
+// frames and fading out, and the film's own light spills out beyond the frame
+// and fills the room, the way a screen lights a cinema (it shines through the
+// sprocket holes too). The frame is the navigation: it holds 16×9, turns a quarter
+// like a phone going vertical to become 9×16 (the strip turns with it, so
+// its holes run down the sides, as film runs through a projector; the
+// picture stays upright and fills it), and for Beyond it opens past the edges of the screen: the film
 // breaks out of the frame, and the visitor can look around it with the
 // pointer. The three cycle on their own; the strip at the foot picks one,
 // and each leads to its page.
@@ -137,7 +140,7 @@ const T = {
   slitDur: 0.65,
   open: 2.1, // the slit opens into the frame
   openDur: 1.25,
-  depth: 2.9, // the frame lifts off the dark (its shadow)
+  depth: 2.9, // the strip of film fades in round the picture
   light: 3.0, // the film's light spills out into the room
   ui: 3.3, // top bar and format strip
   settle: 4.7, // from here the hero answers the pointer
@@ -146,6 +149,12 @@ const MORPH = 1.45; // 16×9 ⇄ 9×16
 const MORPH_BEYOND = 1.75; // into or out of Beyond
 const DWELL = 6.5; // seconds on each format before the next
 const PAN = 3; // how far Beyond lets you look around, in % of the screen
+
+// The strip of film round the picture, in shares of the picture's size: the
+// edge band with the sprocket holes (of its height; matches --band in CSS) and
+// how far the strip runs on past the picture each way (of its width).
+const BAND = 0.14;
+const RUN = 0.2;
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
@@ -163,6 +172,70 @@ function Ratio({ text }: { text: string }) {
       {b}
     </>
   );
+}
+
+/**
+ * The strip of film, drawn in the frame's own (landscape) space at its resting
+ * size: film base with the picture and the sprocket holes cut through it (the
+ * room's light shows through them), the frames either side unexposed, a faint
+ * edge print, and both ends fading out. Turned 90° it is a vertical strip.
+ */
+function stripSvg(W: number, H: number) {
+  const R = H * BAND;
+  const E = W * RUN;
+  const SW = W + 2 * E;
+  const SH = H + 2 * R;
+  const n2 = (v: number) => v.toFixed(2);
+  // sprocket holes, centred on the picture's middle, along both edges
+  const pw = R * 0.36;
+  const ph = R * 0.3;
+  const prx = Math.max(1, ph * 0.24);
+  const pitch = R * 0.86;
+  const inset = R * 0.2;
+  const count = Math.ceil(SW / pitch) + 2;
+  const x0 = SW / 2 - Math.floor(count / 2) * pitch - pw / 2;
+  let holes = "";
+  for (let i = 0; i < count; i++) {
+    const x = x0 + i * pitch;
+    if (x + pw < 0 || x > SW) continue;
+    holes += `<rect x="${n2(x)}" y="${n2(inset)}" width="${n2(pw)}" height="${n2(ph)}" rx="${n2(prx)}"/>`;
+    holes += `<rect x="${n2(x)}" y="${n2(SH - inset - ph)}" width="${n2(pw)}" height="${n2(ph)}" rx="${n2(prx)}"/>`;
+  }
+  // the edge print sits between the holes and the picture
+  const fs = Math.max(6, R * 0.16);
+  const gapMid = inset + ph + (R - inset - ph) / 2;
+  const top = gapMid + fs * 0.36;
+  const bottom = SH - gapMid + fs * 0.36;
+  const fl = H * 0.07; // the frame line between frames
+  const ink = "rgb(247 242 238)";
+  const fadeIn = n2(E / SW);
+  const fadeOut = n2(1 - E / SW);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${n2(SW)}" height="${n2(SH)}" viewBox="0 0 ${n2(SW)} ${n2(SH)}">
+<defs>
+<linearGradient id="h14-run" x1="0" x2="1" y1="0" y2="0">
+<stop offset="0" stop-color="#000"/><stop offset="${n2((E * 0.3) / SW)}" stop-color="#000"/><stop offset="${fadeIn}" stop-color="#fff"/>
+<stop offset="${fadeOut}" stop-color="#fff"/><stop offset="${n2(1 - (E * 0.3) / SW)}" stop-color="#000"/><stop offset="1" stop-color="#000"/>
+</linearGradient>
+<mask id="h14-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="${n2(SW)}" height="${n2(SH)}">
+<rect width="${n2(SW)}" height="${n2(SH)}" fill="url(#h14-run)"/>
+<rect x="${n2(E)}" y="${n2(R)}" width="${n2(W)}" height="${n2(H)}" rx="2" fill="#000"/>
+<g fill="#000">${holes}</g>
+</mask>
+</defs>
+<g mask="url(#h14-cut)">
+<rect width="${n2(SW)}" height="${n2(SH)}" fill="#0b0a09" fill-opacity="0.94"/>
+<rect x="${n2(E - fl - W)}" y="${n2(R)}" width="${n2(W)}" height="${n2(H)}" rx="2" fill="${ink}" fill-opacity="0.04"/>
+<rect x="${n2(E + W + fl)}" y="${n2(R)}" width="${n2(W)}" height="${n2(H)}" rx="2" fill="${ink}" fill-opacity="0.04"/>
+<g fill="${ink}" fill-opacity="0.42" font-family="Helvetica Neue, Arial, sans-serif" font-size="${n2(fs)}" letter-spacing="${n2(fs * 0.24)}">
+<text x="${n2(E + R * 0.3)}" y="${n2(top)}">16X9 &amp; BEYOND</text>
+<text x="${n2(E + W - R * 0.3)}" y="${n2(top)}" text-anchor="end">24 →</text>
+<text x="${n2(E - fl - R * 0.3)}" y="${n2(top)}" text-anchor="end">23</text>
+<text x="${n2(E + W + fl + R * 0.3)}" y="${n2(top)}">25</text>
+<text x="${n2(E + R * 0.3)}" y="${n2(bottom)}">STORIES BEYOND THE FRAME</text>
+</g>
+</g>
+<rect x="${n2(E + 0.5)}" y="${n2(R + 0.5)}" width="${n2(W - 1)}" height="${n2(H - 1)}" rx="2" fill="none" stroke="${ink}" stroke-opacity="0.14"/>
+</svg>`;
 }
 
 // Portrait screens get the small cut of each film.
@@ -205,7 +278,7 @@ export default function Hero14() {
   const rootRef = useRef<HTMLElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const filmsRef = useRef<HTMLDivElement>(null);
-  const shadowRef = useRef<HTMLSpanElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
   const spacerRef = useRef<HTMLSpanElement>(null);
   const composeRef = useRef<HTMLDivElement>(null);
   const line1Ref = useRef<HTMLSpanElement>(null);
@@ -224,22 +297,23 @@ export default function Hero14() {
     pausedRef.current = frameHoverRef.current || stripHoverRef.current;
   };
 
-  // ---- the frame: one engine places the window, the film in it and its shadow ----
+  // ---- the frame: one engine places the window, the film in it and its strip ----
   useEffect(() => {
     const root = rootRef.current;
     const frame = frameRef.current;
     const films = filmsRef.current;
-    const shadow = shadowRef.current;
+    const strip = stripRef.current;
     const spacer = spacerRef.current;
     const compose = composeRef.current;
     const l1 = line1Ref.current;
     const l2 = line2Ref.current;
-    if (!root || !frame || !films || !shadow || !spacer || !compose || !l1 || !l2) return;
+    if (!root || !frame || !films || !strip || !spacer || !compose || !l1 || !l2) return;
 
     // The frame's resting size and place come from the layout (the gap held
     // open between the two halves of the line), so CSS is the one source.
     const geo = { cx: 0, cy: 0, W: 1, H: 1, vw: 1, vh: 1, left: 0, top: 0, roomTop: 0, roomBottom: 0 };
     const filmBase = new Map<HTMLVideoElement, { w: number; h: number; css: string }>();
+    let stripKey = "";
     const measure = () => {
       const r = root.getBoundingClientRect();
       const s = spacer.getBoundingClientRect();
@@ -269,11 +343,21 @@ export default function Hero14() {
         v.style.marginTop = `${-h / 2}px`;
         filmBase.set(v, { w, h, css: "" });
       });
-      // the shadow is drawn once at the resting size, then scaled with the frame
-      shadow.style.width = `${geo.W}px`;
-      shadow.style.height = `${geo.H}px`;
-      shadow.style.marginLeft = `${-geo.W / 2}px`;
-      shadow.style.marginTop = `${-geo.H / 2}px`;
+      // the strip of film is drawn once at the resting size (redrawn only when
+      // that changes), centred on the frame, then turned and scaled with it
+      const key = `${geo.W.toFixed(1)}x${geo.H.toFixed(1)}`;
+      if (key !== stripKey) {
+        stripKey = key;
+        // as an image, not inline SVG: a picture the browser only moves,
+        // never lays out again as the frame turns
+        strip.style.backgroundImage = `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(stripSvg(geo.W, geo.H))}")`;
+        const sw = geo.W * (1 + 2 * RUN);
+        const sh = geo.H * (1 + 2 * BAND);
+        strip.style.width = `${sw}px`;
+        strip.style.height = `${sh}px`;
+        strip.style.marginLeft = `${-sw / 2}px`;
+        strip.style.marginTop = `${-sh / 2}px`;
+      }
     };
     measure();
 
@@ -344,9 +428,13 @@ export default function Hero14() {
       }
       frame.style.transform = `translate3d(${f1(cx - hw)}px, ${f1(cy - hh)}px, 0) ${turn}`;
 
-      // its shadow, lifting it off the room
-      shadow.style.transform = `translate3d(${f1(cx)}px, ${f1(cy)}px, 0) ${turn} scale(${(st.s * st.wx).toFixed(4)}, ${(st.s * st.o).toFixed(4)})`;
-      shadow.style.opacity = String(st.d);
+      // the strip of film round it (scaled evenly: in the opening it fades in
+      // as the gate finishes opening inside it)
+      strip.style.transform = `translate3d(${f1(cx)}px, ${f1(cy)}px, 0) ${turn} scale(${st.s.toFixed(4)})`;
+      strip.style.opacity = String(st.d);
+      // faded out (Beyond, or before the opening): not drawn at all
+      const hidden = st.d < 0.005 ? "hidden" : "";
+      if (strip.style.visibility !== hidden) strip.style.visibility = hidden;
 
       // The film stays upright and fills the frame: scaled to cover the frame's
       // upright bounds, which at rest are the frame itself, so the whole film
@@ -377,7 +465,7 @@ export default function Hero14() {
       }
     };
 
-    // Two channels so the shadow can move while the frame does.
+    // Two channels so the strip can fade while the frame moves.
     type Channel = "frame" | "depth";
     const tweens: Partial<Record<Channel, AnimationPlaybackControls>> = {};
     const running = { frame: false, depth: false };
@@ -397,6 +485,9 @@ export default function Hero14() {
       const from = { ...st };
       const keys = Object.keys(target) as (keyof FrameState)[];
       running[ch] = true;
+      // the strip is its own layer while the frame moves; at rest it is drawn
+      // again at its final size, so its holes and edge print stay sharp
+      if (ch === "frame") strip.style.willChange = "transform";
       tweens[ch] = animate(0, 1, {
         duration,
         delay,
@@ -412,6 +503,7 @@ export default function Hero14() {
         },
         onComplete: () => {
           running[ch] = false;
+          if (ch === "frame") strip.style.willChange = "auto";
         },
       });
     };
@@ -707,8 +799,7 @@ export default function Hero14() {
       </div>
       <div className={styles.vignette} aria-hidden="true" />
 
-      {/* ================= the frame, and the whole film in it ================= */}
-      <span ref={shadowRef} className={styles.shadow} aria-hidden="true" />
+      {/* ================= the frame of film, and the whole picture in it ================= */}
       <div ref={frameRef} className={styles.frame} aria-hidden="true">
         <div ref={filmsRef} className={styles.films}>
           {isClient &&
@@ -735,6 +826,8 @@ export default function Hero14() {
             })}
         </div>
       </div>
+
+      <div ref={stripRef} className={styles.strip} aria-hidden="true" />
 
       {/* in Beyond, a little shade so the line reads on the open film */}
       <div className={styles.shade} aria-hidden="true" />
