@@ -1,0 +1,711 @@
+/* HERO 19 — the 16x9 site, sister to 9x16.studio: a widescreen display on a
+   Dubai highway, a coral grid inside, heavy lowercase type, an editor's crop
+   tool. Sizes inside the screen are in --u (1/100 of the display's width,
+   set from JS), so the site scales as one, like a real screen. */
+
+.root {
+  --accent: #ff5a3a;
+  --ink: #0d0d0d;
+  --white: #ffffff;
+  --rule: rgb(255 255 255 / 0.32);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --cine: cubic-bezier(0.76, 0, 0.24, 1);
+  --u: 10px;
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  min-height: 560px;
+  overflow: hidden;
+  background: #1a1a1a;
+  color: var(--white);
+  font-family: var(--font-body), "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  touch-action: pan-y;
+}
+
+/* ================= the world ================= */
+
+.world {
+  position: absolute;
+  inset: -2%;
+  will-change: opacity;
+}
+
+.world img {
+  will-change: transform;
+}
+
+.world img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  animation: drift 40s ease-in-out infinite alternate;
+}
+
+/* a slow drift over the road, like the camera is still up there */
+@keyframes drift {
+  to {
+    transform: scale(1.06) translate(-1.2%, 0.8%);
+  }
+}
+
+.worldShade {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 70% at 50% 50%, rgb(0 0 0 / 0.22), rgb(0 0 0 / 0.58) 100%),
+    rgb(0 0 0 / 0.16);
+  pointer-events: none;
+}
+
+/* ================= the display ================= */
+
+/* centred without a transform: a transform would trap the toolbar and the
+   header beneath the crop box when it leaves the screen */
+.device {
+  --dw: min(86vw, calc((100svh - 96px) * 16 / 9));
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--dw);
+  margin-left: calc(var(--dw) / -2);
+  /* height = the 16:9 screen plus the bezel = 0.5704 of the width */
+  margin-top: calc(var(--dw) * -0.2852);
+  padding: calc(var(--u) * 0.9);
+  border-radius: calc(var(--u) * 2.1);
+  background: linear-gradient(145deg, #2a2a2a, #050505 40%, #111 100%);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06) inset,
+    0 calc(var(--u) * 3) calc(var(--u) * 7) rgb(0 0 0 / 0.55),
+    0 calc(var(--u) * 0.6) calc(var(--u) * 1.4) rgb(0 0 0 / 0.4);
+}
+
+.screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: calc(var(--u) * 1.3);
+  background: var(--accent);
+}
+
+/* the grid: white rules over the coral, square cells */
+.grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, var(--rule) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--rule) 1px, transparent 1px);
+  background-size: calc(var(--u) * 10) calc(var(--u) * 10);
+  background-position: calc(var(--u) * 3.5) calc(var(--u) * 2.5);
+  pointer-events: none;
+}
+
+/* ================= status bar and header ================= */
+
+.status {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: calc(var(--u) * 2.6);
+  padding: 0 calc(var(--u) * 3.2);
+  background: var(--white);
+  color: var(--ink);
+  font-family: var(--font-body), sans-serif;
+  font-size: calc(var(--u) * 1.05);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.statusIcons {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.55);
+}
+
+.statusIcons svg {
+  height: calc(var(--u) * 0.85);
+  width: auto;
+  fill: var(--ink);
+  stroke: var(--ink);
+}
+
+.bar {
+  position: relative;
+  z-index: 30; /* stays above the crop box in Beyond */
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2.4);
+  margin: calc(var(--u) * 1.2) calc(var(--u) * 2.4) 0;
+  height: calc(var(--u) * 5.2);
+  padding: 0 calc(var(--u) * 1.6);
+  background: var(--white);
+  color: var(--ink);
+}
+
+.mark {
+  display: block;
+  height: calc(var(--u) * 3.1);
+  width: auto;
+}
+
+.markBox,
+.markRule {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.2;
+}
+
+.markRule {
+  stroke-width: 0.8;
+}
+
+.markCell {
+  fill: var(--accent);
+}
+
+.markText {
+  fill: var(--ink);
+  font-family: var(--font-display), sans-serif;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.nav {
+  display: flex;
+  gap: calc(var(--u) * 2.2);
+  margin-left: auto;
+}
+
+.nav a {
+  color: var(--ink);
+  font-size: calc(var(--u) * 1.05);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  background: linear-gradient(var(--accent), var(--accent)) no-repeat 0 100% / 0% 2px;
+  transition: background-size 0.5s var(--ease);
+}
+
+.nav a:hover,
+.nav a:focus-visible {
+  background-size: 100% 2px;
+  outline: none;
+}
+
+.burger {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(var(--u) * 0.45);
+  width: calc(var(--u) * 2.6);
+  height: calc(var(--u) * 2.6);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.burger span {
+  display: block;
+  height: 2px;
+  background: var(--ink);
+}
+
+/* ================= the body of the screen ================= */
+
+.body {
+  position: absolute;
+  left: calc(var(--u) * 2.4);
+  right: calc(var(--u) * 2.4);
+  top: calc(var(--u) * 11.4);
+  bottom: calc(var(--u) * 2.4);
+  display: grid;
+  grid-template-columns: 44fr 52fr;
+  gap: calc(var(--u) * 4);
+}
+
+.copy {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding-left: calc(var(--u) * 1.1);
+}
+
+.eyebrow {
+  margin: calc(var(--u) * 1.4) 0 0;
+  font-size: calc(var(--u) * 0.95);
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: calc(var(--u) * 1.6) 0 0;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-display), sans-serif;
+  font-size: calc(var(--u) * 4.9);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.055em;
+  text-transform: lowercase;
+}
+
+.titleLine {
+  display: block;
+  white-space: nowrap;
+}
+
+/* a word boxed out in white, the way 9x16 does it */
+.hl {
+  position: relative;
+  display: inline-block;
+  padding: 0 0.12em 0.04em;
+}
+
+.hlBox {
+  position: absolute;
+  inset: 0.08em 0 0.02em;
+  background: var(--white);
+  transform-origin: 0 50%;
+}
+
+.hlText {
+  position: relative;
+  color: var(--accent);
+}
+
+.lede {
+  max-width: 34ch;
+  margin: calc(var(--u) * 2) 0 0;
+  font-size: calc(var(--u) * 1.2);
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+/* ================= the switcher: an aspect-ratio toolbar ================= */
+
+.tools {
+  position: relative;
+  z-index: 30; /* above the crop box when it leaves the screen */
+  margin-top: auto;
+}
+
+.toolsLabel {
+  margin: 0 0 calc(var(--u) * 0.9);
+  font-size: calc(var(--u) * 0.85);
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--white);
+  background: var(--accent);
+}
+
+.tool {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--u) * 0.35);
+  padding: calc(var(--u) * 1) calc(var(--u) * 1.2) calc(var(--u) * 1.2);
+  border: 0;
+  border-left: 1px solid var(--white);
+  background: transparent;
+  color: var(--white);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.45s var(--ease),
+    color 0.45s var(--ease);
+}
+
+.tool:first-child {
+  border-left: 0;
+}
+
+.tool:disabled {
+  cursor: default;
+}
+
+.tool:hover {
+  background: rgb(255 255 255 / 0.12);
+}
+
+.toolOn,
+.toolOn:hover {
+  background: var(--white);
+  color: var(--accent);
+}
+
+.tool:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -4px;
+}
+
+.toolNo {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.5);
+  font-family: var(--font-display), sans-serif;
+  font-size: calc(var(--u) * 0.9);
+  font-weight: 600;
+}
+
+.toolNo i {
+  width: calc(var(--u) * 0.5);
+  height: calc(var(--u) * 0.5);
+  background: currentColor;
+}
+
+.toolLabel {
+  font-family: var(--font-display), sans-serif;
+  font-size: calc(var(--u) * 1.9);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.05em;
+}
+
+.toolLine {
+  font-size: calc(var(--u) * 0.9);
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+/* the timer: a line filling along the foot of the format on screen */
+.toolBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  overflow: hidden;
+}
+
+.toolBar span {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  will-change: transform;
+}
+
+/* ================= the stage: where the crop box sits ================= */
+
+.stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.slot {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 78%;
+  align-self: center;
+}
+
+.go {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  color: var(--white);
+  font-family: var(--font-display), sans-serif;
+  font-size: calc(var(--u) * 1.15);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+  text-transform: lowercase;
+}
+
+.goHl {
+  padding: 0 0.25em;
+  background: var(--white);
+  color: var(--accent);
+}
+
+.go:hover .goHl,
+.go:focus-visible .goHl {
+  background: var(--ink);
+  color: var(--white);
+}
+
+/* ================= the crop box ================= */
+
+.crop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.win {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.films {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+
+.film {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: none;
+  max-height: none;
+  object-fit: cover;
+  background: #111;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  opacity: 0;
+  transition: opacity 0s 1.4s;
+}
+
+.filmOn {
+  z-index: 1;
+  opacity: 1;
+  transition: opacity 0.7s var(--ease) 0.3s;
+}
+
+.edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  background: var(--white);
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* a square handle on each corner */
+.handle {
+  position: absolute;
+  left: calc(var(--u) * -0.55);
+  top: calc(var(--u) * -0.55);
+  width: calc(var(--u) * 1.1);
+  height: calc(var(--u) * 1.1);
+  min-width: 8px;
+  min-height: 8px;
+  background: var(--white);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08);
+  will-change: transform;
+}
+
+.tagAnchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.tag {
+  position: absolute;
+  left: 0;
+  bottom: calc(var(--u) * 1.1);
+  padding: calc(var(--u) * 0.25) calc(var(--u) * 0.6);
+  background: var(--white);
+  color: var(--accent);
+  font-family: var(--font-display), sans-serif;
+  font-size: calc(var(--u) * 0.95);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  animation: tagIn 0.6s var(--ease) both;
+}
+
+@keyframes tagIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* ================= phones: the site is the screen ================= */
+
+@media (max-width: 760px) {
+  .device {
+    inset: 0;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--accent);
+  }
+
+  .screen {
+    height: 100%;
+    aspect-ratio: auto;
+    border-radius: 0;
+  }
+
+  .root {
+    /* on a phone the screen is the viewport: units from its width */
+    --m: 1vw;
+  }
+
+  .status {
+    height: 34px;
+    padding: 0 22px;
+    font-size: 13px;
+  }
+
+  .statusIcons svg {
+    height: 10px;
+  }
+
+  .bar {
+    margin: 14px 16px 0;
+    height: 52px;
+    padding: 0 14px;
+    gap: 14px;
+  }
+
+  .mark {
+    height: 30px;
+  }
+
+  .nav {
+    display: none;
+  }
+
+  .burger {
+    margin-left: auto;
+    width: 28px;
+    height: 28px;
+    gap: 5px;
+  }
+
+  .grid {
+    background-size: 20vw 20vw;
+    background-position: 6vw 0;
+  }
+
+  .body {
+    left: 16px;
+    right: 16px;
+    top: 112px;
+    bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .copy {
+    display: contents;
+  }
+
+  .eyebrow {
+    order: 1;
+    margin: 6px 0 0;
+    font-size: 10px;
+  }
+
+  .title {
+    order: 2;
+    margin: 10px 0 0;
+    font-size: 9.6vw;
+  }
+
+  .stage {
+    order: 3;
+    flex: 1;
+    min-height: 0;
+    margin: 14px 0 6px;
+  }
+
+  .slot {
+    max-height: 100%;
+  }
+
+  .go {
+    position: static;
+    align-self: flex-end;
+    margin-top: 10px;
+    font-size: 13px;
+  }
+
+  .lede {
+    display: none;
+  }
+
+  .tools {
+    order: 4;
+    margin-top: 10px;
+  }
+
+  .toolsLabel {
+    font-size: 9px;
+    margin-bottom: 8px;
+  }
+
+  .tool {
+    padding: 10px 10px 12px;
+    gap: 3px;
+  }
+
+  .toolNo {
+    font-size: 10px;
+  }
+
+  .toolNo i {
+    width: 5px;
+    height: 5px;
+  }
+
+  .toolLabel {
+    font-size: 17px;
+  }
+
+  .toolLine {
+    font-size: 10px;
+  }
+
+  .handle {
+    width: 10px;
+    height: 10px;
+    left: -5px;
+    top: -5px;
+  }
+
+  .tag {
+    font-size: 11px;
+    padding: 2px 6px;
+    bottom: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world img,
+  .tag {
+    animation: none;
+  }
+  .film,
+  .filmOn,
+  .tool {
+    transition: none;
+  }
+}
