@@ -1,0 +1,547 @@
+/* HERO 16 — "Type is the frame". White paper, black ink, and the films
+   playing inside one enormous word. Light wide Archivo for the words around it. */
+
+.root {
+  /* pure white: anything less lets a ghost of the film through the paper */
+  --paper: #ffffff;
+  --ink: #0a0a0a;
+  --line: rgb(10 10 10 / 0.16);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --cine: cubic-bezier(0.76, 0, 0.24, 1);
+  --ui: clamp(18px, 2.6vw, 40px);
+  --top: clamp(64px, 10vh, 96px);
+  --lede: clamp(64px, 10vh, 110px); /* the line under the bar */
+  --bottom: clamp(124px, 17vh, 156px);
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  min-height: 560px;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+  font-stretch: 108%;
+  font-variation-settings: "wdth" 108;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  touch-action: pan-y;
+  transition: color 0.9s var(--ease);
+}
+
+/* Beyond: the paper is gone, the film is the page, the type turns to paper */
+.isBeyond {
+  --line: rgb(255 255 255 / 0.3);
+  color: #f7f2ee;
+}
+
+/* ================= the films ================= */
+
+/* black underneath: until the film fills the letters, they read as ink */
+.films {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #000;
+}
+
+.film {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  opacity: 0;
+  /* the outgoing film stays under the incoming one, then drops away */
+  transition: opacity 0s 1.6s;
+}
+
+.root[data-fill] .filmOn {
+  z-index: 1;
+  opacity: 1;
+  transition: opacity 1.2s var(--ease) 0.35s;
+}
+
+/* ================= the paper and the word ================= */
+
+/* Blended with `screen` over the films: paper stays paper, and the black word
+   becomes a window onto the film. */
+.paper {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #000;
+  mix-blend-mode: screen;
+  isolation: isolate;
+  pointer-events: none;
+}
+
+.sheet {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  transition: opacity 1.3s var(--cine);
+  will-change: opacity;
+}
+
+.isBeyond .sheet {
+  opacity: 0;
+  transition-delay: 0.25s;
+}
+
+.word {
+  position: absolute;
+  inset: 0;
+  display: block;
+  color: #000;
+  text-decoration: none;
+}
+
+/* each piece of the word: placed and scaled by the engine, travelling by transition */
+.glyph {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 500;
+  font-stretch: 112%;
+  font-variation-settings: "wdth" 112;
+  line-height: 0.74;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+  transform-origin: 50% 50%;
+  cursor: pointer;
+  pointer-events: auto;
+  will-change: transform;
+}
+
+.root[data-placed] .glyph {
+  transition: transform 1.45s var(--cine);
+}
+
+/* 16 and 9 cross paths a beat apart */
+.root[data-placed] .glyph:last-child {
+  transition-delay: 0.06s;
+}
+
+/* the ink sets: each piece rises in */
+.glyphInk {
+  display: block;
+  transform: translateY(32%);
+  opacity: 0;
+  transition:
+    transform 1.3s var(--ease),
+    opacity 0.9s var(--ease);
+}
+
+.root[data-in] .glyphInk {
+  transform: none;
+  opacity: 1;
+}
+
+/* the room the word is laid out in */
+.stage {
+  position: absolute;
+  left: var(--ui);
+  right: var(--ui);
+  top: calc(var(--top) + var(--lede));
+  bottom: var(--bottom);
+  pointer-events: none;
+}
+
+/* in Beyond, shade so the words read on the open film */
+.shade {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.2s var(--ease);
+  background:
+    linear-gradient(to bottom, rgb(0 0 0 / 0.55), transparent 28%),
+    linear-gradient(to top, rgb(0 0 0 / 0.7), rgb(0 0 0 / 0.25) 20%, transparent 34%);
+}
+
+.isBeyond .shade {
+  opacity: 1;
+  transition-delay: 0.4s;
+}
+
+/* ================= top bar ================= */
+
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  height: var(--top);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.logo img {
+  display: block;
+  height: clamp(36px, 3.8vw, 56px);
+  width: auto;
+  filter: invert(1); /* the logo is white; ink on paper */
+}
+
+.isBeyond .logo img {
+  filter: none;
+}
+
+.nav {
+  display: flex;
+  gap: clamp(22px, 3vw, 48px);
+}
+
+.navLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.roll {
+  position: relative;
+  display: inline-grid;
+  overflow: hidden;
+  height: 1.3em;
+  line-height: 1.3em;
+}
+
+.roll span {
+  grid-area: 1 / 1;
+  transition: transform 0.6s var(--ease);
+}
+
+.roll span + span {
+  transform: translateY(105%);
+}
+
+.navLink:hover .roll span,
+.navLink:focus-visible .roll span {
+  transform: translateY(-105%);
+}
+
+.navLink:hover .roll span + span,
+.navLink:focus-visible .roll span + span {
+  transform: none;
+}
+
+.navLink:focus-visible,
+.logo:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 6px;
+}
+
+/* ================= the line ================= */
+
+.lede {
+  position: absolute;
+  z-index: 3;
+  left: var(--ui);
+  right: var(--ui);
+  top: var(--top);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  transition: border-color 0.9s var(--ease);
+}
+
+.logline {
+  margin: 0;
+  font-size: clamp(22px, 2.4vw, 42px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.place {
+  margin: 0;
+  padding-top: 0.3em;
+  font-size: 10.5px;
+  line-height: 1.75;
+  letter-spacing: 0.2em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.place > span {
+  display: block;
+  opacity: 0.55;
+}
+
+.by {
+  margin: 0 0.06em;
+  font-size: 0.78em;
+  font-weight: 200;
+  text-transform: lowercase;
+  opacity: 0.8;
+}
+
+/* ================= the three formats ================= */
+
+.formats {
+  position: absolute;
+  left: var(--ui);
+  right: var(--ui);
+  bottom: var(--ui);
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(16px, 2.6vw, 44px);
+}
+
+.format {
+  position: relative;
+  padding-top: 18px;
+  opacity: 0.42;
+  transition: opacity 0.6s var(--ease);
+}
+
+.formatOn,
+.format:hover,
+.format:focus-within {
+  opacity: 1;
+}
+
+.formatBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: var(--line);
+  overflow: hidden;
+  transition: background-color 0.9s var(--ease);
+}
+
+.formatFill {
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  will-change: transform;
+}
+
+.formatPick {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.formatPick::after {
+  content: "";
+  position: absolute;
+  inset: -6px 0 -6px;
+}
+
+.formatPick:disabled {
+  cursor: default;
+}
+
+.formatPick:focus-visible {
+  outline: none;
+}
+
+.format:has(.formatPick:focus-visible) .formatLabel {
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 1px;
+}
+
+.formatNo {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+.formatLabel {
+  font-size: clamp(20px, 1.9vw, 32px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.formatLine {
+  margin: 12px 0 0;
+  font-size: 10.5px;
+  line-height: 1.75;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.formatLine span {
+  display: block;
+  opacity: 0.55;
+}
+
+.formatGo {
+  position: absolute;
+  z-index: 1;
+  top: 22px;
+  right: 0;
+  color: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-decoration: none;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+  pointer-events: none;
+}
+
+.formatOn .formatGo {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.formatGo span {
+  display: inline-block;
+  transition: transform 0.5s var(--ease);
+}
+
+.formatGo:hover span,
+.formatGo:focus-visible span {
+  transform: translateX(4px);
+}
+
+.formatGo:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 4px;
+}
+
+.caption {
+  display: none;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* ================= phones ================= */
+
+@media (max-width: 760px) {
+  .root {
+    --top: 72px;
+    --lede: 128px; /* the line wraps to two rows here */
+    --bottom: 196px;
+  }
+
+  .topbar {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+  }
+
+  .nav {
+    gap: 18px;
+  }
+
+  .lede {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .logline {
+    font-size: 6.4vw;
+  }
+
+  .place {
+    text-align: left;
+    padding-top: 0;
+  }
+
+  .formats {
+    gap: 12px;
+  }
+
+  .format {
+    padding-top: 14px;
+  }
+
+  .formatPick {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .formatLabel {
+    font-size: 17px;
+  }
+
+  .formatLine,
+  .formatGo {
+    display: none;
+  }
+
+  .caption {
+    position: absolute;
+    left: var(--ui);
+    right: var(--ui);
+    bottom: calc(var(--ui) + 74px);
+    z-index: 3;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .captionText {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.7;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    animation: fadeUp 0.7s var(--ease) both;
+  }
+
+  .captionText span {
+    display: block;
+    opacity: 0.55;
+  }
+
+  .captionGo {
+    flex: none;
+    color: inherit;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glyphInk,
+  .root[data-placed] .glyph,
+  .film,
+  .root[data-fill] .filmOn,
+  .sheet {
+    transition: none;
+  }
+  .captionText {
+    animation: none;
+  }
+}
