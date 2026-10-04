@@ -3,181 +3,120 @@
 import {
   useCallback,
   useEffect,
-  useImperativeHandle,
   useRef,
   useState,
   useSyncExternalStore,
   type PointerEvent as ReactPointerEvent,
-  type MouseEvent as ReactMouseEvent,
-  type Ref,
 } from "react";
-import {
-  AnimatePresence,
-  animate,
-  motion,
-  useMotionValue,
-  useReducedMotion,
-  useSpring,
-  type AnimationPlaybackControls,
-} from "framer-motion";
+import { animate, motion, useReducedMotion, type AnimationPlaybackControls } from "framer-motion";
 import { Archivo } from "next/font/google";
-import styles from "./hero15.module.css";
+import styles from "./hero19.module.css";
 
 // ===========================================================================
-// HERO 15 — hero 14 with a very minimal frame and the format as type.
+// HERO 19 — the 16x9 site, sister to 9x16.studio, in black and white.
 //
-// The picture is square-cornered, held by a single hairline set just outside
-// it whose lines run on past the corners, like construction lines on a
-// drawing. Behind the frame the format itself is set huge in outline, 16:9
-// or 9:16, and rolls to the next as the frame turns.
+// Now full page (no display), white paper and black ink, set in our wide
+// Archivo: the 9x16 grid as faint rules, the crop-box frame with square
+// handles, and the aspect-ratio toolbar as the switcher.
 //
-// From hero 14: "Stories beyond the frame", played out on screen.
+// (Earlier: sister to 9x16.studio.)
 //
-// A frame floats in a dark room, the whole film inside it, and the film's
-// own light spills out beyond the frame and fills the room, the way a screen
-// lights a cinema. The frame is the navigation: it holds 16×9, turns a quarter
-// like a phone going vertical to become 9×16 (the film stays upright and
-// fills it), and for Beyond it opens past the edges of the screen: the film
-// breaks out of the frame, and the visitor can look around it with the
-// pointer. The three cycle on their own; the strip at the foot picks one,
-// and each leads to its page.
+// 9x16 lives inside a phone on a top-down street; 16x9 lives inside a
+// widescreen display on a Dubai highway, its status bar reading 16:09. Same
+// system: a coral grid with white rules, heavy lowercase type with words
+// boxed out, a white header bar, an editor's crop tool with square handles.
 //
-// Opening: on black the line rises, a slit of light opens between its two
-// halves and pushes them apart into the frame, then the film's light spills
-// out into the room.
+// The homepage: "stories beyond the frame." The film plays inside a crop box;
+// the switcher is an aspect-ratio toolbar. 16x9: the box is wide. 9x16: it is
+// dragged tall. Beyond: its handles drag out past the edge of the screen and
+// the film escapes the device to fill the world.
 //
-// Smooth everywhere: what moves per frame is a transform, an opacity or the
-// frame's clip. The light is a tiny pre-blurred copy of each film (192×108,
-// ~25 KB) stretched to the screen: no blur filter, nearly free to decode.
-// Films are laid out once and only scaled; one film (and its light) plays at
-// a time.
+// Smooth: the crop box is one clipped window resized per frame (no paint),
+// the film inside only scaled; one film plays at a time.
 // ===========================================================================
 
 const wide = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wide", display: "swap" });
 
-// ---- copy: the client's site structure ----
-const LOGO_SRC = "/logo.png";
-const LOGLINE = ["Stories beyond", "the frame"];
-const NAV = [
-  { label: "Who we are", href: "#who-we-are" },
-  { label: "Contact", href: "#contact" },
-];
-
-// Each film comes in two cuts, one for wide screens and a lighter one for
-// portrait screens (phones), plus its light: the tiny blurred copy that fills
-// the room. `aspect` is the cut's width / height.
 type Cut = { src: string; poster: string; aspect: number };
-type Film = { desk: Cut; small: Cut; light: string };
+type Film = { desk: Cut; small: Cut };
 const F = "/hero14/films";
-const VERTICAL_ASPECT = 608 / 1080;
-const FILMS: Record<"wide" | "vertical" | "beyond", Film> = {
-  wide: {
-    desk: { src: `${F}/wide-1080.mp4`, poster: `${F}/wide.webp`, aspect: 16 / 9 },
-    small: { src: `${F}/wide-540.mp4`, poster: `${F}/wide-540.webp`, aspect: 16 / 9 },
-    light: `${F}/wide-light.mp4`,
-  },
-  vertical: {
-    desk: { src: `${F}/vertical-m.mp4`, poster: `${F}/vertical-m.webp`, aspect: VERTICAL_ASPECT },
-    small: { src: `${F}/vertical-m.mp4`, poster: `${F}/vertical-m.webp`, aspect: VERTICAL_ASPECT },
-    light: `${F}/vertical-light.mp4`,
-  },
-  beyond: {
-    desk: { src: `${F}/beyond-1080.mp4`, poster: `${F}/beyond.webp`, aspect: 16 / 9 },
-    // full screen on a phone: the vertical crop
-    small: { src: `${F}/beyond-m.mp4`, poster: `${F}/beyond-m.webp`, aspect: VERTICAL_ASPECT },
-    light: `${F}/beyond-light.mp4`,
-  },
-};
-
+const V = 608 / 1080;
 type Mode = {
   key: string;
   no: string;
   label: string;
+  ratio: string;
   line: string;
-  detail: string;
   href: string;
   film: Film;
-  portrait: boolean;
-  beyond: boolean;
+  shape: "wide" | "tall" | "beyond";
 };
 
 const MODES: Mode[] = [
   {
     key: "16x9",
     no: "01",
-    label: "16×9",
-    line: "Films for the big screen",
-    detail: "TVCs · Brand films · Documentaries",
+    label: "16x9",
+    ratio: "16 : 9",
+    line: "the big screen",
     href: "#16x9",
-    film: FILMS.wide,
-    portrait: false,
-    beyond: false,
+    film: {
+      desk: { src: `${F}/wide-1080.mp4`, poster: `${F}/wide.webp`, aspect: 16 / 9 },
+      small: { src: `${F}/wide-540.mp4`, poster: `${F}/wide-540.webp`, aspect: 16 / 9 },
+    },
+    shape: "wide",
   },
   {
     key: "9x16",
     no: "02",
-    label: "9×16",
-    line: "Stories made for the scroll",
-    detail: "Social · Branded content",
+    label: "9x16",
+    ratio: "9 : 16",
+    line: "the scroll",
     href: "#9x16",
-    film: FILMS.vertical,
-    portrait: true,
-    beyond: false,
+    film: {
+      desk: { src: `${F}/vertical-m.mp4`, poster: `${F}/vertical-m.webp`, aspect: V },
+      small: { src: `${F}/vertical-m.mp4`, poster: `${F}/vertical-m.webp`, aspect: V },
+    },
+    shape: "tall",
   },
   {
     key: "beyond",
     no: "03",
-    label: "Beyond",
-    line: "Stories you step into",
-    detail: "Immersive · Interactive",
+    label: "beyond",
+    ratio: "beyond",
+    line: "the frame",
     href: "#beyond",
-    film: FILMS.beyond,
-    portrait: false,
-    beyond: true,
+    film: {
+      desk: { src: `${F}/beyond-1080.mp4`, poster: `${F}/beyond.webp`, aspect: 16 / 9 },
+      small: { src: `${F}/beyond-m.mp4`, poster: `${F}/beyond-m.webp`, aspect: V },
+    },
+    shape: "beyond",
   },
 ];
 
-// ---- timing, in seconds ----
-const T = {
-  words: 0.25, // the line rises
-  slit: 1.45, // a slit of light draws across between its halves
-  slitDur: 0.65,
-  open: 2.1, // the slit opens into the frame
-  openDur: 1.25,
-  depth: 2.9, // the frame lifts off the dark (its shadow)
-  light: 3.0, // the film's light spills out into the room
-  ui: 3.3, // top bar and format strip
-  settle: 4.7, // from here the hero answers the pointer
-};
-const MORPH = 1.45; // 16×9 ⇄ 9×16
-const MORPH_BEYOND = 1.75; // into or out of Beyond
-const DWELL = 6.5; // seconds on each format before the next
-const PAN = 3; // how far Beyond lets you look around, in % of the screen
-
-// the hairline frame: how far it sits outside the picture, and how far its
-// lines run on past the corners (px)
-const LINE_GAP = 14;
-const LINE_RUN = 12;
-
+const T = { device: 0.15, words: 0.9, crop: 1.45, cropDur: 1.1, ui: 1.7, settle: 2.9 };
+const MORPH = 1.15;
+const DWELL = 6.5;
 const EASE = [0.16, 1, 0.3, 1] as const;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
 
-const cursorLabel = (md: Mode) => `${md.beyond ? "Step into" : "Explore"} ${md.label.replace("×", " x ")}`;
-
-/** 16×9 set as type: a light, lowercase x between the numbers. */
-function Ratio({ text }: { text: string }) {
-  const [a, b] = text.split("×");
-  if (b === undefined) return <>{text}</>;
+/** The 16x9 mark: a landscape grid box, 16x top left, 9 bottom right, a wide accent cell. */
+function Mark() {
   return (
-    <>
-      {a}
-      <span className={styles.by}>x</span>
-      {b}
-    </>
+    <svg className={styles.mark} viewBox="0 0 60 36" aria-hidden="true">
+      <rect x="0.75" y="0.75" width="58.5" height="34.5" className={styles.markBox} />
+      <path d="M0.75 22.5H59.25M40 0.75V35.25M20 22.5V35.25" className={styles.markRule} />
+      <rect x="20" y="22.5" width="20" height="12.75" className={styles.markCell} />
+      <text x="4" y="11.5" className={styles.markText}>
+        16x
+      </text>
+      <text x="45" y="32" className={styles.markText}>
+        9
+      </text>
+    </svg>
   );
 }
 
-// Portrait screens get the small cut of each film.
 const PORTRAIT_Q = "(max-aspect-ratio: 1/1)";
 const subscribePortrait = (cb: () => void) => {
   const mq = window.matchMedia(PORTRAIT_Q);
@@ -186,11 +125,10 @@ const subscribePortrait = (cb: () => void) => {
 };
 const noopSubscribe = () => () => {};
 
-/** The frame: its turn, scale, how far open (width, height) and how far lifted. */
-type FrameState = { angle: number; s: number; wx: number; o: number; d: number };
-type Engine = { go: (i: number) => void; inside: (x: number, y: number) => boolean; refresh: () => void };
+type Rect = { x: number; y: number; w: number; h: number };
+type Engine = { go: (i: number) => void; refresh: () => void };
 
-export default function Hero15() {
+export default function Hero19() {
   const reduce = !!useReducedMotion();
   const isClient = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const portraitScreen = useSyncExternalStore(
@@ -198,11 +136,9 @@ export default function Hero15() {
     () => window.matchMedia(PORTRAIT_Q).matches,
     () => false
   );
-
   const [mode, setMode] = useState(0);
   const m = MODES[mode];
 
-  // Nothing answers until the opening has played out.
   const [ready, setReady] = useState(reduce);
   const readyRef = useRef(reduce);
   useEffect(() => {
@@ -215,369 +151,199 @@ export default function Hero15() {
   }, [reduce]);
 
   const rootRef = useRef<HTMLElement>(null);
-  const frameRef = useRef<HTMLDivElement>(null);
+  const deviceRef = useRef<HTMLDivElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
+  const cropRef = useRef<HTMLDivElement>(null);
+  const winRef = useRef<HTMLDivElement>(null);
   const filmsRef = useRef<HTMLDivElement>(null);
-  const shadowRef = useRef<HTMLSpanElement>(null);
-  const hairRef = useRef<HTMLDivElement>(null);
-  const spacerRef = useRef<HTMLSpanElement>(null);
-  const composeRef = useRef<HTMLDivElement>(null);
-  const line1Ref = useRef<HTMLSpanElement>(null);
-  const line2Ref = useRef<HTMLSpanElement>(null);
-  const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const edgeRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const handleRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const tagRef = useRef<HTMLSpanElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-  const lightRefs = useRef<(HTMLVideoElement | null)[]>([]);
-  const cursorRef = useRef<CursorHandle>(null);
+  const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const engineRef = useRef<Engine | null>(null);
   const modeRef = useRef(0);
-  // the cycle rests while the visitor is pointing at the frame or the strip
-  const frameHoverRef = useRef(false);
-  const stripHoverRef = useRef(false);
   const pausedRef = useRef(false);
-  const syncPaused = () => {
-    pausedRef.current = frameHoverRef.current || stripHoverRef.current;
-  };
 
-  // ---- the frame: one engine places the window, the film in it and its shadow ----
+  // ---- the screen's unit: 1/100 of its width, so the site inside scales as one ----
+  useEffect(() => {
+    const device = deviceRef.current;
+    const root = rootRef.current;
+    if (!device || !root) return;
+    // a 16:9 unit: the page is laid out as if fitted to a 16:9 screen
+    const set = () =>
+      root.style.setProperty("--u", `${Math.min(device.clientWidth / 100, device.clientHeight / 56.25)}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(device);
+    return () => ro.disconnect();
+  }, []);
+
+  // ---- the crop box: one clipped window, resized to the format ----
   useEffect(() => {
     const root = rootRef.current;
-    const frame = frameRef.current;
+    const slot = slotRef.current;
+    const crop = cropRef.current;
+    const win = winRef.current;
     const films = filmsRef.current;
-    const shadow = shadowRef.current;
-    const hair = hairRef.current;
-    const spacer = spacerRef.current;
-    const compose = composeRef.current;
-    const l1 = line1Ref.current;
-    const l2 = line2Ref.current;
-    if (!root || !frame || !films || !shadow || !hair || !spacer || !compose || !l1 || !l2) return;
+    const tag = tagRef.current;
+    if (!root || !slot || !crop || !win || !films || !tag) return;
 
-    // The frame's resting size and place come from the layout (the gap held
-    // open between the two halves of the line), so CSS is the one source.
-    const geo = { cx: 0, cy: 0, W: 1, H: 1, vw: 1, vh: 1, left: 0, top: 0, roomTop: 0, roomBottom: 0 };
-    const filmBase = new Map<HTMLVideoElement, { w: number; h: number; css: string }>();
-    let hairKey = "";
-    const measure = () => {
+    const box: Rect = { x: 0, y: 0, w: 0, h: 0 };
+    let current = 0;
+    let prog = 0;
+    const filmBase = new Map<HTMLVideoElement, { w: number; h: number }>();
+
+    const targetFor = (i: number): Rect => {
       const r = root.getBoundingClientRect();
-      const s = spacer.getBoundingClientRect();
-      geo.left = r.left;
-      geo.top = r.top;
-      geo.vw = r.width;
-      geo.vh = r.height;
-      geo.W = Math.max(1, s.width);
-      geo.H = Math.max(1, s.height);
-      geo.cx = s.left - r.left + s.width / 2;
-      geo.cy = s.top - r.top + s.height / 2;
-      // the room between the top bar and the strip
-      const c = compose.getBoundingClientRect();
-      geo.roomTop = c.top - r.top;
-      geo.roomBottom = c.bottom - r.top;
-      // Each film is laid out once at the frame's resting size in its own
-      // shape (so its poster is drawn sharp), then only ever scaled.
+      const s = slot.getBoundingClientRect();
+      const sx = s.left - r.left;
+      const sy = s.top - r.top;
+      const shape = MODES[i].shape;
+      if (shape === "beyond") {
+        // past the screen's edge, out into the world
+        const mgn = Math.max(14, r.width * 0.018);
+        const top = mgn + Math.max(22, r.width * 0.016); // room for the tag above it
+        return { x: mgn, y: top, w: r.width - 2 * mgn, h: r.height - top - mgn };
+      }
+      if (shape === "tall") {
+        const h = s.height;
+        const w = (h * 9) / 16;
+        return { x: sx + (s.width - w) / 2, y: sy, w, h };
+      }
+      return { x: sx, y: sy, w: s.width, h: s.height };
+    };
+
+    const sizeFilms = () => {
+      const r = root.getBoundingClientRect();
+      const base = Math.max(r.width, r.height) * 0.5;
       filmBase.clear();
       videoRefs.current.forEach((v) => {
         if (!v) return;
         const a = Number(v.dataset.aspect) || 16 / 9;
-        const w = a >= 1 ? geo.W : geo.W * a;
-        const h = a >= 1 ? geo.W / a : geo.W;
+        const w = a >= 1 ? base : base * a;
+        const h = a >= 1 ? base / a : base;
         v.style.width = `${w}px`;
         v.style.height = `${h}px`;
         v.style.marginLeft = `${-w / 2}px`;
         v.style.marginTop = `${-h / 2}px`;
-        filmBase.set(v, { w, h, css: "" });
+        filmBase.set(v, { w, h });
       });
-      // the hairline: one image at the resting size, redrawn only when that changes
-      // (tighter on a phone, where the picture runs nearly edge to edge)
-      const gap = Math.min(LINE_GAP, geo.vw * 0.022);
-      const run = Math.min(LINE_RUN, geo.vw * 0.018);
-      const hk = `${geo.W.toFixed(1)}x${geo.H.toFixed(1)}x${gap.toFixed(1)}`;
-      if (hk !== hairKey) {
-        hairKey = hk;
-        const ox = geo.W / 2 + gap;
-        const oy = geo.H / 2 + gap;
-        const hwid = 2 * (ox + run);
-        const hhgt = 2 * (oy + run);
-        const a = run; // the lines' inner edges, in the image
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${hwid}" height="${hhgt}" viewBox="0 0 ${hwid} ${hhgt}" shape-rendering="crispEdges"><g fill="rgb(247 242 238)" fill-opacity="0.55"><rect x="0" y="${a}" width="${hwid}" height="1"/><rect x="0" y="${hhgt - a - 1}" width="${hwid}" height="1"/><rect x="${a}" y="0" width="1" height="${hhgt}"/><rect x="${hwid - a - 1}" y="0" width="1" height="${hhgt}"/></g></svg>`;
-        hair.style.backgroundImage = `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")`;
-        hair.style.width = `${hwid}px`;
-        hair.style.height = `${hhgt}px`;
-        hair.style.marginLeft = `${-hwid / 2}px`;
-        hair.style.marginTop = `${-hhgt / 2}px`;
-      }
-      // the shadow is drawn once at the resting size, then scaled with the frame
-      shadow.style.width = `${geo.W}px`;
-      shadow.style.height = `${geo.H}px`;
-      shadow.style.marginLeft = `${-geo.W / 2}px`;
-      shadow.style.marginTop = `${-geo.H / 2}px`;
-    };
-    measure();
-
-    const st: FrameState = reduce
-      ? { angle: 0, s: 1, wx: 1, o: 1, d: 1 }
-      : { angle: 0, s: 1, wx: 0, o: 0, d: 0 };
-    let angleTarget = 0;
-    let current = 0;
-    let prog = 0;
-
-    const scaleFor = (i: number) => {
-      const md = MODES[i];
-      const { cx, cy, W, H, vw, vh } = geo;
-      // Beyond: past every edge of the screen
-      if (md.beyond) return Math.max((2 * Math.max(cx, vw - cx)) / W, (2 * Math.max(cy, vh - cy)) / H) * 1.15;
-      // 9×16: as tall as the room between the top bar and the strip allows
-      if (md.portrait) {
-        const room = 2 * (Math.min(cy - geo.roomTop, geo.roomBottom - cy) - 8);
-        return Math.min(Math.min(room, 0.74 * vh) / W, (0.9 * vw) / H);
-      }
-      return 1;
-    };
-
-    // The film sits in the frame's own space: centred in it and turned back
-    // upright. `place` is where it is; `pan` is Beyond's look-around.
-    const place = { hw: 0, hh: 0, angle: 0 };
-    const pan = { x: 0, y: 0 };
-    let filmsCss = "";
-    const placeFilms = () => {
-      const rad = (place.angle * Math.PI) / 180;
-      const c = Math.cos(rad);
-      const sn = Math.sin(rad);
-      const px = (pan.x / 100) * geo.vw;
-      const py = (pan.y / 100) * geo.vh;
-      // the screen-space pan, turned into the frame's space
-      const x = place.hw + px * c + py * sn;
-      const y = place.hh - px * sn + py * c;
-      const css = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotate(${(-place.angle).toFixed(3)}deg)`;
-      if (css !== filmsCss) {
-        films.style.transform = css;
-        filmsCss = css;
-      }
     };
 
     const f1 = (n: number) => n.toFixed(1);
     let lastW = "";
     let lastH = "";
-    let lastOff = Number.NaN;
     const render = () => {
-      const { cx, cy, W, H, vw, vh } = geo;
-      const hw = (W * st.s * st.wx) / 2;
-      const hh = (H * st.s * st.o) / 2;
-      const rad = (st.angle * Math.PI) / 180;
-      const c = Math.cos(rad);
-      const sn = Math.sin(rad);
-      const turn = `rotate(${st.angle.toFixed(3)}deg)`;
-
-      // the window: sized to the frame, turned about its centre; it clips the film
-      const w = f1(hw * 2);
-      const h = f1(hh * 2);
-      if (w !== lastW) {
-        frame.style.width = `${w}px`;
-        lastW = w;
+      const { x, y, w, h } = box;
+      const ws = f1(Math.max(0, w));
+      const hs = f1(Math.max(0, h));
+      if (ws !== lastW) {
+        win.style.width = `${ws}px`;
+        lastW = ws;
       }
-      if (h !== lastH) {
-        frame.style.height = `${h}px`;
-        lastH = h;
+      if (hs !== lastH) {
+        win.style.height = `${hs}px`;
+        lastH = hs;
       }
-      frame.style.transform = `translate3d(${f1(cx - hw)}px, ${f1(cy - hh)}px, 0) ${turn}`;
-
-      // its shadow, lifting it off the room
-      shadow.style.transform = `translate3d(${f1(cx)}px, ${f1(cy)}px, 0) ${turn} scale(${(st.s * st.wx).toFixed(4)}, ${(st.s * st.o).toFixed(4)})`;
-      shadow.style.opacity = String(st.d);
-
-      // the hairline frame: drawn once (see measure), turned and scaled evenly
-      // with the frame; it fades in once the picture has opened
-      hair.style.transform = `translate3d(${f1(cx)}px, ${f1(cy)}px, 0) ${turn} scale(${st.s.toFixed(4)})`;
-      hair.style.opacity = String(st.d);
-      const hidden = st.d < 0.005 ? "hidden" : "";
-      if (hair.style.visibility !== hidden) hair.style.visibility = hidden;
-
-      // The film stays upright and fills the frame: scaled to cover the frame's
-      // upright bounds, which at rest are the frame itself, so the whole film
-      // shows. The opening doesn't shrink it (the slit opens onto it at full
-      // size). In Beyond it covers the screen, with a little room to look around.
-      const hwN = (W * st.s) / 2;
-      const hhN = (H * st.s) / 2;
-      const hx = Math.min(Math.abs(c) * hwN + Math.abs(sn) * hhN, Math.max(cx, vw - cx) * 1.08);
-      const hy = Math.min(Math.abs(sn) * hwN + Math.abs(c) * hhN, Math.max(cy, vh - cy) * 1.08);
+      win.style.transform = `translate3d(${f1(x)}px, ${f1(y)}px, 0)`;
+      films.style.transform = `translate3d(${f1(w / 2)}px, ${f1(h / 2)}px, 0)`;
       filmBase.forEach((b, v) => {
-        const css = `scale(${Math.max((2 * hx) / b.w, (2 * hy) / b.h).toFixed(4)})`;
-        if (css !== b.css) {
-          v.style.transform = css;
-          b.css = css;
-        }
+        v.style.transform = `scale(${Math.max(w / b.w, h / b.h, 0.0001).toFixed(4)})`;
       });
-      place.hw = hw;
-      place.hh = hh;
-      place.angle = st.angle;
-      placeFilms();
-
-      // in the opening, the two halves of the line ride the slit apart
-      const off = Math.round((1 - st.o) * (H / 2) * 10) / 10;
-      if (off !== lastOff) {
-        l1.style.transform = off ? `translate3d(0, ${off}px, 0)` : "";
-        l2.style.transform = off ? `translate3d(0, ${-off}px, 0)` : "";
-        lastOff = off;
-      }
+      // the crop rule: four 1px lines, and a square handle at each corner
+      const lines: [number, number, number, number][] = [
+        [x, y, w, 1],
+        [x, y + h - 1, w, 1],
+        [x, y, 1, h],
+        [x + w - 1, y, 1, h],
+      ];
+      lines.forEach(([lx, ly, sx, sy], i) => {
+        const el = edgeRefs.current[i];
+        if (el) el.style.transform = `translate3d(${f1(lx)}px, ${f1(ly)}px, 0) scale(${f1(Math.max(0, sx))}, ${f1(Math.max(0, sy))})`;
+      });
+      const corners: [number, number][] = [
+        [x, y],
+        [x + w, y],
+        [x + w, y + h],
+        [x, y + h],
+      ];
+      corners.forEach(([cx, cy], i) => {
+        const el = handleRefs.current[i];
+        if (el) el.style.transform = `translate3d(${f1(cx)}px, ${f1(cy)}px, 0)`;
+      });
+      tag.style.transform = `translate3d(${f1(x)}px, ${f1(y)}px, 0)`;
+      // the handles and the tag come in as the box is drawn out
+      const shown = Math.max(0, Math.min(1, (Math.min(w, h) - 6) / 40)).toFixed(3);
+      tag.style.opacity = shown;
+      handleRefs.current.forEach((el) => el && (el.style.opacity = shown));
     };
 
-    // Two channels so the shadow can move while the frame does.
-    type Channel = "frame" | "depth";
-    const tweens: Partial<Record<Channel, AnimationPlaybackControls>> = {};
-    const running = { frame: false, depth: false };
-    const to = (
-      ch: Channel,
-      target: Partial<FrameState>,
-      duration: number,
-      ease: readonly [number, number, number, number],
-      delay = 0
-    ) => {
-      tweens[ch]?.stop();
+    let tween: AnimationPlaybackControls | undefined;
+    let running = false;
+    const to = (target: Rect, duration: number, delay = 0) => {
+      tween?.stop();
       if (reduce) {
-        Object.assign(st, target);
+        Object.assign(box, target);
         render();
         return;
       }
-      const from = { ...st };
-      const keys = Object.keys(target) as (keyof FrameState)[];
-      running[ch] = true;
-      // the hairline is its own layer while the frame moves; at rest it is
-      // drawn again at its final size, so it stays a crisp 1px
-      if (ch === "frame") hair.style.willChange = "transform";
-      tweens[ch] = animate(0, 1, {
+      const from = { ...box };
+      running = true;
+      tween = animate(0, 1, {
         duration,
         delay,
-        ease: [...ease],
+        ease: [...EASE_CINE],
         onUpdate: (p) => {
-          for (const k of keys) {
-            const a = from[k];
-            const b = target[k] as number;
-            // scale eases in log space, so a big zoom feels even all the way
-            st[k] = k === "s" ? Math.exp(Math.log(a) + (Math.log(b) - Math.log(a)) * p) : a + (b - a) * p;
-          }
+          box.x = from.x + (target.x - from.x) * p;
+          box.y = from.y + (target.y - from.y) * p;
+          box.w = from.w + (target.w - from.w) * p;
+          box.h = from.h + (target.h - from.h) * p;
           render();
         },
         onComplete: () => {
-          running[ch] = false;
-          if (ch === "frame") hair.style.willChange = "auto";
+          running = false;
         },
       });
-    };
-
-    // the room's light: off in Beyond (the film is the room there)
-    let lightTimer = 0;
-    let openTimer = 0;
-    const setLight = (on: boolean, delay = 0) => {
-      window.clearTimeout(lightTimer);
-      lightTimer = window.setTimeout(() => {
-        if (on) root.dataset.lit = "";
-        else delete root.dataset.lit;
-      }, reduce ? 0 : delay * 1000);
     };
 
     const go = (i: number) => {
       if (i === current) return;
-      const md = MODES[i];
-      const was = MODES[current];
-      // a quarter turn whenever the orientation changes, always the same way round
-      const portraitNow = ((Math.round(angleTarget / 90) % 2) + 2) % 2 === 1;
-      if (md.portrait !== portraitNow) angleTarget += 90;
-      const dur = md.beyond || was.beyond ? MORPH_BEYOND : MORPH;
-      to("frame", { angle: angleTarget, s: scaleFor(i), wx: 1, o: 1 }, dur, EASE_CINE);
-      window.clearTimeout(openTimer);
-      if (md.beyond) {
-        to("depth", { d: 0 }, 0.8, EASE);
-        setLight(false, dur * 0.7);
-        // past the screen's edges: the corners can square off unseen
-        openTimer = window.setTimeout(() => (root.dataset.open = ""), dur * 650);
-      } else {
-        delete root.dataset.open;
-        to("depth", { d: 1 }, 0.9, EASE, was.beyond ? dur * 0.5 : 0);
-        if (was.beyond) setLight(true);
-      }
       current = i;
       prog = 0;
       barRefs.current.forEach((b) => b && (b.style.transform = "scaleX(0)"));
-    };
-
-    // where the pointer is, in the hero's own coordinates
-    const inside = (x: number, y: number) => {
-      if (MODES[current].beyond) return true;
-      const dx = x - geo.cx;
-      const dy = y - geo.cy;
-      const rad = (-st.angle * Math.PI) / 180;
-      const lx = dx * Math.cos(rad) - dy * Math.sin(rad);
-      const ly = dx * Math.sin(rad) + dy * Math.cos(rad);
-      return Math.abs(lx) <= (geo.W * st.s * st.wx) / 2 && Math.abs(ly) <= (geo.H * st.s * st.o) / 2;
+      to(targetFor(i), MORPH);
     };
     const refresh = () => {
-      measure();
+      sizeFilms();
+      if (!running && box.w > 0) Object.assign(box, targetFor(current));
       render();
     };
-    engineRef.current = { go, inside, refresh };
+    engineRef.current = { go, refresh };
 
+    sizeFilms();
+    // the opening: the crop is drawn out from the middle of the slot
+    const start = targetFor(0);
+    if (reduce) Object.assign(box, start);
+    else Object.assign(box, { x: start.x + start.w / 2, y: start.y + start.h / 2, w: 0, h: 0 });
     render();
+    const timer = reduce ? 0 : window.setTimeout(() => to(targetFor(0), T.cropDur), T.crop * 1000);
 
-    // ---- the opening ----
-    const timers: number[] = [];
-    const later = (t: number, fn: () => void) => timers.push(window.setTimeout(fn, t * 1000));
-    if (reduce) {
-      setLight(true);
-    } else {
-      later(T.slit, () => to("frame", { wx: 1, o: Math.min(1, 2 / geo.H) }, T.slitDur, EASE_CINE));
-      later(T.open, () => to("frame", { o: 1 }, T.openDur, EASE_CINE));
-      later(T.depth, () => to("depth", { d: 1 }, 1.4, EASE));
-      later(T.light, () => setLight(true));
-    }
-
-    // ---- resize: re-measure, and hold the current format's size ----
     const onResize = () => {
-      measure();
-      if (!running.frame) st.s = scaleFor(current);
+      sizeFilms();
+      if (!running && box.w > 0) Object.assign(box, targetFor(current));
       render();
     };
     const ro = new ResizeObserver(onResize);
     ro.observe(root);
-    ro.observe(spacer);
+    ro.observe(slot);
     document.fonts?.ready.then(onResize).catch(() => {});
 
-    // ---- pointer: the cursor over the frame, and where Beyond looks ----
-    const fine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-    const p = { x: geo.vw / 2, y: geo.vh / 2 };
-    let onFrame = false;
-    const setOnFrame = (on: boolean) => {
-      if (on === onFrame) return;
-      onFrame = on;
-      // a data attribute, not a class: React owns the class list and would wipe it
-      if (on) root.dataset.onFrame = "";
-      else delete root.dataset.onFrame;
-      cursorRef.current?.show(on ? cursorLabel(MODES[current]) : null);
-    };
-    const onMove = (e: PointerEvent) => {
-      p.x = e.clientX - geo.left;
-      p.y = e.clientY - geo.top;
-      if (e.pointerType !== "mouse") return;
-      const overUi = !!(e.target as Element | null)?.closest?.("a, button, header, nav, [data-ui]");
-      const on = readyRef.current && !overUi && inside(p.x, p.y);
-      setOnFrame(on);
-      frameHoverRef.current = on && !MODES[current].beyond;
-      syncPaused();
-    };
-    const onLeave = () => {
-      setOnFrame(false);
-      frameHoverRef.current = false;
-      syncPaused();
-      p.x = geo.vw / 2;
-      p.y = geo.vh / 2;
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    document.documentElement.addEventListener("pointerleave", onLeave);
-
-    // ---- one loop: the cycle's progress and Beyond's look-around ----
     let raf = 0;
     let last = performance.now();
-    let lastMode = current;
     const loop = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-
       if (readyRef.current && !reduce && !pausedRef.current) {
         prog += dt / DWELL;
         if (prog >= 1) {
@@ -587,84 +353,45 @@ export default function Hero15() {
         const bar = barRefs.current[current];
         if (bar) bar.style.transform = `scaleX(${prog.toFixed(4)})`;
       }
-
-      // the label changes with the format even if the pointer rests on the frame
-      if (lastMode !== current) {
-        lastMode = current;
-        if (onFrame) cursorRef.current?.show(cursorLabel(MODES[current]));
-      }
-
-      let tx = 0;
-      let ty = 0;
-      if (MODES[current].beyond && !reduce) {
-        if (fine) {
-          tx = -((p.x / geo.vw) * 2 - 1) * PAN;
-          ty = -((p.y / geo.vh) * 2 - 1) * PAN * 0.6;
-        } else {
-          const t = now / 1000; // no pointer: a slow look around on its own
-          tx = Math.sin(t * 0.22) * PAN;
-          ty = Math.sin(t * 0.15) * PAN * 0.4;
-        }
-      }
-      const k = 1 - Math.exp(-dt * 2.2);
-      pan.x += (tx - pan.x) * k;
-      pan.y += (ty - pan.y) * k;
-      placeFilms();
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
 
     return () => {
       cancelAnimationFrame(raf);
-      timers.forEach((t) => window.clearTimeout(t));
-      tweens.frame?.stop();
-      tweens.depth?.stop();
+      window.clearTimeout(timer);
+      tween?.stop();
       ro.disconnect();
-      window.removeEventListener("pointermove", onMove);
-      document.documentElement.removeEventListener("pointerleave", onLeave);
-      delete root.dataset.onFrame;
-      delete root.dataset.lit;
-      delete root.dataset.open;
-      window.clearTimeout(lightTimer);
-      window.clearTimeout(openTimer);
       engineRef.current = null;
     };
   }, [reduce]);
 
-  // the films mount after hydration (and change cut on rotation): size them
   useEffect(() => {
     engineRef.current?.refresh();
   }, [isClient, portraitScreen]);
 
-  // a new format: the frame turns to it
   useEffect(() => {
     modeRef.current = mode;
     engineRef.current?.go(mode);
   }, [mode]);
 
-  // its film (and its light) start from the top and fade in over the last;
-  // the last ones stop once they're covered
   useEffect(() => {
-    const all = [videoRefs.current, lightRefs.current];
-    all.forEach((list) => {
-      const v = list[mode];
-      if (!v) return;
+    const vids = videoRefs.current;
+    const v = vids[mode];
+    if (v) {
       v.muted = true;
-      v.setAttribute("muted", ""); // iOS wants the attribute before it will autoplay
+      v.setAttribute("muted", "");
       v.currentTime = 0;
       v.play().catch(() => {});
-    });
+    }
     const t = window.setTimeout(() => {
-      all.forEach((list) =>
-        list.forEach((o, i) => {
-          if (o && i !== mode) o.pause();
-        })
-      );
-    }, 1600);
+      vids.forEach((o, i) => {
+        if (o && i !== mode) o.pause();
+      });
+    }, 1400);
     return () => window.clearTimeout(t);
   }, [mode, isClient, portraitScreen]);
 
-  // once the opening is done, the other films may load ahead
   useEffect(() => {
     if (!ready) return;
     videoRefs.current.forEach((v) => {
@@ -677,7 +404,6 @@ export default function Hero15() {
     setMode(i);
   }, []);
 
-  // arrow keys step through the formats
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!readyRef.current) return;
@@ -688,16 +414,6 @@ export default function Hero15() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // clicking the frame goes to that format; a sideways swipe on a phone changes it
-  const onStageClick = (e: ReactMouseEvent<HTMLElement>) => {
-    const root = rootRef.current;
-    if (!readyRef.current || !root) return;
-    if ((e.target as Element).closest("a, button, nav, header, [data-ui]")) return;
-    const r = root.getBoundingClientRect();
-    if (engineRef.current?.inside(e.clientX - r.left, e.clientY - r.top)) {
-      window.location.hash = MODES[modeRef.current].href.slice(1);
-    }
-  };
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const onDown = (e: ReactPointerEvent<HTMLElement>) => {
     swipe.current = e.pointerType === "mouse" ? null : { x: e.clientX, y: e.clientY };
@@ -713,240 +429,175 @@ export default function Hero15() {
     }
   };
 
-  const enter = (delay: number, y = 10) =>
+  const rise = (delay: number, y = 14) =>
     reduce
       ? { initial: false as const }
       : {
           initial: { opacity: 0, y },
-          animate: { opacity: 1, y: 0, transition: { delay, duration: 1.1, ease: EASE } },
+          animate: { opacity: 1, y: 0, transition: { delay, duration: 1, ease: EASE } },
         };
 
   return (
     <section
       ref={rootRef}
-      className={`${styles.root} ${wide.variable} ${m.beyond ? styles.isBeyond : ""}`}
-      aria-label="16x9 & Beyond — Stories beyond the frame"
-      onClick={onStageClick}
+      className={`${styles.root} ${wide.variable} ${m.shape === "beyond" ? styles.isBeyond : ""}`}
+      aria-label="16x9 & Beyond — stories beyond the frame"
       onPointerDown={onDown}
       onPointerUp={onUp}
     >
-      {/* ================= the room, lit by the film ================= */}
-      <div className={styles.light} aria-hidden="true">
-        {isClient &&
-          MODES.map((md, i) => (
-            <video
-              key={md.key}
-              ref={(el) => {
-                lightRefs.current[i] = el;
-              }}
-              className={`${styles.lightFilm} ${i === mode ? styles.lightOn : ""}`}
-              src={md.film.light}
-              muted
-              loop
-              playsInline
-              autoPlay={i === 0 && !reduce}
-              preload="auto"
-              disablePictureInPicture
-            />
-          ))}
-      </div>
-      <div className={styles.vignette} aria-hidden="true" />
+      {/* ================= the display ================= */}
+      <motion.div
+        ref={deviceRef}
+        className={styles.device}
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1, transition: { delay: T.device, duration: 0.8, ease: EASE } }}
+      >
+        <div className={styles.screen}>
+          <div className={styles.grid} aria-hidden="true" />
 
-      {/* ================= the frame, and the whole film in it ================= */}
-      {/* the format, set huge in outline behind the frame */}
-      <div className={styles.numerals} aria-hidden="true">
-        {MODES.map((md, i) =>
-          md.beyond ? null : (
-            <span
-              key={md.key}
-              className={`${styles.numeral} ${i === mode ? styles.numeralOn : i < mode ? styles.numeralGone : ""}`}
-            >
-              {md.label.replace("×", ":")}
-            </span>
-          )
-        )}
-      </div>
-
-      <span ref={shadowRef} className={styles.shadow} aria-hidden="true" />
-      <div ref={frameRef} className={styles.frame} aria-hidden="true">
-        <div ref={filmsRef} className={styles.films}>
-          {isClient &&
-            MODES.map((md, i) => {
-              const cut = portraitScreen ? md.film.small : md.film.desk;
-              return (
-                <video
-                  key={md.key}
-                  ref={(el) => {
-                    videoRefs.current[i] = el;
-                  }}
-                  className={`${styles.film} ${i === mode ? styles.filmOn : ""}`}
-                  src={cut.src}
-                  poster={cut.poster}
-                  data-aspect={cut.aspect}
-                  muted
-                  loop
-                  playsInline
-                  autoPlay={i === 0 && !reduce}
-                  preload={i === 0 ? "auto" : "metadata"}
-                  disablePictureInPicture
-                />
-              );
-            })}
-        </div>
-      </div>
-
-      <div ref={hairRef} className={styles.hair} aria-hidden="true" />
-
-      {/* in Beyond, a little shade so the line reads on the open film */}
-      <div className={styles.shade} aria-hidden="true" />
-
-      {/* ================= the line, split by the frame ================= */}
-      <div ref={composeRef} className={styles.compose}>
-        <h1 className={styles.logline}>
-          <span ref={line1Ref} className={styles.line}>
-            <span className={styles.mask}>
-              <motion.span
-                className={styles.words}
-                initial={reduce ? false : { y: "112%" }}
-                animate={{ y: 0, transition: { delay: T.words, duration: 1.15, ease: EASE } }}
-              >
-                {LOGLINE[0]}
-              </motion.span>
-            </span>
-          </span>
-          <span ref={spacerRef} className={styles.spacer} aria-hidden="true" />
-          <span ref={line2Ref} className={styles.line}>
-            <span className={styles.mask}>
-              <motion.span
-                className={styles.words}
-                initial={reduce ? false : { y: "112%" }}
-                animate={{ y: 0, transition: { delay: T.words + 0.12, duration: 1.15, ease: EASE } }}
-              >
-                {LOGLINE[1]}
-              </motion.span>
-            </span>
-          </span>
-        </h1>
-      </div>
-
-      {/* ================= top bar ================= */}
-      <motion.header className={styles.topbar} {...enter(T.ui, -10)}>
-        <a href="#top" className={styles.logo} aria-label="16x9 & Beyond — home">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_SRC} alt="16x9 & Beyond" />
-        </a>
-        <nav className={styles.nav} aria-label="Main">
-          {NAV.map((n) => (
-            <a key={n.href} href={n.href} className={styles.navLink}>
-              <span className={styles.roll}>
-                <span>{n.label}</span>
-                <span aria-hidden="true">{n.label}</span>
-              </span>
+          <motion.header className={styles.bar} {...rise(T.words - 0.2, -10)}>
+            <a href="#top" aria-label="16x9 & Beyond — home">
+              <Mark />
             </a>
-          ))}
-        </nav>
-      </motion.header>
+            <nav className={styles.nav} aria-label="Main">
+              <a href="#who-we-are">who we are</a>
+              <a href="#contact">contact</a>
+            </nav>
+            <button type="button" className={styles.burger} aria-label="Menu">
+              <span />
+              <span />
+              <span />
+            </button>
+          </motion.header>
 
-      {/* ================= phones: the format's line, above the strip ================= */}
-      <motion.div className={styles.caption} data-ui {...enter(T.ui + 0.15)}>
-        <p key={m.key} className={styles.captionText}>
-          {m.line}
-          <span>{m.detail}</span>
-        </p>
-        <a href={m.href} className={styles.captionGo}>
-          Explore <span aria-hidden="true">→</span>
-        </a>
+          <div className={styles.body}>
+            <div className={styles.copy}>
+              <motion.p className={styles.eyebrow} {...rise(T.words)}>
+                16x9 &amp; beyond — film studio, dubai
+              </motion.p>
+              <h1 className={styles.title}>
+                <motion.span className={styles.titleLine} {...rise(T.words + 0.08, 30)}>
+                  stories{" "}
+                  <span className={styles.hl}>
+                    <motion.span
+                      className={styles.hlBox}
+                      aria-hidden="true"
+                      initial={reduce ? false : { scaleX: 0 }}
+                      animate={{ scaleX: 1, transition: { delay: T.words + 0.55, duration: 0.7, ease: EASE_CINE } }}
+                    />
+                    <span className={styles.hlText}>beyond</span>
+                  </span>
+                </motion.span>
+                <motion.span className={styles.titleLine} {...rise(T.words + 0.16, 30)}>
+                  the frame.
+                </motion.span>
+              </h1>
+              <motion.p className={styles.lede} {...rise(T.words + 0.3)}>
+                TVCs, brand films and documentaries for the big screen, stories for the scroll, and worlds you can step
+                into. Story always comes first.
+              </motion.p>
+
+              {/* ================= the switcher: an aspect-ratio toolbar ================= */}
+              <motion.div className={styles.tools} {...rise(T.ui)}>
+                <p className={styles.toolsLabel}>pick a frame</p>
+                <nav
+                  className={styles.toolbar}
+                  aria-label="Formats"
+                  onPointerEnter={() => (pausedRef.current = true)}
+                  onPointerLeave={() => (pausedRef.current = false)}
+                >
+                  {MODES.map((md, i) => (
+                    <button
+                      key={md.key}
+                      type="button"
+                      className={`${styles.tool} ${i === mode ? styles.toolOn : ""}`}
+                      aria-pressed={i === mode}
+                      aria-label={`${md.label} — ${md.line}`}
+                      disabled={!ready}
+                      onClick={() => select(i)}
+                    >
+                      <span className={styles.toolNo}>
+                        <i aria-hidden="true" />
+                        {md.no}
+                      </span>
+                      <span className={styles.toolLabel}>{md.label}</span>
+                      <span className={styles.toolLine}>{md.line}</span>
+                      <span className={styles.toolBar} aria-hidden="true">
+                        <span
+                          ref={(el) => {
+                            barRefs.current[i] = el;
+                          }}
+                        />
+                      </span>
+                    </button>
+                  ))}
+                </nav>
+              </motion.div>
+            </div>
+
+            {/* where the crop box sits in the screen */}
+            <div className={styles.stage}>
+              <div ref={slotRef} className={styles.slot} />
+              <motion.a href={m.href} className={styles.go} {...rise(T.ui + 0.1)}>
+                explore <span className={styles.goHl}>{m.label}</span> →
+              </motion.a>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
-      {/* ================= the three formats ================= */}
-      <motion.nav
-        className={styles.formats}
-        aria-label="Formats"
-        onPointerEnter={() => {
-          stripHoverRef.current = true;
-          syncPaused();
-        }}
-        onPointerLeave={() => {
-          stripHoverRef.current = false;
-          syncPaused();
-        }}
-        {...enter(T.ui + 0.1)}
-      >
-        {MODES.map((md, i) => (
-          <div key={md.key} className={`${styles.format} ${i === mode ? styles.formatOn : ""}`}>
-            <span className={styles.formatBar} aria-hidden="true">
-              <span
-                ref={(el) => {
-                  barRefs.current[i] = el;
-                }}
-                className={styles.formatFill}
-              />
-            </span>
-            <button
-              type="button"
-              className={styles.formatPick}
-              aria-pressed={i === mode}
-              disabled={!ready}
-              onClick={() => select(i)}
-            >
-              <span className={styles.formatNo}>{md.no}</span>
-              <span className={styles.formatLabel}>
-                <Ratio text={md.label} />
-              </span>
-            </button>
-            <p className={styles.formatLine}>
-              {md.line}
-              <span>{md.detail}</span>
-            </p>
-            <a href={md.href} className={styles.formatGo} tabIndex={i === mode ? 0 : -1} aria-hidden={i !== mode}>
-              Explore <span aria-hidden="true">→</span>
-            </a>
+      {/* ================= the crop box: above the screen, free to leave it ================= */}
+      <div ref={cropRef} className={styles.crop} aria-hidden="true">
+        <div ref={winRef} className={styles.win}>
+          <div ref={filmsRef} className={styles.films}>
+            {isClient &&
+              MODES.map((md, i) => {
+                const cut = portraitScreen ? md.film.small : md.film.desk;
+                return (
+                  <video
+                    key={md.key}
+                    ref={(el) => {
+                      videoRefs.current[i] = el;
+                    }}
+                    className={`${styles.film} ${i === mode ? styles.filmOn : ""}`}
+                    src={cut.src}
+                    poster={cut.poster}
+                    data-aspect={cut.aspect}
+                    muted
+                    loop
+                    playsInline
+                    autoPlay={i === 0 && !reduce}
+                    preload={i === 0 ? "auto" : "metadata"}
+                    disablePictureInPicture
+                  />
+                );
+              })}
           </div>
+        </div>
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={`e${i}`}
+            ref={(el) => {
+              edgeRefs.current[i] = el;
+            }}
+            className={styles.edge}
+          />
         ))}
-      </motion.nav>
-
-      <Cursor ref={cursorRef} />
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={`h${i}`}
+            ref={(el) => {
+              handleRefs.current[i] = el;
+            }}
+            className={styles.handle}
+          />
+        ))}
+        <span ref={tagRef} className={styles.tagAnchor}>
+          <span key={m.key} className={styles.tag}>
+            {m.ratio}
+          </span>
+        </span>
+      </div>
     </section>
-  );
-}
-
-// ===========================================================================
-// CURSOR — over the frame, a thin paper ring with where it leads. Shown
-// through a ref, so following the pointer never re-renders the hero.
-// ===========================================================================
-type CursorHandle = { show: (label: string | null) => void };
-
-function Cursor({ ref }: { ref: Ref<CursorHandle> }) {
-  const [label, setLabel] = useState<string | null>(null);
-  useImperativeHandle(ref, () => ({ show: setLabel }), []);
-  const x = useMotionValue(-200);
-  const y = useMotionValue(-200);
-  const sx = useSpring(x, { stiffness: 520, damping: 42, mass: 0.5 });
-  const sy = useSpring(y, { stiffness: 520, damping: 42, mass: 0.5 });
-  useEffect(() => {
-    const move = (e: PointerEvent) => {
-      x.set(e.clientX);
-      y.set(e.clientY);
-    };
-    window.addEventListener("pointermove", move, { passive: true });
-    return () => window.removeEventListener("pointermove", move);
-  }, [x, y]);
-  return (
-    <motion.div className={styles.cursor} style={{ x: sx, y: sy }} aria-hidden="true">
-      <AnimatePresence>
-        {label && (
-          <motion.div
-            key="ring"
-            className={styles.ring}
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1, transition: { duration: 0.45, ease: EASE } }}
-            exit={{ scale: 0.5, opacity: 0, transition: { duration: 0.25, ease: EASE } }}
-          >
-            <span className={styles.ringArrow}>→</span>
-            <span className={styles.ringLabel}>{label}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
   );
 }

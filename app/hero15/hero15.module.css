@@ -1,186 +1,377 @@
-/* HERO 15 — hero 14 with a very minimal hairline frame and the format set
-   huge in outline behind it. From hero 14: the homepage. "Stories beyond the frame": a frame floats in a
-   dark room with the whole film inside it, and the film's light spills out
-   beyond the frame and fills the room. Black, paper and film; light wide type. */
+/* HERO 19 — the 16x9 site in black and white: white paper, black ink, our
+   wide Archivo, faint grid rules, the crop-box frame and the aspect-ratio
+   toolbar. Sizes are in --u (a 16:9 unit set from JS), so the page scales
+   as one. */
 
 .root {
-  --paper: #f7f2ee;
+  --paper: #ffffff;
+  --ink: #0a0a0a;
+  --rule: rgb(10 10 10 / 0.06);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --ui: clamp(18px, 2.6vw, 40px); /* the margin */
-  --top: clamp(64px, 10vh, 96px); /* the top bar */
-  --bottom: clamp(124px, 17vh, 156px); /* the format strip */
-  /* the frame at rest (16×9): its width; the engine reads it from .spacer */
-  --fw: min(44vw, calc((100svh - 420px) * 1.78));
-  --hs: clamp(30px, min(6.2vw, 10.5vh), 120px); /* the line */
-  --gap: clamp(12px, 2.2vh, 26px);
-  --r: 0px; /* square: the hairline does the framing */
+  --u: 10px;
   position: relative;
   width: 100%;
   height: 100vh;
   height: 100svh;
   min-height: 560px;
   overflow: hidden;
-  background: #000;
-  color: var(--paper);
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
   font-stretch: 108%;
   font-variation-settings: "wdth" 108;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
-  touch-action: pan-y; /* sideways swipes change the format */
-  user-select: none;
-  -webkit-user-select: none;
+  touch-action: pan-y;
 }
 
-/* over the frame, the ring replaces the arrow (set by the engine) */
-.root[data-on-frame] {
-  cursor: none;
-}
-
-/* ================= the room, lit by the film ================= */
-
-/* The film's light: a tiny pre-blurred copy of the film, stretched to the
-   screen (soft by construction, no blur filter). It comes up after the
-   opening and goes down in Beyond (data-lit, set by the engine); each film
-   fades on its own, so the room never needs an offscreen pass. */
-.light {
+.device {
   position: absolute;
   inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
 }
 
-.lightFilm {
-  position: absolute;
-  inset: 0;
-  width: 100%;
+.screen {
+  position: relative;
   height: 100%;
-  max-width: none;
-  object-fit: cover;
-  transform: scale(1.2); /* past the edges, so its border never shows */
-  opacity: 0;
-  transition: opacity 0s 1.5s;
+  overflow: hidden;
+  background: var(--paper);
 }
 
-.lightOn {
-  z-index: 1;
-  transition: opacity 1.2s var(--ease) 0.35s;
-}
-
-.root[data-lit] .lightOn {
-  opacity: 0.62;
-}
-
-/* the room's edges fall away into shadow, the bar and strip sit on dark, and
-   a fine grain makes the light read as projected, not digital. One layer,
-   painted once (and never over the film). */
-.vignette {
+/* the grid: faint rules on the paper */
+.grid {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  background-image:
+    linear-gradient(to right, var(--rule) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--rule) 1px, transparent 1px);
+  background-size: calc(var(--u) * 10) calc(var(--u) * 10);
+  background-position: calc(var(--u) * 2.4) calc(var(--u) * 1.2);
   pointer-events: none;
-  background:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.07 0 0 0 -0.01'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
-    radial-gradient(ellipse 72% 68% at 50% 46%, rgb(0 0 0 / 0.08) 0%, rgb(0 0 0 / 0.4) 55%, rgb(0 0 0 / 0.88) 100%),
-    linear-gradient(to bottom, rgb(0 0 0 / 0.55), transparent 22%),
-    linear-gradient(to top, rgb(0 0 0 / 0.85), rgb(0 0 0 / 0.35) 20%, transparent 34%);
 }
 
-/* ================= the format, in outline ================= */
+/* ================= header ================= */
 
-/* 16:9 or 9:16, huge and hairline, sitting in the room behind the frame; it
-   rolls up and away as the next rises in. Painted once each; only moved. */
-.numerals {
+.bar {
+  position: relative;
+  z-index: 30; /* stays above the crop box in Beyond */
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2.4);
+  margin: calc(var(--u) * 1.2) calc(var(--u) * 2.4) 0;
+  height: calc(var(--u) * 4.6);
+  padding: 0 calc(var(--u) * 1.4);
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.mark {
+  display: block;
+  height: calc(var(--u) * 2.7);
+  width: auto;
+}
+
+.markBox,
+.markRule {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.2;
+}
+
+.markRule {
+  stroke-width: 0.8;
+}
+
+.markCell {
+  fill: var(--ink);
+}
+
+.markText {
+  fill: var(--ink);
+  font-family: var(--font-wide, "Archivo"), sans-serif;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.nav {
+  display: flex;
+  gap: calc(var(--u) * 2.4);
+  margin-left: auto;
+}
+
+.nav a {
+  color: var(--ink);
+  font-size: max(10px, calc(var(--u) * 0.72));
+  letter-spacing: 0.22em;
+  text-decoration: none;
+  text-transform: uppercase;
+  background: linear-gradient(var(--ink), var(--ink)) no-repeat 0 100% / 0% 1px;
+  transition: background-size 0.5s var(--ease);
+}
+
+.nav a:hover,
+.nav a:focus-visible {
+  background-size: 100% 1px;
+  outline: none;
+}
+
+.burger {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(var(--u) * 0.42);
+  width: calc(var(--u) * 2.2);
+  height: calc(var(--u) * 2.2);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.burger span {
+  display: block;
+  height: 1.5px;
+  background: var(--ink);
+}
+
+/* ================= the body ================= */
+
+.body {
+  position: absolute;
+  left: calc(var(--u) * 2.4);
+  right: calc(var(--u) * 2.4);
+  top: calc(var(--u) * 8.2);
+  bottom: calc(var(--u) * 2.4);
+  display: grid;
+  grid-template-columns: 44fr 52fr;
+  gap: calc(var(--u) * 4);
+}
+
+.copy {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.eyebrow {
+  margin: calc(var(--u) * 1.4) 0 0;
+  font-size: max(10px, calc(var(--u) * 0.72));
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: calc(var(--u) * 1.8) 0 0;
+  display: flex;
+  flex-direction: column;
+  font-size: calc(var(--u) * 4.4);
+  font-weight: 300;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.titleLine {
+  display: block;
+  white-space: nowrap;
+}
+
+/* a word boxed out in black */
+.hl {
+  position: relative;
+  display: inline-block;
+  padding: 0 0.12em 0.02em;
+}
+
+.hlBox {
+  position: absolute;
+  inset: 0.04em 0 0;
+  background: var(--ink);
+  transform-origin: 0 50%;
+}
+
+.hlText {
+  position: relative;
+  color: var(--paper);
+}
+
+.lede {
+  max-width: 38ch;
+  margin: calc(var(--u) * 2.2) 0 0;
+  font-size: max(12px, calc(var(--u) * 0.95));
+  line-height: 1.7;
+  opacity: 0.7;
+}
+
+/* ================= the switcher: an aspect-ratio toolbar ================= */
+
+.tools {
+  position: relative;
+  z-index: 30; /* above the crop box when it leaves the frame */
+  margin-top: auto;
+}
+
+.toolsLabel {
+  margin: 0 0 calc(var(--u) * 0.9);
+  font-size: max(9px, calc(var(--u) * 0.66));
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--ink);
+  background: var(--paper);
+}
+
+.tool {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--u) * 0.4);
+  padding: calc(var(--u) * 1) calc(var(--u) * 1.2) calc(var(--u) * 1.2);
+  border: 0;
+  border-left: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.45s var(--ease),
+    color 0.45s var(--ease);
+}
+
+.tool:first-child {
+  border-left: 0;
+}
+
+.tool:disabled {
+  cursor: default;
+}
+
+.tool:hover {
+  background: rgb(10 10 10 / 0.05);
+}
+
+.toolOn,
+.toolOn:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.tool:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.toolNo {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.5);
+  font-size: max(9px, calc(var(--u) * 0.66));
+  letter-spacing: 0.2em;
+  font-variant-numeric: tabular-nums;
+}
+
+.toolNo i {
+  width: calc(var(--u) * 0.42);
+  height: calc(var(--u) * 0.42);
+  background: currentColor;
+}
+
+.toolLabel {
+  font-size: calc(var(--u) * 1.6);
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.toolLine {
+  font-size: max(9px, calc(var(--u) * 0.62));
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+/* the timer: a white line filling along the foot of the format on screen */
+.toolBar {
   position: absolute;
   left: 0;
   right: 0;
-  top: var(--top);
-  bottom: var(--bottom);
-  z-index: 1;
-  pointer-events: none;
+  bottom: 0;
+  height: 2px;
   overflow: hidden;
 }
 
-.numeral {
+.toolBar span {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  font-size: clamp(150px, 31vw, 560px);
-  font-weight: 200;
-  line-height: 1;
-  letter-spacing: -0.05em;
-  white-space: nowrap;
-  color: transparent;
-  -webkit-text-stroke: 1px rgb(247 242 238 / 0.2);
-  transform: translate(-50%, -38%);
-  opacity: 0;
-  will-change: transform, opacity; /* drawn once; the roll only moves it */
-  transition:
-    transform 1.4s var(--ease),
-    opacity 0.9s var(--ease);
-}
-
-/* gone: rises up and away */
-.numeralGone {
-  transform: translate(-50%, -62%);
-}
-
-/* on screen, once the room is lit */
-.root[data-lit] .numeralOn {
-  opacity: 1;
-  transform: translate(-50%, -50%);
-  transition-delay: 0.25s;
-}
-
-/* ================= the frame ================= */
-
-/* the hairline: one image the engine draws at the frame's resting size, set
-   just outside the picture with its lines running on past the corners */
-.hair {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 3;
-  background: no-repeat 0 0 / 100% 100%;
-  transform-origin: 50% 50%;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* its shadow: drawn once at the frame's resting size, then turned and scaled with it */
-.shadow {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 2;
-  border-radius: var(--r);
-  box-shadow:
-    0 50px 110px -20px rgb(0 0 0 / 0.75),
-    0 16px 40px -8px rgb(0 0 0 / 0.5);
-  transform-origin: 50% 50%;
-  opacity: 0;
-  pointer-events: none;
-  will-change: transform, opacity;
-}
-
-/* the window: sized to the frame and turned by the engine; it clips the film */
-.frame {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 3;
-  overflow: hidden;
-  border-radius: var(--r);
-  transform-origin: 50% 50%;
-  pointer-events: none;
+  inset: 0;
+  background: var(--paper);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
   will-change: transform;
-  /* no background: it is resized every frame, so it paints nothing (the
-     film's poster covers it until the film plays) */
 }
 
-/* the films sit at the frame's centre, turned back upright (by the engine);
-   each is laid out at the frame's resting size and scaled to fill it */
+/* ================= the stage: where the crop box sits ================= */
+
+.stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.slot {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 78%;
+  align-self: center;
+}
+
+.go {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  color: var(--ink);
+  font-size: max(10px, calc(var(--u) * 0.72));
+  letter-spacing: 0.22em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 0.6s var(--ease);
+}
+
+.goHl {
+  padding: 0.15em 0.4em;
+  background: var(--ink);
+  color: var(--paper);
+  transition:
+    background-color 0.6s var(--ease),
+    color 0.6s var(--ease);
+}
+
+/* ================= the crop box ================= */
+
+.crop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.win {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  will-change: transform;
+}
+
 .films {
   position: absolute;
   left: 0;
@@ -194,487 +385,241 @@
   position: absolute;
   left: 0;
   top: 0;
-  max-width: none; /* the global media reset would clamp it to the 0-wide wrapper */
+  max-width: none;
   max-height: none;
   object-fit: cover;
-  background: #000;
+  background: #111;
   transform-origin: 50% 50%;
   will-change: transform;
   opacity: 0;
-  /* the outgoing film stays put under the incoming one, then drops away */
-  transition: opacity 0s 1.5s;
+  transition: opacity 0s 1.4s;
 }
 
 .filmOn {
   z-index: 1;
   opacity: 1;
-  transition: opacity 0.9s var(--ease) 0.45s;
+  transition: opacity 0.7s var(--ease) 0.3s;
 }
 
-/* in Beyond the film is the whole room: one layer of shade so the bar, the
-   line and the strip read on it */
-.shade {
+.edge {
   position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 1.4s var(--ease);
-  background:
-    radial-gradient(ellipse 62% 46% at 50% 47%, rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.16) 55%, transparent 80%),
-    linear-gradient(to bottom, rgb(0 0 0 / 0.5), transparent 20%),
-    linear-gradient(to top, rgb(0 0 0 / 0.78), rgb(0 0 0 / 0.3) 18%, transparent 30%);
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  background: var(--ink);
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
-.isBeyond .shade {
-  opacity: 1;
+/* a square handle on each corner */
+.handle {
+  position: absolute;
+  left: calc(var(--u) * -0.5);
+  top: calc(var(--u) * -0.5);
+  width: calc(var(--u) * 1);
+  height: calc(var(--u) * 1);
+  min-width: 8px;
+  min-height: 8px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  will-change: transform;
 }
 
-/* and the room behind it steps out of the way */
-.vignette {
-  transition: opacity 1.2s var(--ease);
+.tagAnchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
 }
 
-.isBeyond .vignette {
-  opacity: 0;
-  transition-delay: 0.9s;
+.tag {
+  position: absolute;
+  left: 0;
+  bottom: calc(var(--u) * 1);
+  padding: calc(var(--u) * 0.25) calc(var(--u) * 0.55);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: max(9px, calc(var(--u) * 0.66));
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: tagIn 0.6s var(--ease) both;
 }
 
-/* once the frame has opened past the screen its corners are out of sight:
-   square them, so the film needs no rounded clip (data-open, set by the engine) */
-.root[data-open] .frame {
-  border-radius: 0;
-}
-
-@keyframes fadeUp {
+@keyframes tagIn {
   from {
     opacity: 0;
     transform: translateY(4px);
   }
 }
 
-/* ================= the line ================= */
+/* ================= Beyond: the film is the page ================= */
 
-.compose {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: var(--top);
-  bottom: var(--bottom);
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.logline {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--gap);
-  font-size: var(--hs);
-  font-weight: 300;
-  line-height: 0.95;
-  letter-spacing: -0.03em;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-/* each half rides the slit in the opening (moved by the engine) */
-.line {
-  display: block;
-  will-change: transform;
-}
-
-.mask {
-  display: block;
-  overflow: hidden;
-  padding: 0.06em 0.08em 0.08em;
-}
-
-.words {
-  display: block;
-  white-space: nowrap;
-  text-shadow: 0 2px 34px rgb(0 0 0 / 0.45);
-}
-
-/* the frame's place, held open between the two halves */
-.spacer {
-  display: block;
-  flex: none;
-  width: var(--fw);
-  height: calc(var(--fw) * 0.5625);
-}
-
-/* ================= top bar ================= */
-
-.topbar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 6;
-  height: var(--top);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--ui);
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-}
-
-.logo img {
-  display: block;
-  height: clamp(36px, 3.8vw, 56px);
-  width: auto;
-}
-
-.nav {
-  display: flex;
-  gap: clamp(22px, 3vw, 48px);
-}
-
-.navLink {
-  color: var(--paper);
-  text-decoration: none;
-}
-
-/* the words roll to a second copy on hover */
-.roll {
-  position: relative;
-  display: inline-grid;
-  overflow: hidden;
-  height: 1.3em;
-  line-height: 1.3em;
-}
-
-.roll span {
-  grid-area: 1 / 1;
-  transition: transform 0.6s var(--ease);
-}
-
-.roll span + span {
-  transform: translateY(105%);
-}
-
-.navLink:hover .roll span,
-.navLink:focus-visible .roll span {
-  transform: translateY(-105%);
-}
-
-.navLink:hover .roll span + span,
-.navLink:focus-visible .roll span + span {
-  transform: none;
-}
-
-.navLink:focus-visible,
-.logo:focus-visible {
-  outline: 1px solid var(--paper);
-  outline-offset: 6px;
-}
-
-/* ================= the three formats ================= */
-
-.formats {
-  position: absolute;
-  left: var(--ui);
-  right: var(--ui);
-  bottom: var(--ui);
-  z-index: 6;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: clamp(16px, 2.6vw, 44px);
-}
-
-.format {
-  position: relative;
-  padding-top: 18px;
-  opacity: 0.42;
-  transition: opacity 0.6s var(--ease);
-}
-
-.formatOn,
-.format:hover,
-.format:focus-within {
-  opacity: 1;
-}
-
-/* a hairline; the format on screen fills it as its time runs */
-.formatBar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 1px;
-  background: rgb(247 242 238 / 0.24);
-  overflow: hidden;
-}
-
-.formatFill {
-  position: absolute;
-  inset: 0;
+.isBeyond .edge {
   background: var(--paper);
-  transform: scaleX(0);
-  transform-origin: 0 50%;
-  will-change: transform;
 }
 
-/* the whole column picks the format */
-.formatPick {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
+.isBeyond .handle {
+  border-color: var(--paper);
 }
 
-.formatPick::after {
-  content: "";
-  position: absolute;
-  inset: -6px 0 -6px;
+.isBeyond .tag {
+  background: var(--paper);
+  color: var(--ink);
 }
 
-.formatPick:disabled {
-  cursor: default;
-}
-
-.formatPick:focus-visible {
-  outline: none;
-}
-
-.format:has(.formatPick:focus-visible) .formatLabel {
-  text-decoration: underline;
-  text-underline-offset: 6px;
-  text-decoration-thickness: 1px;
-}
-
-/* the x in 16x9: light and lowercase */
-.by {
-  margin: 0 0.06em;
-  font-size: 0.78em;
-  font-weight: 200;
-  text-transform: lowercase;
-  opacity: 0.8;
-}
-
-.formatNo {
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.7;
-}
-
-.formatLabel {
-  font-size: clamp(20px, 1.9vw, 32px);
-  font-weight: 300;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
-}
-
-.formatLine {
-  margin: 12px 0 0;
-  font-size: 10.5px;
-  line-height: 1.75;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
-
-.formatLine span {
-  display: block;
-  opacity: 0.55;
-}
-
-/* the way in, on the format on screen */
-.formatGo {
-  position: absolute;
-  z-index: 1;
-  top: 22px;
-  right: 0;
-  color: var(--paper);
-  font-size: 10.5px;
-  letter-spacing: 0.2em;
-  text-decoration: none;
-  text-transform: uppercase;
-  opacity: 0;
-  transform: translateX(-8px);
-  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
-  pointer-events: none;
-}
-
-.formatOn .formatGo {
-  opacity: 1;
-  transform: none;
-  pointer-events: auto;
-}
-
-.formatGo span {
-  display: inline-block;
-  transition: transform 0.5s var(--ease);
-}
-
-.formatGo:hover span,
-.formatGo:focus-visible span {
-  transform: translateX(4px);
-}
-
-.formatGo:focus-visible {
-  outline: 1px solid var(--paper);
-  outline-offset: 4px;
-}
-
-/* ================= phones: the format's line above the strip ================= */
-
-.caption {
-  display: none;
-}
-
-/* ================= cursor ================= */
-
-.cursor {
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: 30;
-  pointer-events: none;
-  will-change: transform;
-}
-
-.ring {
-  position: absolute;
-  left: -30px;
-  top: -30px;
-  width: 60px;
-  height: 60px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgb(247 242 238 / 0.9);
-  border-radius: 50%;
+.isBeyond .go {
   color: var(--paper);
 }
 
-.ringArrow {
-  font-size: 15px;
-}
-
-.ringLabel {
-  position: absolute;
-  left: calc(100% + 14px);
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  text-shadow: 0 1px 12px rgb(0 0 0 / 0.6);
-}
-
-@media (hover: none) {
-  .cursor {
-    display: none;
-  }
+.isBeyond .goHl {
+  background: var(--paper);
+  color: var(--ink);
 }
 
 /* ================= phones ================= */
 
 @media (max-width: 760px) {
-  .numeral {
-    font-size: 46vw;
+  .bar {
+    margin: 14px 16px 0;
+    height: 52px;
+    padding: 0 14px;
+    gap: 14px;
   }
 
-  .root {
-    --top: 72px;
-    --bottom: 196px;
-    --fw: min(86vw, calc((100svh - 330px) * 1.78));
-    --hs: 8.6vw;
-    --gap: 14px;
-  }
-
-  .topbar {
-    font-size: 10px;
-    letter-spacing: 0.18em;
+  .mark {
+    height: 28px;
   }
 
   .nav {
-    gap: 18px;
-  }
-
-
-
-  .formats {
-    gap: 12px;
-  }
-
-  .format {
-    padding-top: 14px;
-  }
-
-  .formatPick {
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .formatLabel {
-    font-size: 17px;
-  }
-
-  .formatLine,
-  .formatGo {
     display: none;
   }
 
-  .caption {
-    position: absolute;
-    left: var(--ui);
-    right: var(--ui);
-    bottom: calc(var(--ui) + 74px);
-    z-index: 6;
+  .burger {
+    margin-left: auto;
+    width: 26px;
+    height: 26px;
+    gap: 5px;
+  }
+
+  .grid {
+    background-size: 20vw 20vw;
+    background-position: 16px 14px;
+  }
+
+  .body {
+    left: 16px;
+    right: 16px;
+    top: 82px;
+    bottom: 18px;
     display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px;
+    flex-direction: column;
+    gap: 0;
   }
 
-  .captionText {
-    margin: 0;
+  .copy {
+    display: contents;
+  }
+
+  .eyebrow {
+    order: 1;
+    margin: 8px 0 0;
+    font-size: 9.5px;
+  }
+
+  .title {
+    order: 2;
+    margin: 12px 0 0;
+    font-size: 8.6vw;
+  }
+
+  .stage {
+    order: 3;
+    flex: 1;
+    min-height: 0;
+    margin: 16px 0 6px;
+  }
+
+  .slot {
+    max-height: 100%;
+  }
+
+  .go {
+    position: static;
+    align-self: flex-end;
+    margin-top: 12px;
     font-size: 10px;
-    line-height: 1.7;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    animation: fadeUp 0.7s var(--ease) both;
   }
 
-  .captionText span {
-    display: block;
-    opacity: 0.55;
+  .lede {
+    display: none;
   }
 
-  .captionGo {
-    flex: none;
-    color: var(--paper);
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    text-decoration: none;
-    text-transform: uppercase;
+  .tools {
+    order: 4;
+    margin-top: 12px;
+  }
+
+  .toolsLabel {
+    font-size: 9px;
+    margin-bottom: 8px;
+  }
+
+  .tool {
+    padding: 10px 10px 12px;
+    gap: 4px;
+  }
+
+  .toolNo {
+    font-size: 9px;
+  }
+
+  .toolNo i {
+    width: 5px;
+    height: 5px;
+  }
+
+  .toolLabel {
+    font-size: 15px;
+  }
+
+  .toolLine {
+    font-size: 8.5px;
+    letter-spacing: 0.14em;
+  }
+
+  .handle {
+    width: 10px;
+    height: 10px;
+    left: -5px;
+    top: -5px;
+  }
+
+  .tag {
+    font-size: 9px;
+    padding: 3px 6px;
+    bottom: 9px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .captionText {
+  .tag {
     animation: none;
   }
   .film,
   .filmOn,
-  .lightFilm,
-  .lightOn {
+  .tool {
     transition: none;
   }
+}
+
+/* Beyond: the label reads on the film; the crop's tag would sit under the header */
+.isBeyond .toolsLabel {
+  color: var(--paper);
+  transition: color 0.6s var(--ease);
+}
+
+.isBeyond .tag {
+  visibility: hidden;
 }
