@@ -37,20 +37,27 @@
 
 /* ================= the film ================= */
 
-/* a touch larger than the screen, so Beyond can look around without an edge */
+/* the films sit at the frame's centre (placed by the engine); each is laid
+   out at the frame's resting size and scaled to fill it */
 .films {
   position: absolute;
-  inset: 0;
-  transform: scale(1.08);
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
   will-change: transform;
 }
 
 .film {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  left: 0;
+  top: 0;
+  max-width: none; /* the global media reset would clamp it to the 0-wide wrapper */
+  max-height: none;
   object-fit: cover;
+  background: #000;
+  transform-origin: 50% 50%;
+  will-change: transform;
   opacity: 0;
   /* the outgoing film stays put under the incoming one, then drops away */
   transition: opacity 0s 1.5s;
@@ -62,9 +69,8 @@
   transition: opacity 0.9s var(--ease) 0.45s;
 }
 
-/* beyond the frame: the film in shadow. Four solid panels round the frame,
-   in the frame's own space (the engine places and turns this group); the group
-   is faded as one, so where panels overlap it stays one even shade. */
+/* black round the frame: four solid panels, in the frame's own space (the
+   engine places and turns this group), overlapping at the corners */
 .veil {
   position: absolute;
   left: 0;
@@ -73,7 +79,7 @@
   height: 0;
   z-index: 1;
   pointer-events: none;
-  will-change: transform, opacity;
+  will-change: transform;
 }
 
 .veilPart {
@@ -91,12 +97,27 @@
   transform: translate(-400vmax, 0);
 }
 
-/* for the bar and the strip to read on any frame */
+/* light spilling softly from the frame onto the black: drawn once at the
+   frame's resting size, then scaled and turned with it */
+.glow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-shadow:
+    0 0 60px 0 rgb(247 242 238 / 0.07),
+    0 0 180px 40px rgb(247 242 238 / 0.05);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* in Beyond, for the bar and the strip to read on any frame */
 .shade {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.4s var(--ease);
   background:
     linear-gradient(to bottom, rgb(0 0 0 / 0.5), transparent 20%),
     linear-gradient(to top, rgb(0 0 0 / 0.78), rgb(0 0 0 / 0.3) 18%, transparent 30%);
@@ -113,6 +134,7 @@
   transition: opacity 1.4s var(--ease);
 }
 
+.isBeyond .shade,
 .isBeyond .shadeBeyond {
   opacity: 1;
 }

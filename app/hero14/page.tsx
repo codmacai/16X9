@@ -26,21 +26,21 @@ import styles from "./hero14.module.css";
 // ===========================================================================
 // HERO 14 — the homepage. "Stories beyond the frame", played out on screen.
 //
-// One film fills the screen. A frame over it shows the story in full light;
-// beyond the frame the same film carries on, in shadow. The frame is the
-// navigation: it holds 16×9, turns a quarter like a phone going vertical to
-// become 9×16 (the film behind it never moves, only the window onto it), and
-// for Beyond it opens past the edges of the screen, and the visitor can look
-// around the film with the pointer. The three cycle on their own; the strip
-// at the foot picks one, and each leads to its page.
+// A viewfinder frame on black, and the whole film inside it. The frame is
+// the navigation: it holds 16×9, turns a quarter like a phone going vertical
+// to become 9×16 (the film stays upright and fills it), and for Beyond it
+// opens past the edges of the screen: the film breaks out of the frame, and
+// the visitor can look around it with the pointer. The three cycle on their
+// own; the strip at the foot picks one, and each leads to its page.
 //
 // Opening: on black the line rises, a slit of light opens between its two
-// halves and pushes them apart into the frame, the corner marks close in, and
-// then the film fades up beyond the frame.
+// halves and pushes them apart into the frame, then the corner marks close in
+// and light spills softly round it.
 //
 // Everything that moves per frame is a transform or an opacity, so the
-// compositor does it all: the veil is four solid panels that slide round the
-// frame, never a shape that is redrawn. No filters, no blend modes, and one
+// compositor does it all: the film is scaled, never resized, and the black
+// round the frame is four solid panels that slide, never a shape that is
+// redrawn. No filters, no blend modes, and one
 // film playing at a time.
 // ===========================================================================
 
@@ -54,13 +54,27 @@ const NAV = [
   { label: "Contact", href: "#contact" },
 ];
 
-type Film = { desk: string; mobile: string; poster: string; posterMobile: string };
-const film = (name: string): Film => ({
-  desk: `/hero14/films/${name}-1080.mp4`,
-  mobile: `/hero14/films/${name}-m.mp4`, // a vertical crop, for portrait screens
-  poster: `/hero14/films/${name}.webp`,
-  posterMobile: `/hero14/films/${name}-m.webp`,
-});
+// Each film comes in two cuts: one for wide screens and a lighter one for
+// portrait screens (phones). `aspect` is the file's width / height.
+type Cut = { src: string; poster: string; aspect: number };
+type Film = { desk: Cut; small: Cut };
+const F = "/hero14/films";
+const VERTICAL_ASPECT = 608 / 1080;
+const FILMS: Record<"wide" | "vertical" | "beyond", Film> = {
+  wide: {
+    desk: { src: `${F}/wide-1080.mp4`, poster: `${F}/wide.webp`, aspect: 16 / 9 },
+    small: { src: `${F}/wide-540.mp4`, poster: `${F}/wide-540.webp`, aspect: 16 / 9 },
+  },
+  vertical: {
+    desk: { src: `${F}/vertical-m.mp4`, poster: `${F}/vertical-m.webp`, aspect: VERTICAL_ASPECT },
+    small: { src: `${F}/vertical-m.mp4`, poster: `${F}/vertical-m.webp`, aspect: VERTICAL_ASPECT },
+  },
+  beyond: {
+    desk: { src: `${F}/beyond-1080.mp4`, poster: `${F}/beyond.webp`, aspect: 16 / 9 },
+    // full screen on a phone: the vertical crop
+    small: { src: `${F}/beyond-m.mp4`, poster: `${F}/beyond-m.webp`, aspect: VERTICAL_ASPECT },
+  },
+};
 
 type Mode = {
   key: string;
@@ -88,7 +102,7 @@ const MODES: Mode[] = [
     detail: "TVCs · Brand films · Documentaries",
     href: "#16x9",
     title: "Desert — brand film",
-    film: film("wide"),
+    film: FILMS.wide,
     portrait: false,
     beyond: false,
   },
@@ -101,7 +115,7 @@ const MODES: Mode[] = [
     detail: "Social · Branded content",
     href: "#9x16",
     title: "Movement — social cut",
-    film: film("vertical"),
+    film: FILMS.vertical,
     portrait: true,
     beyond: false,
   },
@@ -114,7 +128,7 @@ const MODES: Mode[] = [
     detail: "Immersive · Interactive",
     href: "#beyond",
     title: "Dubai — look around",
-    film: film("beyond"),
+    film: FILMS.beyond,
     portrait: false,
     beyond: true,
   },
@@ -128,14 +142,12 @@ const T = {
   open: 2.1, // the slit opens into the frame
   openDur: 1.25,
   marks: 2.95, // corner marks and viewfinder close in
-  beyond: 3.15, // the film fades up beyond the frame
   ui: 3.3, // top bar and format strip
   settle: 4.7, // from here the hero answers the pointer
 };
 const MORPH = 1.45; // 16×9 ⇄ 9×16
 const MORPH_BEYOND = 1.75; // into or out of Beyond
 const DWELL = 6.5; // seconds on each format before the next
-const VEIL = 0.74; // how dark the film is beyond the frame
 const MARK_GAP = 10; // corner marks sit this far outside the frame
 const PAN = 3; // how far Beyond lets you look around, in % of the screen
 
@@ -161,7 +173,7 @@ const pad2 = (n: number) => String(n).padStart(2, "0");
 const timecode = (frame: number) =>
   `TC 00:${pad2(Math.floor(frame / 1500) % 60)}:${pad2(Math.floor(frame / 25) % 60)}:${pad2(frame % 25)}`;
 
-// Portrait screens get the vertical crop of each film (sharper, a third of the size).
+// Portrait screens get the small cut of each film.
 const PORTRAIT_Q = "(max-aspect-ratio: 1/1)";
 const subscribePortrait = (cb: () => void) => {
   const mq = window.matchMedia(PORTRAIT_Q);
@@ -171,7 +183,7 @@ const subscribePortrait = (cb: () => void) => {
 const noopSubscribe = () => () => {};
 
 type FrameState = { angle: number; s: number; wx: number; o: number; g: number; bo: number };
-type Engine = { go: (i: number) => void; inside: (x: number, y: number) => boolean };
+type Engine = { go: (i: number) => void; inside: (x: number, y: number) => boolean; refresh: () => void };
 
 export default function Hero14() {
   const reduce = !!useReducedMotion();
@@ -201,6 +213,7 @@ export default function Hero14() {
   const filmsRef = useRef<HTMLDivElement>(null);
   const veilRef = useRef<HTMLDivElement>(null);
   const edgeRef = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLSpanElement>(null);
   const partRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const lineRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const marksRef = useRef<HTMLDivElement>(null);
@@ -245,6 +258,8 @@ export default function Hero14() {
     // The frame's resting size and place come from the layout (the gap held
     // open between the two halves of the line), so CSS is the one source.
     const geo = { cx: 0, cy: 0, W: 1, H: 1, vw: 1, vh: 1, left: 0, top: 0, roomTop: 0, roomBottom: 0, B: 1 };
+    const filmBase = new Map<HTMLVideoElement, { w: number; h: number; css: string }>();
+    const glow = glowRef.current;
     const measure = () => {
       const r = root.getBoundingClientRect();
       const s = spacer.getBoundingClientRect();
@@ -271,6 +286,26 @@ export default function Hero14() {
           el.style.width = `${i < 2 ? 2 * B : B}px`;
           el.style.height = `${i < 2 ? B : 2 * B}px`;
         });
+      }
+      // Each film is laid out once at the frame's resting size in its own
+      // shape (so its poster is drawn sharp), then only ever scaled.
+      filmBase.clear();
+      videoRefs.current.forEach((v) => {
+        if (!v) return;
+        const a = Number(v.dataset.aspect) || 16 / 9;
+        const w = a >= 1 ? geo.W : geo.W * a;
+        const h = a >= 1 ? geo.W / a : geo.W;
+        v.style.width = `${w}px`;
+        v.style.height = `${h}px`;
+        v.style.marginLeft = `${-w / 2}px`;
+        v.style.marginTop = `${-h / 2}px`;
+        filmBase.set(v, { w, h, css: "" });
+      });
+      if (glow) {
+        glow.style.width = `${geo.W}px`;
+        glow.style.height = `${geo.H}px`;
+        glow.style.marginLeft = `${-geo.W / 2}px`;
+        glow.style.marginTop = `${-geo.H / 2}px`;
       }
     };
     measure();
@@ -300,7 +335,7 @@ export default function Hero14() {
     let lastBase = "";
     let lastOff = Number.NaN;
     const render = () => {
-      const { cx, cy, W, H } = geo;
+      const { cx, cy, W, H, vw, vh } = geo;
       const hw = (W * st.s * st.wx) / 2;
       const hh = (H * st.s * st.o) / 2;
       const rad = (st.angle * Math.PI) / 180;
@@ -341,6 +376,29 @@ export default function Hero14() {
         if (el) el.style.transform = `translate3d(${f1(x)}px, ${f1(y)}px, 0) scale(${f1(sx)}, ${f1(sy)})`;
       });
       edge.style.opacity = String(st.bo);
+      // the light spilling round the frame
+      if (glow) {
+        glow.style.transform = `scale(${(st.s * st.wx).toFixed(4)}, ${(st.s * st.o).toFixed(4)})`;
+        glow.style.opacity = String(st.bo);
+      }
+
+      // The film stays upright and fills the frame: scaled to cover the frame's
+      // upright bounds, which at rest are the frame itself, so the whole film
+      // shows. (While the frame turns, the black round it trims the corners.)
+      // The frame's opening in the intro doesn't shrink the film: the slit opens
+      // onto it at full size. In Beyond the film covers the screen, with a
+      // little room to look around.
+      const hwN = (W * st.s) / 2;
+      const hhN = (H * st.s) / 2;
+      const hx = Math.min(Math.abs(c) * hwN + Math.abs(sn) * hhN, Math.max(cx, vw - cx) * 1.08);
+      const hy = Math.min(Math.abs(sn) * hwN + Math.abs(c) * hhN, Math.max(cy, vh - cy) * 1.08);
+      filmBase.forEach((b, v) => {
+        const css = `scale(${Math.max((2 * hx) / b.w, (2 * hy) / b.h).toFixed(4)})`;
+        if (css !== b.css) {
+          v.style.transform = css;
+          b.css = css;
+        }
+      });
 
       // corner marks, turning with the frame
       const g = st.g;
@@ -449,23 +507,21 @@ export default function Hero14() {
       const ly = dx * Math.sin(rad) + dy * Math.cos(rad);
       return Math.abs(lx) <= (geo.W * st.s * st.wx) / 2 && Math.abs(ly) <= (geo.H * st.s * st.o) / 2;
     };
-    engineRef.current = { go, inside };
+    const refresh = () => {
+      measure();
+      render();
+    };
+    engineRef.current = { go, inside, refresh };
 
     render();
 
     // ---- the opening ----
     const timers: number[] = [];
     const later = (t: number, fn: () => void) => timers.push(window.setTimeout(fn, t * 1000));
-    let veilAnim: AnimationPlaybackControls | null = null;
-    if (reduce) {
-      veil.style.opacity = String(VEIL);
-    } else {
+    if (!reduce) {
       later(T.slit, () => to("frame", { wx: 1, o: Math.min(1, 2 / geo.H) }, T.slitDur, EASE_CINE));
       later(T.open, () => to("frame", { o: 1 }, T.openDur, EASE_CINE));
       later(T.marks, () => to("marks", { bo: 1, g: MARK_GAP }, 1.1, EASE));
-      later(T.beyond, () => {
-        veilAnim = animate(veil, { opacity: VEIL }, { duration: 1.8, ease: [...EASE] });
-      });
     }
 
     // ---- resize: re-measure, and hold the current format's size ----
@@ -557,7 +613,9 @@ export default function Hero14() {
       pan.x += (tx - pan.x) * k;
       pan.y += (ty - pan.y) * k;
       if (films) {
-        const css = `translate3d(${pan.x.toFixed(3)}%, ${pan.y.toFixed(3)}%, 0) scale(1.08)`;
+        const fx = geo.cx + (pan.x / 100) * geo.vw;
+        const fy = geo.cy + (pan.y / 100) * geo.vh;
+        const css = `translate3d(${fx.toFixed(1)}px, ${fy.toFixed(1)}px, 0)`;
         if (css !== panCss) {
           films.style.transform = css;
           panCss = css;
@@ -583,7 +641,6 @@ export default function Hero14() {
       window.clearTimeout(hudTimer);
       tweens.frame?.stop();
       tweens.marks?.stop();
-      veilAnim?.stop();
       ro.disconnect();
       window.removeEventListener("pointermove", onMove);
       document.documentElement.removeEventListener("pointerleave", onLeave);
@@ -591,6 +648,11 @@ export default function Hero14() {
       engineRef.current = null;
     };
   }, [reduce]);
+
+  // the films mount after hydration (and change cut on rotation): size them
+  useEffect(() => {
+    engineRef.current?.refresh();
+  }, [isClient, portraitScreen]);
 
   // a new format: the frame turns to it
   useEffect(() => {
@@ -682,7 +744,7 @@ export default function Hero14() {
       onPointerDown={onDown}
       onPointerUp={onUp}
     >
-      {/* ================= the film: fills the screen ================= */}
+      {/* ================= the film: inside the frame ================= */}
       <div ref={filmsRef} className={styles.films} aria-hidden="true">
         {isClient &&
           MODES.map((md, i) => (
@@ -692,8 +754,9 @@ export default function Hero14() {
                 videoRefs.current[i] = el;
               }}
               className={`${styles.film} ${i === mode ? styles.filmOn : ""}`}
-              src={portraitScreen ? md.film.mobile : md.film.desk}
-              poster={portraitScreen ? md.film.posterMobile : md.film.poster}
+              src={(portraitScreen ? md.film.small : md.film.desk).src}
+              poster={(portraitScreen ? md.film.small : md.film.desk).poster}
+              data-aspect={(portraitScreen ? md.film.small : md.film.desk).aspect}
               muted
               loop
               playsInline
@@ -704,7 +767,7 @@ export default function Hero14() {
           ))}
       </div>
 
-      {/* beyond the frame, the film carries on in shadow */}
+      {/* black round the frame (and the light spilling from it) */}
       <div ref={veilRef} className={styles.veil} aria-hidden="true">
         {["Above", "Below", "Left", "Right"].map((side, i) => (
           <span
@@ -715,6 +778,7 @@ export default function Hero14() {
             className={`${styles.veilPart} ${styles[`veil${side}`]}`}
           />
         ))}
+        <span ref={glowRef} className={styles.glow} />
       </div>
       <div className={styles.shade} aria-hidden="true" />
       <div className={styles.shadeBeyond} aria-hidden="true" />
