@@ -8,14 +8,13 @@ import {
   useState,
   useSyncExternalStore,
   type CSSProperties,
-  type ReactNode,
-} from "react";
+  } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
-import ProjectView, { type OpenProject } from "../hero7/project-view";
 import { posterFor } from "../hero7/wall-playback";
 import Drawer from "../hero11/drawer";
+import Screening, { Swap, type ScreeningOpen } from "./screening";
 import styles from "./hero21.module.css";
 
 // ===========================================================================
@@ -35,7 +34,7 @@ import styles from "./hero21.module.css";
 // After that the row advances a film every few seconds, like a projector.
 // Scroll, drag, swipe or the arrow keys move it. The
 // row is a lens: films shrink a little as they travel away from the frame.
-// Click the framed film to open it in the player; click any other to frame it.
+// Click the framed film to open it (see screening.tsx); click any other to frame it.
 //
 // Type: Archivo, extended (as in hero 13): light uppercase for the line,
 // small spaced uppercase for everything else.
@@ -160,25 +159,6 @@ const Out = () => (
   </svg>
 );
 
-/** A line that rolls up to its next value. */
-function Swap({ k, children }: { k: number; children: ReactNode }) {
-  return (
-    <span className={styles.swap}>
-      <AnimatePresence initial={false} mode="popLayout">
-        <motion.span
-          key={k}
-          className={styles.swapIn}
-          initial={{ y: "100%", opacity: 0 }}
-          animate={{ y: "0%", opacity: 1, transition: { duration: 0.7, ease: EASE, delay: 0.1 } }}
-          exit={{ y: "-100%", opacity: 0, transition: { duration: 0.35, ease: EASE_CINE } }}
-        >
-          {children}
-        </motion.span>
-      </AnimatePresence>
-    </span>
-  );
-}
-
 // ---------------------------------------------------------------- hero ----
 // The variant depends on the URL and today's date, so it's read on the client only.
 const noopSubscribe = () => () => {};
@@ -204,7 +184,7 @@ function InFrameAcross({ variant }: { variant: HeroVariant }) {
   const [active, setActive] = useState(0);
   const [typeOn, setTypeOn] = useState(false);
   const [ready, setReady] = useState(false);
-  const [project, setProject] = useState<OpenProject | null>(null);
+  const [project, setProject] = useState<ScreeningOpen | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [label, setLabel] = useState<"play" | "view" | null>(null);
 
@@ -448,7 +428,8 @@ function InFrameAcross({ variant }: { variant: HeroVariant }) {
     const g = geoRef.current;
     setProject({
       index: activeRef.current,
-      rect: { left: (g.vw - g.w) / 2, top: g.cy - g.h / 2, width: g.w, height: g.h },
+      // the row's frame, outer edge: the screening frame grows out of it
+      from: { left: (g.vw - g.w) / 2 - g.m, top: g.cy - g.h / 2 - g.m, width: g.w + 2 * g.m, height: g.h + 2 * g.m },
       time: videoRef.current?.currentTime ?? 0,
     });
   }, []);
@@ -613,8 +594,8 @@ function InFrameAcross({ variant }: { variant: HeroVariant }) {
         </button>
       </header>
 
-      {/* under the bar, on the left: the line */}
-      <p className={styles.headline}>
+      {/* the line, centred just above the frame */}
+      <p className={styles.headline} style={{ top: g.cy - g.h / 2 - g.m - (g.small ? 28 : 36) }}>
         {HEADLINE.map((l, i) => (
           <span key={l} className={styles.mask}>
             <span className={styles.riseLine} style={rise(i)}>
@@ -623,18 +604,6 @@ function InFrameAcross({ variant }: { variant: HeroVariant }) {
           </span>
         ))}
       </p>
-
-      {/* top right: where we are in the reel */}
-      <div className={styles.count} aria-hidden="true">
-        <span className={styles.mask}>
-          <span className={styles.riseLine} style={rise(1)}>
-            <Swap k={active}>{pad2(active + 1)}</Swap>
-          </span>
-        </span>
-        <span className={`${styles.countAll} ${styles.rise}`} style={rise(3)}>
-          /{pad2(N)}
-        </span>
-      </div>
 
       {/* under the frame: the framed film */}
       <div className={`${styles.caption} ${styles.rise}`} style={{ top: g.cy + g.h / 2 + g.m + 44, ...rise(4) }}>
@@ -656,14 +625,11 @@ function InFrameAcross({ variant }: { variant: HeroVariant }) {
       {/* the foot: how to move, and the count on phones */}
       <div className={`${styles.hint} ${styles.rise}`} style={rise(7)}>
         <p>{g.small ? "Swipe to browse" : "Scroll, drag or use the arrow keys"}</p>
-        {g.small ? (
-          <p>
-            {pad2(active + 1)}
-            <span className={styles.mute}>/{pad2(N)}</span>
-          </p>
-        ) : (
-          <p className={styles.mute}>&copy; 2026 16x9</p>
-        )}
+        <p className={styles.footCount}>
+          <Swap k={active}>{pad2(active + 1)}</Swap>
+          <span className={styles.mute}>/{pad2(N)}</span>
+        </p>
+        <p className={`${styles.mute} ${styles.copy}`}>&copy; 2026 16x9</p>
       </div>
 
       {/* the word that follows the cursor over the row */}
@@ -685,7 +651,19 @@ function InFrameAcross({ variant }: { variant: HeroVariant }) {
 
       <Menu open={menuOpen} reduce={reduce} onClose={() => setMenuOpen(false)} />
       <AnimatePresence>
-        {project && <ProjectView key="project" clips={clips} open={project} onClose={() => setProject(null)} />}
+        {project && (
+          <Screening
+            key="screening"
+            clips={clips}
+            open={project}
+            category={(i) => CATEGORY[i % CATEGORY.length]}
+            services={(i) => SERVICES[i % SERVICES.length]}
+            onClose={(i) => {
+              setProject(null);
+              goTo(i); // the row comes back on the film you were watching
+            }}
+          />
+        )}
       </AnimatePresence>
     </section>
   );

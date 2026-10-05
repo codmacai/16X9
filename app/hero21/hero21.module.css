@@ -363,47 +363,32 @@
   outline: none;
 }
 
-/* ---- under the bar, on the left: the line ---- */
+/* ---- the line, centred just above the frame (its foot sits on the given top) ---- */
 
 .headline {
   position: absolute;
-  left: var(--pad);
-  top: calc(var(--nav) + var(--pad) * 1.3 - 0.08em);
+  left: 50%;
   z-index: 500;
   margin: 0;
+  translate: -50% -100%;
   font-size: var(--big);
   font-weight: 300;
   line-height: 0.95;
   letter-spacing: -0.025em;
+  text-align: center;
   text-transform: uppercase;
+  white-space: nowrap;
   pointer-events: none;
 }
 
-/* ---- under the bar, on the right: the count, as large as the line and on its cap line ---- */
-
-.count {
-  position: absolute;
-  right: var(--pad);
-  top: calc(var(--nav) + var(--pad) * 1.3 - 0.08em);
-  z-index: 500;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.18em;
-  margin: 0;
-  font-size: var(--big);
-  font-weight: 300;
-  line-height: 0.95;
-  letter-spacing: -0.025em;
-  font-variant-numeric: tabular-nums;
-  pointer-events: none;
+/* one line on wide screens; on phones each part takes its own line */
+.headline .mask {
+  display: inline-block;
+  vertical-align: top;
 }
 
-.countAll {
-  margin-top: 0.45em;
-  color: var(--mute);
-  font-size: var(--label);
-  font-weight: 400;
-  letter-spacing: 0.2em;
+.headline .mask + .mask {
+  margin-left: 0.28em;
 }
 
 .swap {
@@ -464,14 +449,15 @@
   left: var(--pad);
   right: var(--pad);
   bottom: var(--pad);
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
   gap: 2em;
   z-index: 500;
   font-size: var(--label);
   line-height: 1.8;
   letter-spacing: 0.2em;
-  text-align: right;
+  text-align: left;
   text-transform: uppercase;
   pointer-events: none;
 }
@@ -480,11 +466,40 @@
   margin: 0;
 }
 
+.footCount {
+  font-variant-numeric: tabular-nums;
+}
+
+.copy {
+  text-align: right;
+}
+
 /* ---- phones ---- */
 
 .small {
   --big: 8vw;
   --nav: 58px;
+}
+
+.small .headline {
+  white-space: normal;
+  width: calc(100vw - 2 * var(--pad));
+}
+
+.small .headline .mask {
+  display: block;
+}
+
+.small .headline .mask + .mask {
+  margin-left: 0;
+}
+
+.small .hint {
+  grid-template-columns: 1fr auto;
+}
+
+.small .copy {
+  display: none;
 }
 
 .small .pages {
@@ -500,9 +515,7 @@
 }
 
 
-.small .count {
-  display: none;
-}
+
 
 .small .caption {
   width: calc(100vw - 2 * var(--pad));
@@ -554,6 +567,278 @@
   z-index: 700;
   overflow: hidden;
   background: #0a0a0a;
+}
+
+/* ================= the screening ================= */
+
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  color: var(--ink);
+  font-size: var(--label);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.screenPaper {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+}
+
+.screenTop {
+  position: absolute;
+  left: var(--pad);
+  right: var(--pad);
+  top: 0;
+  height: var(--nav);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.screenNow {
+  margin: 0;
+}
+
+.screenClose {
+  display: flex;
+  align-items: center;
+  gap: 0.9em;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+/* a drawn cross that turns a quarter on hover */
+.screenClose i {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  transition: transform 0.5s var(--ease);
+}
+
+.screenClose i::before,
+.screenClose i::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  margin-top: -0.75px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+
+.screenClose i::after {
+  transform: rotate(-45deg);
+}
+
+.screenClose:hover i,
+.screenClose:focus-visible i {
+  transform: rotate(90deg);
+}
+
+.screenClose:focus-visible {
+  outline: none;
+}
+
+/* the frame: the logo's rectangle, grown */
+.screenFrame {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid var(--ink);
+  will-change: left, top, width, height;
+}
+
+.screenVideo {
+  position: absolute;
+  inset: calc(var(--m, 12px) - 1.5px);
+  display: block;
+  width: calc(100% - 2 * var(--m, 12px) + 3px);
+  height: calc(100% - 2 * var(--m, 12px) + 3px);
+  object-fit: cover;
+  background: #000;
+  cursor: pointer;
+}
+
+.screenTick {
+  position: absolute;
+  left: calc(100% - 0.75px);
+  top: calc(100% + 0.75px);
+  width: 1.5px;
+  height: 22px;
+  background: var(--ink);
+}
+
+.screenTag {
+  position: absolute;
+  left: 100%;
+  top: calc(100% + 7px);
+  font-size: 13px;
+  font-weight: 600;
+  font-stretch: 100%;
+  font-variation-settings: "wdth" 100;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  text-transform: none;
+}
+
+.screenTag span:first-child {
+  position: absolute;
+  right: 7px;
+}
+
+.screenTag span + span {
+  position: absolute;
+  left: 6px;
+}
+
+.screenUnder {
+  position: absolute;
+}
+
+/* the hairline: a wide touch target around a 1px line */
+.screenTrack {
+  position: relative;
+  height: 15px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.screenTrack::before,
+.screenFill {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 7px;
+  height: 1px;
+}
+
+.screenTrack::before {
+  background: rgb(14 14 14 / 0.14);
+}
+
+.screenFill {
+  display: block;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+.screenTrack:focus-visible {
+  outline: 1px dashed rgb(14 14 14 / 0.3);
+  outline-offset: 2px;
+}
+
+.screenRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2em;
+  margin-top: 16px;
+}
+
+.screenTitle {
+  margin: 0;
+  font-size: clamp(20px, 1.9vw, 36px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.screenMeta {
+  margin: 0.9em 0 0;
+  color: var(--mute);
+}
+
+.screenControls {
+  display: flex;
+  align-items: center;
+  gap: 2.2em;
+  padding-top: 0.5em;
+  white-space: nowrap;
+}
+
+.screenTime {
+  font-variant-numeric: tabular-nums;
+}
+
+.screenFoot {
+  position: absolute;
+  left: var(--pad);
+  right: var(--pad);
+  bottom: var(--pad);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 2em;
+}
+
+.screenStep {
+  display: flex;
+  align-items: baseline;
+  gap: 1.4em;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.screenStep:hover .link,
+.screenStep:focus-visible .link {
+  background-size: 100% 1px;
+}
+
+.screenStep:focus-visible {
+  outline: none;
+}
+
+.screenNext {
+  justify-self: end;
+  text-align: right;
+}
+
+.screenEsc {
+  margin: 0;
+}
+
+@media (max-width: 760px), (max-aspect-ratio: 4/5) {
+  .screen {
+    --pad: 16px;
+    --nav: 58px;
+  }
+  .screenRow {
+    flex-direction: column;
+    gap: 1.6em;
+  }
+  .screenControls {
+    gap: 1.6em;
+    padding-top: 0;
+  }
+  .screenFoot {
+    grid-template-columns: 1fr 1fr;
+  }
+  .screenEsc {
+    display: none;
+  }
+  .screenStep span.mute {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
