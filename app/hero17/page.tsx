@@ -18,8 +18,8 @@ import styles from "./hero17.module.css";
 // No block grid: the crop frame carries a monitor's guides (action safe,
 // title safe, thirds, a centre cross), and four faint registration lines run
 // from its edges across the page, moving as the frame changes shape. The
-// switcher is an editing timeline: a ruler, three clips on a track, a
-// playhead running across them as the timer, and a live timecode.
+// switcher is a minimal timeline: one hairline, the formats as words, a
+// red playhead running along it as the timer, and a live timecode.
 //
 // From hero 16: hero 15 on black.
 //
@@ -529,7 +529,6 @@ export default function Hero17() {
                     00:00:00:00
                   </span>
                 </div>
-                <div className={styles.ruler} aria-hidden="true" />
                 <nav
                   className={styles.track}
                   aria-label="Formats"
@@ -548,10 +547,9 @@ export default function Hero17() {
                     >
                       <span className={styles.clipNo}>{md.no}</span>
                       <span className={styles.clipLabel}>{md.label}</span>
-                      <span className={styles.clipLine}>{md.line}</span>
                     </button>
                   ))}
-                  {/* the playhead, moved across the track by the engine */}
+                  {/* one hairline; the playhead (moved by the engine) fills it as it runs */}
                   <span className={styles.playLane} aria-hidden="true">
                     <span ref={playRef} className={styles.play}>
                       <i />

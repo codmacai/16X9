@@ -208,126 +208,121 @@
   opacity: 0.7;
 }
 
-/* ================= the switcher: an editing timeline ================= */
+/* ================= the switcher: a minimal timeline =================
+   One hairline. The formats sit on it as plain words; the playhead runs
+   along it as the timer, the line behind it filled in white. */
 
 .timeline {
   position: relative;
   z-index: 30; /* above the crop box when it leaves the frame */
   margin-top: auto;
+  max-width: calc(var(--u) * 34);
 }
 
 .tlHead {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: calc(var(--u) * 0.8);
-  font-size: max(9px, calc(var(--u) * 0.62));
+  margin-bottom: calc(var(--u) * 1.6);
+  font-size: max(9px, calc(var(--u) * 0.6));
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  opacity: 0.7;
-  transition: color 0.6s var(--ease);
+  opacity: 0.5;
 }
 
 .tc {
-  font-size: max(11px, calc(var(--u) * 0.85));
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   font-variant-numeric: tabular-nums;
-  opacity: 1;
 }
 
-/* the ruler: tick marks, every fifth one taller */
-.ruler {
-  height: calc(var(--u) * 0.9);
-  min-height: 8px;
-  background:
-    repeating-linear-gradient(to right, rgb(255 255 255 / 0.55) 0 1px, transparent 1px calc(var(--u) * 3)),
-    repeating-linear-gradient(to right, rgb(255 255 255 / 0.25) 0 1px, transparent 1px calc(var(--u) * 0.6));
-  background-size: 100% 100%, 100% 45%;
-  background-position: 0 0, 0 100%;
-  background-repeat: no-repeat;
-  border-bottom: 1px solid rgb(255 255 255 / 0.3);
-}
-
-/* the track: three clips side by side, the playhead over them */
+/* the track: three equal stretches of one hairline */
 .track {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  padding-top: 2px;
+  padding-bottom: calc(var(--u) * 1.1);
 }
 
+/* the hairline */
+.track::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: rgb(255 255 255 / 0.22);
+}
+
+/* a format: a word over its stretch of the line */
 .clip {
   position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: calc(var(--u) * 0.3);
+  align-items: baseline;
+  gap: calc(var(--u) * 0.6);
   min-width: 0;
-  padding: calc(var(--u) * 0.75) calc(var(--u) * 0.9) calc(var(--u) * 0.9);
-  border: 1px solid rgb(255 255 255 / 0.28);
-  background: rgb(255 255 255 / 0.04);
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition:
-    background-color 0.45s var(--ease),
-    color 0.45s var(--ease),
-    border-color 0.45s var(--ease);
+  opacity: 0.38;
+  transition: opacity 0.5s var(--ease);
+}
+
+/* a short tick where each stretch begins */
+.clip::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: calc(var(--u) * -1.1 - 3px);
+  width: 1px;
+  height: 7px;
+  background: currentColor;
 }
 
 .clip:disabled {
   cursor: default;
 }
 
-.clip:hover {
-  border-color: rgb(255 255 255 / 0.6);
-}
-
 .clipOn,
-.clipOn:hover {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--paper);
+.clip:hover {
+  opacity: 1;
 }
 
 .clip:focus-visible {
-  outline: 1px solid var(--ink);
-  outline-offset: 3px;
+  outline: none;
+}
+
+.clip:focus-visible .clipLabel {
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  text-decoration-thickness: 1px;
 }
 
 .clipNo {
-  font-size: max(9px, calc(var(--u) * 0.6));
-  letter-spacing: 0.2em;
+  font-size: max(9px, calc(var(--u) * 0.58));
+  letter-spacing: 0.18em;
   font-variant-numeric: tabular-nums;
-  opacity: 0.6;
 }
 
 .clipLabel {
-  font-size: calc(var(--u) * 1.45);
-  font-weight: 300;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  text-transform: uppercase;
-}
-
-.clipLine {
-  font-size: max(9px, calc(var(--u) * 0.58));
-  letter-spacing: 0.2em;
+  font-size: max(12px, calc(var(--u) * 0.95));
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   white-space: nowrap;
-  opacity: 0.6;
 }
 
-/* the playhead: a full-width lane translated by the engine, so the line at
-   its left edge travels across the track (a transform, nothing repaints) */
+/* the playhead: a full-width lane translated by the engine, so the mark at
+   its left edge travels along the line; the line behind it is filled white */
 .playLane {
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(var(--u) * -1.1);
   bottom: -4px;
+  height: 9px;
   overflow: hidden;
   pointer-events: none;
 }
@@ -338,32 +333,29 @@
   will-change: transform;
 }
 
+/* the filled line: from far left up to the playhead */
 .play::before {
   content: "";
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: #e1142b;
+  right: 100%;
+  bottom: 4px;
+  width: 100%;
+  height: 1px;
+  background: var(--ink);
 }
 
 .play i {
   position: absolute;
-  left: -4px;
+  left: -0.5px;
   top: 0;
-  width: 9px;
+  width: 1px;
   height: 9px;
   background: #e1142b;
-  clip-path: polygon(0 0, 100% 0, 100% 55%, 50% 100%, 0 55%);
 }
 
-.isBeyond .tlHead {
-  color: #fff;
-}
-
-.isBeyond .clip:not(.clipOn) {
-  background: rgb(10 10 10 / 0.72);
+.isBeyond .tlHead,
+.isBeyond .clip {
+  text-shadow: 0 1px 10px rgb(0 0 0 / 0.8);
 }
 
 /* ================= the stage: where the crop box sits ================= */
@@ -773,7 +765,8 @@
 @media (max-width: 760px) {
   .timeline {
     order: 4;
-    margin-top: 12px;
+    margin-top: 14px;
+    max-width: none;
   }
 
   .tlHead > span:first-child {
@@ -782,37 +775,20 @@
 
   .tlHead {
     justify-content: flex-end;
+    margin-bottom: 12px;
   }
 
-  .tc {
-    font-size: 11px;
+  .track {
+    padding-bottom: 12px;
   }
 
-  .ruler {
-    height: 8px;
-    background-size: 100% 100%, 100% 45%;
-  }
-
-  .clip {
-    padding: 8px 8px 10px;
-    gap: 3px;
-  }
-
-  .clipNo {
-    font-size: 9px;
+  .clip::after {
+    bottom: -15px;
   }
 
   .clipLabel {
-    font-size: 15px;
-  }
-
-  .clipLine {
-    font-size: 8px;
-    letter-spacing: 0.12em;
-  }
-
-  .playLane {
-    top: -10px;
+    font-size: 12px;
+    letter-spacing: 0.1em;
   }
 
   .safeTitle {
@@ -820,8 +796,3 @@
   }
 }
 
-/* Beyond: the timeline's small type reads on the film */
-.isBeyond .tlHead,
-.isBeyond .tc {
-  text-shadow: 0 1px 10px rgb(0 0 0 / 0.8);
-}
