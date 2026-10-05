@@ -1,12 +1,14 @@
-/* HERO 15 — the 16x9 site in black and white: white paper, black ink, our
+/* HERO 16 — hero 15 on black: a black page, white type and a white line grid.
+   From hero 15: the 16x9 site in black and white, our
    wide Archivo, faint grid rules, the crop-box frame and the aspect-ratio
    toolbar. Sizes are in --u (a 16:9 unit set from JS), so the page scales
    as one. */
 
 .root {
-  --paper: #ffffff;
-  --ink: #0a0a0a;
-  --rule: rgb(10 10 10 / 0.06);
+  /* reversed: the page is black, the ink is white */
+  --paper: #0a0a0a;
+  --ink: #ffffff;
+  --rule: rgb(255 255 255 / 0.13);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --u: 10px;
   position: relative;
@@ -254,7 +256,7 @@
 }
 
 .tool:hover {
-  background: rgb(10 10 10 / 0.05);
+  background: rgb(255 255 255 / 0.08);
 }
 
 .toolOn,
@@ -457,11 +459,11 @@
 /* ================= Beyond: the film is the page ================= */
 
 .isBeyond .edge {
-  background: var(--paper);
+  background: #fff;
 }
 
 .isBeyond .handle {
-  border-color: var(--paper);
+  border-color: #fff;
 }
 
 .isBeyond .tag {
@@ -470,12 +472,12 @@
 }
 
 .isBeyond .go {
-  color: var(--paper);
+  color: #fff;
 }
 
 .isBeyond .goHl {
-  background: var(--paper);
-  color: var(--ink);
+  background: #fff;
+  color: #0a0a0a;
 }
 
 /* ================= phones ================= */
@@ -616,7 +618,7 @@
 
 /* Beyond: the label reads on the film; the crop's tag would sit under the header */
 .isBeyond .toolsLabel {
-  color: var(--paper);
+  color: #fff;
   transition: color 0.6s var(--ease);
 }
 

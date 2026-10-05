@@ -10,10 +10,10 @@ import {
 } from "react";
 import { animate, motion, useReducedMotion, type AnimationPlaybackControls } from "framer-motion";
 import { Archivo } from "next/font/google";
-import styles from "./hero15.module.css";
+import styles from "./hero16.module.css";
 
 // ===========================================================================
-// HERO 15 — the 16x9 site, sister to 9x16.studio, in black and white.
+// HERO 16 — hero 15 on black: a black page with a white line grid.
 //
 // Now full page (no display), white paper and black ink, set in our wide
 // Archivo: the 9x16 grid as faint rules, the crop-box frame with square
@@ -128,7 +128,7 @@ const noopSubscribe = () => () => {};
 type Rect = { x: number; y: number; w: number; h: number };
 type Engine = { go: (i: number) => void; refresh: () => void };
 
-export default function Hero15() {
+export default function Hero16() {
   const reduce = !!useReducedMotion();
   const isClient = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const portraitScreen = useSyncExternalStore(
