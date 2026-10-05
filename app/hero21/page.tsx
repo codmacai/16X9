@@ -11,9 +11,11 @@ import {
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import Link from "next/link";
 import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
 import ProjectView, { type OpenProject } from "../hero7/project-view";
 import { posterFor } from "../hero7/wall-playback";
+import Drawer from "../hero11/drawer";
 import styles from "./hero21.module.css";
 
 // ===========================================================================
@@ -31,7 +33,7 @@ import styles from "./hero21.module.css";
 //   4. The type rises in.
 //
 // After that the row advances a film every few seconds, like a projector.
-// Scroll, drag, swipe, the arrow keys or the index at the foot move it. The
+// Scroll, drag, swipe or the arrow keys move it. The
 // row is a lens: films shrink a little as they travel away from the frame.
 // Click the framed film to open it in the player; click any other to frame it.
 //
@@ -40,7 +42,20 @@ import styles from "./hero21.module.css";
 // ===========================================================================
 
 // ---------------------------------------------------------------- copy ----
-const HEADLINE = ["Bringing brands", "to life"];
+const HEADLINE = ["Stories beyond", "the frame"];
+const NAV = [
+  { label: "Work", href: "#work" },
+  { label: "About", href: "#about" },
+  { label: "Services", href: "#services" },
+  { label: "Contact", href: "#contact" },
+];
+// the house and its sister studios; 16x9 is this site
+const STUDIOS = [
+  { label: "16x9", href: "/", here: true },
+  { label: "9x16", href: "https://9x16.studio/", here: false },
+  { label: "Beyond", href: "#beyond", here: false }, // replace with the Beyond site
+];
+const LOGO_SRC = "/logo.png";
 // one line each, by film (they repeat if there are more films)
 const CATEGORY = [
   "Fashion, Campaign",
@@ -92,7 +107,7 @@ const geoFor = (vw: number, vh: number): Geo => {
     h: (w * 9) / 16,
     gap: small ? 14 : 24,
     m: small ? 9 : 12,
-    cy: small ? vh * 0.5 : vh * 0.47,
+    cy: small ? vh * 0.52 : vh * 0.53,
   };
 };
 const LOGO_BOX = { w: 112, h: 56 }; // the logo's size when it first draws
@@ -106,6 +121,44 @@ function lens(d: number, R: number) {
   const x = a < R ? a - (LENS * a * a) / (2 * R) : R - (LENS * R) / 2 + (1 - LENS) * (a - R);
   return { x: Math.sign(d) * x, s };
 }
+
+// ---------------------------------------------------------------- menu ----
+// Phones: the hero 11 drawer, wiped down over the page like a sheet (as in hero 13).
+function Menu({ open, reduce, onClose }: { open: boolean; reduce: boolean; onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="menu"
+          className={styles.menuSheet}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu"
+          initial={reduce ? { opacity: 0 } : { clipPath: "inset(0% 0% 100% 0%)" }}
+          animate={
+            reduce
+              ? { opacity: 1, transition: { duration: 0 } }
+              : { clipPath: "inset(0% 0% 0% 0%)", transition: { duration: 0.9, ease: EASE_CINE } }
+          }
+          exit={
+            reduce
+              ? { opacity: 0, transition: { duration: 0 } }
+              : { clipPath: "inset(0% 0% 100% 0%)", transition: { duration: 0.75, ease: EASE_CINE } }
+          }
+        >
+          <Drawer onClose={onClose} />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/** The arrow on links that leave this site. */
+const Out = () => (
+  <svg className={styles.out} viewBox="0 0 10 10" aria-hidden="true">
+    <path d="M2.5 7.5l5-5M3.5 2.5h4v4" fill="none" stroke="currentColor" strokeWidth="1.1" />
+  </svg>
+);
 
 /** A line that rolls up to its next value. */
 function Swap({ k, children }: { k: number; children: ReactNode }) {
@@ -152,6 +205,7 @@ function InFrameAcross({ variant }: { variant: HeroVariant }) {
   const [typeOn, setTypeOn] = useState(false);
   const [ready, setReady] = useState(false);
   const [project, setProject] = useState<OpenProject | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [label, setLabel] = useState<"play" | "view" | null>(null);
 
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -181,8 +235,8 @@ function InFrameAcross({ variant }: { variant: HeroVariant }) {
     reduceRef.current = reduce;
   }, [reduce]);
   useEffect(() => {
-    pausedRef.current = !!project;
-  }, [project]);
+    pausedRef.current = !!project || menuOpen;
+  }, [project, menuOpen]);
 
   // ---- moving the row ----
   const goTo = useCallback(
@@ -338,13 +392,13 @@ function InFrameAcross({ variant }: { variant: HeroVariant }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // the film rests under the player
+  // the film rests under the player and the menu
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (project) v.pause();
+    if (project || menuOpen) v.pause();
     else v.play().catch(() => {});
-  }, [project]);
+  }, [project, menuOpen]);
 
   // ---- resize, wheel, keys ----
   useEffect(() => {
@@ -513,7 +567,53 @@ function InFrameAcross({ variant }: { variant: HeroVariant }) {
 
       {/* ================= the type ================= */}
 
-      {/* top left: the line */}
+      {/* the bar: logo (left), the studios (centred over the frame), the pages (right) */}
+      <header className={styles.bar}>
+        <Link href="/" className={`${styles.logo} ${styles.rise}`} style={rise(0)} aria-label="16x9 home">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={LOGO_SRC} alt="16x9" />
+        </Link>
+        <nav className={`${styles.pages} ${styles.rise}`} style={rise(1)} aria-label="Main">
+          {NAV.map((n) => (
+            <a key={n.href} href={n.href} className={styles.link}>
+              {n.label}
+            </a>
+          ))}
+        </nav>
+        <nav className={`${styles.studios} ${styles.rise}`} style={rise(2)} aria-label="Studios">
+          {STUDIOS.map((s, i) => (
+            <span key={s.label} className={styles.studio}>
+              {s.here ? (
+                <a href={s.href} className={`${styles.link} ${styles.here}`} aria-current="page">
+                  {s.label}
+                </a>
+              ) : (
+                <a
+                  href={s.href}
+                  className={styles.link}
+                  {...(s.href.startsWith("http") ? { target: "_blank", rel: "noreferrer" } : {})}
+                >
+                  {s.label}
+                  <Out />
+                </a>
+              )}
+              {i < STUDIOS.length - 1 ? <span className={styles.slash}>/</span> : null}
+            </span>
+          ))}
+        </nav>
+        <button
+          type="button"
+          className={`${styles.menuBtn} ${styles.link} ${styles.rise}`}
+          style={rise(3)}
+          onClick={() => setMenuOpen(true)}
+          disabled={!ready}
+          aria-expanded={menuOpen}
+        >
+          Menu
+        </button>
+      </header>
+
+      {/* under the bar, on the left: the line */}
       <p className={styles.headline}>
         {HEADLINE.map((l, i) => (
           <span key={l} className={styles.mask}>
@@ -553,23 +653,7 @@ function InFrameAcross({ variant }: { variant: HeroVariant }) {
         Film {active + 1} of {N}: {clip.title}
       </p>
 
-      {/* the foot: the index across, and how to move */}
-      <ol className={styles.index} aria-label="Films">
-        {clips.map((c, i) => (
-          <li key={c.src + i} className={styles.rise} style={rise(5 + i * 0.15)}>
-            <button
-              type="button"
-              className={`${styles.indexItem} ${i === active ? styles.indexOn : ""}`}
-              aria-current={i === active ? "true" : undefined}
-              onClick={() => readyRef.current && goTo(i)}
-            >
-              {c.title}
-            </button>
-            {i < N - 1 ? <span className={styles.comma}>,</span> : null}
-          </li>
-        ))}
-      </ol>
-
+      {/* the foot: how to move, and the count on phones */}
       <div className={`${styles.hint} ${styles.rise}`} style={rise(7)}>
         <p>{g.small ? "Swipe to browse" : "Scroll, drag or use the arrow keys"}</p>
         {g.small ? (
@@ -599,6 +683,7 @@ function InFrameAcross({ variant }: { variant: HeroVariant }) {
         </AnimatePresence>
       </div>
 
+      <Menu open={menuOpen} reduce={reduce} onClose={() => setMenuOpen(false)} />
       <AnimatePresence>
         {project && <ProjectView key="project" clips={clips} open={project} onClose={() => setProject(null)} />}
       </AnimatePresence>
