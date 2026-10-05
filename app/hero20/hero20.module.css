@@ -1,0 +1,354 @@
+/* HERO 20 — "Mirage". The picture is a WebGL canvas; everything here is the
+   type laid over it. Archivo extended (as in hero 13), small spaced uppercase,
+   white on the film. */
+
+.root {
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --cine: cubic-bezier(0.76, 0, 0.24, 1);
+  --pad: clamp(16px, 1.8vw, 32px);
+  --label: clamp(10px, 0.78vw, 12px);
+  --nav: clamp(60px, 5.4vw, 88px);
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  min-height: 540px;
+  overflow: hidden;
+  background: #fffbf4; /* the first frame is the glare */
+  color: #fff;
+  font-family: var(--font-sans, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+  font-stretch: 108%;
+  font-variation-settings: "wdth" 108;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.mute {
+  opacity: 0.55;
+}
+
+/* ================= the picture ================= */
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* the films only feed the shader */
+.films {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.video {
+  width: 1px;
+  height: 1px;
+}
+
+/* without WebGL the film simply plays, full bleed */
+.noGL {
+  background: #000;
+}
+
+.noGL .canvas {
+  display: none;
+}
+
+.noGL .films {
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+}
+
+.noGL .video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+}
+
+.noGL .videoOn {
+  opacity: 1;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ================= the type ================= */
+
+.rise {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.9s ease,
+    transform 1s var(--ease);
+  transition-delay: calc(var(--i, 0) * 80ms);
+}
+
+.typeOn .rise {
+  opacity: 1;
+  transform: none;
+}
+
+.link {
+  padding: 0 0 3px;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-decoration: none;
+  background: linear-gradient(currentColor, currentColor) no-repeat 0 100% / 0% 1px;
+  cursor: pointer;
+  transition: background-size 0.5s var(--ease);
+}
+
+.link:hover,
+.link:focus-visible {
+  background-size: 100% 1px;
+  outline: none;
+}
+
+/* ---- the bar ---- */
+
+.bar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 10;
+  height: var(--nav);
+  font-size: var(--label);
+  letter-spacing: 0.2em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 0.25);
+}
+
+.bar > * {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.logo {
+  left: var(--pad);
+  display: block;
+}
+
+.logo img {
+  display: block;
+  height: clamp(24px, 2.1vw, 34px);
+  width: auto;
+}
+
+.studios {
+  left: 50%;
+  translate: -50% -50%;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.studios .link {
+  opacity: 0.6;
+  transition:
+    opacity 0.4s ease,
+    background-size 0.5s var(--ease);
+}
+
+.studios .link:hover,
+.studios .link:focus-visible,
+.studios .here {
+  opacity: 1;
+}
+
+.studios .here {
+  background-size: 100% 1px;
+}
+
+.slash {
+  margin: 0 1.1em;
+  opacity: 0.45;
+}
+
+.out {
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-left: 0.35em;
+  vertical-align: 0.05em;
+}
+
+.pages {
+  right: var(--pad);
+  display: flex;
+  gap: 2.6em;
+}
+
+.menuBtn {
+  right: var(--pad);
+  display: none;
+  background-color: transparent;
+}
+
+.menuBtn:disabled {
+  cursor: default;
+}
+
+/* ---- the horizon: a hairline that draws out from the middle ---- */
+
+.horizon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  height: 1px;
+  background: linear-gradient(90deg, rgb(255 255 255 / 0), rgb(255 255 255 / 0.6) 18%, rgb(255 255 255 / 0.6) 82%, rgb(255 255 255 / 0));
+  transform: scaleX(0);
+  transition: transform 1.8s var(--cine);
+  pointer-events: none;
+}
+
+.lineOn .horizon {
+  transform: none;
+}
+
+.place,
+.now {
+  position: absolute;
+  z-index: 4;
+  margin: 0;
+  translate: 0 calc(-100% - 12px);
+  font-size: var(--label);
+  letter-spacing: 0.2em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 0.3);
+  pointer-events: none;
+}
+
+.place {
+  left: var(--pad);
+}
+
+.now {
+  right: var(--pad);
+  display: flex;
+  align-items: flex-end;
+  gap: 1.6em;
+}
+
+.count {
+  display: inline-flex;
+  font-variant-numeric: tabular-nums;
+}
+
+.swap {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+.swapIn {
+  display: inline-block;
+}
+
+/* ---- the foot ---- */
+
+.foot {
+  position: absolute;
+  left: var(--pad);
+  right: var(--pad);
+  bottom: var(--pad);
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2em;
+  font-size: var(--label);
+  letter-spacing: 0.2em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.foot p {
+  margin: 0;
+  opacity: 0.6;
+}
+
+/* ---- phones ---- */
+
+.small {
+  --nav: 58px;
+}
+
+.small .pages {
+  display: none;
+}
+
+.small .menuBtn {
+  display: block;
+}
+
+.small .slash {
+  margin: 0 0.7em;
+}
+
+.small .place {
+  display: none;
+}
+
+.small .now {
+  top: auto !important;
+  left: var(--pad);
+  bottom: calc(var(--pad) + 3.4em);
+  translate: none;
+  justify-content: space-between;
+}
+
+.small .foot {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.menuSheet {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .horizon {
+    transition: none;
+  }
+}
