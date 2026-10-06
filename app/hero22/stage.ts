@@ -3,14 +3,17 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 
 // ===========================================================================
 // HERO 22 — the screening room.
 //
-// Three wide screens in a U: one facing you, two hinged in toward you, each
-// with a gentle curve of its own. They stand on dark bases over a wet black
-// floor that mirrors them (a blurred, streaked copy under the floor line, not
-// a second render). Everything is unlit shader work, so it stays cheap.
+// Three wide displays stand on a matte concrete floor in a U: one facing you,
+// two turned in toward you. Each is a real slab (a thin matte-black shell with
+// depth) with a matte, anti-glare picture. The pictures are the only light in
+// the room: every screen is also an area light that takes on its film's colour
+// as it plays, so the floor and the frames are lit the way a real room would
+// be, soft and diffuse, no mirror tricks.
 //
 // The camera sits back with a long lens and orbits a pivot in front of the
 // screens: drag to look around, the mouse adds a little parallax. Clicking a
@@ -26,28 +29,34 @@ export type StageEvents = {
   onReady?: () => void;
 };
 
-const SW = 6; // screen width
+const SW = 6; // picture width
 const ASPECT = 2.1; // wide, like a cinema screen; the 16:9 films are cropped to fill
 const SH = SW / ASPECT;
-const CURVE = 15; // each screen's own curve
-const Y0 = 0.55; // bottom edge of the screens
+const BORDER = 0.05; // matte frame around the picture
+const DEPTH = 0.12; // thickness of each display
+const CURVE = 15; // each display's own curve
+const Y0 = 0.16; // bottom edge of the picture
 const YMID = Y0 + SH / 2;
-const ZC = -8; // depth of the centre screen
-const HINGE = THREE.MathUtils.degToRad(62); // how far the side screens turn in
-const GAP = 0.09;
-const CAM_Y = 1.5;
-const LOOK = new THREE.Vector3(0, 1.98, ZC);
+const ZC = -8; // depth of the centre display
+const HINGE = THREE.MathUtils.degToRad(60); // how far the side displays turn in
+const GAP = 0.16;
+const CAM_Y = 1.25;
+const LOOK = new THREE.Vector3(0, 1.62, ZC);
 const CROP = 16 / 9 / ASPECT; // share of the film's height that shows
+const LIGHT = 4.2; // area light strength of a screen at full power
 
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-/** A plane of the given size, bent into a shallow curve that comes toward +z at its ends. */
-function curved(w: number, h: number, yc: number, segs = 40) {
-  const geo = new THREE.PlaneGeometry(w, h, segs, 1);
+/**
+ * Bend a geometry around a vertical axis CURVE behind it: x becomes arc length,
+ * z stays thickness. The ends come toward +z, so the picture is concave.
+ */
+function bend<T extends THREE.BufferGeometry>(geo: T, yc: number): T {
   const p = geo.attributes.position as THREE.BufferAttribute;
   for (let i = 0; i < p.count; i++) {
     const a = p.getX(i) / CURVE;
-    p.setXYZ(i, CURVE * Math.sin(a), p.getY(i) + yc, CURVE * (1 - Math.cos(a)));
+    const r = CURVE - p.getZ(i);
+    p.setXYZ(i, r * Math.sin(a), p.getY(i) + yc, CURVE - r * Math.cos(a));
   }
   p.needsUpdate = true;
   geo.computeVertexNormals();
@@ -55,18 +64,18 @@ function curved(w: number, h: number, yc: number, segs = 40) {
   return geo;
 }
 
-// Where each screen stands: the centre one faces the camera, the side ones are
-// hinged at its edges and turned in.
-const EDGE_A = SW / 2 / CURVE;
+// Where each display stands: the centre one faces the camera, the side ones
+// stand at its edges, turned in.
+const EDGE_A = (SW / 2 + BORDER) / CURVE;
 const EX = CURVE * Math.sin(EDGE_A);
 const EZ = CURVE * (1 - Math.cos(EDGE_A));
 const PLACES = (() => {
   const rotate = (x: number, z: number, b: number) => [x * Math.cos(b) + z * Math.sin(b), -x * Math.sin(b) + z * Math.cos(b)];
   const side = (dir: -1 | 1) => {
     const b = -dir * HINGE;
-    const [lx, lz] = rotate(-dir * EX, EZ, b); // the inner edge, turned
+    const [lx, lz] = rotate(-dir * EX, EZ - DEPTH / 2, b); // its inner back edge, turned
     const [gx, gz] = rotate(dir * GAP, 0, b);
-    return { x: dir * EX + gx - lx, z: ZC + EZ + gz - lz, rot: b };
+    return { x: dir * EX + gx - lx, z: ZC + EZ - DEPTH / 2 + gz - lz, rot: b };
   };
   return [side(-1), { x: 0, z: ZC, rot: 0 }, side(1)];
 })();
@@ -74,154 +83,101 @@ const PLACES = (() => {
 const HASH = /* glsl */ `
   float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 `;
-const CROP_UV = /* glsl */ `
-  vec2 film(vec2 uv){ return vec2(uv.x, 0.5 + (uv.y - 0.5) * ${CROP.toFixed(4)}); }
-`;
 
 const SCREEN_VERT = /* glsl */ `
   varying vec2 vUv;
   void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
 `;
 
-// uPower 0 → 1 switches the screen on like an old set: a white line opens
-// into the picture with a brief overexposed flash.
+// A matte, anti-glare panel: the picture slightly diffused, blacks lifted a
+// touch, a soft falloff to the edges. uPower 0 → 1 switches it on: a white
+// line opens into the picture with a brief overexposed flash. Films are read
+// raw and decoded here, so every browser shows the same colour.
 const SCREEN_FRAG = /* glsl */ `
   uniform sampler2D map;
   uniform float uPower, uDim, uHover, uTime;
   varying vec2 vUv;
   ${HASH}
-  ${CROP_UV}
+  vec3 toLinear(vec3 c){ return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c)); }
+  vec3 sampleFilm(vec2 uv){
+    uv = vec2(uv.x, 0.5 + (uv.y - 0.5) * ${CROP.toFixed(4)});
+    return toLinear(texture2D(map, uv).rgb);
+  }
   void main(){
     vec2 d = vUv - 0.5;
     float openX = smoothstep(0.0, 0.18, uPower);
     float openY = smoothstep(0.12, 0.8, uPower);
     float mask = step(abs(d.x), openX * 0.5) * step(abs(d.y), openY * 0.5 + 0.004);
-    vec3 c = texture2D(map, film(vUv)).rgb;
-    float vig = 1.0 - dot(d * vec2(0.8, 1.3), d * vec2(0.8, 1.3)) * 0.45;
-    float flash = 1.0 + (1.0 - smoothstep(0.25, 1.0, uPower)) * 2.2;
-    vec3 col = c * vig * flash;
-    col = mix(col, vec3(1.0), (1.0 - openY) * 0.85);
-    col += (hash(vUv * vec2(1200.0, 570.0) + fract(uTime)) - 0.5) * 0.016;
-    col *= mix(1.0, 0.26, uDim) * (1.0 + 0.16 * uHover);
+
+    vec3 sharp = sampleFilm(vUv);
+    vec2 o = vec2(0.0016, 0.0034);
+    vec3 soft = (sampleFilm(vUv + o) + sampleFilm(vUv - o) + sampleFilm(vUv + vec2(o.x, -o.y)) + sampleFilm(vUv - vec2(o.x, -o.y))) * 0.25;
+    vec3 c = mix(sharp, soft, 0.3);
+
+    float edge = smoothstep(0.0, 0.035, 0.5 - abs(d.x)) * smoothstep(0.0, 0.05, 0.5 - abs(d.y));
+    float vig = 1.0 - dot(d * vec2(0.7, 1.1), d * vec2(0.7, 1.1)) * 0.35;
+    vec3 col = c * vig * mix(0.86, 1.0, edge) * 1.15 + vec3(0.0035);
+    float flash = 1.0 + (1.0 - smoothstep(0.25, 1.0, uPower)) * 2.5;
+    col *= flash;
+    col = mix(col, vec3(1.6), (1.0 - openY) * 0.9);
+    col += (hash(vUv * vec2(1260.0, 600.0) + fract(uTime)) - 0.5) * 0.006;
+    col *= mix(1.0, 0.18, uDim) * (1.0 + 0.14 * uHover);
     gl_FragColor = vec4(max(col, 0.0) * mask, 1.0);
   }
 `;
 
-// The mirrored copy under the floor: blurred upward, broken into streaks
-// like a wet floor, and fading with depth.
-const WORLD_VERT = /* glsl */ `
-  varying vec2 vUv; varying vec3 vW;
-  void main(){
-    vUv = uv;
-    vec4 w = modelMatrix * vec4(position, 1.0);
-    vW = w.xyz;
-    gl_Position = projectionMatrix * viewMatrix * w;
-  }
-`;
-const REFLECT_FRAG = /* glsl */ `
-  uniform sampler2D map;
-  uniform float uPower, uDim;
-  varying vec2 vUv; varying vec3 vW;
-  ${CROP_UV}
-  void main(){
-    vec3 acc = vec3(0.0);
-    for (int i = 0; i < 8; i++) {
-      float f = float(i) / 7.0;
-      acc += texture2D(map, film(vUv + vec2((f - 0.5) * 0.01, f * 0.06))).rgb;
+/** Concrete: soft blotches and fine grain, used for colour and roughness. */
+function concreteTexture() {
+  const size = 512;
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d")!;
+  const img = g.createImageData(size, size);
+  // value noise at a few scales
+  const grid = (n: number) => Array.from({ length: n * n }, () => Math.random());
+  const scales = [4, 16, 64].map((n) => ({ n, v: grid(n) }));
+  const at = ({ n, v }: { n: number; v: number[] }, x: number, y: number) => {
+    const fx = (x / size) * n;
+    const fy = (y / size) * n;
+    const ix = Math.floor(fx);
+    const iy = Math.floor(fy);
+    const tx = fx - ix;
+    const ty = fy - iy;
+    const s = (k: number) => k * k * (3 - 2 * k);
+    // wrap at the edges, so the tile repeats without a seam
+    const cell = (cx: number, cy: number) => v[(cy % n) * n + (cx % n)];
+    const a = cell(ix, iy);
+    const b = cell(ix + 1, iy);
+    const c2 = cell(ix, iy + 1);
+    const d = cell(ix + 1, iy + 1);
+    return a + (b - a) * s(tx) + (c2 - a) * s(ty) + (a - b - c2 + d) * s(tx) * s(ty);
+  };
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const v = at(scales[0], x, y) * 0.5 + at(scales[1], x, y) * 0.3 + at(scales[2], x, y) * 0.2;
+      const grain = Math.random() * 0.08;
+      const k = Math.round(Math.min(1, 0.35 + v * 0.45 + grain) * 255);
+      const i = (y * size + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = k;
+      img.data[i + 3] = 255;
     }
-    acc /= 8.0;
-    float depth = max(-vW.y, 0.0);
-    float fade = exp(-depth * 0.8) * 0.62;
-    float streak = 0.6 + 0.4 * sin(vW.x * 17.0 + vW.z * 9.0 + sin(vW.x * 5.3 + vW.z * 3.1) * 2.4);
-    float on = smoothstep(0.3, 1.0, uPower);
-    gl_FragColor = vec4(acc * fade * streak * on * mix(1.0, 0.3, uDim), 1.0);
   }
-`;
-
-// Light a screen throws on the floor in front of it: the film's average colour.
-const POOL_FRAG = /* glsl */ `
-  uniform sampler2D map;
-  uniform float uPower, uDim;
-  varying vec2 vUv;
-  void main(){
-    vec3 c = vec3(0.0);
-    c += texture2D(map, vec2(0.2, 0.3)).rgb;
-    c += texture2D(map, vec2(0.5, 0.5)).rgb;
-    c += texture2D(map, vec2(0.8, 0.3)).rgb;
-    c += texture2D(map, vec2(0.35, 0.7)).rgb;
-    c += texture2D(map, vec2(0.65, 0.7)).rgb;
-    c /= 5.0;
-    vec2 d = (vUv - vec2(0.5, 1.0)) * vec2(2.0, 1.15);
-    float fall = exp(-dot(d, d) * 3.0);
-    fall *= smoothstep(0.0, 0.18, vUv.x) * smoothstep(1.0, 0.82, vUv.x) * smoothstep(0.0, 0.4, vUv.y);
-    float on = smoothstep(0.4, 1.0, uPower);
-    gl_FragColor = vec4(c * fall * 0.22 * on * mix(1.0, 0.35, uDim), 1.0);
-  }
-`;
-
-const FLOOR_FRAG = /* glsl */ `
-  varying vec2 vUv; varying vec3 vW;
-  void main(){
-    float r = length(vW.xz - vec2(0.0, ${ZC.toFixed(1)} + 2.0));
-    float alpha = mix(0.3, 1.0, smoothstep(6.0, 20.0, r));
-    gl_FragColor = vec4(vec3(0.0012), alpha);
-  }
-`;
-
-const HAZE_FRAG = /* glsl */ `
-  varying vec2 vUv;
-  void main(){
-    vec2 d = (vUv - vec2(0.5, 0.3)) * vec2(1.0, 1.4);
-    float g = exp(-dot(d, d) * 6.0) * smoothstep(0.0, 0.3, vUv.y);
-    gl_FragColor = vec4(vec3(0.15, 0.13, 0.12) * g * 0.035, 1.0);
-  }
-`;
-
-const LINE_FRAG = /* glsl */ `
-  uniform float uOpacity;
-  varying vec2 vUv;
-  void main(){
-    float ends = smoothstep(0.0, 0.3, vUv.x) * smoothstep(1.0, 0.75, vUv.x);
-    float core = 1.0 - abs(vUv.y - 0.5) * 2.0;
-    gl_FragColor = vec4(vec3(0.85, 0.88, 0.95) * ends * core * uOpacity, 1.0);
-  }
-`;
-
-// Dark metal: a soft sheen across, a thin catch-light along the top edge.
-const METAL_FRAG = /* glsl */ `
-  uniform vec3 uBase;
-  uniform float uTopLight;
-  varying vec2 vUv;
-  void main(){
-    float sheen = 0.65 + 0.35 * sin(vUv.x * 7.0 + 1.0);
-    vec3 c = uBase * sheen + vec3(0.1, 0.09, 0.08) * smoothstep(0.9, 1.0, vUv.y) * uTopLight;
-    gl_FragColor = vec4(c, 1.0);
-  }
-`;
-
-const additive = (frag: string, uniforms: Record<string, THREE.IUniform> = {}) =>
-  new THREE.ShaderMaterial({
-    vertexShader: WORLD_VERT,
-    fragmentShader: frag,
-    uniforms,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  });
-
-const metal = (color: number, topLight: number) =>
-  new THREE.ShaderMaterial({
-    vertexShader: WORLD_VERT,
-    fragmentShader: METAL_FRAG,
-    uniforms: { uBase: { value: new THREE.Color(color) }, uTopLight: { value: topLight } },
-  });
+  g.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(10, 10);
+  tex.anisotropy = 8;
+  return tex;
+}
 
 type Screen = {
   video: HTMLVideoElement;
   texture: THREE.VideoTexture;
   poster: THREE.Texture;
   live: boolean; // showing the video (not the poster) yet
-  mats: THREE.ShaderMaterial[];
+  mat: THREE.ShaderMaterial;
+  light: THREE.RectAreaLight;
+  colour: THREE.Color; // the film's average colour, lighting the room
   power: number;
   powerAt: number; // ms after start when it switches on
   dim: number;
@@ -242,6 +198,8 @@ export class Stage {
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2(9, 9);
   private mouse = new THREE.Vector2(); // -1..1, for parallax
+  private sampler: CanvasRenderingContext2D | null;
+  private frame = 0;
 
   private camPos = new THREE.Vector3();
   private camLook = LOOK.clone();
@@ -274,25 +232,33 @@ export class Stage {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.NoToneMapping;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
     this.renderer.setClearColor(0x000000, 1);
     host.appendChild(this.renderer.domElement);
     this.renderer.domElement.style.display = "block";
 
+    const c = document.createElement("canvas");
+    c.width = 16;
+    c.height = 8;
+    this.sampler = c.getContext("2d", { willReadFrequently: true });
+
+    RectAreaLightUniformsLib.init();
+    this.scene.fog = new THREE.Fog(0x000000, 16, 42);
     this.build(films);
     this.dust = this.makeDust();
     this.scene.add(this.dust);
 
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.42, 0.65, 0.8);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.55, 0.9);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
 
     this.resize();
     // Start further back and higher, so the first seconds are a slow dolly in.
     if (reduced) this.camPos.set(0, CAM_Y, this.overviewZ);
-    else this.camPos.set(0, CAM_Y + 1.6, this.overviewZ + 9);
+    else this.camPos.set(0, CAM_Y + 1.4, this.overviewZ + 9);
 
     this.bind();
     this.loop = this.loop.bind(this);
@@ -304,20 +270,9 @@ export class Stage {
   // -------------------------------------------------------------------------
 
   private build(films: Film[]) {
-    const mirror = new THREE.Group();
-    mirror.scale.y = -1;
-    this.scene.add(mirror);
-
-    const lampMat = additive(/* glsl */ `
-      varying vec2 vUv;
-      void main(){
-        float d = length(vUv - 0.5) * 2.0;
-        float g = exp(-d * d * 6.0);
-        gl_FragColor = vec4(vec3(1.0, 0.62, 0.32) * g * 1.3, 1.0);
-      }
-    `);
-    const baseH = Y0 - 0.05;
-    const baseMat = metal(0x070708, 0.7);
+    // Matte black shell; it only shows where the screens light each other.
+    const shellMat = new THREE.MeshStandardMaterial({ color: 0x121214, roughness: 0.94, metalness: 0 });
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.035));
 
     films.slice(0, 3).forEach((film, i) => {
       const place = PLACES[i];
@@ -328,82 +283,64 @@ export class Stage {
       video.loop = true;
       video.playsInline = true;
       video.preload = "auto";
-      video.crossOrigin = "anonymous";
       video.setAttribute("playsinline", "");
       video.play().catch(() => {});
 
+      // Read raw; the shader decodes, the same in every browser.
       const texture = new THREE.VideoTexture(video);
-      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.colorSpace = THREE.NoColorSpace;
       texture.minFilter = THREE.LinearFilter;
       texture.generateMipmaps = false;
       const poster = new THREE.TextureLoader().load(film.poster);
-      poster.colorSpace = THREE.SRGBColorSpace;
-
-      const uniforms = () => ({
-        map: { value: poster as THREE.Texture },
-        uPower: { value: 0 },
-        uDim: { value: 0 },
-        uHover: { value: 0 },
-        uTime: { value: 0 },
-      });
+      poster.colorSpace = THREE.NoColorSpace;
 
       const group = new THREE.Group();
       group.position.set(place.x, 0, place.z);
       group.rotation.y = place.rot;
       this.scene.add(group);
-      const twin = new THREE.Group(); // its reflection
-      twin.position.copy(group.position);
-      twin.rotation.y = place.rot;
-      mirror.add(twin);
 
-      const screenMat = new THREE.ShaderMaterial({ vertexShader: SCREEN_VERT, fragmentShader: SCREEN_FRAG, uniforms: uniforms() });
-      const screen = new THREE.Mesh(curved(SW, SH, YMID), screenMat);
-      screen.userData.index = i;
-      group.add(screen);
-      this.hitMeshes.push(screen);
+      // The display: a curved slab, its picture set into the front.
+      const shell = new THREE.Mesh(
+        bend(new THREE.BoxGeometry(SW + 2 * BORDER, SH + 2 * BORDER, DEPTH, 48, 1, 1), YMID),
+        shellMat,
+      );
+      shell.position.z = -DEPTH / 2;
+      group.add(shell);
 
-      // Bezel: a slightly larger dark panel just behind the picture.
-      const bezel = new THREE.Mesh(curved(SW + 0.12, SH + 0.12, YMID), metal(0x0c0c0e, 0.4));
-      bezel.position.z = -0.03;
-      group.add(bezel);
+      const mat = new THREE.ShaderMaterial({
+        vertexShader: SCREEN_VERT,
+        fragmentShader: SCREEN_FRAG,
+        uniforms: {
+          map: { value: poster as THREE.Texture },
+          uPower: { value: 0 },
+          uDim: { value: 0 },
+          uHover: { value: 0 },
+          uTime: { value: 0 },
+        },
+      });
+      const picture = new THREE.Mesh(bend(new THREE.PlaneGeometry(SW, SH, 48, 1), YMID), mat);
+      picture.position.z = 0.002;
+      picture.userData.index = i;
+      group.add(picture);
+      this.hitMeshes.push(picture);
 
-      // Base it stands on, with small warm lamps along its front.
-      const base = new THREE.Mesh(new THREE.BoxGeometry(SW + 0.1, baseH, 0.75), baseMat);
-      base.position.set(0, baseH / 2, 0.12);
-      group.add(base);
-      twin.add(base.clone());
-      for (let k = 0; k < 5; k++) {
-        const lamp = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), lampMat);
-        lamp.position.set(-SW / 2 + 0.5 + (k / 4) * (SW - 1), baseH - 0.1, 0.5);
-        group.add(lamp);
+      // Feet: two short matte blocks, set back, so it stands on the floor.
+      for (const fx of [-SW * 0.36, SW * 0.36]) {
+        const foot = new THREE.Mesh(new THREE.BoxGeometry(0.5, Y0 - BORDER, 0.34), shellMat);
+        const a = fx / CURVE;
+        foot.position.set(CURVE * Math.sin(a), (Y0 - BORDER) / 2, CURVE * (1 - Math.cos(a)) - DEPTH - 0.1);
+        foot.rotation.y = -a;
+        group.add(foot);
       }
 
-      const reflectMat = new THREE.ShaderMaterial({
-        vertexShader: WORLD_VERT,
-        fragmentShader: REFLECT_FRAG,
-        uniforms: uniforms(),
-        side: THREE.DoubleSide,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      });
-      twin.add(new THREE.Mesh(curved(SW, SH, YMID), reflectMat));
-
-      const poolMat = new THREE.ShaderMaterial({
-        vertexShader: WORLD_VERT,
-        fragmentShader: POOL_FRAG,
-        uniforms: uniforms(),
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      });
-      const pool = new THREE.Mesh(new THREE.PlaneGeometry(SW * 1.25, 6), poolMat);
-      pool.rotation.x = -Math.PI / 2;
-      pool.position.set(0, 0.004, 0.5 + 3);
-      pool.renderOrder = 2;
-      group.add(pool);
-
+      // The picture as a light: a flat panel just in front, facing out.
+      const colour = new THREE.Color(0.6, 0.5, 0.4);
+      const light = new THREE.RectAreaLight(colour, 0, SW * 0.96, SH * 0.94);
+      light.position.set(0, YMID, EZ * 0.4 + 0.05);
+      group.add(light);
       group.updateMatrixWorld(true);
+      light.lookAt(new THREE.Vector3(0, YMID, 10).applyMatrix4(group.matrixWorld)); // lookAt is in world space
+
       const centre = new THREE.Vector3(0, YMID, 0).applyMatrix4(group.matrixWorld);
       const normal = new THREE.Vector3(Math.sin(place.rot), 0, Math.cos(place.rot));
 
@@ -412,7 +349,9 @@ export class Stage {
         texture,
         poster,
         live: false,
-        mats: [screenMat, reflectMat, poolMat],
+        mat,
+        light,
+        colour,
         power: 0,
         powerAt: (this.reduced ? 0 : 700) + [280, 0, 520][i],
         dim: 0,
@@ -422,55 +361,67 @@ export class Stage {
       });
     });
 
-    // Wet floor: transparent enough to show the reflections, black far away.
+    // Matte polished concrete. Rough enough that the screens' light spreads
+    // into soft pools and a long, blurred sheen; never a mirror.
+    const concrete = concreteTexture();
     const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(120, 120),
-      new THREE.ShaderMaterial({ vertexShader: WORLD_VERT, fragmentShader: FLOOR_FRAG, transparent: true, depthWrite: false }),
+      new THREE.PlaneGeometry(160, 160),
+      new THREE.MeshStandardMaterial({
+        color: 0x1d1d1e,
+        map: concrete,
+        roughness: 0.86,
+        roughnessMap: concrete,
+        metalness: 0,
+      }),
     );
     floor.rotation.x = -Math.PI / 2;
-    floor.renderOrder = 1;
     this.scene.add(floor);
-
-    // Thin stage lines on the floor.
-    const lineMat = additive(LINE_FRAG, { uOpacity: { value: 0.4 } });
-    const line = (ax: number, az: number, bx: number, bz: number, w = 0.03) => {
-      const dx = bx - ax;
-      const dz = bz - az;
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(Math.hypot(dx, dz), w), lineMat);
-      m.rotation.x = -Math.PI / 2;
-      m.rotation.z = -Math.atan2(dz, dx);
-      m.position.set((ax + bx) / 2, 0.006, (az + bz) / 2);
-      m.renderOrder = 3;
-      this.scene.add(m);
-    };
-    line(-16, ZC + 2, -3.2, ZC + 17, 0.05);
-    line(16, ZC + 2, 3.2, ZC + 17, 0.05);
-
-    // Faint haze in the dark above the screens.
-    const haze = new THREE.Mesh(new THREE.PlaneGeometry(60, 24), additive(HAZE_FRAG));
-    haze.position.set(0, 12.5, ZC - 10);
-    this.scene.add(haze);
   }
 
   private makeDust() {
-    const n = 160;
+    const n = 70;
     const pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
       pos[i * 3] = (Math.random() - 0.5) * 12;
-      pos[i * 3 + 1] = 0.3 + Math.random() * 4.5;
+      pos[i * 3 + 1] = 0.3 + Math.random() * 4;
       pos[i * 3 + 2] = ZC - 0.5 + Math.random() * 7;
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     const mat = new THREE.PointsMaterial({
-      color: 0xffdcb8,
-      size: 0.018,
+      color: 0xffe2c4,
+      size: 0.014,
       transparent: true,
-      opacity: 0.22,
+      opacity: 0.12,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
+      fog: false,
     });
     return new THREE.Points(geo, mat);
+  }
+
+  /** Average colour of what a screen shows, so its light matches the film. */
+  private sampleColour(s: Screen) {
+    const g = this.sampler;
+    const src = (s.live ? s.video : s.poster.image) as CanvasImageSource | undefined;
+    if (!g || !src) return;
+    try {
+      g.drawImage(src, 0, 0, 16, 8);
+      const d = g.getImageData(0, 0, 16, 8).data;
+      let r = 0;
+      let gr = 0;
+      let b = 0;
+      for (let k = 0; k < d.length; k += 4) {
+        r += d[k];
+        gr += d[k + 1];
+        b += d[k + 2];
+      }
+      const n = (d.length / 4) * 255;
+      const target = new THREE.Color().setRGB(r / n, gr / n, b / n, THREE.SRGBColorSpace);
+      s.colour.lerp(target, 0.35);
+    } catch {
+      // a frame that can't be read yet; keep the last colour
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -486,16 +437,14 @@ export class Stage {
     this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
 
-    // Back the camera off until the screens fit: all three on wide screens,
+    // Back the camera off until the displays fit: all three on wide screens,
     // the centre one (with the others peeking in) on phones.
     const corners: THREE.Vector3[] = [];
-    const indices = this.portrait ? [1] : [0, 2];
-    const pts = [[-EX, EZ], [EX, EZ]];
-    for (const i of indices) {
+    for (const i of this.portrait ? [1] : [0, 2]) {
       const pl = PLACES[i];
-      for (const [x, z] of pts) {
-        for (const y of [Y0, Y0 + SH]) {
-          const v = new THREE.Vector3(x, y, z).applyAxisAngle(new THREE.Vector3(0, 1, 0), pl.rot);
+      for (const x of [-EX, EX]) {
+        for (const y of [Y0 - BORDER, Y0 + SH + BORDER]) {
+          const v = new THREE.Vector3(x, y, EZ).applyAxisAngle(new THREE.Vector3(0, 1, 0), pl.rot);
           corners.push(v.add(new THREE.Vector3(pl.x, 0, pl.z)));
         }
       }
@@ -524,7 +473,7 @@ export class Stage {
   }
 
   private overview(out: THREE.Vector3, look: THREE.Vector3) {
-    // Orbit a pivot just in front of the screens.
+    // Orbit a pivot just in front of the displays.
     const pivot = new THREE.Vector3(0, CAM_Y, ZC + 3);
     const d = this.overviewZ - pivot.z;
     const yaw = this.yaw + (this.reduced ? 0 : this.mouse.x * 0.035);
@@ -551,11 +500,7 @@ export class Stage {
 
   private bind() {
     const el = this.host;
-    const on = <K extends keyof WindowEventMap>(
-      target: HTMLElement | Window,
-      type: K,
-      fn: (e: WindowEventMap[K]) => void,
-    ) => {
+    const on = <K extends keyof WindowEventMap>(target: HTMLElement | Window, type: K, fn: (e: WindowEventMap[K]) => void) => {
       target.addEventListener(type, fn as EventListener);
       this.cleanups.push(() => target.removeEventListener(type, fn as EventListener));
     };
@@ -628,10 +573,8 @@ export class Stage {
   setFocus(i: number | null) {
     if (i === this.focus) return;
     this.focus = i;
-    if (i === null) {
-      this.yawTarget = 0;
-      this.pitchTarget = 0;
-    }
+    this.yawTarget = 0;
+    this.pitchTarget = 0;
     this.events.onFocus?.(i);
   }
 
@@ -650,6 +593,7 @@ export class Stage {
     const dt = Math.min((now - this.last) / 1000, 0.05);
     this.last = now;
     const t = now - this.start;
+    this.frame++;
 
     const hover = this.dragging ? null : this.pick();
     if (hover !== this.hovered) {
@@ -662,7 +606,7 @@ export class Stage {
     this.screens.forEach((s, i) => {
       if (!s.live && s.video.readyState >= 2 && s.video.currentTime > 0) {
         s.live = true;
-        for (const m of s.mats) m.uniforms.map.value = s.texture;
+        s.mat.uniforms.map.value = s.texture;
       }
       const hasFrame = s.live || s.poster.image != null;
       const wantOn = t > s.powerAt && (hasFrame || t > s.powerAt + 2500) ? 1 : 0;
@@ -673,12 +617,16 @@ export class Stage {
       s.dim += (dimTo - s.dim) * damp(5, dt);
       const hoverTo = this.hovered === i && this.focus === null ? 1 : 0;
       s.hover += (hoverTo - s.hover) * damp(8, dt);
-      for (const m of s.mats) {
-        m.uniforms.uPower.value = s.power;
-        m.uniforms.uDim.value = s.dim;
-        m.uniforms.uHover.value = s.hover;
-        m.uniforms.uTime.value = t / 1000;
-      }
+      const u = s.mat.uniforms;
+      u.uPower.value = s.power;
+      u.uDim.value = s.dim;
+      u.uHover.value = s.hover;
+      u.uTime.value = t / 1000;
+
+      if ((this.frame + i) % 5 === 0) this.sampleColour(s);
+      const on = THREE.MathUtils.smoothstep(s.power, 0.3, 1);
+      s.light.color.copy(s.colour);
+      s.light.intensity = LIGHT * on * (1 - 0.82 * s.dim) * (1 + 0.14 * s.hover);
     });
     if (allOn && !this.ready) {
       this.ready = true;
@@ -700,10 +648,10 @@ export class Stage {
     if (!this.reduced) {
       const p = this.dust.geometry.attributes.position as THREE.BufferAttribute;
       for (let i = 0; i < p.count; i++) {
-        let y = p.getY(i) + dt * 0.05;
-        if (y > 4.8) y = 0.3;
+        let y = p.getY(i) + dt * 0.04;
+        if (y > 4.3) y = 0.3;
         p.setY(i, y);
-        p.setX(i, p.getX(i) + Math.sin(t / 2400 + i) * dt * 0.015);
+        p.setX(i, p.getX(i) + Math.sin(t / 2400 + i) * dt * 0.012);
       }
       p.needsUpdate = true;
     }
