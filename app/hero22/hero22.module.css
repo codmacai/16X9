@@ -79,6 +79,73 @@
   transition-delay: 2.3s;
 }
 
+/* --------------------------------------------------- the way in (outside) */
+.enter {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: clamp(24px, 6vh, 56px);
+  transform: translate(-50%, 8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 0;
+  background: none;
+  color: #fff;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.8);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.enterOn {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+  transition: opacity 1.2s ease 0.4s, transform 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.4s;
+}
+.enter:hover {
+  color: #fff;
+}
+/* a thin line that keeps running down, like a scroll cue */
+.enterLine {
+  position: relative;
+  width: 1px;
+  height: 34px;
+  overflow: hidden;
+  background: rgba(241, 239, 234, 0.25);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+}
+.enterLine::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: #f1efea;
+  transform: translateY(-100%);
+  animation: cue 1.8s cubic-bezier(0.76, 0, 0.24, 1) infinite;
+}
+@keyframes cue {
+  0% {
+    transform: translateY(-100%);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
 /* ---------------------------------------------------------------- top bar */
 .top {
   position: absolute;
@@ -340,7 +407,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .grain::after,
-  .bars[data-on="true"] i {
+  .bars[data-on="true"] i,
+  .enterLine::after {
     animation: none;
   }
   .headline > span > span,

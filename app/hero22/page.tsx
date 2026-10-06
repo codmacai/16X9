@@ -81,6 +81,7 @@ export default function Hero22() {
   const hostRef = useRef<HTMLDivElement>(null);
   const galleryRef = useRef<Gallery | null>(null);
   const toneRef = useRef<ReturnType<typeof roomTone> | null>(null);
+  const [ready, setReady] = useState(false);
   const [inside, setInside] = useState(false);
   const [film, setFilm] = useState(0);
   const [sound, setSound] = useState(false);
@@ -89,7 +90,7 @@ export default function Hero22() {
     const host = hostRef.current;
     if (!host) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const g = new Gallery(host, FILMS, { onFocus: setInside, onFilm: setFilm }, reduced);
+    const g = new Gallery(host, FILMS, { onReady: () => setReady(true), onFocus: setInside, onFilm: setFilm }, reduced);
     galleryRef.current = g;
     return () => {
       g.dispose();
@@ -113,6 +114,16 @@ export default function Hero22() {
   return (
     <main className={`${styles.root} ${inside ? styles.inside : ""}`}>
       <div ref={hostRef} className={styles.stage} role="button" aria-label="16x9 and Beyond. Click the screen to enter." />
+      {/* the only thing on the page before entering, once the mark has landed */}
+      <button
+        type="button"
+        className={`${styles.enter} ${ready && !inside ? styles.enterOn : ""}`}
+        onClick={() => galleryRef.current?.setFocus(true)}
+        tabIndex={ready && !inside ? 0 : -1}
+      >
+        <span>Scroll or click to enter</span>
+        <span className={styles.enterLine} aria-hidden="true" />
+      </button>
       <h1 className={styles.srOnly}>16x9 &amp; Beyond — stories beyond the frame</h1>
 
       {/* ---- everything below arrives only once you are inside the screen ---- */}

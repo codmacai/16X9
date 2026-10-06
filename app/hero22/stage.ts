@@ -671,8 +671,13 @@ export class Gallery {
 
   private bind() {
     const el = this.host;
-    const on = <K extends keyof WindowEventMap>(t: HTMLElement | Window, type: K, fn: (e: WindowEventMap[K]) => void) => {
-      t.addEventListener(type, fn as EventListener);
+    const on = <K extends keyof WindowEventMap>(
+      t: HTMLElement | Window,
+      type: K,
+      fn: (e: WindowEventMap[K]) => void,
+      opts?: AddEventListenerOptions,
+    ) => {
+      t.addEventListener(type, fn as EventListener, opts);
       this.cleanups.push(() => t.removeEventListener(type, fn as EventListener));
     };
     const ray = new THREE.Raycaster();
@@ -717,6 +722,27 @@ export class Gallery {
       if (e.key === "Escape") this.setFocus(false);
       if (e.key === "ArrowRight") this.showFilm((this.film + 1) % this.clips.length);
       if (e.key === "ArrowLeft") this.showFilm((this.film - 1 + this.clips.length) % this.clips.length);
+    });
+    // scroll (or swipe up) enters too; scrolling back up from inside leads out
+    let wheelAt = 0;
+    on(
+      el,
+      "wheel",
+      (e) => {
+        e.preventDefault();
+        const now = performance.now();
+        if (now - wheelAt < 1200 || Math.abs(e.deltaY) < 8) return; // one gesture, one step
+        wheelAt = now;
+        this.setFocus(e.deltaY > 0);
+      },
+      { passive: false },
+    );
+    let touchY = 0;
+    on(el, "touchstart", (e) => (touchY = e.touches[0].clientY));
+    on(el, "touchend", (e) => {
+      const dy = e.changedTouches[0].clientY - touchY;
+      if (dy < -40) this.setFocus(true);
+      else if (dy > 60) this.setFocus(false);
     });
     on(window, "resize", () => this.resize());
     const onVisible = () => {
