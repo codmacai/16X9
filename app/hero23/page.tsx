@@ -1,23 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Stage, type Film } from "./stage";
+import { Stage, type Clip } from "./stage";
 import styles from "./hero23.module.css";
 
 // ===========================================================================
-// HERO 23 — the frame, broken.
+// HERO 23 — shards.
 //
-// A film breaks into a slow sphere of small video cubes in the dark. Click and
-// hold to pull them back into one frame; let go and it breaks, and the next
-// film comes in. Drag to turn the sphere. The 3D is in stage.ts; this file is
-// the quiet type around it.
+// A small cluster of rounded film tiles hangs in the middle of a dark room,
+// each playing its own clip. Click and hold: they turn to face you and settle
+// into a contact sheet of the work; let go and they drift apart again. Drag to
+// turn the cluster. The 3D is in stage.ts; this file is the quiet type around it.
 // ===========================================================================
 
-const FILMS: (Film & { title: string; meta: string })[] = [
-  { src: "/hero22/centre.mp4", poster: "/hero22/centre.webp", title: "Abu Dhabi, at Dusk", meta: "Cleveland Clinic, Campaign" },
-  { src: "/hero22/right.mp4", poster: "/hero22/right.webp", title: "Empty Highway", meta: "Nike, Pitch film" },
-  { src: "/hero22/left.mp4", poster: "/hero22/left.webp", title: "The Desert Breathes", meta: "Cleveland Clinic, Brand film" },
-];
+const CLIPS: Clip[] = Array.from({ length: 15 }, (_, i) => {
+  const n = String(i + 1).padStart(2, "0");
+  return { src: `/clips/clip-${n}.mp4`, poster: `/clips/posters/clip-${n}.webp` };
+});
 
 const MENU = [
   { label: "Work", href: "#work" },
@@ -37,7 +36,6 @@ export default function Hero23() {
   const hostRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLSpanElement>(null);
   const [whole, setWhole] = useState(false);
-  const [film, setFilm] = useState(0);
   const [menu, setMenu] = useState(false);
   const [touch, setTouch] = useState(false);
 
@@ -46,9 +44,9 @@ export default function Hero23() {
     if (!host) return;
     setTouch(window.matchMedia("(hover: none)").matches);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const stage = new Stage(host, FILMS, { onAssembled: setWhole, onFilm: setFilm }, reduced);
+    const stage = new Stage(host, CLIPS, { onGathered: setWhole }, reduced);
 
-    // the hold line under "click & hold" fills as the frame comes together
+    // the hold line under "click & hold" fills as the tiles gather
     let raf = 0;
     const tick = () => {
       raf = requestAnimationFrame(tick);
@@ -61,11 +59,9 @@ export default function Hero23() {
     };
   }, []);
 
-  const f = FILMS[film];
-
   return (
     <main className={`${styles.root} ${whole ? styles.whole : ""}`}>
-      <div ref={hostRef} className={styles.stage} aria-label="Click and hold to bring the film together" />
+      <div ref={hostRef} className={styles.stage} aria-label="Click and hold to gather the films" />
 
       <a className={styles.all} href="#work">
         View all work
@@ -90,9 +86,9 @@ export default function Hero23() {
       </div>
 
       <div className={styles.caption} aria-live="polite">
-        <span className={styles.captionNo}>{pad2(film + 1)} / {pad2(FILMS.length)}</span>
-        <span className={styles.captionTitle}>{f.title}</span>
-        <span className={styles.captionMeta}>{f.meta}</span>
+        <span className={styles.captionNo}>Selected work</span>
+        <span className={styles.captionTitle}>{pad2(CLIPS.length)} films, one room</span>
+        <span className={styles.captionMeta}>Release to let them drift</span>
       </div>
 
       {/* eslint-disable-next-line @next/next/no-img-element */}

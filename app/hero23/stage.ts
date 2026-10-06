@@ -6,51 +6,55 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 
 // ===========================================================================
-// HERO 23 — the frame, broken.
+// HERO 23 — shards.
 //
-// A film, cut into a grid of small cubes, drifts apart into a slow hollow
-// sphere in the dark. Each cube still carries its piece of the moving picture
-// on its face; the sides are dark glass that catches the light at the edges.
-// Click and hold: the cubes fly home, from the middle out, and lock together
-// into one 16:9 frame playing the film. Let go and it breaks again, and the
-// next film takes its place.
+// A small, slow cluster of film tiles hangs in the middle of a dark room:
+// thin 16:9 panes with rounded corners, each playing a different clip, each
+// tilted its own way, the whole cluster turning. Their backs are dark glass;
+// their edges catch the light.
 //
-// All the motion is on the GPU: every cube knows where it sits in the frame
-// and where it floats in the sphere, and the shader moves it between the two.
-// A light chromatic split and grain finish it, stronger while it's broken.
+// Click and hold: the tiles turn to face you and settle into a neat contact
+// sheet, every film side by side. Let go and they drift back into the cluster.
+// Drag to turn it; the cursor nudges the tiles near it.
+//
+// Every clip is drawn into one shared atlas each frame, so the whole cluster is
+// one texture and one draw call; the shader places and turns every tile.
 // ===========================================================================
 
-export type Film = { src: string; poster: string };
+export type Clip = { src: string; poster: string };
 
 export type StageEvents = {
-  onAssembled?: (whole: boolean) => void;
-  onFilm?: (index: number) => void;
+  onGathered?: (gathered: boolean) => void;
 };
 
-const GX = 28; // cubes across
-const GY = 16; // cubes down
-const FRAME_W = 6.4; // the assembled frame, in world units
-const CELL = FRAME_W / GX;
-const SHELL = 1.95; // radius of the broken sphere
-const CROP_X = Math.min(1, GX / GY / (16 / 9)) * 0.985; // share of the film's width the grid shows, a hair inside the edge
-const CROP_Y = Math.min(1, 16 / 9 / (GX / GY)) * 0.975;
+const COUNT = 30; // tiles
+const TW = 0.52; // tile width
+const TH = (TW * 9) / 16;
+const CORNER = 0.035;
+const SHELL = 1.55; // radius of the cluster
+const COLS = 6; // the contact sheet when gathered
+const ROWS = Math.ceil(COUNT / COLS);
+const SHEET_GAP = 0.08;
+const ATLAS = 4; // clips per side in the atlas
+const CELL_W = 320;
+const CELL_H = 180;
 
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 
-const CUBE_VERT = /* glsl */ `
-  uniform float uTime, uAssemble;
+const TILE_VERT = /* glsl */ `
+  uniform float uTime, uHold;
   uniform vec3 uPointer;
   uniform float uPointerOn;
-  attribute vec2 aCell;
-  attribute vec3 aScatter;
-  attribute vec3 aSpin;
+  attribute vec3 aHome;
+  attribute vec3 aRot;
+  attribute vec3 aSheet;
   attribute vec4 aSeed;
+  attribute float aClip;
   varying vec2 vUv;
-  varying vec2 vTile;
   varying vec3 vN;
   varying vec3 vView;
-  varying float vFront;
-  varying float vA;
+  varying float vClip;
+  varying float vE;
 
   mat3 rot(vec3 a){
     float cx = cos(a.x), sx = sin(a.x), cy = cos(a.y), sy = sin(a.y), cz = cos(a.z), sz = sin(a.z);
@@ -61,77 +65,80 @@ const CUBE_VERT = /* glsl */ `
   float ease(float t){ return t < 0.5 ? 4.0*t*t*t : 1.0 - pow(-2.0*t + 2.0, 3.0) / 2.0; }
 
   void main(){
-    vec2 grid = vec2(${GX.toFixed(1)}, ${GY.toFixed(1)});
-    vec3 home = vec3((aCell.x + 0.5 - grid.x * 0.5) * ${CELL.toFixed(5)}, (aCell.y + 0.5 - grid.y * 0.5) * ${CELL.toFixed(5)}, 0.0);
-
-    // from the middle of the frame out, with a little scatter
-    float d = length((aCell + 0.5) / grid - 0.5) / 0.7071;
-    float delay = d * 0.55 + aSeed.y * 0.15;
-    float t = clamp(uAssemble * 1.7 - delay, 0.0, 1.0);
+    float t = clamp(uHold * 1.45 - aSeed.y * 0.45, 0.0, 1.0);
     float e = ease(t);
 
-    // the broken sphere breathes and drifts a little
-    vec3 drift = aScatter * (1.0 + 0.04 * sin(uTime * 0.6 + aSeed.x * 6.283));
-    vec3 pos = mix(drift, home, e);
-    pos += normalize(aScatter) * sin(e * 3.14159) * (0.35 + aSeed.z * 0.5); // fly out, then home
+    // floating: a slow bob and sway around its place in the cluster
+    vec3 home = aHome * (1.0 + 0.035 * sin(uTime * 0.5 + aSeed.x * 6.283));
+    home.y += sin(uTime * 0.7 + aSeed.z * 6.283) * 0.04;
+    vec3 pos = mix(home, aSheet, e);
+    pos += normalize(aHome) * sin(e * 3.14159) * (0.25 + aSeed.w * 0.35);
 
-    // the cursor pushes floating cubes aside
     vec3 away = pos - uPointer;
-    float near = exp(-dot(away, away) * 1.6) * uPointerOn * (1.0 - e);
-    pos += normalize(away + 1e-4) * near * 0.65;
+    float near = exp(-dot(away, away) * 2.2) * uPointerOn * (1.0 - e);
+    pos += normalize(away + 1e-4) * near * 0.45;
 
-    vec3 ang = (aSpin * uTime + aSeed.xyz * 6.283) * (1.0 - e);
-    ang += aSpin * near * 2.0;
+    vec3 sway = vec3(sin(uTime * 0.31 + aSeed.x * 9.0), sin(uTime * 0.27 + aSeed.y * 9.0), sin(uTime * 0.23 + aSeed.z * 9.0)) * 0.22;
+    vec3 ang = (aRot + sway + vec3(near * 1.4, near * 0.8, 0.0)) * (1.0 - e);
     mat3 R = rot(ang);
-    float size = mix(0.4 + aSeed.w * 0.75, 1.001, e) * ${CELL.toFixed(5)};
+    float s = mix(0.72 + aSeed.w * 0.55, 1.0, e);
 
-    vec3 p = R * (position * vec3(size, size, size * mix(0.9, 0.35, e))) + pos;
+    vec3 p = R * (position * vec3(${TW.toFixed(4)} * s, ${TH.toFixed(4)} * s, 1.0)) + pos;
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mv;
-
     vUv = uv;
-    vTile = (aCell + uv) / grid;
-    vN = normalize(normalMatrix * (R * normal));
+    vN = normalize(normalMatrix * (R * vec3(0.0, 0.0, 1.0)));
     vView = -mv.xyz;
-    vFront = step(0.5, normal.z);
-    vA = e;
+    vClip = aClip;
+    vE = e;
   }
 `;
 
-const CUBE_FRAG = /* glsl */ `
-  uniform sampler2D map;
+const TILE_FRAG = /* glsl */ `
+  uniform sampler2D atlas;
   uniform float uFade;
   varying vec2 vUv;
-  varying vec2 vTile;
   varying vec3 vN;
   varying vec3 vView;
-  varying float vFront;
-  varying float vA;
+  varying float vClip;
+  varying float vE;
 
   vec3 toLinear(vec3 c){ return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c)); }
 
   void main(){
-    vec3 N = normalize(vN);
+    // rounded rectangle, measured in world units so every corner matches
+    vec2 size = vec2(${TW.toFixed(4)}, ${TH.toFixed(4)});
+    vec2 q = abs(vUv - 0.5) * size - (size * 0.5 - ${CORNER.toFixed(4)});
+    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - ${CORNER.toFixed(4)};
+    float aa = fwidth(dist);
+    float alpha = 1.0 - smoothstep(-aa, aa, dist);
+    if (alpha < 0.01) discard;
+    float rim = 1.0 - smoothstep(0.0, 0.012, -dist);
+
+    vec3 N = normalize(vN) * (gl_FrontFacing ? 1.0 : -1.0);
     vec3 V = normalize(vView);
-    vec3 L = normalize(vec3(0.55, 0.75, 0.6));
+    vec3 L = normalize(vec3(0.5, 0.8, 0.55));
     float diff = max(dot(N, L), 0.0);
-    float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-    float spec = pow(max(dot(reflect(-L, N), V), 0.0), 48.0);
-    float edgeD = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
-    float edge = 1.0 - smoothstep(0.0, 0.07, edgeD);
-    float loose = 1.0 - vA;
+    float fres = pow(1.0 - abs(dot(N, V)), 3.0);
+    float spec = pow(max(dot(reflect(-L, N), V), 0.0), 60.0);
+    float loose = 1.0 - vE;
 
-    vec2 tuv = 0.5 + (vTile - 0.5) * vec2(${CROP_X.toFixed(4)}, ${CROP_Y.toFixed(4)});
-    vec3 film = toLinear(texture2D(map, tuv).rgb);
-
-    // dark glass sides, lit at the edges
-    vec3 side = vec3(0.008) + vec3(0.045) * diff + vec3(0.3) * fres * 0.5 + vec3(0.9) * spec * 0.7 + vec3(0.16) * edge * loose;
-    // the face: its piece of the film, dimmed while broken, full when whole
-    vec3 face = film * mix(0.62, 1.0, vA) * mix(0.75 + 0.35 * diff, 1.0, vA)
-              + (vec3(0.8) * spec * 0.5 + vec3(0.14) * edge + vec3(0.15) * fres) * loose;
-    face *= 1.0 - (1.0 - smoothstep(0.0, 0.025, edgeD)) * 0.22 * vA;
-    vec3 col = mix(side, face, vFront);
-    gl_FragColor = vec4(col * uFade, 1.0);
+    vec3 col;
+    if (gl_FrontFacing) {
+      float c = floor(vClip + 0.5);
+      vec2 cell = vec2(mod(c, ${ATLAS.toFixed(1)}), floor(c / ${ATLAS.toFixed(1)}));
+      vec2 inset = 0.5 + (vUv - 0.5) * 0.985;
+      vec2 auv = vec2((cell.x + inset.x) / ${ATLAS.toFixed(1)}, 1.0 - (cell.y + 1.0 - inset.y) / ${ATLAS.toFixed(1)});
+      vec3 film = toLinear(texture2D(atlas, auv).rgb);
+      col = film * mix(0.72 + 0.28 * diff, 1.0, vE)
+          + vec3(0.9) * spec * 0.55 * loose
+          + vec3(0.55) * rim * (0.35 + fres) * loose
+          + vec3(0.12) * fres * loose;
+    } else {
+      // the back: dark glass
+      col = vec3(0.01) + vec3(0.05) * diff + vec3(0.35) * fres + vec3(0.9) * spec * 0.6 + vec3(0.5) * rim * 0.6;
+    }
+    gl_FragColor = vec4(col * uFade, alpha);
   }
 `;
 
@@ -165,7 +172,7 @@ const FINISH = {
   `,
 };
 
-type FilmTex = { video: HTMLVideoElement; texture: THREE.VideoTexture; poster: THREE.Texture; live: boolean };
+type Source = { video: HTMLVideoElement; poster: HTMLImageElement };
 
 export class Stage {
   private renderer: THREE.WebGLRenderer;
@@ -175,20 +182,21 @@ export class Stage {
   private camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
   private group = new THREE.Group();
   private mat: THREE.ShaderMaterial;
-  private films: FilmTex[] = [];
-  private film = 0;
-  private nextPending = false;
+  private sources: Source[];
+  private atlas: HTMLCanvasElement;
+  private atlasCtx: CanvasRenderingContext2D;
+  private atlasTex: THREE.CanvasTexture;
 
-  private assemble = 0; // 0 broken … 1 whole
+  private hold = 0; // 0 cluster … 1 contact sheet
   private holding = false;
-  private whole = false;
+  private gathered = false;
   private rotY = 0;
-  private rotX = 0.15;
-  private velY = 0.07; // slow turn while broken
+  private rotX = 0.2;
+  private velY = 0.12;
   private velX = 0;
   private pointerNdc = new THREE.Vector2(9, 9);
   private pointerOn = 0;
-  private press = { x: 0, y: 0, rotY: 0, rotX: 0, t: 0, dragging: false, down: false };
+  private press = { x: 0, y: 0, rotY: 0, rotX: 0, dragging: false, down: false };
   private intro = 0;
 
   private last = performance.now();
@@ -199,7 +207,7 @@ export class Stage {
 
   constructor(
     private host: HTMLElement,
-    films: Film[],
+    clips: Clip[],
     private events: StageEvents = {},
     private reduced = false,
   ) {
@@ -213,45 +221,56 @@ export class Stage {
     host.appendChild(this.renderer.domElement);
     this.renderer.domElement.style.display = "block";
 
-    this.films = films.map((f) => {
+    // Every clip, drawn into one canvas each frame.
+    this.sources = clips.map((c) => {
       const video = document.createElement("video");
-      video.src = f.src;
+      video.src = c.src;
       video.muted = true;
       video.loop = true;
       video.playsInline = true;
       video.preload = "auto";
       video.setAttribute("playsinline", "");
-      const texture = new THREE.VideoTexture(video);
-      texture.colorSpace = THREE.NoColorSpace;
-      texture.minFilter = THREE.LinearFilter;
-      texture.generateMipmaps = false;
-      const poster = new THREE.TextureLoader().load(f.poster);
-      poster.colorSpace = THREE.NoColorSpace;
-      return { video, texture, poster, live: false };
+      video.play().catch(() => {});
+      const poster = new Image();
+      poster.src = c.poster;
+      return { video, poster };
     });
-    this.films[0].video.play().catch(() => {});
+    this.atlas = document.createElement("canvas");
+    this.atlas.width = CELL_W * ATLAS;
+    this.atlas.height = CELL_H * ATLAS;
+    this.atlasCtx = this.atlas.getContext("2d")!;
+    this.atlasCtx.fillStyle = "#111";
+    this.atlasCtx.fillRect(0, 0, this.atlas.width, this.atlas.height);
+    this.atlasTex = new THREE.CanvasTexture(this.atlas);
+    this.atlasTex.colorSpace = THREE.NoColorSpace; // decoded in the shader
+    this.atlasTex.minFilter = THREE.LinearFilter;
+    this.atlasTex.generateMipmaps = false;
 
     this.mat = new THREE.ShaderMaterial({
-      vertexShader: CUBE_VERT,
-      fragmentShader: CUBE_FRAG,
+      vertexShader: TILE_VERT,
+      fragmentShader: TILE_FRAG,
+      side: THREE.DoubleSide,
+      transparent: false,
+      alphaToCoverage: true,
       uniforms: {
-        map: { value: this.films[0].poster as THREE.Texture },
+        atlas: { value: this.atlasTex },
         uTime: { value: 0 },
-        uAssemble: { value: 0 },
+        uHold: { value: 0 },
         uPointer: { value: new THREE.Vector3(99, 99, 99) },
         uPointerOn: { value: 0 },
         uFade: { value: 0 },
       },
     });
     this.scene.add(this.group);
-    this.group.add(this.makeCubes());
+    this.group.add(this.makeTiles(clips.length));
 
     this.camera.position.set(0, 0, 9.2);
     this.camera.lookAt(0, 0, 0);
 
-    this.composer = new EffectComposer(this.renderer);
+    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+    this.composer = new EffectComposer(this.renderer, target);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.3, 0.4, 0.7));
+    this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.28, 0.45, 0.72));
     this.finish = new ShaderPass(FINISH);
     this.composer.addPass(this.finish);
     this.composer.addPass(new OutputPass());
@@ -262,43 +281,46 @@ export class Stage {
     this.raf = requestAnimationFrame(this.loop);
   }
 
-  private makeCubes() {
-    const n = GX * GY;
-    const box = new THREE.BoxGeometry(1, 1, 1);
+  private makeTiles(clipCount: number) {
+    const plane = new THREE.PlaneGeometry(1, 1);
     const geo = new THREE.InstancedBufferGeometry();
-    geo.index = box.index;
-    for (const name of ["position", "normal", "uv"]) geo.setAttribute(name, box.getAttribute(name));
-    geo.instanceCount = n;
-    const cell = new Float32Array(n * 2);
-    const scatter = new Float32Array(n * 3);
-    const spin = new Float32Array(n * 3);
-    const seed = new Float32Array(n * 4);
+    geo.index = plane.index;
+    geo.setAttribute("position", plane.getAttribute("position"));
+    geo.setAttribute("uv", plane.getAttribute("uv"));
+    geo.instanceCount = COUNT;
+
+    const home = new Float32Array(COUNT * 3);
+    const rotA = new Float32Array(COUNT * 3);
+    const sheet = new Float32Array(COUNT * 3);
+    const seed = new Float32Array(COUNT * 4);
+    const clip = new Float32Array(COUNT);
     const golden = Math.PI * (3 - Math.sqrt(5));
-    // shuffle which cube goes where on the sphere, so neighbours in the frame scatter apart
-    const order = Array.from({ length: n }, (_, i) => i).sort(() => Math.random() - 0.5);
-    for (let i = 0; i < n; i++) {
-      cell[i * 2] = i % GX;
-      cell[i * 2 + 1] = Math.floor(i / GX);
-      const k = order[i];
-      const y = 1 - (k / (n - 1)) * 2;
+    const sheetW = COLS * TW + (COLS - 1) * SHEET_GAP;
+    const sheetH = ROWS * TH + (ROWS - 1) * SHEET_GAP;
+    for (let i = 0; i < COUNT; i++) {
+      // a loose hollow cluster
+      const y = 1 - ((i + 0.5) / COUNT) * 2;
       const r = Math.sqrt(1 - y * y);
-      const th = golden * k;
-      const rad = SHELL * (0.82 + Math.random() * 0.36);
-      scatter[i * 3] = Math.cos(th) * r * rad;
-      scatter[i * 3 + 1] = y * rad;
-      scatter[i * 3 + 2] = Math.sin(th) * r * rad;
-      spin[i * 3] = (Math.random() - 0.5) * 0.9;
-      spin[i * 3 + 1] = (Math.random() - 0.5) * 0.9;
-      spin[i * 3 + 2] = (Math.random() - 0.5) * 0.6;
-      seed[i * 4] = Math.random();
-      seed[i * 4 + 1] = Math.random();
-      seed[i * 4 + 2] = Math.random();
-      seed[i * 4 + 3] = Math.random();
+      const th = golden * i;
+      const rad = SHELL * (0.75 + Math.random() * 0.45);
+      const hx = Math.cos(th) * r * rad;
+      const hy = y * rad * 0.9;
+      const hz = Math.sin(th) * r * rad;
+      home.set([hx, hy, hz], i * 3);
+      // face out from the middle, then tip each one its own way
+      rotA.set([(Math.random() - 0.5) * 1.1 - y * 0.6, Math.atan2(hx, hz) + (Math.random() - 0.5) * 0.9, (Math.random() - 0.5) * 1.2], i * 3);
+      // the contact sheet, read left to right, top to bottom
+      const col = i % COLS;
+      const row = Math.floor(i / COLS);
+      sheet.set([-sheetW / 2 + TW / 2 + col * (TW + SHEET_GAP), sheetH / 2 - TH / 2 - row * (TH + SHEET_GAP), 0], i * 3);
+      seed.set([Math.random(), Math.random(), Math.random(), Math.random()], i * 4);
+      clip[i] = i % clipCount;
     }
-    geo.setAttribute("aCell", new THREE.InstancedBufferAttribute(cell, 2));
-    geo.setAttribute("aScatter", new THREE.InstancedBufferAttribute(scatter, 3));
-    geo.setAttribute("aSpin", new THREE.InstancedBufferAttribute(spin, 3));
+    geo.setAttribute("aHome", new THREE.InstancedBufferAttribute(home, 3));
+    geo.setAttribute("aRot", new THREE.InstancedBufferAttribute(rotA, 3));
+    geo.setAttribute("aSheet", new THREE.InstancedBufferAttribute(sheet, 3));
     geo.setAttribute("aSeed", new THREE.InstancedBufferAttribute(seed, 4));
+    geo.setAttribute("aClip", new THREE.InstancedBufferAttribute(clip, 1));
     const mesh = new THREE.Mesh(geo, this.mat);
     mesh.frustumCulled = false;
     return mesh;
@@ -309,17 +331,17 @@ export class Stage {
     const h = this.host.clientHeight || 1;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    // the whole frame should fill about 64% of the width, never more than 92%
+    // keep the cluster (and the sheet it gathers into) inside a phone's width
     const visH = 2 * this.camera.position.z * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
     const visW = visH * this.camera.aspect;
-    const s = Math.min(1, (visW * 0.92) / FRAME_W, (visH * 0.7) / (FRAME_W * (GY / GX)));
-    this.group.scale.setScalar(s);
+    const sheetW = COLS * TW + (COLS - 1) * SHEET_GAP;
+    this.group.scale.setScalar(Math.min(1, (visW * 0.86) / sheetW));
     this.renderer.setSize(w, h, false);
     this.composer.setSize(w, h);
   }
 
   // -------------------------------------------------------------------------
-  // Input: press and hold to assemble, drag to turn the sphere.
+  // Input: press and hold to gather, drag to turn.
   // -------------------------------------------------------------------------
 
   private bind() {
@@ -336,15 +358,16 @@ export class Stage {
     on(el, "pointerdown", (e) => {
       ndc(e);
       el.setPointerCapture(e.pointerId);
-      this.press = { x: e.clientX, y: e.clientY, rotY: this.rotY, rotX: this.rotX, t: performance.now(), dragging: false, down: true };
+      this.press = { x: e.clientX, y: e.clientY, rotY: this.rotY, rotX: this.rotX, dragging: false, down: true };
       this.setHold(true);
+      for (const s of this.sources) s.video.play().catch(() => {});
     });
     on(el, "pointermove", (e) => {
       ndc(e);
       if (!this.press.down) return;
       const dx = e.clientX - this.press.x;
       const dy = e.clientY - this.press.y;
-      if (!this.press.dragging && Math.hypot(dx, dy) > 10 && !this.whole) {
+      if (!this.press.dragging && Math.hypot(dx, dy) > 10 && !this.gathered) {
         this.press.dragging = true;
         this.setHold(false);
       }
@@ -360,6 +383,7 @@ export class Stage {
     const up = () => {
       if (!this.press.down) return;
       this.press.down = false;
+      this.press.dragging = false;
       this.setHold(false);
     };
     on(el, "pointerup", up);
@@ -376,40 +400,38 @@ export class Stage {
     });
     on(window, "resize", () => this.resize());
     const onVisible = () => {
-      const v = this.films[this.film].video;
-      if (document.hidden) v.pause();
-      else v.play().catch(() => {});
+      for (const s of this.sources) {
+        if (document.hidden) s.video.pause();
+        else s.video.play().catch(() => {});
+      }
     };
     document.addEventListener("visibilitychange", onVisible);
     this.cleanups.push(() => document.removeEventListener("visibilitychange", onVisible));
   }
 
   setHold(h: boolean) {
-    if (h === this.holding) return;
     this.holding = h;
-    if (h) this.films[this.film].video.play().catch(() => {});
-    // let go after the frame was whole: the next film takes over once it's broken
-    if (!h && this.whole) this.nextPending = true;
   }
 
   get holdProgress() {
-    return this.assemble;
-  }
-
-  private showFilm(i: number) {
-    const prev = this.films[this.film];
-    this.film = i;
-    const f = this.films[i];
-    f.video.currentTime = 0;
-    f.video.play().catch(() => {});
-    this.mat.uniforms.map.value = f.live ? f.texture : f.poster;
-    setTimeout(() => prev.video.pause(), 300);
-    this.events.onFilm?.(i);
+    return this.hold;
   }
 
   // -------------------------------------------------------------------------
   // Frame
   // -------------------------------------------------------------------------
+
+  private drawAtlas() {
+    const g = this.atlasCtx;
+    this.sources.forEach((s, i) => {
+      const x = (i % ATLAS) * CELL_W;
+      const y = Math.floor(i / ATLAS) * CELL_H;
+      const v = s.video;
+      if (v.readyState >= 2 && v.currentTime > 0) g.drawImage(v, x, y, CELL_W, CELL_H);
+      else if (s.poster.complete && s.poster.naturalWidth) g.drawImage(s.poster, x, y, CELL_W, CELL_H);
+    });
+    this.atlasTex.needsUpdate = true;
+  }
 
   private loop(now: number) {
     if (this.disposed) return;
@@ -419,62 +441,48 @@ export class Stage {
     const t = (now - this.start) / 1000;
     const u = this.mat.uniforms;
 
-    // the film on the cubes: swap the poster for the video once it plays
-    const f = this.films[this.film];
-    if (!f.live && f.video.readyState >= 2 && f.video.currentTime > 0) {
-      f.live = true;
-      u.map.value = f.texture;
-    }
+    this.drawAtlas();
 
-    // assembling: a steady pull while held, a quicker break on release
     const target = this.holding ? 1 : 0;
-    const speed = this.holding ? 0.62 : 0.9;
-    this.assemble = this.reduced ? target : THREE.MathUtils.clamp(this.assemble + Math.sign(target - this.assemble) * dt * speed, 0, 1);
-    if (Math.abs(target - this.assemble) < 0.004) this.assemble = target;
-    const whole = this.assemble >= 1;
-    if (whole !== this.whole) {
-      this.whole = whole;
-      this.events.onAssembled?.(whole);
-    }
-    if (this.nextPending && this.assemble < 0.2) {
-      this.nextPending = false;
-      this.showFilm((this.film + 1) % this.films.length);
+    const speed = this.holding ? 0.85 : 1.1;
+    this.hold = this.reduced ? target : THREE.MathUtils.clamp(this.hold + Math.sign(target - this.hold) * dt * speed, 0, 1);
+    if (Math.abs(target - this.hold) < 0.004) this.hold = target;
+    const gathered = this.hold >= 1;
+    if (gathered !== this.gathered) {
+      this.gathered = gathered;
+      this.events.onGathered?.(gathered);
     }
 
-    // turning: momentum and a slow drift while broken; square up to face you as it assembles
+    // a slow turn with momentum; square up to face you as the sheet forms
     if (!this.press.dragging) {
-      this.velY += (0.07 - this.velY) * damp(0.8, dt);
+      this.velY += (0.12 - this.velY) * damp(0.8, dt);
       this.velX += (0 - this.velX) * damp(2, dt);
       this.rotY += this.velY * dt * (this.reduced ? 0 : 1);
       this.rotX += this.velX * dt;
-      this.rotX += (0.15 - this.rotX) * damp(0.6, dt);
+      this.rotX += (0.2 - this.rotX) * damp(0.6, dt);
     }
-    const a = this.assemble;
+    const a = this.hold;
     const pull = a * a * (3 - 2 * a);
-    const wrap = (x: number) => Math.atan2(Math.sin(x), Math.cos(x));
-    if (pull > 0.001) {
-      this.rotY = wrap(this.rotY);
-    }
+    if (pull > 0.001) this.rotY = Math.atan2(Math.sin(this.rotY), Math.cos(this.rotY));
     this.group.rotation.y = this.rotY * (1 - pull);
     this.group.rotation.x = this.rotX * (1 - pull);
 
-    // where the cursor is, in the cubes' own space, for the push
     this.pointerOn += ((this.pointerNdc.x < 2 && !this.press.dragging ? 1 : 0) - this.pointerOn) * damp(4, dt);
     if (this.pointerNdc.x < 2) {
       const ray = new THREE.Raycaster();
       ray.setFromCamera(this.pointerNdc, this.camera);
       const hit = new THREE.Vector3();
-      ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), -SHELL * 0.35 * this.group.scale.x), hit);
+      ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), -SHELL * 0.5 * this.group.scale.x), hit);
       this.group.updateMatrixWorld();
       u.uPointer.value.copy(this.group.worldToLocal(hit));
     }
 
     this.intro = Math.min(1, this.intro + dt / (this.reduced ? 0.01 : 1.8));
     u.uTime.value = t;
-    u.uAssemble.value = this.assemble;
+    u.uHold.value = this.hold;
     u.uPointerOn.value = this.pointerOn;
     u.uFade.value = this.intro * this.intro * (3 - 2 * this.intro);
-    this.finish.uniforms.uAmount.value = 0.004 + 0.012 * (1 - pull);
+    this.finish.uniforms.uAmount.value = 0.004 + 0.01 * (1 - pull);
     this.finish.uniforms.uTime.value = t;
 
     this.composer.render();
@@ -484,17 +492,13 @@ export class Stage {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     this.cleanups.forEach((fn) => fn());
-    for (const f of this.films) {
-      f.video.pause();
-      f.video.removeAttribute("src");
-      f.video.load();
-      f.texture.dispose();
-      f.poster.dispose();
+    for (const s of this.sources) {
+      s.video.pause();
+      s.video.removeAttribute("src");
+      s.video.load();
     }
-    this.scene.traverse((o) => {
-      const m = o as THREE.Mesh;
-      m.geometry?.dispose();
-    });
+    this.scene.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
+    this.atlasTex.dispose();
     this.mat.dispose();
     this.composer.dispose();
     this.renderer.dispose();
