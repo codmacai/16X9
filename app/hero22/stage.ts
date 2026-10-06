@@ -69,7 +69,13 @@ const FOV_DESKTOP = 26; // the long lens
 const SQ2 = Math.SQRT2;
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-const easeOut = (t: number) => 1 - Math.pow(1 - clamp01(t), 3);
+const easeOut = (t: number) => 1 - Math.pow(1 - clamp01(t), 4);
+const easeIn = (t: number) => Math.pow(clamp01(t), 3);
+const cine = (t: number) => {
+  const x = clamp01(t);
+  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+};
+const WHITE = new THREE.Color(1, 1, 1);
 const f = (n: number) => n.toFixed(6);
 
 /** How bright the coffer whose centre is at (x, z) is, 0 … 1. The middle row is lit. */
@@ -133,11 +139,13 @@ const COFFER_FRAG = /* glsl */ `
     float ax = abs(cx);
     float level = ax < 0.2 ? 1.0 : (ax < 3.0 ? 0.3 : (ax < 6.0 ? 0.1 : 0.04));
 
-    // switch-on: a box at a time from the screen end, with a brief stutter
-    float order = clamp((-cz - 0.0) / 12.0, 0.0, 1.0) * 0.55 + ax * 0.05;
-    float t = clamp((uOn * 1.6 - (0.6 - order)) * 2.6, 0.0, 1.0);
-    float stutter = step(0.5, hash(vec2(floor(uTime * 22.0), cell.x * 3.1 + cell.y))) ;
-    float on = t >= 1.0 ? 1.0 : t * mix(0.35, 1.0, stutter) * step(0.05, t);
+    // switch-on: box by box from the screen end, each blinking like a tube
+    // catching before it holds (the lights below use the same pattern)
+    float order = clamp(-cz / 12.0, 0.0, 1.0) * 0.55 + ax * 0.05;
+    float t = clamp((uOn * 1.6 - (0.6 - order)) * 1.8, 0.0, 1.0);
+    float seed = floor(cx * 1.7 + 0.5) * 3.7 + floor(cz * 0.37 + 0.5) * 1.3;
+    float blink = step(0.42, fract(sin(floor(t * 11.0) * 7.13 + seed) * 43758.5453));
+    float on = t >= 1.0 ? 1.0 : (t > 0.02 ? blink * (0.55 + 0.45 * t) : 0.0);
 
     float r = max(abs(local.x), abs(local.y)) * 2.0;     // 0 middle … 1 edge
     float glow = 0.74 + 0.26 * (1.0 - r * r);
@@ -152,27 +160,35 @@ const COFFER_FRAG = /* glsl */ `
   }
 `;
 
-// The screen: a film (cross-fading to the next), the labels and mark on top.
+// The screen. First the mark, as in hero 13: a white card opening out of a
+// slit, 16X9 & BEYOND rising into it, cut out of the white. On entering, the
+// letters lift out and the card gives way to the film (cross-fading to the next).
 const SCREEN_FRAG = /* glsl */ `
   uniform sampler2D uA;
   uniform sampler2D uB;
-  uniform sampler2D uUi;
+  uniform sampler2D uMark;
   uniform float uMix;
-  uniform float uPower;   // 0 … 1, switching on
-  uniform float uCrop;    // share of the film's height that shows
+  uniform float uCrop;   // share of the film's height that shows
+  uniform float uCard;   // 0 … 1, the card opening out of its slit
+  uniform float uLetY;   // where the letters are: 1 below, 0 in place, -1 lifted out
+  uniform float uBrand;  // 1 the mark, 0 the film
   varying vec2 vUv;
   varying vec3 vW;
   vec3 toLinear(vec3 c){ return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c)); }
   void main(){
     vec2 fuv = vec2(vUv.x, 0.5 + (vUv.y - 0.5) * uCrop);
     vec3 film = mix(toLinear(texture2D(uA, fuv).rgb), toLinear(texture2D(uB, fuv).rgb), uMix);
-    vec4 ui = texture2D(uUi, vUv);
-    vec3 col = mix(film, vec3(1.0), ui.a * 0.92);
     // an LED wall: never quite black, very slightly brighter in the middle
-    col = col * (0.96 + 0.04 * (1.0 - length(vUv - 0.5))) + vec3(0.004);
-    // on: a soft wipe down the panel, then full
-    float wipe = 1.0 - smoothstep(uPower * 1.25 - 0.25, uPower * 1.25, 1.0 - vUv.y);
-    gl_FragColor = vec4(col * 1.05 * wipe * uPower, 1.0);
+    film = film * (0.96 + 0.04 * (1.0 - length(vUv - 0.5))) + vec3(0.004);
+
+    float aa = fwidth(vUv.y);
+    float card = 1.0 - smoothstep(-aa, aa, abs(vUv.y - 0.5) - uCard * 0.5);
+    vec2 luv = vec2(vUv.x, vUv.y + uLetY);
+    float inside = step(0.0, luv.y) * step(luv.y, 1.0);
+    float letter = texture2D(uMark, luv).a * inside;
+    vec3 mark = vec3(0.9) * card * (1.0 - letter);
+
+    gl_FragColor = vec4(mix(film, mark, uBrand), 1.0);
   }
 `;
 
@@ -256,13 +272,13 @@ export class Gallery {
   private hideInMirror: THREE.Object3D[] = [];
 
   private coffers!: THREE.ShaderMaterial;
-  private cofferLights: { light: THREE.RectAreaLight; level: number; order: number }[] = [];
+  private cofferLights: { light: THREE.RectAreaLight; level: number; order: number; seed: number }[] = [];
   private screenMat!: THREE.ShaderMaterial;
   private screenMesh!: THREE.Mesh;
   private screenLight!: THREE.RectAreaLight;
   private screenColour = new THREE.Color(0.5, 0.45, 0.4);
-  private ui: HTMLCanvasElement;
-  private uiTex: THREE.CanvasTexture;
+  private markCanvas: HTMLCanvasElement;
+  private markTex: THREE.CanvasTexture;
   private sampler: CanvasRenderingContext2D | null;
 
   private clips: Clip[];
@@ -275,8 +291,11 @@ export class Gallery {
   private last = performance.now();
   private frame = 0;
   private ceilOn = 0;
-  private power = 0;
   private ready = false;
+  private time = 0;
+  private brandMode: "intro" | "out" | "in" = "intro";
+  private brandAt = 0;
+  private brand = 1;
 
   private mouse = new THREE.Vector2();
   private yaw = 0;
@@ -329,13 +348,14 @@ export class Gallery {
     });
     this.clips[0].video.play().catch(() => {});
 
-    // the labels and mark on the screen
-    this.ui = document.createElement("canvas");
-    this.ui.width = 2048;
-    this.ui.height = Math.round(2048 / (SW / SH));
-    this.uiTex = new THREE.CanvasTexture(this.ui);
-    this.uiTex.colorSpace = THREE.NoColorSpace;
-    this.drawUi();
+    // 16X9 & BEYOND, cut into the screen
+    this.markCanvas = document.createElement("canvas");
+    this.markCanvas.width = 2048;
+    this.markCanvas.height = Math.round(2048 / (SW / SH));
+    this.markTex = new THREE.CanvasTexture(this.markCanvas);
+    this.markTex.colorSpace = THREE.NoColorSpace;
+    this.markTex.anisotropy = 8;
+    this.drawMark();
 
     const s = document.createElement("canvas");
     s.width = 16;
@@ -360,20 +380,20 @@ export class Gallery {
 
     this.composer = new EffectComposer(this.renderer, new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: 4 }));
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(2, 2), 0.12, 0.45, 0.92);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(2, 2), 0.08, 0.4, 0.97); // a breath of glow; keeps the mark's letters crisp
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
 
     this.resize();
     if (reduced) {
+      // no opening: start as if it had already played
       this.camPos.set(0, EYE, 0);
-      this.ceilOn = 1;
-      this.power = 1;
+      this.t0 -= 10000;
     }
     this.bind();
     this.loop = this.loop.bind(this);
     this.raf = requestAnimationFrame(this.loop);
-    if (document.fonts) document.fonts.ready.then(() => !this.disposed && this.drawUi());
+    if (document.fonts) document.fonts.ready.then(() => !this.disposed && this.drawMark());
   }
 
   // -------------------------------------------------------------------------
@@ -445,7 +465,8 @@ export class Gallery {
       light.rotateZ(Math.PI / 4);
       this.scene.add(light);
       const order = clamp01(-c.z / 12) * 0.55 + Math.abs(c.x) * 0.05;
-      this.cofferLights.push({ light, level, order });
+      const seed = Math.floor(c.x * 1.7 + 0.5) * 3.7 + Math.floor(c.z * 0.37 + 0.5) * 1.3;
+      this.cofferLights.push({ light, level, order, seed });
     }
 
     // ---- back wall: black slabs, glossy, each set a hair proud of the last
@@ -484,10 +505,12 @@ export class Gallery {
       uniforms: {
         uA: { value: this.clips[0].poster },
         uB: { value: this.clips[0].poster },
-        uUi: { value: this.uiTex },
+        uMark: { value: this.markTex },
         uMix: { value: 0 },
-        uPower: { value: 0 },
         uCrop: { value: FILM_ASPECT / (SW / SH) },
+        uCard: { value: 0 },
+        uLetY: { value: 1 },
+        uBrand: { value: 1 },
       },
     });
     this.screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), this.screenMat);
@@ -574,40 +597,45 @@ export class Gallery {
   }
 
   // -------------------------------------------------------------------------
-  // The labels on the screen: the studios down the left edge, the mark in the corner
+  // The mark, as hero 13 sets it: 16X9 in bold, tracked tight, & BEYOND tiny on
+  // the same baseline, © in the corner. Drawn once; the shader moves it.
   // -------------------------------------------------------------------------
 
-  private drawUi() {
-    const g = this.ui.getContext("2d")!;
-    const W = this.ui.width;
-    const H = this.ui.height;
+  private drawMark() {
+    const g = this.markCanvas.getContext("2d")!;
+    const W = this.markCanvas.width;
+    const H = this.markCanvas.height;
     g.clearRect(0, 0, W, H);
     const family = getComputedStyle(this.host).fontFamily || "sans-serif";
-    g.fillStyle = "#fff";
-    g.shadowColor = "rgba(0,0,0,0.45)";
-    g.shadowBlur = 6;
-    g.font = `600 17px ${family}`;
-    const labels = ["16X9", "9X16", "BEYOND", "CONTACT"];
-    labels.forEach((label, i) => {
-      g.save();
-      const y = H * (0.12 + (i / (labels.length - 1)) * 0.76);
-      g.translate(46, y);
-      g.rotate(-Math.PI / 2);
-      const spaced = label.split("").join(String.fromCharCode(8202));
-      const w = g.measureText(spaced).width;
-      g.fillText(spaced, -w / 2, 6);
-      g.restore();
-    });
-    const logo = new Image();
-    logo.onload = () => {
-      const lw = 104;
-      const lh = (logo.height / logo.width) * lw;
-      g.shadowBlur = 8;
-      g.drawImage(logo, W - lw - 44, H - lh - 38, lw, lh);
-      this.uiTex.needsUpdate = true;
+    const TRACK = -0.03;
+    const CAP = 0.727;
+    const SUB_SCALE = 0.17;
+    const SUB_GAP = 0.07;
+    // draw a word letter by letter with the tracking; returns its width
+    const word = (text: string, size: number, x: number, y: number, draw: boolean) => {
+      g.font = `700 ${size}px ${family}`;
+      let cx = x;
+      for (const ch of text) {
+        if (draw) g.fillText(ch, cx, y);
+        cx += g.measureText(ch).width + TRACK * size;
+      }
+      return cx - x - TRACK * size;
     };
-    logo.src = "/logo.png";
-    this.uiTex.needsUpdate = true;
+    const tw = word("16X9", 100, 0, 0, false);
+    const ts = word("& BEYOND", 100, 0, 0, false);
+    const inner = W * 0.8;
+    const fs = (100 * inner) / (tw + 100 * SUB_GAP + ts * SUB_SCALE);
+    const total = (fs * tw) / 100 + fs * SUB_GAP + (fs * SUB_SCALE * ts) / 100;
+    const x0 = (W - total) / 2;
+    const base = H / 2 + (fs * CAP) / 2;
+    g.fillStyle = "#000";
+    word("16X9", fs, x0, base, true);
+    word("& BEYOND", fs * SUB_SCALE, x0 + (fs * tw) / 100 + fs * SUB_GAP, base, true);
+    g.font = `600 ${Math.max(14, W * 0.016)}px ${family}`;
+    g.textAlign = "right";
+    g.fillText("©", W - W * 0.03, H - W * 0.028);
+    g.textAlign = "left";
+    this.markTex.needsUpdate = true;
   }
 
   // -------------------------------------------------------------------------
@@ -666,7 +694,7 @@ export class Gallery {
       const p = ndc(e);
       this.mouse.copy(p);
       if (!this.drag.down) {
-        el.style.cursor = overScreen(p) ? "pointer" : "";
+        el.style.cursor = !this.focus && this.ready && overScreen(p) ? "pointer" : "";
         return;
       }
       const dx = e.clientX - this.drag.x;
@@ -679,8 +707,8 @@ export class Gallery {
       if (!this.drag.down) return;
       this.drag.down = false;
       if (this.drag.moved) return;
-      const hit = overScreen(ndc(e));
-      this.setFocus(hit ? !this.focus : false);
+      // the screen is the way in; once inside, the page is the film (Esc leads back out)
+      if (!this.focus && overScreen(ndc(e))) this.setFocus(true);
     };
     on(el, "pointerup", up);
     on(el, "pointercancel", () => (this.drag.down = false));
@@ -701,8 +729,16 @@ export class Gallery {
   }
 
   setFocus(f: boolean) {
-    if (f === this.focus) return;
+    if (f === this.focus || !this.ready) return;
     this.focus = f;
+    this.brandMode = f ? "out" : "in";
+    this.brandAt = this.time;
+    if (f) {
+      const c = this.clips[this.film];
+      c.video.currentTime = 0;
+      c.video.play().catch(() => {});
+      this.filmSince = this.time;
+    }
     this.yawTo = 0;
     this.pitchTo = 0;
     this.events.onFocus?.(f);
@@ -805,20 +841,40 @@ export class Gallery {
     this.frame++;
 
     // ---- the opening: the ceiling, box by box, then the screen
-    if (!this.reduced) {
-      this.ceilOn = clamp01((t - 0.35) / 1.9);
-      this.power = clamp01((t - 1.9) / 1.0);
-    }
+    this.time = t;
+    this.ceilOn = clamp01((t - 0.3) / 2.4);
     this.coffers.uniforms.uOn.value = this.ceilOn;
     this.coffers.uniforms.uTime.value = t;
     for (const c of this.cofferLights) {
-      const tt = clamp01((this.ceilOn * 1.6 - (0.6 - c.order)) * 2.6);
-      c.light.intensity = 3.0 * c.level * tt * tt;
+      const tt = clamp01((this.ceilOn * 1.6 - (0.6 - c.order)) * 1.8);
+      const h = Math.sin(Math.floor(tt * 11) * 7.13 + c.seed) * 43758.5453;
+      const blink = h - Math.floor(h) >= 0.42 ? 1 : 0;
+      const on = tt >= 1 ? 1 : tt > 0.02 ? blink * (0.55 + 0.45 * tt) : 0;
+      c.light.intensity = 3.0 * c.level * on;
     }
-    if (!this.ready && this.power >= 1) {
-      this.ready = true;
-      this.events.onReady?.();
+    // the screen: the mark comes on, then (on entering) gives way to the film
+    let card = 1;
+    let letY = 0;
+    let brand = 1;
+    const s = t - this.brandAt;
+    if (this.brandMode === "intro") {
+      card = cine((t - 2.9) / 0.95);
+      letY = 1 - easeOut((t - 3.55) / 0.9);
+      if (!this.ready && t > 4.5) {
+        this.ready = true;
+        this.events.onReady?.();
+      }
+    } else if (this.brandMode === "out") {
+      letY = -easeIn(s / 0.55);
+      brand = 1 - cine((s - 0.35) / 0.85);
+    } else {
+      brand = cine(s / 0.6);
+      letY = 1 - easeOut((s - 0.45) / 0.9);
     }
+    this.brand = brand;
+    this.screenMat.uniforms.uCard.value = card;
+    this.screenMat.uniforms.uLetY.value = letY;
+    this.screenMat.uniforms.uBrand.value = brand;
 
     // ---- films: swap posters for video once playing; cross-fade; move on every so often
     const cur = this.clips[this.film];
@@ -835,14 +891,14 @@ export class Gallery {
         this.filmSince = t;
         this.screenMat.uniforms.uA.value = this.texOf(this.clips[this.film]);
       }
-    } else if (this.ready && t - this.filmSince > 9 && !this.focus) {
+    } else if (this.focus && this.brand < 0.01 && t - this.filmSince > 9) {
       this.showFilm((this.film + 1) % this.clips.length);
     }
     this.screenMat.uniforms.uMix.value = this.mix * this.mix * (3 - 2 * this.mix);
-    this.screenMat.uniforms.uPower.value = easeOut(this.power);
-    if (this.frame % 4 === 0) this.sampleColour();
-    this.screenLight.color.copy(this.screenColour);
-    this.screenLight.intensity = 1.6 * easeOut(this.power);
+    if (this.frame % 4 === 0 && brand < 1) this.sampleColour();
+    // the white card lights the floor white; the film, in its own colour
+    this.screenLight.color.copy(this.screenColour).lerp(WHITE, brand);
+    this.screenLight.intensity = card * (2.6 * brand + 1.6 * (1 - brand));
 
     // ---- camera: ease in from the door; the mouse leans it; drag turns it; click walks up
     this.yaw += (this.yawTo - this.yaw) * damp(5, dt);
@@ -855,8 +911,9 @@ export class Gallery {
     const look = new THREE.Vector3();
     if (this.focus) {
       const hHalf = Math.atan(Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * this.camera.aspect);
-      const dist = SW / 2 / 0.88 / Math.tan(hHalf);
-      want.set(this.mouse.x * 0.12, S_MID + 0.05 + this.mouse.y * 0.05, S_Z + dist);
+      const fill = this.portrait ? 0.94 : 0.84;
+      const dist = SW / 2 / fill / Math.tan(hHalf);
+      want.set(this.mouse.x * 0.08, S_MID + this.mouse.y * 0.03, S_Z + dist);
       look.set(0, S_MID, S_Z);
     } else {
       const pivot = new THREE.Vector3(0, EYE, S_Z);
@@ -895,7 +952,7 @@ export class Gallery {
       if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
       else mat?.dispose();
     });
-    this.uiTex.dispose();
+    this.markTex.dispose();
     this.reflRT.dispose();
     this.blurA.dispose();
     this.blurB.dispose();

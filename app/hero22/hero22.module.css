@@ -26,47 +26,57 @@
   height: 100% !important;
 }
 
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* small spaced capitals, the voice of everything but the line */
-.nav a,
+.menu a,
 .sound,
 .label,
 .meta,
 .switcher,
-.hint {
+.studios {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
-/* everything waits for the room to come on */
+/* ---------------------------------------------------------------------------
+   Before entering, none of this is on the page. Inside, it arrives in order:
+   the menu, the line, the foot. Stepping back out, it goes at once.
+   ------------------------------------------------------------------------- */
 .top,
-.placard,
-.controls {
+.bottom {
   opacity: 0;
-  transition: opacity 1.2s ease, transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
-.ready .top,
-.ready .placard,
-.ready .controls {
+.top {
+  transform: translateY(-10px);
+}
+.bottom {
+  transform: translateY(10px);
+}
+.inside .top,
+.inside .bottom {
   opacity: 1;
-}
-.placard,
-.controls {
-  transform: translateY(10px);
-}
-.ready .placard,
-.ready .controls {
   transform: none;
+  pointer-events: auto;
+  transition: opacity 1s ease, transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.ready .controls {
-  transition-delay: 0.25s;
+.inside .top {
+  transition-delay: 1.5s;
 }
-/* up close, the placard steps aside for the film */
-.ready.focused .placard {
-  opacity: 0;
-  transform: translateY(10px);
-  transition-delay: 0s;
+.inside .bottom {
+  transition-delay: 2.3s;
 }
 
 /* ---------------------------------------------------------------- top bar */
@@ -78,10 +88,8 @@
   align-items: center;
   justify-content: space-between;
   padding: clamp(18px, 2.4vw, 32px) clamp(18px, 3vw, 44px);
-  pointer-events: none;
 }
 .logo {
-  pointer-events: auto;
   display: block;
   width: clamp(42px, 3.6vw, 54px);
 }
@@ -90,18 +98,17 @@
   width: 100%;
   height: auto;
 }
-.nav {
-  pointer-events: auto;
+.menu {
   display: flex;
   align-items: center;
-  gap: clamp(16px, 2.2vw, 32px);
+  gap: clamp(16px, 2.4vw, 36px);
 }
-.nav a {
+.menu a {
   color: rgba(241, 239, 234, 0.75);
   text-decoration: none;
   transition: color 0.3s ease;
 }
-.nav a:hover {
+.menu a:hover {
   color: #fff;
 }
 .rule {
@@ -150,38 +157,69 @@
   }
 }
 
-/* ---------------------------------------------------------------- placard */
-.placard {
+/* --------------------------------------------- the line, over the film */
+.headline {
   position: absolute;
   z-index: 2;
-  left: clamp(18px, 3vw, 44px);
-  bottom: clamp(22px, 4.5vh, 48px);
-  pointer-events: none;
-}
-.headline {
+  inset: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
   font-weight: 300;
   font-stretch: 125%;
-  font-size: clamp(24px, 2.5vw, 42px);
-  line-height: 1.04;
-  letter-spacing: -0.01em;
+  font-size: clamp(30px, 4.8vw, 82px);
+  line-height: 1.02;
+  letter-spacing: -0.015em;
   text-transform: uppercase;
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.35);
 }
-.headline span {
+/* each line rises out of its own slot */
+.headline > span {
   display: block;
+  overflow: hidden;
+  padding: 0 0.05em;
+}
+.headline > span > span {
+  display: block;
+  transform: translateY(105%);
+  transition: transform 0.45s cubic-bezier(0.7, 0, 0.84, 0);
+}
+.inside .headline > span > span {
+  transform: none;
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1) 1.9s;
+}
+.inside .headline > span + span > span {
+  transition-delay: 2.02s;
+}
+
+/* -------------------------------------------------------------- the foot */
+.bottom {
+  position: absolute;
+  z-index: 3;
+  left: clamp(18px, 3vw, 44px);
+  right: clamp(18px, 3vw, 44px);
+  bottom: clamp(18px, 3.6vh, 40px);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
 }
 .showing {
-  margin: 18px 0 0;
+  margin: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px 14px;
+  gap: 4px 12px;
 }
 .label {
   color: rgba(241, 239, 234, 0.5);
 }
 .title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 400;
   animation: swap 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -198,42 +236,53 @@
     transform: none;
   }
 }
-
-/* --------------------------------------------------------------- controls */
-.controls {
-  position: absolute;
-  z-index: 3;
-  right: clamp(18px, 3vw, 44px);
-  bottom: clamp(22px, 4.5vh, 48px);
+.studios {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 14px;
+  align-items: center;
+  font-size: 12px;
+  letter-spacing: 0.22em;
 }
-.switcher {
+.studio {
   display: inline-flex;
   align-items: center;
-  gap: 16px;
+}
+.studios a {
+  color: #f1efea;
+  text-decoration: none;
+  padding: 6px 4px;
+  transition: opacity 0.3s ease;
+}
+.studios a:hover {
+  opacity: 0.6;
+}
+.dot {
+  width: 3px;
+  height: 3px;
+  margin: 0 clamp(14px, 2vw, 26px);
+  border-radius: 50%;
+  background: rgba(241, 239, 234, 0.5);
+}
+.switcher {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
   color: #f1efea;
 }
 .switcher button {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border: 1px solid rgba(241, 239, 234, 0.3);
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.25);
   color: #f1efea;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: border-color 0.3s ease, background 0.3s ease;
 }
 .switcher button:hover {
   border-color: rgba(241, 239, 234, 0.75);
   background: rgba(0, 0, 0, 0.45);
-}
-.hint {
-  margin: 0;
-  color: rgba(241, 239, 234, 0.55);
 }
 
 /* ------------------------------------------------------------------ grain */
@@ -272,17 +321,20 @@
 }
 
 @media (max-width: 760px) {
-  .nav a,
+  .menu a,
   .rule {
     display: none;
   }
-  .controls {
-    bottom: auto;
-    top: 72px;
-    right: 18px;
+  .bottom {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 14px;
   }
-  .hint {
-    display: none;
+  .showing {
+    justify-content: center;
+  }
+  .switcher {
+    justify-self: center;
   }
 }
 
@@ -290,5 +342,9 @@
   .grain::after,
   .bars[data-on="true"] i {
     animation: none;
+  }
+  .headline > span > span,
+  .inside .headline > span > span {
+    transition: none;
   }
 }
