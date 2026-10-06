@@ -24,7 +24,7 @@ const FILMS: (Film & { title: string; meta: string })[] = [
 
 const MENU = [
   { label: "Work", href: "#work" },
-  { label: "Studio", href: "#studio" },
+  { label: "Who we are", href: "#who-we-are" },
   { label: "Services", href: "#services" },
   { label: "Contact", href: "#contact" },
 ];
@@ -37,54 +37,12 @@ const STUDIOS = [
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
-/** A gallery's room tone: low air, a faint hum from the screen. */
-function roomTone() {
-  const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  const ctx = new Ctx();
-  const len = ctx.sampleRate * 2;
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const data = buf.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < len; i++) {
-    last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
-    data[i] = last * 3.5;
-  }
-  const noise = ctx.createBufferSource();
-  noise.buffer = buf;
-  noise.loop = true;
-  const lp = ctx.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.frequency.value = 420;
-  const hum = ctx.createOscillator();
-  hum.frequency.value = 100;
-  const humGain = ctx.createGain();
-  humGain.gain.value = 0.006;
-  const out = ctx.createGain();
-  out.gain.value = 0;
-  noise.connect(lp).connect(out);
-  hum.connect(humGain).connect(out);
-  out.connect(ctx.destination);
-  noise.start();
-  hum.start();
-  return {
-    set(on: boolean) {
-      if (ctx.state === "suspended") ctx.resume();
-      out.gain.setTargetAtTime(on ? 0.2 : 0, ctx.currentTime, 0.4);
-    },
-    close() {
-      ctx.close();
-    },
-  };
-}
-
 export default function Hero22() {
   const hostRef = useRef<HTMLDivElement>(null);
   const galleryRef = useRef<Gallery | null>(null);
-  const toneRef = useRef<ReturnType<typeof roomTone> | null>(null);
   const [ready, setReady] = useState(false);
   const [inside, setInside] = useState(false);
   const [film, setFilm] = useState(0);
-  const [sound, setSound] = useState(false);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -95,18 +53,9 @@ export default function Hero22() {
     return () => {
       g.dispose();
       galleryRef.current = null;
-      toneRef.current?.close();
-      toneRef.current = null;
     };
   }, []);
 
-  const toggleSound = () => {
-    if (!toneRef.current) toneRef.current = roomTone();
-    const next = !sound;
-    toneRef.current.set(next);
-    galleryRef.current?.play();
-    setSound(next);
-  };
   const step = (d: number) => galleryRef.current?.showFilm((film + d + FILMS.length) % FILMS.length);
   const f = FILMS[film];
   const tab = inside ? 0 : -1;
@@ -138,15 +87,6 @@ export default function Hero22() {
               {m.label}
             </a>
           ))}
-          <span className={styles.rule} aria-hidden="true" />
-          <button type="button" className={styles.sound} onClick={toggleSound} aria-pressed={sound} tabIndex={tab}>
-            <span className={styles.bars} data-on={sound}>
-              <i />
-              <i />
-              <i />
-            </span>
-            Sound {sound ? "on" : "off"}
-          </button>
         </nav>
       </header>
 
