@@ -1,0 +1,231 @@
+.root {
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  min-height: 560px;
+  overflow: hidden;
+  background: #050505;
+  color: #f4f2ee;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.stage:active {
+  cursor: grabbing;
+}
+.stage canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ---------------------------------------------------------------- top bar */
+.top {
+  position: absolute;
+  z-index: 4;
+  inset: 0 0 auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(18px, 2.4vw, 32px) clamp(18px, 3vw, 44px);
+  pointer-events: none;
+}
+.logo {
+  pointer-events: auto;
+  display: block;
+  width: clamp(44px, 4vw, 58px);
+}
+.logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.burger {
+  pointer-events: auto;
+  position: relative;
+  width: 30px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.burger span {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 1.5px;
+  background: #f4f2ee;
+  transition: transform 0.5s cubic-bezier(0.76, 0, 0.24, 1), top 0.5s cubic-bezier(0.76, 0, 0.24, 1);
+}
+.burger span:first-child {
+  top: 4px;
+}
+.burger span:last-child {
+  top: 12px;
+}
+.burgerOpen span:first-child {
+  top: 8px;
+  transform: rotate(45deg);
+}
+.burgerOpen span:last-child {
+  top: 8px;
+  transform: rotate(-45deg);
+}
+
+/* --------------------------------------------------------------- headline */
+/* Archivo at its widest and light, like hero 13 */
+.headline {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  top: clamp(78px, 12.5vh, 132px);
+  margin: 0;
+  padding: 0 20px;
+  text-align: center;
+  pointer-events: none;
+  font-weight: 300;
+  font-stretch: 125%;
+  font-size: clamp(26px, 3.3vw, 54px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------ under band */
+.under {
+  position: absolute;
+  z-index: 2;
+  left: clamp(18px, 3vw, 44px);
+  right: clamp(18px, 3vw, 44px);
+  bottom: clamp(92px, 15vh, 150px);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  pointer-events: none;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(244, 242, 238, 0.62);
+}
+.hint {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+.count {
+  justify-self: end;
+}
+.readout {
+  min-width: 0;
+  text-align: center;
+  color: #f4f2ee;
+}
+.readout span {
+  display: inline-block;
+}
+.readout b {
+  font-weight: 600;
+  margin-right: 12px;
+  color: rgba(244, 242, 238, 0.62);
+}
+.readout i {
+  font-style: normal;
+  margin-left: 12px;
+  color: rgba(244, 242, 238, 0.62);
+}
+
+/* ---------------------------------------------------------------- clients */
+.clients {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(54px, 8vh, 72px);
+  border-top: 1px solid rgba(244, 242, 238, 0.1);
+  overflow: hidden;
+  pointer-events: none;
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.clientsTrack {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  animation: marquee 38s linear infinite;
+}
+.clientsRun {
+  display: flex;
+  align-items: center;
+  gap: clamp(48px, 7vw, 110px);
+  padding-right: clamp(48px, 7vw, 110px);
+  color: rgba(244, 242, 238, 0.55);
+  font-size: clamp(13px, 1.05vw, 16px);
+}
+/* the client names keep their own voices */
+.client_a {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+.client_b {
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  font-size: 1.15em;
+}
+.client_c {
+  font-style: italic;
+  font-weight: 400;
+}
+.client_d {
+  font-weight: 500;
+  font-stretch: 125%;
+  letter-spacing: 0.22em;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ------------------------------------------------------------------- menu */
+.menuSheet {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: #000;
+  overflow: auto;
+}
+
+@media (max-width: 760px) {
+  .headline {
+    top: 13vh;
+    font-size: clamp(22px, 7vw, 32px);
+  }
+  .under {
+    bottom: 96px;
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+  .hint,
+  .count {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clientsTrack {
+    animation: none;
+  }
+}
