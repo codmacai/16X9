@@ -2,13 +2,14 @@
   position: relative;
   width: 100%;
   height: 100svh;
-  min-height: 520px;
+  min-height: 560px;
   overflow: hidden;
   background: #000;
-  color: #f2efe9;
+  color: #f1efea;
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   user-select: none;
+  -webkit-user-select: none;
 }
 
 .stage {
@@ -25,282 +26,269 @@
   height: 100% !important;
 }
 
+/* small spaced capitals, the voice of everything but the line */
+.nav a,
+.sound,
+.label,
+.meta,
+.switcher,
+.hint {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* everything waits for the room to come on */
+.top,
+.placard,
+.controls {
+  opacity: 0;
+  transition: opacity 1.2s ease, transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ready .top,
+.ready .placard,
+.ready .controls {
+  opacity: 1;
+}
+.placard,
+.controls {
+  transform: translateY(10px);
+}
+.ready .placard,
+.ready .controls {
+  transform: none;
+}
+.ready .controls {
+  transition-delay: 0.25s;
+}
+/* up close, the placard steps aside for the film */
+.ready.focused .placard {
+  opacity: 0;
+  transform: translateY(10px);
+  transition-delay: 0s;
+}
+
 /* ---------------------------------------------------------------- top bar */
 .top {
   position: absolute;
-  inset: 0 0 auto 0;
   z-index: 3;
+  inset: 0 0 auto 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: clamp(18px, 2.6vw, 34px) clamp(18px, 2.6vw, 36px);
+  padding: clamp(18px, 2.4vw, 32px) clamp(18px, 3vw, 44px);
   pointer-events: none;
-  opacity: 0;
-  transform: translateY(-6px);
-  transition: opacity 0.9s ease 0.5s, transform 0.9s ease 0.5s;
-}
-.ready .top {
-  opacity: 1;
-  transform: none;
 }
 .logo {
   pointer-events: auto;
-  font-size: clamp(18px, 1.55vw, 24px);
-  font-weight: 300;
-  letter-spacing: -0.01em;
-  color: #f2efe9;
-  text-decoration: none;
+  display: block;
+  width: clamp(42px, 3.6vw, 54px);
+}
+.logo img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 .nav {
   pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: clamp(14px, 1.9vw, 30px);
+  gap: clamp(16px, 2.2vw, 32px);
 }
-.nav button {
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 6px 0;
-  color: rgba(242, 239, 233, 0.78);
-  font: inherit;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
+.nav a {
+  color: rgba(241, 239, 234, 0.75);
+  text-decoration: none;
   transition: color 0.3s ease;
 }
-.nav button:hover,
-.nav button.on {
+.nav a:hover {
   color: #fff;
-}
-.nav button.on {
-  text-decoration: underline;
-  text-underline-offset: 6px;
 }
 .rule {
   width: 1px;
   height: 14px;
-  background: rgba(242, 239, 233, 0.4);
+  background: rgba(241, 239, 234, 0.35);
 }
 .sound {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 9px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #f1efea;
+  cursor: pointer;
+}
+.bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+.bars i {
+  display: block;
+  width: 2px;
+  height: 3px;
+  background: currentColor;
+}
+.bars[data-on="true"] i {
+  animation: eq 0.9s ease-in-out infinite;
+}
+.bars[data-on="true"] i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.bars[data-on="true"] i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes eq {
+  0%,
+  100% {
+    height: 3px;
+  }
+  50% {
+    height: 10px;
+  }
 }
 
-/* --------------------------------------------------------------- headline */
-.headline {
+/* ---------------------------------------------------------------- placard */
+.placard {
   position: absolute;
   z-index: 2;
-  left: 0;
-  right: 0;
-  top: clamp(76px, 11vh, 124px);
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  left: clamp(18px, 3vw, 44px);
+  bottom: clamp(22px, 4.5vh, 48px);
   pointer-events: none;
-  font-family: var(--font-display), "Oswald", Impact, sans-serif;
-  font-weight: 600;
-  font-size: clamp(38px, 4.9vw, 84px);
-  line-height: 1.06;
-  letter-spacing: 0.055em;
+}
+.headline {
+  margin: 0;
+  font-weight: 300;
+  font-stretch: 125%;
+  font-size: clamp(24px, 2.5vw, 42px);
+  line-height: 1.04;
+  letter-spacing: -0.01em;
   text-transform: uppercase;
-  text-align: center;
-  will-change: transform;
 }
 .headline span {
   display: block;
-  background: linear-gradient(180deg, #ffffff 0%, #e9e4dc 55%, #b9b2a7 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  filter: drop-shadow(0 0 22px rgba(255, 226, 196, 0.22)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6));
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.headline span + span {
-  transition-delay: 0.14s;
-}
-.ready .headline span {
-  opacity: 1;
-  transform: none;
-}
-.focused .headline span {
-  opacity: 0;
-  transform: translateY(-14px);
-  transition-delay: 0s;
-}
-
-/* ------------------------------------------------------------------ index */
-.index {
-  position: absolute;
-  z-index: 3;
-  right: clamp(18px, 2.8vw, 44px);
-  top: 50%;
-  transform: translateY(-50%);
-  margin: 0;
-  padding: 0 0 0 12px;
-  list-style: none;
+.showing {
+  margin: 18px 0 0;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  border-left: 1px solid rgba(242, 239, 233, 0.22);
-  opacity: 0;
-  transition: opacity 0.9s ease 0.8s;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
 }
-.ready .index {
-  opacity: 1;
+.label {
+  color: rgba(241, 239, 234, 0.5);
 }
-.index button {
-  position: relative;
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 2px 0;
-  color: rgba(242, 239, 233, 0.45);
-  font: inherit;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  cursor: pointer;
-  transition: color 0.3s ease;
+.title {
+  font-size: 15px;
+  font-weight: 400;
+  animation: swap 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.index button:hover {
-  color: rgba(242, 239, 233, 0.85);
+.meta {
+  color: rgba(241, 239, 234, 0.6);
 }
-.index button.on {
-  color: #fff;
-}
-.index button.on::before {
-  content: "";
-  position: absolute;
-  left: -13px;
-  top: 2px;
-  bottom: 2px;
-  width: 1px;
-  background: #fff;
+@keyframes swap {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-/* ------------------------------------------------------------------- hint */
-.hint {
+/* --------------------------------------------------------------- controls */
+.controls {
   position: absolute;
   z-index: 3;
-  left: clamp(18px, 2.6vw, 36px);
-  bottom: clamp(18px, 3vh, 34px);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  pointer-events: none;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(242, 239, 233, 0.72);
-  opacity: 0;
-  transition: opacity 0.9s ease 1s;
-}
-.ready .hint {
-  opacity: 1;
-}
-.hintIcon {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border: 1px solid rgba(242, 239, 233, 0.45);
-  border-radius: 50%;
-}
-
-/* ---------------------------------------------------------------- caption */
-.caption {
-  position: absolute;
-  z-index: 3;
-  left: 50%;
+  right: clamp(18px, 3vw, 44px);
   bottom: clamp(22px, 4.5vh, 48px);
-  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+}
+.switcher {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  pointer-events: none;
-  text-align: center;
-  opacity: 0;
-  transition: opacity 0.6s ease;
+  gap: 16px;
+  color: #f1efea;
 }
-.focused .caption {
-  opacity: 1;
-  transition-delay: 0.45s;
+.switcher button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(241, 239, 234, 0.3);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  color: #f1efea;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.3s ease, background 0.3s ease;
 }
-.captionNo,
-.captionMeta {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(242, 239, 233, 0.6);
+.switcher button:hover {
+  border-color: rgba(241, 239, 234, 0.75);
+  background: rgba(0, 0, 0, 0.45);
 }
-.captionTitle {
-  font-family: var(--font-display), "Oswald", sans-serif;
-  font-weight: 500;
-  font-size: clamp(18px, 1.8vw, 26px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.hint {
+  margin: 0;
+  color: rgba(241, 239, 234, 0.55);
 }
 
-/* ---------------------------------------------------- grain and vignette */
+/* ------------------------------------------------------------------ grain */
 .grain {
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: radial-gradient(ellipse 85% 75% at 50% 52%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+  overflow: hidden;
+  background: radial-gradient(ellipse 90% 80% at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.42) 100%);
 }
 .grain::after {
   content: "";
   position: absolute;
   inset: -50%;
-  opacity: 0.07;
+  opacity: 0.04;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   animation: grain 0.9s steps(6) infinite;
 }
 @keyframes grain {
-  0% { transform: translate(0, 0); }
-  20% { transform: translate(-4%, 3%); }
-  40% { transform: translate(3%, -5%); }
-  60% { transform: translate(-6%, -2%); }
-  80% { transform: translate(5%, 4%); }
-  100% { transform: translate(0, 0); }
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-4%, 3%);
+  }
+  50% {
+    transform: translate(3%, -5%);
+  }
+  75% {
+    transform: translate(-5%, -2%);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
 }
 
-/* ------------------------------------------------------------------ phone */
 @media (max-width: 760px) {
-  .nav button:not(.sound) {
-    display: none;
-  }
+  .nav a,
   .rule {
     display: none;
   }
-  .headline {
-    top: 15vh;
-    font-size: clamp(34px, 10vw, 52px);
+  .controls {
+    bottom: auto;
+    top: 72px;
+    right: 18px;
   }
-  .index {
-    right: 14px;
+  .hint {
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .grain::after {
+  .grain::after,
+  .bars[data-on="true"] i {
     animation: none;
-  }
-  .headline span,
-  .top,
-  .index,
-  .hint {
-    transition: none;
   }
 }
