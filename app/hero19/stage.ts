@@ -16,32 +16,49 @@ import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLigh
 // THE ROOM (metres; the camera stands at the origin, eye height 1.6, looking
 // down -z):
 //   Ceiling   a lattice of beams turned 45°, so the coffers between them are
-//             diamonds. The coffers are light boxes. The middle row is lit,
-//             the rows either side are dimmer. Every lit box is also a real
-//             area light, so it lights the floor, the beams' sides and the
-//             wall the way it would in the room.
-//   Wall      black, glossy, built from horizontal slabs, 11.2 m away; it
-//             catches the ceiling's light.
-//   Floor     polished concrete. It carries a true planar reflection (the
-//             room rendered a second time from below the floor), blurred
-//             into the long, soft streaks a polished floor gives, stronger at
-//             a glancing angle.
-//   Screen    a wide, thin slab on two feet, playing the films with small
-//             labels down its left edge and the mark in its corner. It is an
-//             area light too, so the floor in front of it takes the film's
-//             colour.
+//             diamonds. The coffers are light boxes; the brightest are real
+//             area lights too, so they light the floor and the wall.
+//   Wall      black, glossy, built from horizontal slabs.
+//   Floor     polished concrete with a true planar reflection (the room drawn
+//             a second time from below the floor), blurred into the long soft
+//             streaks a polished floor gives.
+//   Screen    a wide, thin slab on two feet. It shows the mark, then the films,
+//             and lights the floor in front of it in their colour.
 //
-// The ceiling comes on box by box, the screen after it, while the camera
-// eases forward. The mouse moves the camera a little (the beams shift against
-// the screen); drag to look round; click the screen to walk up to it.
+// THE SEQUENCE
+//   Nothing runs until the fonts, the posters and every shader are ready, so
+//   the opening never stutters. Then, on one clock:
+//   1. The tubes strike, far end last: a flash, a dim glow, then they catch.
+//      (Under three flashes a second; a plain fade with reduced motion.)
+//   2. The camera walks in from the door the whole time, easing in and out.
+//   3. The screen opens as hero 13's card: a slit widens to white and
+//      16X9 & BEYOND rises into it. Then the way in opens.
+//   Scroll, click or swipe up: the camera walks up to the screen, the letters
+//   lift out and the card gives way to the films. Scroll up, swipe down or
+//   Esc: back into the room. A click during the opening is kept: the opening
+//   runs faster and the walk in follows it.
+//
+// CRAFT
+//   Scripted moves are eased tweens on the clock; the hand-held layers (mouse
+//   parallax, a slow breath, drag to look round) sit on top as damped offsets
+//   and fade out as the camera reaches the screen, so the two never fight.
+//   The quality tier is chosen per device and a governor lowers resolution if
+//   frames run long. Rendering stops when the hero is off screen or hidden.
 // ===========================================================================
 
 export type Film = { src: string; poster: string };
 
 export type StageEvents = {
+  /** fonts, posters and shaders are in: the opening has begun */
+  onStart?: () => void;
+  /** the mark has landed: the way in is open */
   onReady?: () => void;
-  onFocus?: (focused: boolean) => void;
+  onFocus?: (inside: boolean) => void;
   onFilm?: (index: number) => void;
+  /** the pointer is over the screen, from the room */
+  onHover?: (overScreen: boolean) => void;
+  /** the GPU took the context away; show the page without the room */
+  onLost?: () => void;
 };
 
 // ---------------------------------------------------------------- the room
@@ -62,23 +79,63 @@ const S_Z = -10.45;
 const S_DEPTH = 0.07;
 const S_MID = S_BOTTOM + SH / 2;
 const FILM_ASPECT = 16 / 9;
+const FOV = 26; // the long lens
 
-const LOOK_Z = S_Z;
-const FOV_DESKTOP = 26; // the long lens
+// ------------------------------------------------------------ the timeline
+/** The opening, in seconds from the moment everything is ready. */
+const OPEN = {
+  ceil: 0.2, // the first tube strikes
+  ceilLen: 1.8, // the whole ceiling, the far end last
+  card: 2.0, // the white card opens out of its slit
+  cardLen: 0.9,
+  letters: 2.5, // 16X9 & BEYOND rise into it
+  lettersLen: 0.9,
+  ready: 3.4, // the way in opens
+  dolly: 3.8, // the walk in from the door
+};
+const ENTER_S = 1.9; // walking up to the screen
+const LEAVE_S = 1.7; // stepping back into the room
+const FILM_HOLD = 9; // how long each film plays before the next
+const FADE_S = 0.9; // the cross-fade between films
+const RUSH = 3; // how much faster the opening runs once someone has asked to go in
 
 const SQ2 = Math.SQRT2;
 const damp = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-const easeOut = (t: number) => 1 - Math.pow(1 - clamp01(t), 4);
-const easeIn = (t: number) => Math.pow(clamp01(t), 3);
+const sstep = (a: number, b: number, x: number) => {
+  const t = clamp01((x - a) / (b - a));
+  return t * t * (3 - 2 * t);
+};
+const easeOutQuart = (t: number) => 1 - Math.pow(1 - clamp01(t), 4);
+const easeInCubic = (t: number) => Math.pow(clamp01(t), 3);
+const easeInOutSine = (t: number) => -(Math.cos(Math.PI * clamp01(t)) - 1) / 2;
 const cine = (t: number) => {
   const x = clamp01(t);
   return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 };
+const frac = (x: number) => x - Math.floor(x);
 const WHITE = new THREE.Color(1, 1, 1);
 const f = (n: number) => n.toFixed(6);
 
-/** How bright the coffer whose centre is at (x, z) is, 0 … 1. The middle row is lit. */
+/**
+ * A fluorescent tube coming on, 0 … 1 over its own little window p: it
+ * strikes (a short flash), glows dimly, then catches and ramps up. The same
+ * curve is written in GLSL below for the light boxes, so the panels and the
+ * light they throw flicker together. Without flicker: a plain fade.
+ */
+function tube(p: number, s: number, flicker: boolean) {
+  if (!flicker) return sstep(0.1, 0.9, p);
+  const a = 0.08 + 0.1 * s;
+  const flash = sstep(a, a + 0.02, p) * (1 - sstep(a + 0.09, a + 0.12, p)) * (0.55 + 0.25 * s);
+  const b = a + 0.24 + 0.08 * s;
+  const on = sstep(b, b + 0.3, p);
+  const glow = sstep(a, a + 0.04, p) * 0.07;
+  return Math.max(on, flash, glow);
+}
+
+/** When a coffer comes on in the cascade (0 first … 1 last): nearest first, the one over the screen last. */
+const cofferOrder = (x: number, z: number) => clamp01(-z / 12) * 0.8 + (Math.min(Math.abs(x), 3) / 3) * 0.2;
+/** How bright a coffer is, by its row. */
 function cofferLevel(x: number) {
   const a = Math.abs(x);
   return a < 0.2 ? 1 : a < 3 ? 0.3 : a < 6 ? 0.1 : 0.04;
@@ -121,11 +178,20 @@ const WORLD_VERT = /* glsl */ `
 // The light boxes: the plane above the beams. Each diamond glows by its row,
 // softly brighter in its middle, a little shaded where the beams meet it.
 const COFFER_FRAG = /* glsl */ `
-  uniform float uOn;   // 0 … 1, the ceiling coming on
-  uniform float uTime;
+  uniform float uCeil;     // 0 … 1, the cascade
+  uniform float uFlicker;  // 1 tubes strike, 0 a plain fade
   varying vec2 vUv;
   varying vec3 vW;
   float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+  float tube(float p, float s){
+    if (uFlicker < 0.5) return smoothstep(0.1, 0.9, p);
+    float a = 0.08 + 0.1 * s;
+    float flash = smoothstep(a, a + 0.02, p) * (1.0 - smoothstep(a + 0.09, a + 0.12, p)) * (0.55 + 0.25 * s);
+    float b = a + 0.24 + 0.08 * s;
+    float on = smoothstep(b, b + 0.3, p);
+    float glow = smoothstep(a, a + 0.04, p) * 0.07;
+    return max(on, max(flash, glow));
+  }
   void main(){
     float s = ${f(LATTICE)};
     float wz = vW.z - ${f(LAT_Z)};
@@ -138,22 +204,18 @@ const COFFER_FRAG = /* glsl */ `
 
     float ax = abs(cx);
     float level = ax < 0.2 ? 1.0 : (ax < 3.0 ? 0.3 : (ax < 6.0 ? 0.1 : 0.04));
+    level *= (cz < -9.5 && ax > 0.2) ? 0.15 : 1.0; // the far boxes against the wall stay dark
 
-    // switch-on: box by box from the screen end, each blinking like a tube
-    // catching before it holds (the lights below use the same pattern)
-    float order = clamp(-cz / 12.0, 0.0, 1.0) * 0.55 + ax * 0.05;
-    float t = clamp((uOn * 1.6 - (0.6 - order)) * 1.8, 0.0, 1.0);
-    float seed = floor(cx * 1.7 + 0.5) * 3.7 + floor(cz * 0.37 + 0.5) * 1.3;
-    float blink = step(0.42, fract(sin(floor(t * 11.0) * 7.13 + seed) * 43758.5453));
-    float on = t >= 1.0 ? 1.0 : (t > 0.02 ? blink * (0.55 + 0.45 * t) : 0.0);
+    // the cascade: the same order, seed and curve as the lights in stage.ts
+    float order = clamp(-cz / 12.0, 0.0, 1.0) * 0.8 + min(ax, 3.0) / 3.0 * 0.2;
+    float seed = fract(cell.x * 0.618034 + cell.y * 0.414214);
+    float on = tube(clamp((uCeil - order * 0.6) / 0.4, 0.0, 1.0), seed);
 
     float r = max(abs(local.x), abs(local.y)) * 2.0;     // 0 middle … 1 edge
     float glow = 0.74 + 0.26 * (1.0 - r * r);
     float rim = smoothstep(0.86, 1.0, r);                // shaded where it meets the beams
     float grain = 0.97 + 0.03 * hash(floor(vW.xz * 90.0));
     vec3 white = vec3(1.0, 0.99, 0.975);
-    // the far boxes against the wall are dark, as in the room
-    level *= (cz < -9.5 && ax > 0.2) ? 0.15 : 1.0;
     vec3 col = white * 0.62 * level * glow * (1.0 - 0.35 * rim) * grain * on;
     col += vec3(0.006); // even an unlit box is a pale panel
     gl_FragColor = vec4(col, 1.0);
@@ -172,6 +234,8 @@ const SCREEN_FRAG = /* glsl */ `
   uniform float uCard;   // 0 … 1, the card opening out of its slit
   uniform float uLetY;   // where the letters are: 1 below, 0 in place, -1 lifted out
   uniform float uBrand;  // 1 the mark, 0 the film
+  uniform float uHover;  // the pointer is over the screen
+  uniform float uSlit;   // the slit glows up just before the card opens out of it
   varying vec2 vUv;
   varying vec3 vW;
   vec3 toLinear(vec3 c){ return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c)); }
@@ -186,7 +250,7 @@ const SCREEN_FRAG = /* glsl */ `
     vec2 luv = vec2(vUv.x, vUv.y + uLetY);
     float inside = step(0.0, luv.y) * step(luv.y, 1.0);
     float letter = texture2D(uMark, luv).a * inside;
-    vec3 mark = vec3(0.9) * card * (1.0 - letter);
+    vec3 mark = vec3(0.9 + 0.05 * uHover) * card * uSlit * (1.0 - letter);
 
     gl_FragColor = vec4(mix(film, mark, uBrand), 1.0);
   }
@@ -251,14 +315,46 @@ function concreteTexture(size = 512) {
   return tex;
 }
 
+// ------------------------------------------------------------ quality tiers
+type Tier = {
+  dpr: number; // pixel ratio cap
+  samples: number; // MSAA
+  refl: number; // the mirror's resolution, as a share of the screen's
+  sideLights: boolean; // the dimmer side rows are real lights too
+  bloom: boolean;
+};
+
+/** Phones, small screens and modest machines get a lighter room; the look stays the same. */
+function detectTier(): Tier {
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
+  const small = Math.min(window.innerWidth, window.innerHeight) < 600;
+  const cores = navigator.hardwareConcurrency || 8;
+  const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
+  const dpr = window.devicePixelRatio || 1;
+  const light = coarse || small || cores < 4 || memory < 4;
+  return light
+    ? { dpr: Math.min(dpr, 1.25), samples: 2, refl: 0.35, sideLights: false, bloom: false }
+    : { dpr: Math.min(dpr, 1.5), samples: 4, refl: 0.5, sideLights: true, bloom: true };
+}
+
 type Clip = { video: HTMLVideoElement; tex: THREE.VideoTexture; poster: THREE.Texture; live: boolean };
+type Pose = { pos: THREE.Vector3; look: THREE.Vector3 };
+type Spot = "door" | "room" | "screen";
+const pose = (): Pose => ({ pos: new THREE.Vector3(), look: new THREE.Vector3() });
+
+/** Resolve after `p` or after `ms`, whichever comes first; never throws. */
+const within = (p: Promise<unknown>, ms: number) =>
+  Promise.race([p.catch(() => undefined), new Promise<void>((r) => setTimeout(r, ms))]);
 
 export class Gallery {
   private renderer: THREE.WebGLRenderer;
   private composer: EffectComposer;
   private bloom: UnrealBloomPass;
   private scene = new THREE.Scene();
-  private camera = new THREE.PerspectiveCamera(FOV_DESKTOP, 1, 0.1, 80);
+  private camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 80);
+  private tier: Tier;
+  private pr: number;
+  private reflScale: number;
 
   // the floor's mirror
   private mirrorCam = new THREE.PerspectiveCamera();
@@ -277,38 +373,56 @@ export class Gallery {
   private screenMesh!: THREE.Mesh;
   private screenLight!: THREE.RectAreaLight;
   private screenColour = new THREE.Color(0.5, 0.45, 0.4);
+  private sampledColour = new THREE.Color();
   private markCanvas: HTMLCanvasElement;
   private markTex: THREE.CanvasTexture;
   private sampler: CanvasRenderingContext2D | null;
 
+  // films
   private clips: Clip[];
+  private posterLoads: Promise<void>[] = [];
   private film = 0;
   private next = -1;
   private mix = 0;
   private filmSince = 0;
 
-  private t0 = performance.now();
-  private last = performance.now();
+  // the clock and the story
+  private clock = 0;
   private frame = 0;
-  private ceilOn = 0;
+  private started = false;
   private ready = false;
-  private time = 0;
+  private pendingEnter = false;
+  private focus = false;
+  private inputOn = true;
+  private flicker: boolean;
   private brandMode: "intro" | "out" | "in" = "intro";
   private brandAt = 0;
   private brand = 1;
+  private hovering = false;
+  private hoverAmt = 0;
 
+  // the camera: a scripted move, with hand-held layers on top
+  private base = pose();
+  private move = { from: pose(), to: "room" as Spot, t: 0, dur: OPEN.dolly, intro: true, fromW: 0, toW: 0 };
+  private screenW = 0; // 0 in the room … 1 at the screen
+  private target = pose();
+  private look = new THREE.Vector3();
   private mouse = new THREE.Vector2();
+  private par = new THREE.Vector2();
   private yaw = 0;
   private yawTo = 0;
   private pitch = 0;
   private pitchTo = 0;
-  private focus = false;
-  private drag = { down: false, x: 0, y: 0, yaw: 0, pitch: 0, moved: false };
-  private camPos = new THREE.Vector3(0, EYE + 0.15, 3.4);
-  private camLook = new THREE.Vector3(0, EYE, LOOK_Z);
-  private portrait = false;
+  private drag = { down: false, x: 0, y: 0, yaw: 0, pitch: 0, moved: false, mouse: false };
+  private pointerIn = false; // a mouse is over the hero
+  private ray = new THREE.Raycaster();
 
+  // running
   private raf = 0;
+  private last = 0;
+  private running = false;
+  private onScreen = true;
+  private perf = { sum: 0, n: 0 };
   private disposed = false;
   private cleanups: (() => void)[] = [];
 
@@ -318,44 +432,55 @@ export class Gallery {
     private events: StageEvents = {},
     private reduced = false,
   ) {
+    this.tier = detectTier();
+    this.pr = this.tier.dpr;
+    this.reflScale = this.tier.refl;
+    this.flicker = !reduced;
+
+    // throws where WebGL 2 is missing; the page catches it and shows the films without the room
     this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    this.renderer.setPixelRatio(this.pr);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.toneMappingExposure = 1.0;
     this.renderer.setClearColor(0x000000, 1);
-    host.appendChild(this.renderer.domElement);
-    this.renderer.domElement.style.display = "block";
+    const canvas = this.renderer.domElement;
+    canvas.style.display = "block";
+    host.appendChild(canvas);
 
     RectAreaLightUniformsLib.init();
 
-    // films
-    this.clips = films.map((fl) => {
+    // films: the first loads now, the rest just before they are needed
+    const loader = new THREE.TextureLoader();
+    this.clips = films.map((fl, i) => {
       const video = document.createElement("video");
-      video.src = fl.src;
       video.muted = true;
+      video.defaultMuted = true;
       video.loop = true;
       video.playsInline = true;
-      video.preload = "auto";
+      video.setAttribute("muted", ""); // iOS reads the attribute, not the property
       video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
+      video.preload = i === 0 ? "auto" : "metadata";
+      video.src = fl.src;
       const tex = new THREE.VideoTexture(video);
       tex.colorSpace = THREE.NoColorSpace; // decoded in the shader, the same in every browser
       tex.minFilter = THREE.LinearFilter;
       tex.generateMipmaps = false;
-      const poster = new THREE.TextureLoader().load(fl.poster);
+      let done = () => {};
+      this.posterLoads.push(new Promise<void>((r) => (done = r)));
+      const poster = loader.load(fl.poster, () => done(), undefined, () => done());
       poster.colorSpace = THREE.NoColorSpace;
       return { video, tex, poster, live: false };
     });
-    this.clips[0].video.play().catch(() => {});
 
-    // 16X9 & BEYOND, cut into the screen
+    // 16X9 & BEYOND, cut into the screen (drawn again once the font is in)
     this.markCanvas = document.createElement("canvas");
     this.markCanvas.width = 2048;
     this.markCanvas.height = Math.round(2048 / (SW / SH));
     this.markTex = new THREE.CanvasTexture(this.markCanvas);
     this.markTex.colorSpace = THREE.NoColorSpace;
     this.markTex.anisotropy = 8;
-    this.drawMark();
 
     const s = document.createElement("canvas");
     s.width = 16;
@@ -363,8 +488,7 @@ export class Gallery {
     this.sampler = s.getContext("2d", { willReadFrequently: true });
 
     // the floor's mirror and its blur
-    const rtOpts = { type: THREE.HalfFloatType, depthBuffer: true };
-    this.reflRT = new THREE.WebGLRenderTarget(2, 2, rtOpts);
+    this.reflRT = new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, depthBuffer: true });
     this.blurA = new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, depthBuffer: false });
     this.blurB = new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, depthBuffer: false });
     this.blurMat = new THREE.ShaderMaterial({
@@ -378,22 +502,52 @@ export class Gallery {
 
     this.build();
 
-    this.composer = new EffectComposer(this.renderer, new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: 4 }));
+    this.composer = new EffectComposer(
+      this.renderer,
+      new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: this.tier.samples }),
+    );
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(2, 2), 0.08, 0.4, 0.97); // a breath of glow; keeps the mark's letters crisp
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(2, 2), 0.08, 0.4, 0.97); // a breath of glow; keeps the mark crisp
+    this.bloom.enabled = this.tier.bloom;
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
 
+    // where the camera starts: at the door, or already in the room with reduced motion
+    this.spot(reduced ? "room" : "door", this.base);
+    this.move.from.pos.copy(this.base.pos);
+    this.move.from.look.copy(this.base.look);
+    if (reduced) this.move.t = 1;
+
     this.resize();
-    if (reduced) {
-      // no opening: start as if it had already played
-      this.camPos.set(0, EYE, 0);
-      this.t0 -= 10000;
-    }
     this.bind();
     this.loop = this.loop.bind(this);
-    this.raf = requestAnimationFrame(this.loop);
-    if (document.fonts) document.fonts.ready.then(() => !this.disposed && this.drawMark());
+    this.setRunning(true);
+    void this.prime();
+  }
+
+  // -------------------------------------------------------------------------
+  // Getting ready: the font for the mark, the posters, every shader compiled,
+  // one warm-up frame. Only then does the clock start.
+  // -------------------------------------------------------------------------
+
+  private async prime() {
+    const family = getComputedStyle(this.host).fontFamily || "sans-serif";
+    if (document.fonts) await within(document.fonts.load(`700 100px ${family}`), 2500);
+    if (this.disposed) return;
+    this.drawMark();
+    await within(Promise.all(this.posterLoads), 4000);
+    if (this.disposed) return;
+    this.update(0);
+    // compile every shader before the first frame: in parallel where the GPU can, at once where it can't
+    if (this.renderer.extensions.has("KHR_parallel_shader_compile")) {
+      await within(this.renderer.compileAsync(this.scene, this.camera), 6000);
+    } else {
+      this.renderer.compile(this.scene, this.camera);
+    }
+    if (this.disposed) return;
+    this.renderFrame(); // compiles the mirror, the blur and the post passes too
+    this.started = true;
+    this.events.onStart?.();
   }
 
   // -------------------------------------------------------------------------
@@ -407,7 +561,7 @@ export class Gallery {
     this.coffers = new THREE.ShaderMaterial({
       vertexShader: WORLD_VERT,
       fragmentShader: COFFER_FRAG,
-      uniforms: { uOn: { value: 0 }, uTime: { value: 0 } },
+      uniforms: { uCeil: { value: 0 }, uFlicker: { value: this.flicker ? 1 : 0 } },
     });
     const boxes = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, 30), this.coffers);
     boxes.rotation.x = Math.PI / 2; // facing down
@@ -424,6 +578,8 @@ export class Gallery {
     const beams = new THREE.InstancedMesh(beamGeo, beamMat, lines.length);
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
+    const up = new THREE.Vector3(0, 1, 0);
+    const one = new THREE.Vector3(1, 1, 1);
     const zc = -6;
     lines.forEach((ln, i) => {
       let x: number;
@@ -437,14 +593,13 @@ export class Gallery {
         x = (c + zc) / 2;
         z = x - c;
       }
-      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), ln.turn);
-      m.compose(new THREE.Vector3(x, HC + COFFER / 2, z), q, new THREE.Vector3(1, 1, 1));
+      q.setFromAxisAngle(up, ln.turn);
+      m.compose(new THREE.Vector3(x, HC + COFFER / 2, z), q, one);
       beams.setMatrixAt(i, m);
     });
     this.scene.add(beams);
 
-    // the lit boxes are real lights (the brightest few)
-    const centres: { x: number; z: number }[] = [];
+    // the lit boxes are real lights (the brightest few; all of the middle row)
     for (let i = -6; i <= 6; i++) {
       for (let j = -6; j <= 6; j++) {
         const u = (i + 0.5) * LATTICE;
@@ -454,19 +609,14 @@ export class Gallery {
         if (z < WALL_Z || z > 2.5) continue;
         if (Math.abs(x) > 3) continue;
         if (z < -9.5 && Math.abs(x) > 0.2) continue; // dark against the wall
-        centres.push({ x, z });
+        if (!this.tier.sideLights && Math.abs(x) > 0.2) continue;
+        const light = new THREE.RectAreaLight(0xfffcf6, 0, LATTICE * 0.97, LATTICE * 0.97);
+        light.position.set(x, HC + COFFER - 0.02, z);
+        light.lookAt(x, 0, z);
+        light.rotateZ(Math.PI / 4);
+        this.scene.add(light);
+        this.cofferLights.push({ light, level: cofferLevel(x), order: cofferOrder(x, z), seed: frac(i * 0.618034 + j * 0.414214) });
       }
-    }
-    for (const c of centres) {
-      const level = cofferLevel(c.x);
-      const light = new THREE.RectAreaLight(0xfffcf6, 0, LATTICE * 0.97, LATTICE * 0.97);
-      light.position.set(c.x, HC + COFFER - 0.02, c.z);
-      light.lookAt(c.x, 0, c.z);
-      light.rotateZ(Math.PI / 4);
-      this.scene.add(light);
-      const order = clamp01(-c.z / 12) * 0.55 + Math.abs(c.x) * 0.05;
-      const seed = Math.floor(c.x * 1.7 + 0.5) * 3.7 + Math.floor(c.z * 0.37 + 0.5) * 1.3;
-      this.cofferLights.push({ light, level, order, seed });
     }
 
     // ---- back wall: black slabs, glossy, each set a hair proud of the last
@@ -511,6 +661,8 @@ export class Gallery {
         uCard: { value: 0 },
         uLetY: { value: 1 },
         uBrand: { value: 1 },
+        uHover: { value: 0 },
+        uSlit: { value: 0 },
       },
     });
     this.screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), this.screenMat);
@@ -646,23 +798,79 @@ export class Gallery {
     const w = this.host.clientWidth || 1;
     const h = this.host.clientHeight || 1;
     const aspect = w / h;
-    this.portrait = aspect < 1;
     // The long lens frames the screen at about half the width; where the page
     // is narrow, open the lens until the whole screen fits.
     const need = Math.atan(((SW / 2) * 1.12) / Math.abs(S_Z) / aspect) * 2;
-    this.camera.fov = Math.max(FOV_DESKTOP, THREE.MathUtils.radToDeg(need));
+    this.camera.fov = Math.max(FOV, THREE.MathUtils.radToDeg(need));
     this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
 
+    this.renderer.setPixelRatio(this.pr);
     this.renderer.setSize(w, h, false);
+    this.composer.setPixelRatio(this.pr);
     this.composer.setSize(w, h);
     this.bloom.resolution.set(w, h);
-    const pr = this.renderer.getPixelRatio();
-    const rw = Math.max(2, Math.round(w * pr * 0.5));
-    const rh = Math.max(2, Math.round(h * pr * 0.5));
+    const rw = Math.max(2, Math.round(w * this.pr * this.reflScale));
+    const rh = Math.max(2, Math.round(h * this.pr * this.reflScale));
     this.reflRT.setSize(rw, rh);
     this.blurA.setSize(Math.max(2, rw >> 1), Math.max(2, rh >> 1));
     this.blurB.setSize(Math.max(2, rw >> 1), Math.max(2, rh >> 1));
+  }
+
+  /** Where the camera stands for each part of the story. */
+  private spot(where: Spot, out: Pose) {
+    if (where === "door") {
+      out.pos.set(0, EYE + 0.22, 4.2);
+      out.look.set(0, EYE + 0.08, S_Z);
+    } else if (where === "room") {
+      out.pos.set(0, EYE, 0);
+      out.look.set(0, EYE, S_Z);
+    } else {
+      // close enough that the screen fills most of the width (or height, on very wide pages)
+      const v = THREE.MathUtils.degToRad(this.camera.fov / 2);
+      const h = Math.atan(Math.tan(v) * this.camera.aspect);
+      const fill = this.camera.aspect < 1 ? 0.94 : 0.84;
+      const dist = Math.max(SW / 2 / fill / Math.tan(h), SH / 2 / 0.8 / Math.tan(v));
+      out.pos.set(0, S_MID, S_Z + dist);
+      out.look.set(0, S_MID, S_Z);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Running: only while the hero is on screen and the tab is visible
+  // -------------------------------------------------------------------------
+
+  private setRunning(on: boolean) {
+    if (this.disposed) on = false;
+    if (on === this.running) return;
+    this.running = on;
+    if (on) {
+      this.last = performance.now();
+      this.raf = requestAnimationFrame(this.loop);
+    } else {
+      cancelAnimationFrame(this.raf);
+    }
+  }
+
+  private syncRunning() {
+    this.setRunning(this.onScreen && !document.hidden);
+  }
+
+  /** If frames run long, give up resolution before smoothness. */
+  private govern(raw: number) {
+    if (raw > 0.25) return; // a tab switch or a hitch, not the steady state
+    this.perf.sum += raw;
+    this.perf.n++;
+    if (this.perf.n < 90) return;
+    const avg = this.perf.sum / this.perf.n;
+    this.perf.sum = 0;
+    this.perf.n = 0;
+    if (avg < 1 / 40) return;
+    if (this.pr > 1) this.pr = Math.max(1, this.pr - 0.25);
+    else if (this.reflScale > 0.25) this.reflScale = 0.25;
+    else if (this.bloom.enabled) this.bloom.enabled = false;
+    else return;
+    this.resize();
   }
 
   // -------------------------------------------------------------------------
@@ -671,118 +879,235 @@ export class Gallery {
 
   private bind() {
     const el = this.host;
+    const area = el.parentElement ?? el; // the whole hero answers scroll and swipes
     const on = <K extends keyof WindowEventMap>(
-      t: HTMLElement | Window,
+      t: HTMLElement | Window | Document,
       type: K,
       fn: (e: WindowEventMap[K]) => void,
       opts?: AddEventListenerOptions,
     ) => {
       t.addEventListener(type, fn as EventListener, opts);
-      this.cleanups.push(() => t.removeEventListener(type, fn as EventListener));
+      this.cleanups.push(() => t.removeEventListener(type, fn as EventListener, opts));
     };
-    const ray = new THREE.Raycaster();
-    const ndc = (e: PointerEvent) => {
+    const ndc = new THREE.Vector2();
+    const toNdc = (e: PointerEvent) => {
       const r = el.getBoundingClientRect();
-      return new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      return ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     };
-    const overScreen = (p: THREE.Vector2) => {
-      ray.setFromCamera(p, this.camera);
-      return ray.intersectObject(this.screenMesh, false).length > 0;
-    };
+    const overScreen = (e: PointerEvent) => this.hits(toNdc(e));
 
     on(el, "pointerdown", (e) => {
-      el.setPointerCapture(e.pointerId);
-      this.drag = { down: true, x: e.clientX, y: e.clientY, yaw: this.yawTo, pitch: this.pitchTo, moved: false };
-      this.play();
+      if (!this.inputOn) return;
+      const mouse = e.pointerType !== "touch";
+      this.drag = { down: true, x: e.clientX, y: e.clientY, yaw: this.yawTo, pitch: this.pitchTo, moved: false, mouse };
+      if (mouse) el.setPointerCapture(e.pointerId);
     });
     on(el, "pointermove", (e) => {
-      const p = ndc(e);
-      this.mouse.copy(p);
+      const mouse = e.pointerType !== "touch";
+      if (mouse) {
+        this.mouse.copy(toNdc(e));
+        this.pointerIn = true;
+      }
       if (!this.drag.down) {
-        el.style.cursor = !this.focus && this.ready && overScreen(p) ? "pointer" : "";
+        this.setHover(mouse && !this.focus && this.started && this.hits(this.mouse));
         return;
       }
       const dx = e.clientX - this.drag.x;
       const dy = e.clientY - this.drag.y;
       if (Math.hypot(dx, dy) > 6) this.drag.moved = true;
-      this.yawTo = THREE.MathUtils.clamp(this.drag.yaw - dx * 0.0016, -0.22, 0.22);
-      this.pitchTo = THREE.MathUtils.clamp(this.drag.pitch + dy * 0.0008, -0.05, 0.07);
+      // look round the room by dragging (mouse and pen; on touch, a swipe is the way in)
+      if (this.drag.mouse && !this.focus && !this.reduced) {
+        this.yawTo = THREE.MathUtils.clamp(this.drag.yaw - dx * 0.0016, -0.22, 0.22);
+        this.pitchTo = THREE.MathUtils.clamp(this.drag.pitch + dy * 0.0008, -0.05, 0.07);
+      }
     });
-    const up = (e: PointerEvent) => {
+    on(el, "pointerup", (e) => {
       if (!this.drag.down) return;
       this.drag.down = false;
-      if (this.drag.moved) return;
-      // the screen is the way in; once inside, the page is the film (Esc leads back out)
-      if (!this.focus && overScreen(ndc(e))) this.setFocus(true);
-    };
-    on(el, "pointerup", up);
-    on(el, "pointercancel", () => (this.drag.down = false));
-    on(el, "pointerleave", () => this.mouse.set(0, 0));
-    on(window, "keydown", (e) => {
-      if (e.key === "Escape") this.setFocus(false);
-      if (e.key === "ArrowRight") this.showFilm((this.film + 1) % this.clips.length);
-      if (e.key === "ArrowLeft") this.showFilm((this.film - 1 + this.clips.length) % this.clips.length);
+      if (this.drag.moved || !this.inputOn) return;
+      // the screen is the way in; once inside, the page is the film
+      if (!this.focus && overScreen(e)) this.enter();
     });
-    // scroll (or swipe up) enters too; scrolling back up from inside leads out
+    on(el, "pointercancel", () => (this.drag.down = false));
+    on(el, "pointerleave", () => {
+      this.mouse.set(0, 0);
+      this.pointerIn = false;
+      this.setHover(false);
+    });
+
+    // keyboard: the keys that scroll, scroll; Esc steps back; arrows change films
+    on(window, "keydown", (e) => {
+      if (!this.inputOn || e.defaultPrevented) return;
+      const t = e.target as HTMLElement | null;
+      const typing = !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+      if (typing) return;
+      const onPage = !t || t === document.body || t === document.documentElement;
+      if (e.key === "Escape") this.leave();
+      else if (onPage && (e.key === "ArrowDown" || e.key === "PageDown" || e.key === " ")) {
+        e.preventDefault();
+        this.enter();
+      } else if (onPage && (e.key === "ArrowUp" || e.key === "PageUp")) {
+        e.preventDefault();
+        this.leave();
+      } else if (this.focus && e.key === "ArrowRight") this.showFilm(this.film + 1);
+      else if (this.focus && e.key === "ArrowLeft") this.showFilm(this.film - 1);
+    });
+
+    // scroll down goes in, scroll up comes back out: one gesture, one step
     let wheelAt = 0;
     on(
-      el,
+      area,
       "wheel",
       (e) => {
         e.preventDefault();
+        if (!this.inputOn) return;
         const now = performance.now();
-        if (now - wheelAt < 1200 || Math.abs(e.deltaY) < 8) return; // one gesture, one step
+        if (now - wheelAt < 1100 || Math.abs(e.deltaY) < 6) return;
         wheelAt = now;
-        this.setFocus(e.deltaY > 0);
+        if (e.deltaY > 0) this.enter();
+        else this.leave();
       },
       { passive: false },
     );
+    // and on touch: swipe up goes in, swipe down comes back out
     let touchY = 0;
-    on(el, "touchstart", (e) => (touchY = e.touches[0].clientY));
-    on(el, "touchend", (e) => {
+    let touchX = 0;
+    on(area, "touchstart", (e) => {
+      touchY = e.touches[0].clientY;
+      touchX = e.touches[0].clientX;
+    }, { passive: true });
+    on(area, "touchend", (e) => {
+      if (!this.inputOn) return;
       const dy = e.changedTouches[0].clientY - touchY;
-      if (dy < -40) this.setFocus(true);
-      else if (dy > 60) this.setFocus(false);
+      const dx = e.changedTouches[0].clientX - touchX;
+      if (Math.abs(dy) < Math.abs(dx) * 1.2) {
+        // sideways: change films, once inside
+        if (this.focus && Math.abs(dx) > 50) this.showFilm(this.film + (dx < 0 ? 1 : -1));
+        return;
+      }
+      if (dy < -40) this.enter();
+      else if (dy > 60) this.leave();
+    }, { passive: true });
+
+    // size, visibility, and the GPU going away
+    const ro = new ResizeObserver(() => this.resize());
+    ro.observe(el);
+    this.cleanups.push(() => ro.disconnect());
+    const io = new IntersectionObserver(([entry]) => {
+      this.onScreen = entry.isIntersecting;
+      this.syncRunning();
     });
-    on(window, "resize", () => this.resize());
+    io.observe(el);
+    this.cleanups.push(() => io.disconnect());
     const onVisible = () => {
+      this.syncRunning();
       const v = this.clips[this.film].video;
       if (document.hidden) v.pause();
-      else v.play().catch(() => {});
+      else if (this.focus) v.play().catch(() => {});
     };
     document.addEventListener("visibilitychange", onVisible);
     this.cleanups.push(() => document.removeEventListener("visibilitychange", onVisible));
+    const canvas = this.renderer.domElement;
+    const onLost = () => {
+      this.setRunning(false);
+      this.events.onLost?.();
+    };
+    canvas.addEventListener("webglcontextlost", onLost);
+    this.cleanups.push(() => canvas.removeEventListener("webglcontextlost", onLost));
   }
 
-  setFocus(f: boolean) {
+  /** Is this point (in normalised device coordinates) on the screen? */
+  private hits(p: THREE.Vector2) {
+    this.ray.setFromCamera(p, this.camera);
+    return this.ray.intersectObject(this.screenMesh, false).length > 0;
+  }
+
+  private setHover(h: boolean) {
+    if (h === this.hovering) return;
+    this.hovering = h;
+    this.events.onHover?.(h);
+  }
+
+  /** While a menu is open over the hero, it stops answering. */
+  setInput(on: boolean) {
+    this.inputOn = on;
+    if (!on) {
+      this.drag.down = false;
+      this.mouse.set(0, 0);
+    }
+  }
+
+  /** Go in. Asked during the opening, the opening hurries and the walk in follows it. */
+  enter() {
+    if (this.focus) return;
+    if (!this.ready) {
+      this.pendingEnter = true;
+      return;
+    }
+    this.setFocus(true);
+  }
+
+  leave() {
+    this.pendingEnter = false;
+    this.setFocus(false);
+  }
+
+  private setFocus(f: boolean) {
     if (f === this.focus || !this.ready) return;
     this.focus = f;
     this.brandMode = f ? "out" : "in";
-    this.brandAt = this.time;
+    this.brandAt = this.clock;
+    this.drag.down = false;
+    this.yawTo = 0;
+    this.pitchTo = 0;
     if (f) {
       const c = this.clips[this.film];
       c.video.currentTime = 0;
       c.video.play().catch(() => {});
-      this.filmSince = this.time;
+      this.filmSince = this.clock + 1.2; // the film is in view about then
+      this.prefetch(this.film + 1);
+      this.setHover(false);
     }
-    this.yawTo = 0;
-    this.pitchTo = 0;
+    // the walk: from wherever the camera is now, eased in and out
+    const m = this.move;
+    m.from.pos.copy(this.base.pos);
+    m.from.look.copy(this.base.look);
+    m.to = f ? "screen" : "room";
+    m.t = 0;
+    m.dur = this.reduced ? 0.0001 : f ? ENTER_S : LEAVE_S;
+    m.intro = false;
+    m.fromW = this.screenW;
+    m.toW = f ? 1 : 0;
     this.events.onFocus?.(f);
   }
 
-  /** Cross-fade to a film. */
-  showFilm(i: number) {
-    if (i === this.film || i === this.next) return;
+  /** Cross-fade to another film (wraps round). */
+  showFilm(index: number) {
+    const n = this.clips.length;
+    const i = ((index % n) + n) % n;
+    if (!this.focus || i === this.film || this.next >= 0) return;
     this.next = i;
     this.mix = 0;
     const c = this.clips[i];
     c.video.currentTime = 0;
     c.video.play().catch(() => {});
+    this.prefetch(i + 1);
     this.events.onFilm?.(i);
   }
 
-  play() {
-    this.clips[this.film].video.play().catch(() => {});
+  private prefetch(index: number) {
+    const v = this.clips[((index % this.clips.length) + this.clips.length) % this.clips.length].video;
+    if (v.preload !== "auto") {
+      v.preload = "auto";
+      v.load();
+    }
+  }
+
+  /** How far through its turn the film on screen is, 0 … 1 (for the progress line). */
+  get filmProgress() {
+    if (!this.focus) return 0;
+    if (this.next >= 0) return 1;
+    return clamp01((this.clock - this.filmSince) / FILM_HOLD);
   }
 
   // -------------------------------------------------------------------------
@@ -812,10 +1137,146 @@ export class Gallery {
         b += d[k + 2];
       }
       const n = (d.length / 4) * 255;
-      this.screenColour.lerp(new THREE.Color().setRGB(r / n, gg / n, b / n, THREE.SRGBColorSpace), 0.3);
+      this.screenColour.lerp(this.sampledColour.setRGB(r / n, gg / n, b / n, THREE.SRGBColorSpace), 0.3);
     } catch {
       // not readable yet
     }
+  }
+
+  private loop(now: number) {
+    if (!this.running) return;
+    this.raf = requestAnimationFrame(this.loop);
+    const raw = (now - this.last) / 1000;
+    this.last = now;
+    if (!this.started) return;
+    this.govern(raw);
+    this.update(Math.min(raw, 0.25));
+    this.renderFrame();
+  }
+
+  private update(dt: number) {
+    this.frame++;
+    // the opening hurries once someone has asked to go in
+    const sdt = dt * (this.pendingEnter && !this.ready ? RUSH : 1);
+    this.clock += sdt;
+    const c = this.clock;
+
+    // ---- the ceiling: tube by tube, nearest first, the one over the screen last
+    const ceil = clamp01((c - OPEN.ceil) / OPEN.ceilLen);
+    this.coffers.uniforms.uCeil.value = ceil;
+    for (const l of this.cofferLights) {
+      const p = clamp01((ceil - l.order * 0.6) / 0.4);
+      l.light.intensity = 3.0 * l.level * tube(p, l.seed, this.flicker);
+    }
+
+    // ---- the screen: the mark comes on, then (on entering) gives way to the film
+    if (this.frame % 6 === 0 && this.pointerIn && !this.drag.down) {
+      this.setHover(!this.focus && this.hits(this.mouse)); // the camera drifts under a still cursor
+    }
+    this.hoverAmt += ((this.hovering && this.ready && !this.focus ? 1 : 0) - this.hoverAmt) * damp(7, dt);
+    let card = 1;
+    let slit = 1;
+    let letY = 0;
+    let brand = 1;
+    const s = c - this.brandAt;
+    if (this.brandMode === "intro") {
+      slit = sstep(OPEN.card - 0.45, OPEN.card, c);
+      card = cine((c - OPEN.card) / OPEN.cardLen);
+      letY = 1 - easeOutQuart((c - OPEN.letters) / OPEN.lettersLen);
+      if (!this.ready && c >= OPEN.ready) {
+        this.ready = true;
+        this.events.onReady?.();
+        if (this.pendingEnter) {
+          this.pendingEnter = false;
+          this.setFocus(true);
+        }
+      }
+    } else if (this.brandMode === "out") {
+      letY = -easeInCubic(s / 0.55);
+      brand = 1 - cine((s - 0.4) / 0.9);
+    } else {
+      brand = cine(s / 0.7);
+      letY = 1 - easeOutQuart((s - 0.5) / 0.9);
+      // back in the room and the mark is up: the films can rest
+      if (brand >= 1) for (const clip of this.clips) if (!clip.video.paused) clip.video.pause();
+    }
+    letY -= 0.012 * this.hoverAmt; // the mark lifts a hair under the pointer: an invitation
+    if (this.reduced) letY = 0; // with reduced motion the letters simply come and go with the card
+    this.brand = brand;
+    const u = this.screenMat.uniforms;
+    u.uCard.value = card;
+    u.uLetY.value = letY;
+    u.uBrand.value = brand;
+    u.uHover.value = this.hoverAmt;
+    u.uSlit.value = slit;
+
+    // ---- films: posters until the video plays; cross-fades; the next one in turn
+    const cur = this.clips[this.film];
+    u.uA.value = this.texOf(cur);
+    if (this.next >= 0) {
+      u.uB.value = this.texOf(this.clips[this.next]);
+      this.mix = Math.min(1, this.mix + sdt / FADE_S);
+      if (this.mix >= 1) {
+        cur.video.pause();
+        this.film = this.next;
+        this.next = -1;
+        this.mix = 0;
+        this.filmSince = c;
+        u.uA.value = this.texOf(this.clips[this.film]);
+      }
+    } else if (this.focus && brand < 0.01 && c - this.filmSince > FILM_HOLD) {
+      this.showFilm(this.film + 1);
+    }
+    u.uMix.value = this.mix * this.mix * (3 - 2 * this.mix);
+    if (this.frame % 4 === 0 && brand < 1) this.sampleColour();
+    // the white card lights the floor white; the film, in its own colour
+    this.screenLight.color.copy(this.screenColour).lerp(WHITE, brand);
+    this.screenLight.intensity = card * slit * (2.6 * brand * (1 + 0.12 * this.hoverAmt) + 1.6 * (1 - brand));
+
+    // ---- the camera: the scripted walk …
+    const m = this.move;
+    m.t = Math.min(1, m.t + sdt / m.dur);
+    const e = m.intro ? easeInOutSine(m.t) : cine(m.t);
+    this.spot(m.to, this.target);
+    this.base.pos.lerpVectors(m.from.pos, this.target.pos, e);
+    this.base.look.lerpVectors(m.from.look, this.target.look, e);
+    this.screenW = m.fromW + (m.toW - m.fromW) * e;
+
+    // … and the hand-held layers on top, which fade out at the screen
+    const roomW = 1 - this.screenW;
+    this.yaw += (this.yawTo - this.yaw) * damp(5, dt);
+    this.pitch += (this.pitchTo - this.pitch) * damp(5, dt);
+    if (!this.drag.down) {
+      this.yawTo += -this.yawTo * damp(0.8, dt); // drifts back to the middle
+      this.pitchTo += -this.pitchTo * damp(0.8, dt);
+    }
+    this.par.x += (this.mouse.x - this.par.x) * damp(3, dt);
+    this.par.y += (this.mouse.y - this.par.y) * damp(3, dt);
+    const P = this.camera.position.copy(this.base.pos);
+    const L = this.look.copy(this.base.look);
+    if (!this.reduced) {
+      // drag: orbit the screen
+      const d = P.z - S_Z;
+      P.x += Math.sin(this.yaw) * d * roomW;
+      P.z += (Math.cos(this.yaw) * d - d) * roomW;
+      P.y += Math.sin(this.pitch) * d * 0.3 * roomW;
+      // the mouse: the camera leans, so the beams slide against the screen
+      const ax = 0.3 * roomW + 0.07 * this.screenW;
+      const ay = 0.1 * roomW + 0.03 * this.screenW;
+      P.x += this.par.x * ax;
+      P.y += this.par.y * ay;
+      L.x += this.par.x * ax * 0.15;
+      // a slow breath, so the room never quite stands still
+      P.x += Math.sin(c * 0.21) * 0.03 * roomW;
+      P.y += Math.sin(c * 0.27 + 1.3) * 0.012 * roomW;
+    }
+    this.camera.lookAt(L);
+    this.camera.updateMatrixWorld();
+  }
+
+  private renderFrame() {
+    this.renderMirror();
+    this.composer.render();
   }
 
   private renderMirror() {
@@ -823,13 +1284,12 @@ export class Gallery {
     const mc = this.mirrorCam;
     mc.copy(cam);
     mc.position.set(cam.position.x, -cam.position.y, cam.position.z);
-    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-    const target = cam.position.clone().add(dir);
-    target.y = -target.y;
-    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
-    up.y = -up.y;
-    mc.up.copy(up);
-    mc.lookAt(target);
+    const dir = this.target.pos.set(0, 0, -1).applyQuaternion(cam.quaternion);
+    const aim = this.target.look.copy(cam.position).add(dir);
+    aim.y = -aim.y;
+    mc.up.set(0, 1, 0).applyQuaternion(cam.quaternion);
+    mc.up.y = -mc.up.y;
+    mc.lookAt(aim);
     mc.updateMatrixWorld();
     mc.projectionMatrix.copy(cam.projectionMatrix);
     this.texMat.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
@@ -858,111 +1318,9 @@ export class Gallery {
     r.setRenderTarget(null);
   }
 
-  private loop(now: number) {
-    if (this.disposed) return;
-    this.raf = requestAnimationFrame(this.loop);
-    const dt = Math.min((now - this.last) / 1000, 0.05);
-    this.last = now;
-    const t = (now - this.t0) / 1000;
-    this.frame++;
-
-    // ---- the opening: the ceiling, box by box, then the screen
-    this.time = t;
-    this.ceilOn = clamp01((t - 0.3) / 2.4);
-    this.coffers.uniforms.uOn.value = this.ceilOn;
-    this.coffers.uniforms.uTime.value = t;
-    for (const c of this.cofferLights) {
-      const tt = clamp01((this.ceilOn * 1.6 - (0.6 - c.order)) * 1.8);
-      const h = Math.sin(Math.floor(tt * 11) * 7.13 + c.seed) * 43758.5453;
-      const blink = h - Math.floor(h) >= 0.42 ? 1 : 0;
-      const on = tt >= 1 ? 1 : tt > 0.02 ? blink * (0.55 + 0.45 * tt) : 0;
-      c.light.intensity = 3.0 * c.level * on;
-    }
-    // the screen: the mark comes on, then (on entering) gives way to the film
-    let card = 1;
-    let letY = 0;
-    let brand = 1;
-    const s = t - this.brandAt;
-    if (this.brandMode === "intro") {
-      card = cine((t - 2.9) / 0.95);
-      letY = 1 - easeOut((t - 3.55) / 0.9);
-      if (!this.ready && t > 4.5) {
-        this.ready = true;
-        this.events.onReady?.();
-      }
-    } else if (this.brandMode === "out") {
-      letY = -easeIn(s / 0.55);
-      brand = 1 - cine((s - 0.35) / 0.85);
-    } else {
-      brand = cine(s / 0.6);
-      letY = 1 - easeOut((s - 0.45) / 0.9);
-    }
-    this.brand = brand;
-    this.screenMat.uniforms.uCard.value = card;
-    this.screenMat.uniforms.uLetY.value = letY;
-    this.screenMat.uniforms.uBrand.value = brand;
-
-    // ---- films: swap posters for video once playing; cross-fade; move on every so often
-    const cur = this.clips[this.film];
-    this.screenMat.uniforms.uA.value = this.texOf(cur);
-    if (this.next >= 0) {
-      const nx = this.clips[this.next];
-      this.screenMat.uniforms.uB.value = this.texOf(nx);
-      this.mix = Math.min(1, this.mix + dt / 0.9);
-      if (this.mix >= 1) {
-        cur.video.pause();
-        this.film = this.next;
-        this.next = -1;
-        this.mix = 0;
-        this.filmSince = t;
-        this.screenMat.uniforms.uA.value = this.texOf(this.clips[this.film]);
-      }
-    } else if (this.focus && this.brand < 0.01 && t - this.filmSince > 9) {
-      this.showFilm((this.film + 1) % this.clips.length);
-    }
-    this.screenMat.uniforms.uMix.value = this.mix * this.mix * (3 - 2 * this.mix);
-    if (this.frame % 4 === 0 && brand < 1) this.sampleColour();
-    // the white card lights the floor white; the film, in its own colour
-    this.screenLight.color.copy(this.screenColour).lerp(WHITE, brand);
-    this.screenLight.intensity = card * (2.6 * brand + 1.6 * (1 - brand));
-
-    // ---- camera: ease in from the door; the mouse leans it; drag turns it; click walks up
-    this.yaw += (this.yawTo - this.yaw) * damp(5, dt);
-    this.pitch += (this.pitchTo - this.pitch) * damp(5, dt);
-    if (!this.drag.down) {
-      this.yawTo += (0 - this.yawTo) * damp(0.6, dt); // drifts back to the middle
-      this.pitchTo += (0 - this.pitchTo) * damp(0.6, dt);
-    }
-    const want = new THREE.Vector3();
-    const look = new THREE.Vector3();
-    if (this.focus) {
-      const hHalf = Math.atan(Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * this.camera.aspect);
-      const fill = this.portrait ? 0.94 : 0.84;
-      const dist = SW / 2 / fill / Math.tan(hHalf);
-      want.set(this.mouse.x * 0.08, S_MID + this.mouse.y * 0.03, S_Z + dist);
-      look.set(0, S_MID, S_Z);
-    } else {
-      const pivot = new THREE.Vector3(0, EYE, S_Z);
-      const d = -S_Z;
-      want.set(Math.sin(this.yaw) * d, EYE + Math.sin(this.pitch) * d * 0.3, pivot.z + Math.cos(this.yaw) * d);
-      want.x += this.mouse.x * 0.32;
-      want.y += this.mouse.y * 0.1;
-      look.set(want.x * 0.15, want.y, LOOK_Z);
-    }
-    const k = damp(this.reduced ? 20 : this.ready ? 2.4 : 0.9, dt);
-    this.camPos.lerp(want, k);
-    this.camLook.lerp(look, k);
-    this.camera.position.copy(this.camPos);
-    this.camera.lookAt(this.camLook);
-    this.camera.updateMatrixWorld();
-
-    this.renderMirror();
-    this.composer.render();
-  }
-
   dispose() {
+    this.setRunning(false);
     this.disposed = true;
-    cancelAnimationFrame(this.raf);
     this.cleanups.forEach((fn) => fn());
     for (const c of this.clips) {
       c.video.pause();
