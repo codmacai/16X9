@@ -1,28 +1,34 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { motion, useScroll, useSpring, useTransform } from "framer-motion";
 import type { Project } from "../_shared/data";
 import d from "./detail.module.css";
 
 // ===========================================================================
-// SIGN-OFF — the film's end credits, on an old 4:3 television, the way a
-// channel used to close the night. All of it is tied to the page's scroll:
-//   · as the section comes up, the lights go down: the paper fades to black
-//     around the set;
-//   · pinned, the set switches on like a tube does — a bright line opening
-//     into a picture, with a flash — and its power light comes up red;
-//   · the credits roll up the curved glass with the scroll, in glowing paper
-//     type, a faint "16×9" channel mark in the corner;
-//   · at the end it switches off the old way: the picture collapses to a
-//     line, the line to a dot, and the dot goes dark.
+// SIGN-OFF — the film's end credits, set the way the menu sets its words:
+// light, wide capitals on black. All of it is tied to the page's scroll
+// (smoothed by a spring), one to one, so it reads at the pace you read:
+//   · as the section comes up, the lights go down: the paper fades to black;
+//   · then the credits roll up through the screen in one centred column —
+//     the film's title first, then each role over its names — and only the
+//     line passing the middle of the screen is lit; the rest wait in the
+//     dark, so it reads one credit at a time (the focus pull of the line of
+//     films, in type);
+//   · it ends on the 16X9 mark, settling in the middle as the last credits
+//     clear.
 // ===========================================================================
 
-const SMOOTH = { stiffness: 120, damping: 28, mass: 0.6 };
+const SMOOTH = { stiffness: 110, damping: 26, mass: 0.6 };
 const PAPER = "#f7f2ee";
-const ROLL = { from: 0.08, to: 0.9 }; // the stretch of the scroll the credits roll over
-
-const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+const LOGO_SRC = "/logo.png";
+const FOCUS = 0.34; // how far from the middle (a share of the screen's height) a line still catches light
 
 export default function Credits({
   film,
@@ -36,103 +42,137 @@ export default function Credits({
   reduce: boolean;
 }) {
   const ref = useRef<HTMLElement>(null);
-  const glassRef = useRef<HTMLDivElement>(null);
-  const rollRef = useRef<HTMLDivElement>(null);
-  const size = useRef({ glass: 400, roll: 1600 });
+  const stageRef = useRef<HTMLDivElement>(null);
+  const colRef = useRef<HTMLDivElement>(null);
+  const lines = useRef<HTMLElement[]>([]);
+  const geo = useRef({
+    stage: 800,
+    run: 1600,
+    tops: [] as number[],
+    hs: [] as number[],
+  });
+  const [length, setLength] = useState<number | null>(null); // the section: the roll's distance, plus a screen
 
   // the lights go down as the section comes up
-  const { scrollYProgress: lightsRaw } = useScroll({ container, target: ref, offset: ["start end", "start start"] });
-  const room = useTransform(lightsRaw, [0.2, 0.9], [PAPER, "#000000"]);
-  const kicker = useTransform(lightsRaw, [0.75, 1], [0, 1]);
-
-  // pinned: on, the roll, off
-  const { scrollYProgress: rollRaw } = useScroll({ container, target: ref, offset: ["start start", "end end"] });
-  const p = useSpring(rollRaw, SMOOTH);
-  const tubeY = useTransform(p, [0, 0.05, 0.93, 0.965], [0.004, 1, 1, 0.004]);
-  const tubeX = useTransform(p, [0.965, 0.995], [1, 0]);
-  const flash = useTransform(p, [0, 0.035, 0.09, 0.925, 0.955, 0.99], [0, 0.85, 0, 0, 0.85, 0]);
-  const led = useTransform(p, [0, 0.03, 0.97, 1], [0.2, 1, 1, 0.2]);
-  const y = useTransform(p, (v) => {
-    const t = clamp((v - ROLL.from) / (ROLL.to - ROLL.from), 0, 1);
-    return size.current.glass + (-size.current.roll - size.current.glass) * t; // from under the glass to clear above it
+  const { scrollYProgress: lightsRaw } = useScroll({
+    container,
+    target: ref,
+    offset: ["start end", "start start"],
   });
+  const room = useTransform(lightsRaw, [0.2, 0.9], [PAPER, "#000000"]);
+  const kicker = useTransform(lightsRaw, [0.8, 1], [0, 1]);
 
-  // the roll's distance depends on the glass and the credits' own height
-  useEffect(() => {
-    const g = glassRef.current;
-    const r = rollRef.current;
-    if (!g || !r) return;
-    // (the roll picks the new size up on the next scroll; until the set is
-    // switched on it's out of sight anyway)
-    const measure = () => {
-      size.current = { glass: g.offsetHeight, roll: r.offsetHeight };
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(g);
-    ro.observe(r);
-    return () => ro.disconnect();
+  // the roll: from the column's top at the foot of the screen, to the mark in the middle
+  const { scrollYProgress: rollRaw } = useScroll({
+    container,
+    target: ref,
+    offset: ["start start", "end end"],
+  });
+  const smooth = useSpring(rollRaw, SMOOTH);
+  const p = reduce ? rollRaw : smooth;
+  const y = useTransform(p, (v) => geo.current.stage - v * geo.current.run);
+
+  // light the line passing the middle; the rest wait in the dark
+  const light = useCallback((at: number) => {
+    const g = geo.current;
+    const mid = g.stage / 2;
+    const reach = g.stage * FOCUS;
+    lines.current.forEach((el, i) => {
+      const centre = at + g.tops[i] + g.hs[i] / 2;
+      const e = Math.max(0, 1 - Math.abs(centre - mid) / reach);
+      el.style.opacity = (0.12 + 0.88 * e * e).toFixed(3);
+    });
   }, []);
+  useEffect(() => {
+    light(y.get());
+    return y.on("change", light);
+  }, [y, light]);
+
+  // measure the column (on mount, and whenever it or the screen changes size)
+  useEffect(() => {
+    const stage = stageRef.current;
+    const col = colRef.current;
+    if (!stage || !col) return;
+    const ro = new ResizeObserver(() => {
+      const els = Array.from(col.querySelectorAll<HTMLElement>("[data-line]"));
+      const last = els[els.length - 1];
+      if (!last) return;
+      const stageH = stage.offsetHeight;
+      const run = stageH / 2 + last.offsetTop + last.offsetHeight / 2;
+      lines.current = els;
+      geo.current = {
+        stage: stageH,
+        run,
+        tops: els.map((e) => e.offsetTop),
+        hs: els.map((e) => e.offsetHeight),
+      };
+      setLength(run + stageH);
+      light(stageH - p.get() * run);
+    });
+    ro.observe(stage);
+    ro.observe(col);
+    return () => ro.disconnect();
+  }, [light, p]);
 
   const groups = film.credits ?? [];
 
   return (
-    <motion.section ref={ref} className={d.signoff} style={{ backgroundColor: room }} aria-label={`End credits: ${film.title}`}>
-      <div className={d.signoffStage}>
-        <motion.span className={d.signoffKicker} style={{ opacity: kicker }} aria-hidden="true">
+    <motion.section
+      ref={ref}
+      className={d.signoff}
+      style={{ backgroundColor: room, ...(length ? { height: length } : {}) }}
+      aria-label={`End credits: ${film.title}`}
+    >
+      <div ref={stageRef} className={d.signoffStage}>
+        <motion.span
+          className={d.signoffKicker}
+          style={{ opacity: kicker }}
+          aria-hidden="true"
+        >
           End credits
         </motion.span>
 
-        <div className={d.set}>
-          <div ref={glassRef} className={d.tvGlass}>
-            <motion.div className={d.tube} style={reduce ? undefined : { scaleX: tubeX, scaleY: tubeY }}>
-              <motion.div ref={rollRef} className={d.roll} style={{ y }}>
-                <div className={d.rollOpen}>
-                  <span className={d.rollKicker}>{label}</span>
-                  <span className={d.rollTitle}>{film.title}</span>
-                  <span className={d.rollFor}>A 16×9 film for {film.client}</span>
-                </div>
-                {groups.map((g) => (
-                  <div key={g.heading} className={d.group}>
-                    <span className={d.groupHead}>{g.heading}</span>
-                    {g.rows.map((r, i) =>
-                      r.role ? (
-                        <div key={i} className={d.credit}>
-                          <span className={d.role}>{r.role}</span>
-                          <span className={d.names}>
-                            {r.names.map((n) => (
-                              <span key={n}>{n}</span>
-                            ))}
-                          </span>
-                        </div>
-                      ) : (
-                        <div key={i} className={d.creditSolo}>
-                          {r.names.map((n) => (
-                            <span key={n}>{n}</span>
-                          ))}
-                        </div>
-                      )
-                    )}
+        {/* the roll comes out of the dark at the foot and goes back into it at the top */}
+        <div className={d.rollWindow}>
+          <motion.div ref={colRef} className={d.roll} style={{ y }}>
+            <span data-line className={d.rollKicker}>
+              {label}
+            </span>
+            <span data-line className={d.rollTitle}>
+              {film.title}
+            </span>
+            <span data-line className={d.rollFor}>
+              A 16×9 film for {film.client}
+            </span>
+
+            {groups.map((g) => (
+              <div key={g.heading} className={d.group}>
+                <span data-line className={d.groupHead}>
+                  {g.heading}
+                </span>
+                {g.rows.map((r, i) => (
+                  <div
+                    key={i}
+                    data-line
+                    className={r.role ? d.credit : d.creditSolo}
+                  >
+                    {r.role && <span className={d.role}>{r.role}</span>}
+                    <span className={d.names}>
+                      {r.names.map((n) => (
+                        <span key={n}>{n}</span>
+                      ))}
+                    </span>
                   </div>
                 ))}
-                <div className={d.rollEnd}>
-                  <span className={d.rollMark}>16×9</span>
-                  <span className={d.rollYear}>{film.year}</span>
-                </div>
-              </motion.div>
-              <span className={d.bug} aria-hidden="true">
-                16×9
-              </span>
-              <span className={d.scan} aria-hidden="true" />
-              {!reduce && <motion.span className={d.flash} style={{ opacity: flash }} aria-hidden="true" />}
-            </motion.div>
-            <span className={d.tvVignette} aria-hidden="true" />
-            <span className={d.tvSheen} aria-hidden="true" />
-          </div>
-          <div className={d.setFoot} aria-hidden="true">
-            <span className={d.setBadge}>16×9</span>
-            <motion.i className={d.led} style={{ opacity: led }} />
-          </div>
+              </div>
+            ))}
+
+            <div data-line className={d.rollEnd}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={LOGO_SRC} alt="16x9" />
+              <span>{film.year}</span>
+            </div>
+          </motion.div>
         </div>
       </div>
     </motion.section>

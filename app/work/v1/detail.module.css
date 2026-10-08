@@ -412,62 +412,44 @@
   outline-offset: 8px;
 }
 
-/* ================= the sign-off: end credits on an old set ================= */
+/* ================= the sign-off: the end credits ================= */
 
-/* tall, so the credits have scroll to roll over; the set stays pinned */
+/* tall enough for the roll to run one to one with the scroll (set exactly
+   from the column's height once it's measured); the stage stays pinned */
 .signoff {
   position: relative;
-  height: calc(var(--sh) * 4.4);
+  height: calc(var(--sh) * 4);
 }
 
 .signoffStage {
   position: sticky;
   top: 0;
   height: var(--sh);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(14px, 2.6vh, 28px);
+  overflow: hidden;
+  color: var(--paper);
 }
 
 .signoffKicker {
-  color: var(--paper);
+  position: absolute;
+  z-index: 1;
+  top: clamp(18px, 3.4vh, 34px);
+  left: 50%;
+  translate: -50% 0;
   font-size: 11px;
   letter-spacing: 0.46em;
   text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
 }
 
-/* the set: a dark cabinet round 4:3 curved glass, a badge and a power light */
-.set {
-  --gw: min(62vw, calc(var(--sh) * 0.64 * 4 / 3)); /* the glass's width */
-  --bezel: calc(var(--gw) * 0.045);
-  padding: var(--bezel) var(--bezel) 0;
-  border-radius: calc(var(--gw) * 0.055);
-  background: linear-gradient(to bottom, #1b1b1b, #0c0c0c 60%);
-  box-shadow: 0 50px 100px rgb(0 0 0 / 0.65);
-}
-
-.tvGlass {
-  position: relative;
-  width: var(--gw);
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  clip-path: url(#tv-glass);
-  background: #050505;
-}
-
-/* the picture: what switches on and off */
-.tube {
+.rollWindow {
   position: absolute;
   inset: 0;
-  overflow: hidden;
-  background: #030303;
-  transform-origin: 50% 50%;
-  will-change: transform;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 12%, #000 32%, #000 72%, transparent 92%);
+  mask-image: linear-gradient(to bottom, transparent 0%, transparent 12%, #000 32%, #000 72%, transparent 92%);
 }
 
-/* the credits, in glowing paper type */
+/* one centred column; each line's light is set from where it is */
 .roll {
   position: absolute;
   top: 0;
@@ -476,168 +458,89 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: calc(var(--gw) * 0.075);
-  padding: 0 8%;
-  color: var(--paper);
+  padding: 0 var(--ui);
   text-align: center;
-  text-shadow: 0 0 calc(var(--gw) * 0.012) rgb(247 242 238 / 0.45);
   will-change: transform;
 }
 
-.rollOpen,
-.group,
-.rollEnd,
-.creditSolo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.rollOpen {
-  gap: calc(var(--gw) * 0.018);
+.roll [data-line] {
+  opacity: 0.12;
+  will-change: opacity;
 }
 
 .rollKicker,
-.groupHead,
 .rollFor,
-.rollYear {
-  font-size: max(8px, calc(var(--gw) * 0.018));
+.groupHead,
+.role {
+  font-size: 11px;
   letter-spacing: 0.42em;
   text-transform: uppercase;
-  opacity: 0.6;
 }
 
 .rollTitle {
-  font-size: calc(var(--gw) * 0.085);
-  font-weight: 600;
-  font-stretch: 100%;
-  font-variation-settings: "wdth" 100;
-  line-height: 0.9;
-  letter-spacing: -0.02em;
+  margin: 0.08em 0 0.12em;
+  font-size: min(14vw, 22vh);
+  font-weight: 300;
+  line-height: 0.88;
+  letter-spacing: -0.045em;
   text-transform: uppercase;
 }
 
 .group {
-  gap: calc(var(--gw) * 0.022);
-  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .groupHead {
-  margin-bottom: calc(var(--gw) * 0.012);
+  margin-top: calc(var(--sh) * 0.24);
 }
 
-/* role right of the gutter, names left of it, as end credits are set */
-.credit {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: calc(var(--gw) * 0.04);
-  align-items: baseline;
-  width: 100%;
-}
-
-.role {
-  text-align: right;
-  font-size: max(8px, calc(var(--gw) * 0.017));
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  opacity: 0.55;
-}
-
-.names,
+/* a role over its names */
+.credit,
 .creditSolo {
   display: flex;
   flex-direction: column;
-  gap: 0.25em;
-  font-size: max(11px, calc(var(--gw) * 0.028));
-  letter-spacing: 0.02em;
+  align-items: center;
+  gap: 14px;
+  margin-top: calc(var(--sh) * 0.085);
+}
+
+.groupHead + .credit,
+.groupHead + .creditSolo {
+  margin-top: calc(var(--sh) * 0.06);
+}
+
+.role {
+  opacity: 0.6;
 }
 
 .names {
-  text-align: left;
-}
-
-.creditSolo {
-  font-size: max(12px, calc(var(--gw) * 0.032));
-}
-
-.rollEnd {
-  gap: calc(var(--gw) * 0.015);
-  padding-bottom: calc(var(--gw) * 0.04);
-}
-
-.rollMark {
-  font-size: calc(var(--gw) * 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.12em;
+  font-size: clamp(26px, 3.6vw, 62px);
   font-weight: 300;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
 }
 
-/* the channel's mark in the corner */
-.bug {
-  position: absolute;
-  top: 7%;
-  right: 8%;
-  color: var(--paper);
-  font-size: max(8px, calc(var(--gw) * 0.022));
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  opacity: 0.32;
-}
-
-/* the tube's grain: the faintest raster */
-.scan {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.22) 0 1px, rgb(0 0 0 / 0) 1px 3px);
-  pointer-events: none;
-}
-
-/* the flash as it switches on and off */
-.flash {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, #fff, rgb(247 242 238 / 0.6) 40%, rgb(247 242 238 / 0) 75%);
-  opacity: 0;
-  pointer-events: none;
-}
-
-.tvVignette {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / 0) 55%, rgb(0 0 0 / 0.65) 100%);
-  pointer-events: none;
-}
-
-.tvSheen {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(155deg, rgb(247 242 238 / 0.08), rgb(247 242 238 / 0) 36%);
-  pointer-events: none;
-}
-
-.setFoot {
+/* the mark, settling in the middle at the end */
+.rollEnd {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  height: calc(var(--gw) * 0.075);
-  padding: 0 2%;
+  gap: 18px;
+  margin-top: calc(var(--sh) * 0.3);
+  font-size: 11px;
+  letter-spacing: 0.46em;
 }
 
-.setBadge {
-  color: var(--paper);
-  font-size: max(8px, calc(var(--gw) * 0.02));
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  opacity: 0.4;
-}
-
-/* the power light: the band clock's live dot */
-.led {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #e1142b;
-  box-shadow: 0 0 10px #e1142b;
+.rollEnd img {
+  display: block;
+  height: clamp(54px, 6vw, 96px);
+  width: auto;
 }
 
 /* ================= phones, reduced motion ================= */
@@ -665,8 +568,11 @@
   .screen {
     width: 92vw;
   }
-  .set {
-    --gw: min(84vw, calc(var(--sh) * 0.6 * 4 / 3));
+  .names {
+    font-size: 8.4vw;
+  }
+  .rollTitle {
+    font-size: 15vw;
   }
   .playDisc {
     width: 56px;
