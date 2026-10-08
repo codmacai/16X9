@@ -605,7 +605,18 @@ function Heading({
 // The variant depends on the URL and today's date, so it's read on the client only
 // (the server renders an empty section), without a setState-in-effect round trip.
 const noopSubscribe = () => () => {};
-export default function DepthHero({ variantId }: { variantId?: string }) {
+export default function DepthHero({
+  variantId,
+  inPage = false,
+  onCue,
+}: {
+  variantId?: string;
+  /** Set on the homepage, where the site continues below the hero: shows a scroll
+   *  cue, lets phone swipes scroll the page, and rests the wall once it's off screen. */
+  inPage?: boolean;
+  /** What the scroll cue does when clicked (inPage only). */
+  onCue?: () => void;
+}) {
   const isClient = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const variant = useMemo<HeroVariant | null>(
     () =>
@@ -616,10 +627,10 @@ export default function DepthHero({ variantId }: { variantId?: string }) {
   );
 
   if (!variant) return <section className={`${styles.page} ${interTight.variable} ${archivo.variable}`} aria-hidden="true" />;
-  return <DepthInner key={variant.id} variant={variant} />;
+  return <DepthInner key={variant.id} variant={variant} inPage={inPage} onCue={onCue} />;
 }
 
-function DepthInner({ variant }: { variant: HeroVariant }) {
+function DepthInner({ variant, inPage, onCue }: { variant: HeroVariant; inPage: boolean; onCue?: () => void }) {
   const clips = variant.clips;
   const mark = variant.wordmark ?? "16X9";
   const reduce = !!useReducedMotion();
@@ -664,6 +675,19 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     return () => window.clearTimeout(t);
   }, [menuOpen, menuKey, reduce]);
   const wallHidden = menuOpen && coveredKey === menuKey;
+  const rootRef = useRef<HTMLElement>(null);
+  const [offscreen, setOffscreen] = useState(false);
+  const offscreenRef = useRef(false);
+  useEffect(() => {
+    offscreenRef.current = offscreen;
+  }, [offscreen]);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!inPage || !el) return;
+    const io = new IntersectionObserver(([entry]) => setOffscreen(!entry.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, [inPage]);
   const wallHiddenRef = useRef(false);
   useEffect(() => {
     wallHiddenRef.current = wallHidden;
@@ -746,9 +770,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   // Videos wait for the entrance to finish (decoding them mid-entrance is what
   // stutters), and stop under an open film or the menu.
   useEffect(() => {
-    pausedRef.current = !ready || project !== null || wallHidden;
+    pausedRef.current = !ready || project !== null || wallHidden || offscreen;
     playback.setPaused(pausedRef.current || document.hidden);
-  }, [ready, project, wallHidden, playback]);
+  }, [ready, project, wallHidden, offscreen, playback]);
 
   const lanes = useMemo(
     () =>
@@ -796,7 +820,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       // Ease toward it so the wall glides to a hold and back, never snaps.
       const holding = hoverRef.current && now - lastMoveRef.current < HOLD_MS;
       // while dragged, the wall goes only where the pointer takes it
-      const target = projectRef.current || wallHiddenRef.current || draggingRef.current ? 0 : holding ? HOVER_SPEED : 1;
+      const target =
+        projectRef.current || wallHiddenRef.current || offscreenRef.current || draggingRef.current ? 0 : holding ? HOVER_SPEED : 1;
       const drag = dragAccRef.current;
       dragAccRef.current = 0;
       speed += (target - speed) * Math.min(1, dt * SPEED_EASE);
@@ -852,6 +877,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     };
     const onDown = (e: PointerEvent) => {
       if (e.button !== 0 || !readyRef.current || menuRef.current || projectRef.current) return;
+      if (inPage && e.pointerType === "touch") return; // the page scrolls; the wall runs on its own
       id = e.pointerId;
       lastY = e.clientY;
       lastT = performance.now();
@@ -894,7 +920,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [reduce]);
+  }, [reduce, inPage]);
 
   // ---- Hover and pointer motion: one listener, one animation loop ----
   // Hover follows the real mouse only: a film becomes "hovered" when the pointer
@@ -1021,6 +1047,11 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
+      if (offscreenRef.current) {
+        // scrolled away: nothing to light or tilt
+        raf = requestAnimationFrame(frame);
+        return;
+      }
       // a resting mouse lets go of the film, and the wall runs again
       if (hovered && now - lastMove > HOLD_MS) setHover(null);
 
@@ -1092,12 +1123,17 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       : { initial: from, animate: { ...to, transition: { delay, duration, ease: EASE } } };
 
   return (
-    <section className={`${styles.page} ${interTight.variable} ${archivo.variable}`} aria-label={mark} style={menuOpen ? { touchAction: "none" } : undefined}>
+    <section
+      ref={rootRef}
+      className={`${styles.page} ${interTight.variable} ${archivo.variable}`}
+      aria-label={mark}
+      style={menuOpen ? { touchAction: "none" } : undefined}
+    >
       {/* ================= The depth gallery: rushing behind the letterbox ================= */}
 
       <motion.div
         ref={sceneRef}
-        className={`${styles.scene} ${wallHidden ? styles.sceneHidden : ""}`}
+        className={`${styles.scene} ${inPage ? styles.scenePan : ""} ${wallHidden ? styles.sceneHidden : ""}`}
         style={menuOpen || !ready ? { pointerEvents: "none", touchAction: "none" } : undefined}
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
@@ -1159,6 +1195,28 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         />
         <Mark mark={mark} reduce={reduce} gone={gone} menuOpen={menuOpen} menuKey={menuKey} />
       </div>
+
+      {inPage && (
+        <AnimatePresence>
+          {gone && ready && !menuOpen && (
+            <motion.button
+              key="cue"
+              type="button"
+              className={styles.cue}
+              onClick={onCue}
+              aria-label="Scroll to the studio"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0, transition: { delay: reduce ? 0 : 0.8, duration: 1, ease: EASE } }}
+              exit={{ opacity: 0, transition: { duration: 0.3 } }}
+            >
+              <span>Scroll</span>
+              <span className={styles.cueLine} aria-hidden="true">
+                <span className={styles.cueDot} />
+              </span>
+            </motion.button>
+          )}
+        </AnimatePresence>
+      )}
 
       {/* ================= Menu (no boxes: a veil over the wall and the links) ================= */}
       <Menu open={menuOpen} reduce={reduce} onClose={closeMenu} />

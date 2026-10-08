@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import { Archivo } from "next/font/google";
+import { useNavClick } from "@/components/site/transition";
 import styles from "./hero11.module.css";
 
 // ===========================================================================
@@ -20,9 +22,9 @@ const wide = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wid
 
 const LOGO_SRC = "/logo.png";
 const FOLDERS = [
-  { no: "01", label: "Work", line: "Films · Campaigns · Content", href: "#work", poster: "/hero11/work.webp", tab: 0.45 },
-  { no: "02", label: "About", line: "The studio · The people", href: "#about", poster: "/hero11/about.webp", tab: 0.68 },
-  { no: "03", label: "Services", line: "Production · Post · Strategy", href: "#services", poster: "/hero11/services.webp", tab: 0.91 },
+  { no: "01", label: "Work", line: "Films · Campaigns · Content", href: "/work", poster: "/hero11/work.webp", tab: 0.45 },
+  { no: "02", label: "About", line: "The studio · The people", href: "/about", poster: "/hero11/about.webp", tab: 0.68 },
+  { no: "03", label: "Services", line: "Production · Post · Strategy", href: "/services", poster: "/hero11/services.webp", tab: 0.91 },
 ] as const;
 
 const HERO = {
@@ -45,6 +47,8 @@ const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.we
 export default function Drawer({ onClose }: { onClose?: () => void }) {
   const reduce = !!useReducedMotion();
   const [hover, setHover] = useState<number | null>(null);
+  // inside the site, links cut to the next page with the letterbox; on its own (/hero11) they are plain links
+  const go = useNavClick();
 
   return (
     <section
@@ -58,12 +62,12 @@ export default function Drawer({ onClose }: { onClose?: () => void }) {
         initial={reduce ? false : { y: "-100%" }}
         animate={{ y: 0, transition: { duration: 1.1, ease: EASE_CINE } }}
       >
-        <a href="#top" className={styles.logo} aria-label="16x9 home">
+        <Link href="/" className={styles.logo} aria-label="16x9 home" onClick={(e) => go(e, "/")}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_SRC} alt="16x9" />
-        </a>
+        </Link>
         <div className={styles.bandEnd}>
-          <a href="#contact" className={styles.talk}>
+          <Link href="/contact" className={styles.talk} onClick={(e) => go(e, "/contact")}>
             <span className={styles.talkRoll}>
               <span>Let&apos;s talk</span>
               <span aria-hidden="true">Let&apos;s talk</span>
@@ -71,7 +75,7 @@ export default function Drawer({ onClose }: { onClose?: () => void }) {
             <span className={styles.talkArrow} aria-hidden="true">
               ↗
             </span>
-          </a>
+          </Link>
           {onClose && (
             <button type="button" className={styles.close} onClick={onClose} aria-label="Close menu">
               <span />
@@ -155,6 +159,7 @@ export default function Drawer({ onClose }: { onClose?: () => void }) {
             reduce={reduce}
             hover={hover}
             onHover={setHover}
+            onClick={(e) => go(e, f.href)}
           />
         ))}
       </nav>
@@ -174,12 +179,14 @@ function Folder({
   reduce,
   hover,
   onHover,
+  onClick,
 }: {
   folder: (typeof FOLDERS)[number];
   index: number;
   reduce: boolean;
   hover: number | null;
   onHover: (i: number | null) => void;
+  onClick: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const on = hover === index;
   const away = hover !== null && !on;
@@ -197,6 +204,7 @@ function Folder({
       }}
       onPointerEnter={(e) => e.pointerType === "mouse" && onHover(index)}
       onPointerLeave={() => onHover(null)}
+      onClick={onClick}
       onFocus={() => onHover(index)}
       onBlur={() => onHover(null)}
       aria-label={`${folder.no} ${folder.label}`}

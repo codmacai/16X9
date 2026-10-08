@@ -1123,3 +1123,78 @@
     background: #0a0a0a;
   }
 
+
+  /* ================= In the homepage =================
+     The page continues below, so a vertical swipe scrolls it, and a cue under the
+     heading says so. */
+  .scenePan {
+    touch-action: pan-y;
+  }
+
+  .cue {
+    position: absolute;
+    z-index: 3;
+    left: 50%;
+    bottom: calc(clamp(28px, 6vh, 64px) + 78px); /* just above the client strip */
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 10px;
+    border: 0;
+    background: none;
+    color: rgb(247 242 238 / 0.72);
+    font: inherit;
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.4s var(--ease);
+  }
+
+  .cue:hover,
+  .cue:focus-visible {
+    color: var(--paper);
+  }
+
+  .cue:focus-visible {
+    outline: 1px solid var(--paper);
+    outline-offset: 4px;
+  }
+
+  .cueLine {
+    position: relative;
+    width: 1px;
+    height: 38px;
+    overflow: hidden;
+    background: rgb(247 242 238 / 0.18);
+  }
+
+  .cueDot {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1px;
+    height: 12px;
+    background: var(--paper);
+    animation: cueRun 2s cubic-bezier(0.76, 0, 0.24, 1) infinite;
+  }
+
+  @keyframes cueRun {
+    0% { transform: translateY(-14px); }
+    60%, 100% { transform: translateY(40px); }
+  }
+
+  @media (max-width: 760px) {
+    .cue {
+      bottom: calc(clamp(28px, 6vh, 64px) + 70px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cueDot {
+      animation: none;
+      transform: translateY(13px);
+    }
+  }
