@@ -17,8 +17,8 @@ import d from "./detail.module.css";
 //     The card lifts and settles back a touch as you go;
 //   · a round cue that bobs, fades as you go, and takes you down;
 //   · the screen: the film in an old television's curved glass, growing into
-//     place as you reach it while the picture settles inside, and "Watch film"
-//     to open it in the player.
+//     place as you reach it while the picture settles inside, and "Watch
+//     behind the scenes" to open it in the player.
 // Back (or Esc) lets the page slide down again.
 // ===========================================================================
 
@@ -211,7 +211,7 @@ export default function Detail({
               className={d.screen}
               style={reduce ? undefined : { scale: screenScale, y: screenY }}
               onClick={(e) => onPlay(film, e.currentTarget)}
-              aria-label={`Watch ${film.title}`}
+              aria-label={`Watch behind the scenes: ${film.title}`}
             >
               <span className={d.glass}>
                 <motion.span className={d.picture} style={reduce ? undefined : { scale: pictureScale }}>
@@ -232,7 +232,7 @@ export default function Detail({
                 <span className={d.action}>
                   <i className={d.dot} /> Action
                 </span>
-                <span className={d.watchLabel}>Watch film</span>
+                <span className={d.watchLabel}>Watch behind the scenes</span>
               </motion.span>
             </motion.button>
           </div>
