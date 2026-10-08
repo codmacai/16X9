@@ -1,19 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { motion, useReducedMotion, type Transition } from "framer-motion";
 import { Band, EASE, EASE_CINE, EnterCursor, Info, rootClass, Still, usePlayer } from "../_shared/chrome";
 import { CATEGORIES, PROJECTS, stillFor } from "../_shared/data";
-import FileView, { type Drawer, type Origin } from "./file-view";
+import FileView, { type Drawer } from "./file-view";
 import styles from "./v1.module.css";
 
 // ===========================================================================
 // WORK 01 — THE CABINET. The burger menu's drawer, in the dark: a folder for
 // each category, stacked the way the menu stacks its three. Point at one and
-// it's pulled up out of the stack and comes into colour. Click it and it opens
-// right where it is — no scrolling anywhere: the folder's body grows into the
-// room, its film becomes the card in front, its tab hangs in the corner as a
-// ticket (see file-view.tsx). Close it and it folds back into its place.
+// it's pulled up and comes into colour. Click it and you take it out of the
+// drawer: the folder slides up, whole, until its tab meets the band; the
+// folders in front of it drop away; its film fades into the dark and the
+// films inside rise out of it as posters (file-view.tsx). Close, and they
+// sink back in and the folder goes back down into its place.
 // Once the cabinet is on screen the page stops scrolling; it's all here.
 // ===========================================================================
 
@@ -26,9 +27,25 @@ const ORDER: Drawer[] = CATEGORIES.map((c, i) => ({
 const LIST = ORDER.flatMap((d) => d.films);
 // each folder a shade lighter than the one behind it, so the stack reads in the dark
 const STOCK = ["#151413", "#191817", "#1d1c1a", "#21201e", "#252321"];
-const INTRO_S = 0.55 + ORDER.length * 0.1 + 1.15;
+const INTRO_S = 0.45 + ORDER.length * 0.1 + 1.15;
 
-const rectOf = (r: DOMRect) => ({ top: r.top, left: r.left, width: r.width, height: r.height });
+// how the folders move
+const PULL: Transition = { type: "spring", stiffness: 140, damping: 20, mass: 0.9 }; // pointed at
+const RISE: Transition = { type: "spring", stiffness: 86, damping: 18, mass: 1 }; // taken out of the drawer
+const SINK: Transition = { type: "spring", stiffness: 120, damping: 22, mass: 1 }; // put back
+const drop = (k: number): Transition => ({ duration: 0.62, ease: [0.55, 0, 0.75, 0.15], delay: 0.03 * k }); // the ones in front fall away
+const lift = (k: number): Transition => ({ type: "spring", stiffness: 110, damping: 20, delay: 0.1 + 0.05 * k }); // ...and come back
+
+const onResize = (cb: () => void) => {
+  window.addEventListener("resize", cb);
+  return () => window.removeEventListener("resize", cb);
+};
+const useViewportHeight = () =>
+  useSyncExternalStore(
+    onResize,
+    () => window.innerHeight,
+    () => 0
+  );
 
 /** Once `ref` is fully on screen, the page stops scrolling (until it unmounts). */
 function useScrollLock(ref: RefObject<HTMLElement | null>) {
@@ -55,10 +72,12 @@ function useScrollLock(ref: RefObject<HTMLElement | null>) {
   }, [ref]);
 }
 
-type Open = { cat: number; origin: Origin };
+/** The open folder: which, how far it rises to meet the band, and whether it's going back. */
+type Open = { cat: number; rise: number; closing: boolean };
 
 export default function WorkCabinet() {
   const reduce = !!useReducedMotion();
+  const vh = useViewportHeight();
   const [pull, setPull] = useState<number | null>(null);
   const [settled, setSettled] = useState(false); // the stack has dealt itself in
   const [open, setOpen] = useState<Open | null>(null);
@@ -75,52 +94,64 @@ export default function WorkCabinet() {
     return () => window.clearTimeout(t);
   }, [reduce]);
 
-  // While a file is open its folder stays exactly as it was clicked, so the
-  // file has the same place to fold back into.
-  const lifted = open ? (open.origin.lifted ? open.cat : null) : pull;
-
-  const measure = useCallback((c: number, isLifted: boolean): Origin | null => {
+  const openFile = (c: number) => {
     const folder = folderRefs.current[c];
     const front = frontRef.current;
-    const win = folder?.querySelector<HTMLElement>(`.${styles.window}`)?.getBoundingClientRect();
-    const tab = folder?.querySelector<HTMLElement>(`.${styles.tab}`)?.getBoundingClientRect();
-    if (!front || !win || !tab) return null;
-    const next = folderRefs.current[c + 1]?.getBoundingClientRect();
-    return {
-      win: rectOf(win),
-      tab: rectOf(tab),
-      bodyTop: tab.bottom,
-      visBottom: Math.min(front.getBoundingClientRect().bottom, next ? next.top : Infinity),
-      stock: STOCK[c],
-      lifted: isLifted,
-    };
-  }, []);
-
-  const openFile = (c: number) => {
-    if (open || !settled) return;
-    const origin = measure(c, pull === c);
-    if (!origin) return;
+    if (open || !settled || !folder || !front) return;
+    const band = document.querySelector<HTMLElement>("[data-band]")?.offsetHeight ?? 0;
+    // where the folder sits in the stack (without any pull), and how far up the band is
+    const top = front.getBoundingClientRect().top + folder.offsetTop;
     setCursor(null);
-    setOpen({ cat: c, origin });
+    setOpen({ cat: c, rise: band - top, closing: false });
   };
 
-  const remeasure = useCallback(() => (open ? measure(open.cat, open.origin.lifted) : null), [open, measure]);
-  const leave = useCallback(
-    (index: number) => open && setShown((s) => s.map((v, i) => (i === open.cat ? index : v))),
-    [open]
-  );
-  const closed = useCallback(() => {
-    const c = open?.cat;
-    setOpen(null);
-    setPull(null); // it settles back into the stack (and out of colour) from here
-    if (c !== undefined) folderRefs.current[c]?.focus({ preventScroll: true });
+  // the posters have sunk back into the folder: it shows the film you left on, and goes down
+  const openRef = useRef<number | null>(null);
+  useEffect(() => {
+    openRef.current = open?.cat ?? null;
   }, [open]);
+  const filed = useCallback((index: number) => {
+    setCursor(null);
+    setOpen((o) => (o ? { ...o, closing: true } : o));
+    setShown((s) => s.map((v, i) => (i === openRef.current ? index : v)));
+  }, []);
+
+  // ...and it's back in its place
+  const putBack = (i: number) => {
+    if (!open?.closing || i !== open.cat) return;
+    setOpen(null);
+    setPull(null);
+    folderRefs.current[i]?.focus({ preventScroll: true });
+  };
+
+  const yFor = (i: number) => {
+    if (open) {
+      if (i === open.cat) return open.closing ? 0 : open.rise;
+      if (i > open.cat) return open.closing ? 0 : vh;
+      return 0;
+    }
+    if (pull === i) return -0.04 * vh;
+    if (pull !== null && i > pull) return 0.016 * vh;
+    return 0;
+  };
+  const moveFor = (i: number): Transition => {
+    if (reduce) return { duration: 0 };
+    if (!settled) return { delay: 0.45 + i * 0.1, duration: 1.15, ease: EASE_CINE };
+    if (open && i === open.cat) return open.closing ? SINK : RISE;
+    if (open && i > open.cat) return open.closing ? lift(i - open.cat) : drop(i - open.cat);
+    return PULL;
+  };
+  const lifted = open ? open.cat : pull;
 
   return (
     <main className={`${rootClass} ${styles.page}`}>
       <Band crumb="01 The cabinet" />
 
-      <section ref={sectionRef} className={styles.sheet} aria-label="Work">
+      <section
+        ref={sectionRef}
+        className={`${styles.sheet} ${open && !open.closing ? styles.sheetOut : ""}`}
+        aria-label="Work"
+      >
         <Info left="16X9 — Selected work" centre={`${LIST.length} films · ${ORDER.length} drawers`} />
         <div className={styles.lockup}>
           <h1 className={styles.headline}>
@@ -141,7 +172,8 @@ export default function WorkCabinet() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0, transition: reduce ? { duration: 0 } : { delay: 1.1, duration: 1.1, ease: EASE } }}
           >
-            Commercials, brand films, fashion, social and documentary. Pull a folder to open it where it sits.
+            Commercials, brand films, fashion, social and documentary. Take a folder out of the drawer to see what&apos;s
+            in it.
           </motion.p>
         </div>
 
@@ -155,6 +187,7 @@ export default function WorkCabinet() {
         >
           {ORDER.map((d, i) => {
             const on = lifted === i;
+            const out = open !== null && open.cat === i && !open.closing;
             return (
               <motion.button
                 key={d.no}
@@ -162,7 +195,12 @@ export default function WorkCabinet() {
                   folderRefs.current[i] = el;
                 }}
                 type="button"
-                className={`${styles.folder} ${on ? styles.folderOn : ""} ${lifted !== null && !on ? styles.folderAway : ""}`}
+                className={[
+                  styles.folder,
+                  on ? styles.folderOn : "",
+                  lifted !== null && !on ? styles.folderAway : "",
+                  out ? styles.folderOut : "",
+                ].join(" ")}
                 style={{ ["--c" as string]: i, ["--stock-c" as string]: STOCK[i] }}
                 onClick={() => openFile(i)}
                 onPointerEnter={(e) => e.pointerType === "mouse" && settled && setPull(i)}
@@ -172,16 +210,10 @@ export default function WorkCabinet() {
                 // the same first frame on the server and the client (reduced motion
                 // only makes the intro instant), so hydration always matches
                 initial={{ y: "110%" }}
-                animate={{
-                  y: on ? "-4vh" : lifted !== null && i > lifted ? "1.6vh" : 0,
-                  transition: settled
-                    ? { type: "spring", stiffness: 140, damping: 20, mass: 0.9 }
-                    : reduce
-                      ? { duration: 0 }
-                      : { delay: 0.45 + i * 0.1, duration: 1.15, ease: EASE_CINE },
-                }}
+                animate={{ y: yFor(i), transition: moveFor(i) }}
+                onAnimationComplete={() => putBack(i)}
                 aria-label={`Open ${d.label}, ${d.films.length} films`}
-                aria-expanded={open?.cat === i}
+                aria-expanded={out}
               >
                 <span className={styles.stock}>
                   <span className={styles.tab}>
@@ -212,19 +244,16 @@ export default function WorkCabinet() {
         </nav>
       </section>
 
-      {open && (
+      {open && !open.closing && (
         <FileView
           key={open.cat}
           drawer={ORDER[open.cat]}
-          origin={open.origin}
           start={shown[open.cat]}
           reduce={reduce}
           playing={playing}
-          measure={remeasure}
           onPlay={play}
           onCursor={setCursor}
-          onLeave={leave}
-          onClosed={closed}
+          onClosed={filed}
         />
       )}
 

@@ -1,0 +1,512 @@
+/* A FILM'S PAGE — a dark sheet that slides up under the band and scrolls on
+   its own. Same language as the rest: light wide capitals, 11px spaced
+   labels, hairlines, paper on near-black. */
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  overflow: hidden;
+  background: #0b0b0a;
+  box-shadow: 0 -30px 80px rgb(0 0 0 / 0.6);
+  color: var(--paper);
+  will-change: transform; /* slides as one layer */
+}
+
+.scroll {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(247 242 238 / 0.2) transparent;
+}
+
+.label {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ================= the film ================= */
+
+.hero {
+  position: relative;
+  height: calc(100svh - var(--band));
+  min-height: 520px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.heroMedia {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  will-change: transform;
+}
+
+/* past the letterbox bars */
+.heroMedia img,
+.heroMedia video {
+  position: absolute;
+  top: -16%;
+  left: 0;
+  width: 100%;
+  height: 132%;
+  object-fit: cover;
+}
+
+.heroMedia video {
+  animation: fade 1.4s var(--ease) 0.4s both;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* the film darkens as it sinks */
+.heroDim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: #0b0b0a;
+  pointer-events: none;
+}
+
+.heroShade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(to top, rgb(11 11 10 / 0.96) 0%, rgb(11 11 10 / 0.55) 34%, rgb(11 11 10 / 0) 62%),
+    linear-gradient(to bottom, rgb(11 11 10 / 0.7), rgb(11 11 10 / 0) 26%);
+  pointer-events: none;
+}
+
+.heroTop {
+  position: absolute;
+  top: clamp(18px, 3vh, 30px);
+  left: var(--ui);
+  right: var(--ui);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--paper);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.backDisc {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgb(247 242 238 / 0.45);
+  border-radius: 50%;
+  font-size: 15px;
+  letter-spacing: 0;
+  transition: background-color 0.5s var(--ease), color 0.5s var(--ease), transform 0.6s var(--ease);
+}
+
+.back:hover .backDisc {
+  background: var(--paper);
+  color: var(--ink);
+  transform: translateX(-4px);
+}
+
+.back:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 6px;
+}
+
+.heroIndex {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.heroIndex i {
+  font-style: normal;
+  opacity: 0.5;
+}
+
+.heroFoot {
+  position: absolute;
+  left: var(--ui);
+  right: var(--ui);
+  bottom: clamp(24px, 5vh, 56px);
+}
+
+.kicker {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.title {
+  margin: 0.12em 0 0.18em;
+  font-size: min(12.5vw, 21vh);
+  font-weight: 300;
+  line-height: 0.88;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+}
+
+.titleWord {
+  display: inline-block;
+  overflow: hidden;
+  padding-bottom: 0.05em;
+  margin: 0 0.22em -0.05em 0;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.letter {
+  display: inline-block;
+}
+
+/* the facts across the foot of the film, on a hairline */
+.meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  border-top: 1px solid rgb(247 242 238 / 0.24);
+}
+
+.meta > div {
+  padding: 14px 16px 0 0;
+}
+
+.meta > div + div {
+  padding-left: 16px;
+  border-left: 1px solid rgb(247 242 238 / 0.14);
+}
+
+.meta dt,
+.credits dt {
+  font-size: 10px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.meta dd {
+  margin: 8px 0 0;
+  font-size: clamp(13px, 1.15vw, 17px);
+  letter-spacing: 0.04em;
+}
+
+.cue {
+  position: absolute;
+  right: var(--ui);
+  bottom: clamp(24px, 5vh, 56px);
+  display: none;
+}
+
+/* ================= blocks ================= */
+
+.block {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 3fr);
+  gap: clamp(20px, 4vw, 80px);
+  padding: clamp(70px, 14vh, 160px) var(--ui) 0;
+}
+
+.statement {
+  margin: 0;
+  max-width: 22ch;
+  font-size: clamp(26px, 3.6vw, 64px);
+  font-weight: 300;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+.credits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(20px, 4vw, 60px);
+  margin: 0;
+}
+
+.credits > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 0;
+  border-top: 1px solid rgb(247 242 238 / 0.16);
+}
+
+.credits dd {
+  margin: 0;
+  font-size: clamp(14px, 1.3vw, 19px);
+  letter-spacing: 0.02em;
+  text-align: right;
+}
+
+/* ================= the screen ================= */
+
+.watch {
+  padding: clamp(70px, 14vh, 160px) var(--ui) 0;
+}
+
+.watchHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 16px;
+}
+
+.screen {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 82svh;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: #111;
+  cursor: pointer;
+}
+
+.screen img {
+  position: absolute;
+  top: -16%;
+  left: 0;
+  width: 100%;
+  height: 132%;
+  object-fit: cover;
+  transform: scale(1.04);
+  transition: transform 1.4s var(--ease);
+}
+
+.screen:hover img {
+  transform: scale(1);
+}
+
+.screenShade {
+  position: absolute;
+  inset: 0;
+  background: rgb(11 11 10 / 0.35);
+  transition: background-color 0.8s var(--ease);
+}
+
+.screen:hover .screenShade {
+  background: rgb(11 11 10 / 0.15);
+}
+
+.screen:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 6px;
+}
+
+/* the seal: a paper disc, a play mark, and the words turning around it */
+.seal {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(110px, 11vw, 160px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  transition: scale 0.7s var(--ease);
+}
+
+.screen:hover .seal {
+  scale: 1.08;
+}
+
+.sealRing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  font-size: 9px;
+  text-transform: uppercase;
+  fill: currentColor;
+  animation: turn 16s linear infinite;
+}
+
+.sealPlay {
+  width: 16%;
+  margin-left: 4%;
+  fill: currentColor;
+}
+
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ================= the next film ================= */
+
+.next {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  width: 100%;
+  margin-top: clamp(80px, 16vh, 180px);
+  padding: clamp(40px, 8vh, 90px) var(--ui) clamp(50px, 10vh, 110px);
+  border: 0;
+  border-top: 1px solid rgb(247 242 238 / 0.16);
+  background: none;
+  color: var(--paper);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nextTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.25em;
+  font-size: min(10vw, 17vh);
+  font-weight: 300;
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+}
+
+.nextTitle > span:first-child {
+  transition: transform 0.9s var(--ease);
+}
+
+/* the next film's picture opens in the line, as in the menu's headline */
+.nextReel {
+  display: block;
+  flex: none;
+  width: 0;
+  height: 0.72em;
+  border-radius: 999px;
+  background: #111 center / cover no-repeat;
+  opacity: 0;
+  transition:
+    width 0.9s var(--ease),
+    opacity 0.6s var(--ease);
+}
+
+.next:hover .nextReel,
+.next:focus-visible .nextReel {
+  width: 1.9em;
+  opacity: 1;
+}
+
+.next:hover .nextTitle > span:first-child {
+  transform: translateX(0.06em);
+}
+
+.nextMeta {
+  display: inline-flex;
+  gap: 12px;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.nextMeta i {
+  font-style: normal;
+  transition: transform 0.6s var(--ease);
+}
+
+.next:hover .nextMeta i {
+  transform: translateX(6px);
+}
+
+.next:focus-visible {
+  outline: none;
+}
+
+.next:focus-visible .nextTitle {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12em;
+}
+
+/* ================= phones, reduced motion ================= */
+
+@media (max-width: 760px) {
+  .heroIndex {
+    display: none;
+  }
+  .title {
+    font-size: 13.5vw;
+  }
+  .meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .meta > div:nth-child(3) {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .meta dd {
+    margin-bottom: 12px;
+  }
+  .block {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .credits {
+    grid-template-columns: 1fr;
+  }
+  .nextTitle {
+    font-size: 13vw;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sealRing,
+  .heroMedia video {
+    animation: none;
+  }
+  .screen img,
+  .screenShade,
+  .seal,
+  .nextReel,
+  .nextTitle > span:first-child,
+  .backDisc {
+    transition: none;
+  }
+}
