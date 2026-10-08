@@ -1,0 +1,97 @@
+.page {
+  background: var(--paper);
+}
+
+.sheet {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--band) var(--ui) 0;
+  background: var(--noise), var(--paper);
+  color: var(--ink);
+}
+
+.list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 0 0 clamp(28px, 6vh, 72px);
+  list-style: none;
+}
+
+.take {
+  display: grid;
+  grid-template-columns: 4em minmax(0, 1fr) 24em 2em;
+  align-items: center;
+  gap: 20px;
+  padding: clamp(12px, 2vh, 22px) 0;
+  border-top: 1px solid rgb(10 10 10 / 0.16);
+}
+
+.list li:last-child .take {
+  border-bottom: 1px solid rgb(10 10 10 / 0.16);
+}
+
+.no,
+.line {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.line {
+  line-height: 1.6;
+}
+
+.name {
+  font-size: min(clamp(36px, 6.4vw, 120px), 11vh);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  transition: transform 0.9s var(--ease);
+}
+
+.arrow {
+  justify-self: end;
+  font-size: 20px;
+  transition: transform 0.6s var(--ease);
+}
+
+.take:hover .name {
+  transform: translateX(0.12em);
+}
+
+.take:hover .arrow {
+  transform: translateX(6px);
+}
+
+.take:focus-visible {
+  outline: none;
+}
+
+.take:focus-visible .name {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12em;
+}
+
+@media (max-width: 760px) {
+  .take {
+    grid-template-columns: 2.4em minmax(0, 1fr);
+    row-gap: 6px;
+  }
+  .line {
+    grid-column: 2;
+    font-size: 9.5px;
+  }
+  .arrow {
+    display: none;
+  }
+  .name {
+    font-size: 10vw;
+  }
+}
