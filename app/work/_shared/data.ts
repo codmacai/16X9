@@ -74,9 +74,6 @@ export const PROJECTS: Project[] = [
     "Dunes, wind and patience. A slow documentary about a landscape that rebuilds itself every night."),
 ];
 
-/** "A Kaji film", "An Aster film" */
-export const aFilmBy = (client: string) => `${/^[aeiou]/i.test(client) ? "An" : "A"} ${client} film`;
-
 export const categoryOf = (id: CategoryId) => CATEGORIES.find((c) => c.id === id)!;
 export const countIn = (id: CategoryId) => PROJECTS.filter((p) => p.category === id).length;
 

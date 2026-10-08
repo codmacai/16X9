@@ -456,9 +456,7 @@ export default function FileView({
             label={drawer.label}
             band={geo.band}
             reduce={reduce}
-            playing={playing}
             onClose={() => setDetail(false)}
-            onGo={(k) => go(k)}
             onPlay={onPlay}
           />
         )}

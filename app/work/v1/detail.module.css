@@ -1,17 +1,26 @@
-/* A FILM'S PAGE — a black sheet that slides up under the band and scrolls on
-   its own. Light wide capitals, 11px spaced labels, paper on black; no rules. */
+/* A FILM'S PAGE — on paper, in the brand's colours only: paper, ink, and the
+   band clock's live dot. The still is pinned at the top and the paper slides
+   up over it; the film waits further down in an old television's glass.
+   --sh is the sheet's height (the screen under the band). */
 
 .sheet {
+  --sh: calc(100svh - var(--band));
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 5;
   overflow: hidden;
-  background: #000;
-  box-shadow: 0 -30px 80px rgb(0 0 0 / 0.6);
-  color: var(--paper);
+  background: var(--paper);
+  box-shadow: 0 -30px 80px rgb(0 0 0 / 0.5);
+  color: var(--ink);
   will-change: transform; /* slides as one layer */
+}
+
+.defs {
+  position: absolute;
+  width: 0;
+  height: 0;
 }
 
 .scroll {
@@ -23,45 +32,30 @@
   touch-action: pan-y;
   outline: none;
   scrollbar-width: thin;
-  scrollbar-color: rgb(247 242 238 / 0.2) transparent;
+  scrollbar-color: rgb(10 10 10 / 0.25) transparent;
 }
 
-.label {
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  opacity: 0.55;
-}
+/* ================= the still ================= */
 
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* ================= the film ================= */
-
+/* pinned: the paper below scrolls up over it */
 .hero {
-  position: relative;
-  height: calc(100svh - var(--band));
-  min-height: 520px;
+  position: sticky;
+  top: 0;
+  z-index: 0;
+  height: calc(var(--sh) * 0.7);
   overflow: hidden;
-  isolation: isolate;
+  background: var(--ink);
 }
 
 .heroMedia {
   position: absolute;
   inset: 0;
-  z-index: -2;
+  transform-origin: 50% 30%;
   will-change: transform;
 }
 
 /* past the letterbox bars */
-.heroMedia img,
-.heroMedia video {
+.heroMedia img {
   position: absolute;
   top: -16%;
   left: 0;
@@ -70,47 +64,20 @@
   object-fit: cover;
 }
 
-.heroMedia video {
-  animation: fade 1.4s var(--ease) 0.4s both;
-}
-
-@keyframes fade {
-  from {
-    opacity: 0;
-  }
-}
-
-/* the film darkens as it sinks */
+/* the still darkens as the paper covers it */
 .heroDim {
   position: absolute;
   inset: 0;
-  z-index: -1;
   background: #000;
+  opacity: 0;
   pointer-events: none;
-}
-
-.heroShade {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(to top, rgb(0 0 0 / 0.95) 0%, rgb(0 0 0 / 0.55) 34%, rgb(0 0 0 / 0) 62%),
-    linear-gradient(to bottom, rgb(0 0 0 / 0.7), rgb(0 0 0 / 0) 26%);
-  pointer-events: none;
-}
-
-.heroTop {
-  position: absolute;
-  top: clamp(18px, 3vh, 30px);
-  left: var(--ui);
-  right: var(--ui);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  will-change: opacity;
 }
 
 .back {
+  position: absolute;
+  top: clamp(18px, 3.4vh, 34px);
+  left: var(--ui);
   display: inline-flex;
   align-items: center;
   gap: 14px;
@@ -120,7 +87,7 @@
   color: var(--paper);
   font: inherit;
   font-size: 11px;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -128,19 +95,17 @@
 .backDisc {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: rgb(247 242 238 / 0.12);
-  backdrop-filter: blur(8px);
-  font-size: 15px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 16px;
   letter-spacing: 0;
-  transition: background-color 0.5s var(--ease), color 0.5s var(--ease), transform 0.6s var(--ease);
+  transition: transform 0.6s var(--ease);
 }
 
 .back:hover .backDisc {
-  background: var(--paper);
-  color: var(--ink);
   transform: translateX(-4px);
 }
 
@@ -149,48 +114,51 @@
   outline-offset: 6px;
 }
 
-.heroIndex {
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  opacity: 0.7;
-  font-variant-numeric: tabular-nums;
+/* ================= the paper ================= */
+
+.paper {
+  position: relative;
+  z-index: 1;
+  background: var(--noise), var(--paper);
 }
 
-.heroIndex i {
-  font-style: normal;
-  opacity: 0.5;
-}
-
-.heroFoot {
-  position: absolute;
-  left: var(--ui);
-  right: var(--ui);
-  bottom: clamp(24px, 5vh, 56px);
+/* the first screen's foot: the category, the name, the cue */
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--sh) * 0.3);
+  padding: 14px var(--ui) 18px;
+  text-align: center;
+  will-change: transform;
 }
 
 .kicker {
-  display: block;
   font-size: 11px;
-  letter-spacing: 0.32em;
+  letter-spacing: 0.46em;
   text-transform: uppercase;
-  opacity: 0.8;
+  opacity: 0.75;
 }
 
 .title {
-  margin: 0.12em 0 0.18em;
-  font-size: min(12.5vw, 21vh);
-  font-weight: 300;
-  line-height: 0.88;
-  letter-spacing: -0.045em;
+  margin: 0.2em 0 0.28em;
+  font-size: min(6.6vw, 9.5vh);
+  font-weight: 600;
+  font-stretch: 100%;
+  font-variation-settings: "wdth" 100;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
   text-transform: uppercase;
+  text-wrap: balance;
 }
 
-.titleWord {
+/* each word clips its letters as they rise in */
+.word {
   display: inline-block;
   overflow: hidden;
-  padding-bottom: 0.05em;
-  margin: 0 0.22em -0.05em 0;
+  padding-bottom: 0.06em;
+  margin: 0 0.12em -0.06em;
   vertical-align: top;
   white-space: nowrap;
 }
@@ -199,298 +167,208 @@
   display: inline-block;
 }
 
-/* the facts across the foot of the film */
-.meta {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, max-content));
-  column-gap: clamp(28px, 5vw, 88px);
-  margin: 0;
-  padding-top: 6px;
-}
-
-.meta dt,
-.credits dt {
-  font-size: 10px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  opacity: 0.5;
-}
-
-.meta dd {
-  margin: 8px 0 0;
-  font-size: clamp(13px, 1.15vw, 17px);
-  letter-spacing: 0.04em;
-}
-
+/* the cue: an ink disc, its arrow bobbing */
 .cue {
-  position: absolute;
-  right: var(--ui);
-  bottom: clamp(24px, 5vh, 56px);
-  display: none;
-}
-
-/* ================= blocks ================= */
-
-.block {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) minmax(0, 3fr);
-  gap: clamp(20px, 4vw, 80px);
-  padding: clamp(70px, 14vh, 160px) var(--ui) 0;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  cursor: pointer;
 }
 
-.statement {
-  margin: 0;
-  max-width: 22ch;
-  font-size: clamp(26px, 3.6vw, 64px);
-  font-weight: 300;
-  line-height: 1.08;
-  letter-spacing: -0.025em;
+.cueArrow {
+  font-size: 16px;
+  line-height: 1;
+  animation: bob 1.8s var(--ease) infinite;
 }
 
-.credits {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: clamp(20px, 4vw, 60px);
-  margin: 0;
+@keyframes bob {
+  50% {
+    transform: translateY(4px);
+  }
 }
 
-.credits > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 12px 0;
-}
-
-.credits dd {
-  margin: 0;
-  font-size: clamp(14px, 1.3vw, 19px);
-  letter-spacing: 0.02em;
-  text-align: right;
+.cue:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 5px;
 }
 
 /* ================= the screen ================= */
 
-.watch {
-  padding: clamp(70px, 14vh, 160px) var(--ui) 0;
-}
-
-.watchHead {
+.screenWrap {
   display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  padding-bottom: 16px;
+  justify-content: center;
+  padding: clamp(50px, 10vh, 120px) var(--ui) clamp(80px, 16vh, 180px);
 }
 
 .screen {
   position: relative;
   display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  max-height: 82svh;
-  overflow: hidden;
+  width: min(72vw, calc(var(--sh) * 0.8 * 1.787));
+  aspect-ratio: 1385 / 775;
   padding: 0;
   border: 0;
-  border-radius: 14px; /* as the cards */
-  background: #111;
+  background: none;
   cursor: pointer;
+  will-change: transform;
 }
 
-.screen img {
+/* the glass: curved on every side (the clip path is in the page) */
+.glass {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  clip-path: url(#tv-glass);
+  background: var(--ink);
+}
+
+.picture {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.picture img {
   position: absolute;
   top: -16%;
   left: 0;
   width: 100%;
   height: 132%;
   object-fit: cover;
-  transform: scale(1.04);
-  transition: transform 1.4s var(--ease);
+  transition: filter 0.8s var(--ease);
 }
 
-.screen:hover img {
-  transform: scale(1);
-}
-
-.screenShade {
+/* the tube's falloff at the edges, and a little dark for the type */
+.vignette {
   position: absolute;
   inset: 0;
-  background: rgb(11 11 10 / 0.35);
-  transition: background-color 0.8s var(--ease);
+  background:
+    radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / 0) 52%, rgb(0 0 0 / 0.5) 100%),
+    rgb(0 0 0 / 0.16);
+  pointer-events: none;
 }
 
-.screen:hover .screenShade {
-  background: rgb(11 11 10 / 0.15);
-}
-
-.screen:focus-visible {
-  outline: 1px solid var(--paper);
-  outline-offset: 6px;
-}
-
-/* the seal: a paper disc, a play mark, and the words turning around it */
-.seal {
+/* light catching the glass */
+.sheen {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: clamp(110px, 11vw, 160px);
-  aspect-ratio: 1;
-  translate: -50% -50%;
+  inset: 0;
+  background: linear-gradient(155deg, rgb(247 242 238 / 0.14), rgb(247 242 238 / 0) 36%);
+  pointer-events: none;
+}
+
+.watch {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--paper);
+  pointer-events: none;
+}
+
+.playDisc {
   display: grid;
   place-items: center;
+  width: clamp(64px, 7vw, 104px);
+  aspect-ratio: 1;
   border-radius: 50%;
   background: var(--paper);
-  color: var(--ink);
-  transition: scale 0.7s var(--ease);
+  transition: transform 0.7s var(--ease);
 }
 
-.screen:hover .seal {
-  scale: 1.08;
+.play {
+  width: 30%;
+  margin-left: 8%;
+  fill: var(--ink);
 }
 
-.sealRing {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  font-size: 9px;
+.screen:hover .playDisc {
+  transform: scale(1.08);
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: clamp(14px, 2vh, 22px);
+  font-size: 10.5px;
+  letter-spacing: 0.34em;
   text-transform: uppercase;
-  fill: currentColor;
-  animation: turn 16s linear infinite;
+  opacity: 0.9;
 }
 
-.sealPlay {
-  width: 16%;
-  margin-left: 4%;
-  fill: currentColor;
+/* the live dot, as by the band's clock */
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e1142b;
+  animation: blink 1.6s ease-in-out infinite;
 }
 
-@keyframes turn {
-  to {
-    transform: rotate(360deg);
+@keyframes blink {
+  50% {
+    opacity: 0.2;
   }
 }
 
-/* ================= the next film ================= */
-
-.next {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 18px;
-  width: 100%;
-  margin-top: clamp(80px, 16vh, 180px);
-  padding: clamp(40px, 8vh, 90px) var(--ui) clamp(50px, 10vh, 110px);
-  border: 0;
-  background: none;
-  color: var(--paper);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.nextTitle {
-  display: flex;
-  align-items: center;
-  gap: 0.25em;
-  font-size: min(10vw, 17vh);
-  font-weight: 300;
-  line-height: 0.9;
-  letter-spacing: -0.045em;
+.watchLabel {
+  margin-top: 8px;
+  font-size: clamp(22px, 2.6vw, 44px);
+  font-weight: 600;
+  font-stretch: 100%;
+  font-variation-settings: "wdth" 100;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
   text-transform: uppercase;
 }
 
-.nextTitle > span:first-child {
-  transition: transform 0.9s var(--ease);
-}
-
-/* the next film's picture opens in the line, as in the menu's headline */
-.nextReel {
-  display: block;
-  flex: none;
-  width: 0;
-  height: 0.72em;
-  border-radius: 999px;
-  background: #111 center / cover no-repeat;
-  opacity: 0;
-  transition:
-    width 0.9s var(--ease),
-    opacity 0.6s var(--ease);
-}
-
-.next:hover .nextReel,
-.next:focus-visible .nextReel {
-  width: 1.9em;
-  opacity: 1;
-}
-
-.next:hover .nextTitle > span:first-child {
-  transform: translateX(0.06em);
-}
-
-.nextMeta {
-  display: inline-flex;
-  gap: 12px;
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  opacity: 0.6;
-}
-
-.nextMeta i {
-  font-style: normal;
-  transition: transform 0.6s var(--ease);
-}
-
-.next:hover .nextMeta i {
-  transform: translateX(6px);
-}
-
-.next:focus-visible {
-  outline: none;
-}
-
-.next:focus-visible .nextTitle {
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.12em;
+.screen:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 8px;
 }
 
 /* ================= phones, reduced motion ================= */
 
 @media (max-width: 760px) {
-  .heroIndex {
-    display: none;
+  .hero {
+    height: calc(var(--sh) * 0.58);
+  }
+  .intro {
+    min-height: calc(var(--sh) * 0.42);
+  }
+  .kicker {
+    font-size: 10px;
+    letter-spacing: 0.36em;
   }
   .title {
-    font-size: 13.5vw;
+    font-size: 11.5vw;
   }
-  .meta {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: 14px;
+  .screen {
+    width: 92vw;
   }
-  .block {
-    grid-template-columns: 1fr;
-    gap: 18px;
+  .playDisc {
+    width: 56px;
   }
-  .credits {
-    grid-template-columns: 1fr;
-  }
-  .nextTitle {
-    font-size: 13vw;
+  .watchLabel {
+    font-size: 20px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sealRing,
-  .heroMedia video {
+  .cueArrow,
+  .dot {
     animation: none;
   }
-  .screen img,
-  .screenShade,
-  .seal,
-  .nextReel,
-  .nextTitle > span:first-child,
-  .backDisc {
+  .backDisc,
+  .playDisc,
+  .picture img {
     transition: none;
   }
 }
