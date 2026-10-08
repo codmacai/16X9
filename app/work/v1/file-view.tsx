@@ -1,33 +1,35 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { animate, AnimatePresence, motion, useMotionValue, useTransform, type Transition } from "framer-motion";
+import { animate, AnimatePresence, motion, useMotionValue, type Transition } from "framer-motion";
 import { EASE } from "../_shared/chrome";
-import { glowFor, type Project } from "../_shared/data";
+import { type Project } from "../_shared/data";
+import Card from "./card";
 import Detail from "./detail";
-import Poster from "./poster";
 import s from "./file.module.css";
 
 // ===========================================================================
 // THE OPEN FILE — the films in a folder, out of the drawer. The folder itself
-// has slid up behind this (page.tsx); the posters rise out of it.
+// has slid up behind this (page.tsx) and gone to black; the films rise out
+// of it into one horizontal line.
 //
-// The films sit flat, side by side, in one horizontal line. The line is one
-// number, `pos` (which film is in front, as a float), and every poster is
-// placed from it on every frame: along the line, the one in front standing a
-// touch taller and lit, the rest a step down and dimmed; each picture drifts
-// inside its frame against the move (parallax); and the whole line leans
-// into the motion with its speed and eases upright as it settles. Nothing
-// re-renders while it moves.
+// The line is one number, `pos` (which film is in front, as a float), and
+// every card is placed from it on every frame, straight on the DOM: side by
+// side along the line; the film in front a touch larger, sharp and in colour,
+// the ones either side out of focus and in shadow (see card.tsx: moving is a
+// focus pull, the film arriving sharpens as the one leaving goes soft); each
+// picture drifting inside its frame against the move; and the line drawing in
+// slightly with its speed, like it's moving through air. Nothing re-renders
+// while it moves.
 //
 // Every gesture moves exactly one film:
 //   · wheel / trackpad: one step per gesture. A step locks until the gesture
 //     ends (a pause), or a fresh swipe starts on top of the last one's glide,
 //     or a mouse wheel keeps turning — never on a trackpad's glide tailing off.
-//   · drag / swipe: the strip follows the finger, then goes one along (or
+//   · drag / swipe: the line follows the finger, then goes one along (or
 //     back) on release, carrying the speed it was thrown with.
-//   · arrow keys, the ticks on the track, a click on a poster to one side.
-// Click the poster in front and the film's page slides up (detail.tsx).
+//   · arrow keys, and a click on a film to one side.
+// Click the film in front and its page slides up (detail.tsx).
 // ===========================================================================
 
 export type Drawer = { no: string; label: string; short: string; films: Project[] };
@@ -36,11 +38,9 @@ type Geo = {
   vw: number;
   vh: number;
   band: number;
-  /** the folder's tab, along the top under the band */
-  tab: number;
-  head: number;
-  foot: number;
+  /** the card: its picture (w × mh), and the facts under it, in all h */
   w: number;
+  mh: number;
   h: number;
   step: number;
   left: number;
@@ -48,17 +48,17 @@ type Geo = {
   small: boolean;
 };
 
-const RATIO = 1.42; // a one-sheet
-const SNAP: Transition = { type: "spring", stiffness: 170, damping: 26, mass: 1 }; // one film along
+const RATIO = 1.17; // the picture, height / width
+const SNAP: Transition = { type: "spring", stiffness: 150, damping: 25, mass: 1 }; // one film along
 const RISE: Transition = { type: "spring", stiffness: 64, damping: 14, mass: 1 }; // out of the folder
 const SINK: Transition = { duration: 0.42, ease: [0.6, 0, 0.8, 0.2] }; // back into it
-const ENTER_S = 0.34; // the posters start to rise this far into the folder's own rise
+const ENTER_S = 0.34; // the cards start to rise this far into the folder's own rise
 const LEAVE_MS = 480; // they sink, then the folder goes back down
 const WHEEL = { threshold: 22, pause: 180, settle: 260, fresh: 1.6, refire: 420 };
 const DRAG = { distance: 0.16, flick: 0.35 }; // of a step; px per ms
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
-const rubber = (x: number) => (x * 0.32) / (1 + x * 0.6); // past either end, the strip gives a little, then stops
+const rubber = (x: number) => (x * 0.32) / (1 + x * 0.6); // past either end, the line gives a little, then stops
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
 function geometry(): Geo {
@@ -66,30 +66,29 @@ function geometry(): Geo {
   const vh = window.innerHeight;
   const band = document.querySelector<HTMLElement>("[data-band]")?.offsetHeight ?? 70;
   const small = vw < 760;
-  const tab = small ? 34 : clamp(vh * 0.05, 34, 46); // matches the folders' --th
-  const head = small ? 44 : 52;
-  const foot = small ? 92 : 108;
-  const room = vh - band - tab - head - foot;
-  let h = Math.min(room * 0.94, small ? 540 : 640);
-  let w = h / RATIO;
-  const maxW = small ? vw * 0.64 : vw * 0.24; // narrow enough that the line runs on either side
+  const facts = small ? 66 : 78; // the facts under the picture
+  const above = small ? 64 : 56; // room under the band for Close
+  const below = small ? 56 : 64; // and over the foot for the counter
+  const room = vh - band - above - below - facts;
+  let mh = Math.min(room, small ? 520 : 680);
+  let w = mh / RATIO;
+  const maxW = small ? vw * 0.72 : vw * 0.31;
   if (w > maxW) {
     w = maxW;
-    h = w * RATIO;
+    mh = w * RATIO;
   }
-  const gap = small ? 14 : Math.max(20, vw * 0.018);
+  const h = mh + facts;
+  const gap = small ? 16 : vw * 0.03;
   return {
     vw,
     vh,
     band,
-    tab,
-    head,
-    foot,
     w,
+    mh,
     h,
     step: w + gap,
     left: (vw - w) / 2,
-    top: band + tab + head + (room - h) / 2,
+    top: band + above + (vh - band - above - below - h) / 2,
     small,
   };
 }
@@ -118,16 +117,16 @@ export default function FileView({
   playing: boolean;
   onPlay: (film: Project, el: HTMLElement) => void;
   onCursor: (label: string | null) => void;
-  /** the posters are back in the folder; this film was in front */
+  /** the films are back in the folder; this film was in front */
   onClosed: (index: number) => void;
 }) {
   const films = drawer.films;
   const n = films.length;
   const [nav, setNav] = useState({ index: start, dir: 0 });
-  const [rest, setRest] = useState(start); // where the strip came to rest: that film plays
+  const [rest, setRest] = useState(start); // where the line came to rest: that film plays
   const [leaving, setLeaving] = useState(false);
   const [detail, setDetail] = useState(false);
-  const [booted, setBooted] = useState(false); // the posters have risen in
+  const [booted, setBooted] = useState(false); // the films have risen in
   const [geo, setGeo] = useState(geometry);
   const index = nav.index;
 
@@ -139,36 +138,43 @@ export default function FileView({
     live.current.geo = geo;
   }, [detail, leaving, geo]);
 
-  // ---- every frame: place the posters from the strip ----
+  // ---- every frame: place the cards from the line ----
   const cards = useRef<(HTMLDivElement | null)[]>([]);
+  const focuses = useRef<(HTMLDivElement | null)[]>([]);
   const arts = useRef<(HTMLDivElement | null)[]>([]);
-  const veils = useRef<(HTMLSpanElement | null)[]>([]);
+  // the film in front comes into focus once it has risen in
+  const focusIn = useMotionValue(reduce ? 1 : 0);
   const place = useCallback(
     (v: number) => {
       const g = live.current.geo;
       const vel = reduce ? 0 : pos.getVelocity(); // films per second
-      const lean = clamp(-vel * 1.3, -4.5, 4.5); // the line leans into the move...
-      const squeeze = 1 - Math.min(Math.abs(vel), 6) * 0.008; // ...and draws in a touch, as if through air
+      const squeeze = 1 - Math.min(Math.abs(vel), 6) * 0.007; // the line draws in a touch with its speed
+      const sharp = focusIn.get();
       for (let k = 0; k < n; k++) {
         const el = cards.current[k];
         if (!el) continue;
         const d = k - v;
         const ad = Math.abs(d);
         const front = Math.max(0, 1 - ad); // 1 for the film in front, 0 a step away
-        const sc = (0.88 + 0.12 * front) * squeeze; // all on one baseline (scaled from the foot)
-        el.style.transform = `translate3d(${(d * g.step).toFixed(2)}px,0,0) skewX(${lean.toFixed(2)}deg) scale(${sc.toFixed(4)})`;
-        const veil = veils.current[k];
-        if (veil) veil.style.opacity = String(Math.min(0.5, ad * 0.5));
+        const sc = (0.93 + 0.07 * front) * squeeze;
+        el.style.transform = `translate3d(${(d * g.step).toFixed(2)}px,0,0) scale(${sc.toFixed(4)})`;
+        const focus = focuses.current[k];
+        if (focus) focus.style.opacity = String((clamp(1 - ad * 1.25, 0, 1) * sharp).toFixed(3)); // the focus pull
         const art = arts.current[k];
         if (art) art.style.transform = `translate3d(${clamp(-d * 7, -11, 11).toFixed(2)}%,0,0)`; // the picture drifts against the move
       }
     },
-    [n, pos, reduce]
+    [focusIn, n, pos, reduce]
   );
   useEffect(() => {
     place(pos.get());
-    return pos.on("change", place);
-  }, [place, pos]);
+    const offPos = pos.on("change", place);
+    const offFocus = focusIn.on("change", () => place(pos.get()));
+    return () => {
+      offPos();
+      offFocus();
+    };
+  }, [focusIn, place, pos]);
   useEffect(() => {
     place(pos.get());
   }, [geo, place, pos]);
@@ -176,11 +182,13 @@ export default function FileView({
     const onResize = () => setGeo(geometry());
     window.addEventListener("resize", onResize);
     const t = window.setTimeout(() => setBooted(true), reduce ? 0 : 1300);
+    const run = reduce ? null : animate(focusIn, 1, { duration: 1.1, ease: EASE, delay: ENTER_S + 0.55 });
     return () => {
       window.removeEventListener("resize", onResize);
       window.clearTimeout(t);
+      run?.stop();
     };
-  }, [reduce]);
+  }, [focusIn, reduce]);
 
   // ---- moving ----
   const go = useCallback(
@@ -276,7 +284,7 @@ export default function FileView({
     };
   }, [go, leave]);
 
-  // ---- drag / swipe: the strip follows the finger, then goes one along ----
+  // ---- drag / swipe: the line follows the finger, then goes one along ----
   const dragged = useRef(false);
   const onPointerDown = (e: ReactPointerEvent) => {
     if (live.current.leaving || live.current.detail || e.button !== 0) return;
@@ -336,72 +344,42 @@ export default function FileView({
     setDetail(true);
   };
 
-  const film = films[index];
   const maxD = Math.max(index, n - 1 - index);
-  const marker = useTransform(pos, (v) => `${(n > 1 ? clamp(v / (n - 1), 0, 1) : 0) * 100}%`);
-  const wordX = useTransform(pos, (v) => -v * live.current.geo.vw * 0.06); // the name drifts at a fraction of the posters' speed
 
   return (
     <div
       className={s.view}
-      style={{ ["--pw" as string]: `${geo.w}px` }}
+      style={{ ["--cw" as string]: `${geo.w}px`, ["--mh" as string]: `${geo.mh}px` }}
       role="dialog"
       aria-modal="true"
       aria-label={`${drawer.label}, ${n} films`}
     >
       <motion.div
         className={s.scene}
-        animate={detail ? { scale: 0.92, opacity: 0.16, y: -28 } : { scale: 1, opacity: 1, y: 0 }}
+        animate={detail ? { scale: 0.94, opacity: 0, y: -24 } : { scale: 1, opacity: 1, y: 0 }}
         transition={{ duration: reduce ? 0 : 0.9, ease: EASE }}
       >
-        {/* the light of the film in front, spilling into the room */}
-        <AnimatePresence>
-          {!leaving && (
-            <motion.img
-              key={film.src}
-              className={s.glow}
-              src={glowFor(film.src)}
-              alt=""
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.55, transition: { duration: 1.4, ease: EASE, delay: booted ? 0 : 0.6 } }}
-              exit={{ opacity: 0, transition: { duration: 0.6, ease: EASE } }}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* the drawer's name, huge and hollow, drifting behind */}
-        <motion.div
-          className={s.word}
-          style={{ x: wordX }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: leaving ? 0 : 1 }}
-          transition={{ duration: leaving ? 0.3 : 1.6, delay: leaving ? 0 : 0.5, ease: EASE }}
-          aria-hidden="true"
-        >
-          {drawer.label}
-        </motion.div>
-
-        {/* under the folder's tab: how many, and the way back */}
+        {/* the drawer, and the way back */}
         <motion.div
           className={s.head}
-          style={{ top: geo.band + geo.tab, height: geo.head }}
+          style={{ top: geo.band }}
           initial={{ opacity: 0, y: -8 }}
           animate={leaving ? { opacity: 0, y: -8 } : { opacity: 1, y: 0 }}
-          transition={{ duration: leaving ? 0.25 : 0.8, delay: leaving ? 0 : 0.6, ease: EASE }}
+          transition={{ duration: leaving ? 0.25 : 0.9, delay: leaving ? 0 : 0.7, ease: EASE }}
         >
-          <span className={s.headNote}>
-            {drawer.no} — {drawer.label} · {n} films
+          <span className={s.drawer}>
+            <i>{drawer.no}</i> {drawer.label}
           </span>
           <button type="button" className={s.close} onClick={leave}>
             <span className={s.closeRoll}>
-              <span>Back to the drawer</span>
-              <span aria-hidden="true">Back to the drawer</span>
+              <span>Close</span>
+              <span aria-hidden="true">Close</span>
             </span>
             <span className={s.closeX} aria-hidden="true" />
           </button>
         </motion.div>
 
-        {/* the strip */}
+        {/* the line */}
         <div className={s.stage} onPointerDown={onPointerDown}>
           {films.map((f, k) => (
             <motion.div
@@ -418,21 +396,21 @@ export default function FileView({
                     : { ...RISE, delay: ENTER_S + Math.abs(k - start) * 0.09 }
               }
             >
-              <Poster
+              <Card
                 film={f}
                 label={drawer.label}
                 active={k === index}
                 play={k === index && k === rest && !detail && !playing && !leaving && !reduce}
                 reduce={reduce}
-                delay={booted ? 0 : ENTER_S + 0.35}
+                delay={booted ? 0 : ENTER_S + 0.5}
                 cardRef={(el) => {
                   cards.current[k] = el;
                 }}
+                focusRef={(el) => {
+                  focuses.current[k] = el;
+                }}
                 artRef={(el) => {
                   arts.current[k] = el;
-                }}
-                veilRef={(el) => {
-                  veils.current[k] = el;
                 }}
                 onOpen={() => select(k)}
                 onHover={(on) => k === live.current.index && onCursor(on ? "Open" : null)}
@@ -441,48 +419,30 @@ export default function FileView({
           ))}
         </div>
 
-        {/* the counter and the track */}
+        {/* where you are */}
         <motion.div
-          className={s.foot}
-          style={{ height: geo.foot }}
-          initial={{ opacity: 0, y: 10 }}
-          animate={leaving ? { opacity: 0, y: 10 } : { opacity: 1, y: 0 }}
-          transition={{ duration: leaving ? 0.25 : 0.9, delay: leaving ? 0 : 0.75, ease: EASE }}
+          className={s.count}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: leaving ? 0 : 1 }}
+          transition={{ duration: leaving ? 0.25 : 0.9, delay: leaving ? 0 : 0.85, ease: EASE }}
+          aria-live="polite"
         >
-          <div className={s.count} aria-live="polite">
-            <span className={s.countNow}>
-              <AnimatePresence initial={false} custom={nav.dir} mode="popLayout">
-                <motion.span
-                  key={index}
-                  custom={nav.dir}
-                  variants={roll}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  transition={{ duration: reduce ? 0 : 0.6, ease: EASE }}
-                >
-                  {pad2(index + 1)}
-                </motion.span>
-              </AnimatePresence>
-            </span>
-            <span className={s.countOf}>/ {pad2(n)}</span>
-          </div>
-          <div className={s.track}>
-            {films.map((f, k) => (
-              <button
-                key={f.no}
-                type="button"
-                className={`${s.tick} ${k === index ? s.tickOn : ""}`}
-                style={{ left: `${n > 1 ? (k / (n - 1)) * 100 : 0}%` }}
-                onClick={() => go(k)}
-                aria-label={`Show ${f.title}`}
+          <span className={s.countNow}>
+            <AnimatePresence initial={false} custom={nav.dir} mode="popLayout">
+              <motion.span
+                key={index}
+                custom={nav.dir}
+                variants={roll}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: reduce ? 0 : 0.6, ease: EASE }}
               >
-                <span>{f.title}</span>
-              </button>
-            ))}
-            <motion.span className={s.marker} style={{ left: marker }} aria-hidden="true" />
-          </div>
-          <span className={s.hint}>Drag, scroll or ← →</span>
+                {pad2(index + 1)}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+          <span className={s.countOf}>{pad2(n)}</span>
         </motion.div>
       </motion.div>
 

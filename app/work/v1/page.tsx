@@ -26,7 +26,8 @@ const ORDER: Drawer[] = CATEGORIES.map((c, i) => ({
 }));
 const LIST = ORDER.flatMap((d) => d.films);
 // each folder a shade lighter than the one behind it, so the stack reads in the dark
-const STOCK = ["#151413", "#191817", "#1d1c1a", "#21201e", "#252321"];
+// (neutral, no warmth: out of the drawer, a folder goes to pure black)
+const STOCK = ["#0e0e0e", "#121212", "#161616", "#1a1a1a", "#1e1e1e"];
 const INTRO_S = 0.45 + ORDER.length * 0.1 + 1.15;
 
 // how the folders move

@@ -82,5 +82,3 @@ export const countIn = (id: CategoryId) => PROJECTS.filter((p) => p.category ===
 
 /** 1280×720 still for every film: /clips/clip-01.mp4 -> /clips/stills/clip-01.webp */
 export const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.webp");
-/** a 32×18 blurred colour swatch of the film, for ambient light: /clips/clip-01.mp4 -> /clips/glow/clip-01.webp */
-export const glowFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/glow/$1.webp");
