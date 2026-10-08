@@ -394,9 +394,10 @@
 }
 
 .watchLabel {
-  max-width: 11em; /* "Watch behind the scenes" breaks onto two lines */
+  max-width: 11em; /* "Watch behind the scenes" breaks onto two even lines */
   margin-top: 8px;
   text-align: center;
+  text-wrap: balance;
   font-size: clamp(22px, 2.6vw, 44px);
   font-weight: 600;
   font-stretch: 100%;
