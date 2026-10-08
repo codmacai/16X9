@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { motion, useScroll, useSpring, useTransform, type Transition } from "framer-motion";
+import { motion, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
 import { EASE } from "../_shared/chrome";
 import { stillFor, type Project } from "../_shared/data";
 import Credits from "./credits";
+import Edge from "./edge";
 import d from "./detail.module.css";
 
 // ===========================================================================
@@ -20,8 +21,12 @@ import d from "./detail.module.css";
 //   · the screen: the film in an old television's curved glass, growing into
 //     place as you reach it while the picture settles inside, and "Watch
 //     behind the scenes" to open it in the player;
-//   · the sign-off: the lights go down and the end credits roll on an old
-//     4:3 set (credits.tsx).
+//   · the sign-off: black rises over the page by a dragged edge (edge.tsx) —
+//     the middle leads, the sides trail, stretching with the scroll's speed —
+//     while the page above sinks back; then the end credits roll by
+//     themselves (credits.tsx);
+//   · the next film in the drawer, rising over the credits the same way;
+//     click it and its page slides up over this one.
 // Back (or Esc) lets the page slide down again.
 // ===========================================================================
 
@@ -29,29 +34,64 @@ const IN: Transition = { type: "spring", stiffness: 70, damping: 17, mass: 1 };
 const OUT: Transition = { duration: 0.6, ease: [0.7, 0, 0.84, 0] };
 const SMOOTH = { stiffness: 140, damping: 30, mass: 0.6 }; // how the scroll-tied motion follows the scroll
 const ROWS = 5; // rows of words behind the card
+const DRAG = { per: 34, max: 50, spring: { stiffness: 170, damping: 14, mass: 0.7 } }; // px/s of scroll per unit of bulge; the most it bulges
+
+/** How the sheet leaves: down out of sight when closed; held in place while
+    the next film's page slides up over it. */
+const SHEET: Variants = {
+  hidden: { y: "100%" },
+  shown: { y: 0, transition: IN },
+  gone: (mode: "close" | "next") => (mode === "next" ? { y: 0, transition: { duration: 1.2 } } : { y: "100%", transition: OUT }),
+};
 
 export default function Detail({
   films,
   k,
   label,
   band,
+  layer,
   reduce,
   onClose,
+  onNext,
   onPlay,
 }: {
   films: Project[];
   k: number;
   label: string;
   band: number;
+  /** stacking: each new page slides up over the last */
+  layer: number;
   reduce: boolean;
   onClose: () => void;
+  onNext: () => void;
   onPlay: (film: Project, el: HTMLElement) => void;
 }) {
   const film = films[k];
+  const next = films[(k + 1) % films.length];
   const still = stillFor(film.src);
   const scrollRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const screenRef = useRef<HTMLDivElement>(null);
+  const creditsRef = useRef<HTMLElement>(null);
+  const nextRef = useRef<HTMLElement>(null);
+
+  // the drag: how fast the page is scrolling down, sprung, for the rising edges
+  const { scrollY } = useScroll({ container: scrollRef });
+  const speed = useVelocity(scrollY);
+  const pull = useTransform(speed, (v) => (reduce ? 0 : Math.min(DRAG.max, Math.max(0, v / DRAG.per))));
+  const drag = useSpring(pull, DRAG.spring);
+
+  // the page above each rising section sinks back as it's covered
+  const { scrollYProgress: creditsIn } = useScroll({ container: scrollRef, target: creditsRef, offset: ["start end", "start start"] });
+  const paperScale = useTransform(creditsIn, [0, 1], [1, 0.9]);
+  const paperY = useTransform(creditsIn, [0, 1], ["0%", "14%"]);
+  const paperFade = useTransform(creditsIn, [0, 1], [1, 0.35]);
+  const { scrollYProgress: nextIn } = useScroll({ container: scrollRef, target: nextRef, offset: ["start end", "start start"] });
+  const creditsRecede = {
+    scale: useTransform(nextIn, [0, 1], [1, 0.9]),
+    y: useTransform(nextIn, [0, 1], ["0%", "14%"]),
+    opacity: useTransform(nextIn, [0, 1], [1, 0.35]),
+  };
 
   // the cover: the rows slide apart, the card lifts and settles back
   const { scrollYProgress: heroRaw } = useScroll({ container: scrollRef, target: heroRef, offset: ["start start", "end start"] });
@@ -92,12 +132,13 @@ export default function Detail({
   return (
     <motion.section
       className={d.sheet}
-      style={{ top: band }}
+      style={{ top: band, zIndex: 5 + layer }}
       role="dialog"
       aria-label={film.title}
-      initial={{ y: "100%" }}
-      animate={{ y: 0, transition: reduce ? { duration: 0 } : IN }}
-      exit={{ y: "100%", transition: reduce ? { duration: 0 } : OUT }}
+      variants={SHEET}
+      initial={reduce ? false : "hidden"}
+      animate="shown"
+      exit="gone"
     >
       {/* the old television's glass: a rounded rectangle that bulges a little on every side */}
       <svg className={d.defs} aria-hidden="true">
@@ -207,7 +248,7 @@ export default function Detail({
         </header>
 
         {/* ================= the screen ================= */}
-        <div className={d.paper}>
+        <motion.div className={d.paper} style={reduce ? undefined : { scale: paperScale, y: paperY, opacity: paperFade }}>
           <div ref={screenRef} className={d.screenWrap}>
             <motion.button
               type="button"
@@ -239,10 +280,33 @@ export default function Detail({
               </motion.span>
             </motion.button>
           </div>
-        </div>
+        </motion.div>
 
         {/* ================= the end credits ================= */}
-        <Credits film={film} label={label} container={scrollRef} reduce={reduce} />
+        <Credits
+          film={film}
+          label={label}
+          container={scrollRef}
+          sectionRef={creditsRef}
+          drag={drag}
+          recede={creditsRecede}
+          reduce={reduce}
+        />
+
+        {/* ================= the next film ================= */}
+        <section ref={nextRef} className={d.next} aria-label="Next film">
+          <Edge drag={drag} color="#f7f2ee" />
+          <span className={d.nextKicker}>Next film · {label}</span>
+          <button type="button" className={d.nextLink} onClick={onNext}>
+            <span className={d.nextTitle}>
+              <span className={d.nextName}>{next.title}</span>
+              <span className={d.nextReel} style={{ backgroundImage: `url(${stillFor(next.src)})` }} aria-hidden="true" />
+            </span>
+            <span className={d.nextMeta}>
+              {next.client} · {next.year} · {next.duration} <i aria-hidden="true">→</i>
+            </span>
+          </button>
+        </section>
       </div>
     </motion.section>
   );

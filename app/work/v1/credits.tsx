@@ -1,32 +1,34 @@
 "use client";
 
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type RefObject,
-} from "react";
-import { motion, useScroll, useSpring, useTransform } from "framer-motion";
+  animate,
+  motion,
+  useInView,
+  useMotionValue,
+  type AnimationPlaybackControls,
+  type MotionValue,
+} from "framer-motion";
 import type { Project } from "../_shared/data";
+import Edge from "./edge";
 import d from "./detail.module.css";
 
 // ===========================================================================
 // SIGN-OFF — the film's end credits, set the way the menu sets its words:
-// light, wide capitals on black. All of it is tied to the page's scroll
-// (smoothed by a spring), one to one, so it reads at the pace you read:
-//   · as the section comes up, the lights go down: the paper fades to black;
-//   · then the credits roll up through the screen in one centred column —
-//     the film's title first, then each role over its names — and only the
-//     line passing the middle of the screen is lit; the rest wait in the
-//     dark, so it reads one credit at a time (the focus pull of the line of
-//     films, in type);
-//   · it ends on the 16X9 mark, settling in the middle as the last credits
-//     clear.
+// light, wide capitals on black.
+//   · The black rises over the page above it by a dragged edge (edge.tsx):
+//     the middle leads, the sides trail, stretching with the speed of the
+//     scroll; the page above sinks back as it's covered (detail.tsx).
+//   · Once it's on screen the credits roll by themselves, at a cinema's
+//     pace — the film's title first, then each role over its names — and
+//     only the line passing the middle is lit; the rest wait in the dark.
+//     It ends on the 16X9 mark, settling in the middle, and holds there.
+//   · It's one screen tall: scrolling just carries on to the next section
+//     (the roll pauses while it's off screen, and plays again from the top
+//     if you come back after it has finished).
 // ===========================================================================
 
-const SMOOTH = { stiffness: 110, damping: 26, mass: 0.6 };
-const PAPER = "#f7f2ee";
+const SPEED = 70; // px a second: the pace of a cinema's roll
 const LOGO_SRC = "/logo.png";
 const FOCUS = 0.34; // how far from the middle (a share of the screen's height) a line still catches light
 
@@ -34,43 +36,28 @@ export default function Credits({
   film,
   label,
   container,
+  sectionRef,
+  drag,
+  recede,
   reduce,
 }: {
   film: Project;
   label: string;
   container: RefObject<HTMLDivElement | null>;
+  sectionRef: RefObject<HTMLElement | null>;
+  /** the speed of the scroll, for the edge */
+  drag: MotionValue<number>;
+  /** how it steps back as the next section rises over it */
+  recede: { scale: MotionValue<number>; y: MotionValue<string>; opacity: MotionValue<number> };
   reduce: boolean;
 }) {
-  const ref = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const colRef = useRef<HTMLDivElement>(null);
   const lines = useRef<HTMLElement[]>([]);
-  const geo = useRef({
-    stage: 800,
-    run: 1600,
-    tops: [] as number[],
-    hs: [] as number[],
-  });
-  const [length, setLength] = useState<number | null>(null); // the section: the roll's distance, plus a screen
-
-  // the lights go down as the section comes up
-  const { scrollYProgress: lightsRaw } = useScroll({
-    container,
-    target: ref,
-    offset: ["start end", "start start"],
-  });
-  const room = useTransform(lightsRaw, [0.2, 0.9], [PAPER, "#000000"]);
-  const kicker = useTransform(lightsRaw, [0.8, 1], [0, 1]);
-
-  // the roll: from the column's top at the foot of the screen, to the mark in the middle
-  const { scrollYProgress: rollRaw } = useScroll({
-    container,
-    target: ref,
-    offset: ["start start", "end end"],
-  });
-  const smooth = useSpring(rollRaw, SMOOTH);
-  const p = reduce ? rollRaw : smooth;
-  const y = useTransform(p, (v) => geo.current.stage - v * geo.current.run);
+  const geo = useRef({ stage: 800, end: 0, tops: [] as number[], hs: [] as number[] });
+  const started = useRef(false);
+  const y = useMotionValue(4000); // below the screen until it's measured
+  const inView = useInView(sectionRef, { root: container, amount: 0.55 });
 
   // light the line passing the middle; the rest wait in the dark
   const light = useCallback((at: number) => {
@@ -84,9 +71,10 @@ export default function Credits({
     });
   }, []);
   useEffect(() => {
+    if (reduce) return;
     light(y.get());
     return y.on("change", light);
-  }, [y, light]);
+  }, [light, reduce, y]);
 
   // measure the column (on mount, and whenever it or the screen changes size)
   useEffect(() => {
@@ -98,43 +86,52 @@ export default function Credits({
       const last = els[els.length - 1];
       if (!last) return;
       const stageH = stage.offsetHeight;
-      const run = stageH / 2 + last.offsetTop + last.offsetHeight / 2;
       lines.current = els;
       geo.current = {
         stage: stageH,
-        run,
+        end: stageH / 2 - (last.offsetTop + last.offsetHeight / 2), // the mark in the middle
         tops: els.map((e) => e.offsetTop),
         hs: els.map((e) => e.offsetHeight),
       };
-      setLength(run + stageH);
-      light(stageH - p.get() * run);
+      if (!started.current) y.set(stageH); // the column waits just under the screen
+      light(y.get());
     });
     ro.observe(stage);
     ro.observe(col);
     return () => ro.disconnect();
-  }, [light, p]);
+  }, [light, y]);
+
+  // roll while it's on screen; hold the mark at the end
+  useEffect(() => {
+    if (reduce || !inView) return;
+    const g = geo.current;
+    if (y.get() <= g.end + 1) y.set(g.stage); // it had finished: from the top again
+    started.current = true;
+    const run: AnimationPlaybackControls = animate(y, g.end, { duration: (y.get() - g.end) / SPEED, ease: "linear" });
+    return () => run.stop();
+  }, [inView, reduce, y]);
 
   const groups = film.credits ?? [];
 
   return (
-    <motion.section
-      ref={ref}
-      className={d.signoff}
-      style={{ backgroundColor: room, ...(length ? { height: length } : {}) }}
+    <section
+      ref={sectionRef}
+      className={`${d.signoff} ${reduce ? d.signoffStill : ""}`}
       aria-label={`End credits: ${film.title}`}
     >
-      <div ref={stageRef} className={d.signoffStage}>
-        <motion.span
-          className={d.signoffKicker}
-          style={{ opacity: kicker }}
-          aria-hidden="true"
-        >
+      <Edge drag={drag} color="#000" />
+      <motion.div
+        ref={stageRef}
+        className={d.signoffStage}
+        style={reduce ? undefined : { scale: recede.scale, y: recede.y, opacity: recede.opacity }}
+      >
+        <span className={d.signoffKicker} aria-hidden="true">
           End credits
-        </motion.span>
+        </span>
 
         {/* the roll comes out of the dark at the foot and goes back into it at the top */}
         <div className={d.rollWindow}>
-          <motion.div ref={colRef} className={d.roll} style={{ y }}>
+          <motion.div ref={colRef} className={d.roll} style={reduce ? undefined : { y }}>
             <span data-line className={d.rollKicker}>
               {label}
             </span>
@@ -151,11 +148,7 @@ export default function Credits({
                   {g.heading}
                 </span>
                 {g.rows.map((r, i) => (
-                  <div
-                    key={i}
-                    data-line
-                    className={r.role ? d.credit : d.creditSolo}
-                  >
+                  <div key={i} data-line className={r.role ? d.credit : d.creditSolo}>
                     {r.role && <span className={d.role}>{r.role}</span>}
                     <span className={d.names}>
                       {r.names.map((n) => (
@@ -174,7 +167,7 @@ export default function Credits({
             </div>
           </motion.div>
         </div>
-      </div>
-    </motion.section>
+      </motion.div>
+    </section>
   );
 }

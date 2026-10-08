@@ -126,6 +126,13 @@ export default function FileView({
   const [rest, setRest] = useState(start); // where the line came to rest: that film plays
   const [leaving, setLeaving] = useState(false);
   const [detail, setDetail] = useState(false);
+  // how a film's page leaves: closed (it slides down), or covered by the next film's (it holds)
+  const [exit, setExit] = useState<"close" | "next">("close");
+  const [layer, setLayer] = useState(0); // each page opened slides up over the last
+  const closeDetail = useCallback(() => {
+    setExit("close");
+    setDetail(false);
+  }, []);
   const [booted, setBooted] = useState(false); // the films have risen in
   const [geo, setGeo] = useState(geometry);
   const index = nav.index;
@@ -207,6 +214,7 @@ export default function FileView({
     if (live.current.leaving) return;
     live.current.leaving = true;
     onCursor(null);
+    setExit("close");
     setDetail(false);
     setLeaving(true);
     window.setTimeout(() => onClosed(live.current.index), reduce ? 0 : LEAVE_MS);
@@ -270,7 +278,7 @@ export default function FileView({
     const onKey = (e: KeyboardEvent) => {
       if (blocked()) return;
       if (e.key === "Escape") {
-        if (live.current.detail) setDetail(false);
+        if (live.current.detail) closeDetail();
         else leave();
       } else if (live.current.detail) return;
       else if (e.key === "ArrowRight") go(live.current.index + 1);
@@ -282,7 +290,7 @@ export default function FileView({
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKey);
     };
-  }, [go, leave]);
+  }, [closeDetail, go, leave]);
 
   // ---- drag / swipe: the line follows the finger, then goes one along ----
   const dragged = useRef(false);
@@ -341,6 +349,7 @@ export default function FileView({
     }
     if (k !== live.current.index) return go(k);
     onCursor(null);
+    setLayer((l) => l + 1);
     setDetail(true);
   };
 
@@ -447,16 +456,23 @@ export default function FileView({
       </motion.div>
 
       {/* the film's own page */}
-      <AnimatePresence>
+      <AnimatePresence custom={exit}>
         {detail && (
           <Detail
-            key="detail"
+            key={films[index].no}
             films={films}
             k={index}
             label={drawer.label}
             band={geo.band}
+            layer={layer}
             reduce={reduce}
-            onClose={() => setDetail(false)}
+            onClose={closeDetail}
+            onNext={() => {
+              // the next film's page slides up over this one, and the line follows underneath
+              setExit("next");
+              setLayer((l) => l + 1);
+              go((live.current.index + 1) % n);
+            }}
             onPlay={onPlay}
           />
         )}
