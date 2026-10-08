@@ -11,7 +11,7 @@ import styles from "./work.module.css";
 // ===========================================================================
 
 const TAKES = [
-  { href: "/work/v1", no: "01", name: "The cabinet", line: "Dividers and files; scroll and the stack builds up" },
+  { href: "/work/v1", no: "01", name: "The cabinet", line: "A folder per category; it opens in place into a dark room of films" },
   { href: "/work/v2", no: "02", name: "The index", line: "One folder, a tab per category; the film plays in the line" },
   { href: "/work/v3", no: "03", name: "The flip", line: "Files on end in the dark; flip forward through the drawer" },
 ];

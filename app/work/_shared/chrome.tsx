@@ -49,8 +49,9 @@ export function Band({ crumb }: { crumb: string }) {
     <>
       <motion.header
         className={styles.band}
-        initial={reduce ? false : { y: "-100%" }}
-        animate={{ y: 0, transition: { duration: 1.1, ease: EASE_CINE } }}
+        data-band="" /* pages measure it to lay out beneath it */
+        initial={{ y: "-100%" }} /* same first frame on server and client; reduced motion just makes it instant */
+        animate={{ y: 0, transition: reduce ? { duration: 0 } : { duration: 1.1, ease: EASE_CINE } }}
       >
         <Link href="/hero13" className={styles.logo} aria-label="16x9 home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -128,8 +129,8 @@ export function Info({ left, centre }: { left: string; centre: string }) {
   return (
     <motion.div
       className={styles.info}
-      initial={reduce ? false : { opacity: 0 }}
-      animate={{ opacity: 1, transition: { delay: 0.7, duration: 1, ease: EASE } }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1, transition: reduce ? { duration: 0 } : { delay: 0.7, duration: 1, ease: EASE } }}
     >
       <span>{left}</span>
       <span className={styles.infoCentre}>{centre}</span>
@@ -138,8 +139,8 @@ export function Info({ left, centre }: { left: string; centre: string }) {
       </span>
       <motion.span
         className={styles.infoRule}
-        initial={reduce ? false : { scaleX: 0 }}
-        animate={{ scaleX: 1, transition: { delay: 0.65, duration: 1.4, ease: EASE_CINE } }}
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1, transition: reduce ? { duration: 0 } : { delay: 0.65, duration: 1.4, ease: EASE_CINE } }}
         aria-hidden="true"
       />
     </motion.div>

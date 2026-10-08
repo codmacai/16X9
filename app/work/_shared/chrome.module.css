@@ -259,6 +259,15 @@
   filter: grayscale(1) contrast(1.06);
 }
 
+/* once the colour still has faded in over it, the grey one (and its filter)
+   stops being drawn at all, so a still that moves or resizes costs half */
+.stillOn .stillGray {
+  visibility: hidden;
+  transition:
+    transform 1.4s var(--ease),
+    visibility 0s 0.9s;
+}
+
 .stillColour {
   opacity: 0;
 }

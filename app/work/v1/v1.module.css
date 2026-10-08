@@ -1,23 +1,27 @@
-/* WORK 01 — the cabinet. Dividers with tabs (one column per category), films
-   filed behind them; everything sticks as it arrives so the stack builds up. */
+/* WORK 01 — the cabinet, in the dark. A folder per category stacked like the
+   menu's; a folder opens in place into the room (file-view.tsx). */
 
 .page {
+  --bg: #0b0b0a;
   --th: clamp(34px, 5vh, 46px); /* tab height */
-  --tw: 18%; /* tab width; five columns, (100% - --tw) / 4 apart */
-  overflow-x: clip; /* clip, not hidden: hidden would break the sticky stack */
+  --tw: 18%; /* tab width */
+  height: 100svh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--paper);
+  overscroll-behavior: none;
 }
 
-/* ================= the front: paper, the line, the drawer labels ================= */
+/* ================= the cabinet: the line, then the folders ================= */
 
 .sheet {
   position: relative;
   z-index: 1;
-  min-height: 100svh;
+  height: 100svh;
   display: flex;
   flex-direction: column;
   padding: var(--band) var(--ui) 0;
-  background: var(--noise), var(--paper);
-  color: var(--ink);
+  background: radial-gradient(90% 60% at 50% 0%, rgb(247 242 238 / 0.05), transparent 70%), var(--bg);
 }
 
 .lockup {
@@ -54,10 +58,9 @@
   font-size: clamp(12px, 0.95vw, 14px);
   line-height: 1.6;
   letter-spacing: 0.01em;
-  opacity: 0.72;
+  opacity: 0.6;
 }
 
-/* the front of the drawer: a folder per category, stacked like the menu's */
 .front {
   --fstep: 18%;
   position: relative;
@@ -68,7 +71,7 @@
 }
 
 .folder {
-  /* like the menu, the front's tabs start a way in, clear of the titles */
+  /* like the menu, the tabs start a way in, clear of the titles */
   --tx: calc((0.22 + var(--c) * 0.195) * (100% - var(--tw)));
   --top: calc(var(--c) * var(--fstep));
   position: absolute;
@@ -81,136 +84,34 @@
   padding: 0;
   border: 0;
   background: none;
+  color: var(--paper);
   font: inherit;
   text-align: left;
   cursor: none;
-  will-change: transform;
 }
 
-/* the shadow cast up onto the folder behind, as in the menu */
+/* No standing layers in the stack (no will-change on the folders or their
+   stills): a pile of promoted layers under the opening file makes every frame
+   of it expensive. The stills' fades and zooms are CSS transitions, which
+   the browser promotes on its own while they run. */
+.front img {
+  will-change: auto;
+}
+
+/* the shadow cast up onto the folder behind */
 .folder::before {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(var(--th) - 30px);
-  height: 30px;
-  background: linear-gradient(to top, rgb(0 0 0 / 0.32), rgb(0 0 0 / 0.08) 55%, transparent);
+  top: calc(var(--th) - 34px);
+  height: 34px;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.6), rgb(0 0 0 / 0.2) 55%, transparent);
   pointer-events: none;
 }
 
-.folder .stock {
-  background: var(--noise-stock), linear-gradient(to bottom, var(--stock-top), var(--stock) 40%);
-}
-
-.folder .window {
-  top: calc(var(--th) + 8px);
-}
-
-.folder .caption {
-  padding: clamp(10px, 1.6vh, 18px) clamp(16px, 2vw, 30px);
-}
-
-.folder .title {
-  font-size: clamp(24px, 3vw, 56px);
-}
-
-.folder .meta > span:first-child {
-  max-width: 44vw;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.folderOn .title {
-  transform: translateX(0.12em);
-}
-
-.folderOn .enter {
-  opacity: 1;
-  transform: none;
-}
-
-/* the others sink back into the dark */
-.window::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: #000;
-  opacity: 0;
-  transition: opacity 0.9s var(--ease);
-  pointer-events: none;
-}
-
-.folderAway .window::after {
-  opacity: 0.44;
-}
-
-.folder:focus-visible {
-  outline: none;
-}
-
-.folder:focus-visible .title {
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.12em;
-}
-
-.tab {
-  position: absolute;
-  top: 0;
-  left: var(--tx);
-  width: var(--tw);
-  height: var(--th);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 2px 26px 0;
-  border: 0;
-  color: var(--ink);
-  font: inherit;
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.labelNo {
-  font-variant-numeric: tabular-nums;
-  opacity: 0.55;
-}
-
-.tabName {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.short {
-  display: none;
-}
-
-.tab:focus-visible {
-  outline: none;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-/* ================= the drawer ================= */
-
-.drawer {
-  position: relative;
-  background: var(--ink);
-}
-
-/* a divider: card stock cut with its tab at its category's column */
-.divider {
-  position: sticky;
-  top: var(--band);
-  height: calc(100svh - var(--band));
-  margin-top: 2vh;
-}
-
+/* card stock cut with its tab; one flat colour, so the room it opens into
+   can start as exactly that colour */
 .stock {
   position: absolute;
   inset: 0;
@@ -225,175 +126,72 @@
     100% 100%,
     0 100%
   );
-  background: var(--noise), var(--paper);
-  color: var(--ink);
+  background: var(--stock-c);
 }
 
 .tab {
-  background: none;
-}
-
-.dividerBody {
-  position: absolute;
-  inset: var(--th) 0 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 40px;
-  padding: clamp(20px, 4vh, 44px) var(--ui) clamp(24px, 5vh, 56px);
-  border-top: 1px solid rgb(10 10 10 / 0.12);
-}
-
-.dividerHead {
-  display: flex;
-  align-items: flex-start;
-  gap: clamp(14px, 2vw, 32px);
-}
-
-.dividerNo {
-  padding-top: 0.9em;
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  opacity: 0.55;
-}
-
-.dividerTitle {
-  margin: 0;
-  font-size: min(clamp(48px, 10vw, 190px), 17vh);
-  font-weight: 300;
-  line-height: 0.9;
-  letter-spacing: -0.04em;
-  text-transform: uppercase;
-}
-
-/* the index card on the divider: what's filed behind it */
-.dividerList {
-  flex: none;
-  width: min(520px, 100%);
-  margin-top: 0.6em !important;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  counter-reset: f;
-}
-
-.dividerList li {
-  display: grid;
-  grid-template-columns: 2.4em 1fr auto auto;
-  gap: 18px;
-  padding: 11px 0;
-  border-top: 1px solid rgb(10 10 10 / 0.16);
-  counter-increment: f;
-}
-
-.dividerList li::before {
-  content: counter(f, decimal-leading-zero);
-  opacity: 0.45;
-}
-
-.dividerList li span:nth-child(2),
-.dividerList li span:nth-child(3) {
-  opacity: 0.55;
-}
-
-/* a file: card stock with the film framed in it; each one settles a few
-   pixels lower than the last, so the edges of the stack show */
-.file {
-  --off: calc(var(--k) * 9px);
-  position: sticky;
-  top: calc(var(--band) + var(--th) + var(--off));
-  height: calc(100svh - var(--band) - var(--th) - var(--off));
-}
-
-/* a shadow cast up onto the file behind, painted once along the top edge */
-.file::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: -30px;
-  height: 30px;
-  background: linear-gradient(to top, rgb(0 0 0 / 0.38), rgb(0 0 0 / 0.1) 55%, transparent);
-  pointer-events: none;
-}
-
-.fileStock {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  border-top: 1px solid rgb(255 255 255 / 0.55);
-  background: var(--noise-stock), linear-gradient(to bottom, var(--stock-top), var(--stock) 40%);
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  cursor: none;
-}
-
-.fileStrip {
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
-  height: 40px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  left: var(--tx);
+  width: var(--tw);
+  height: var(--th);
+  display: flex;
   align-items: center;
-  padding: 2px var(--ui) 0;
-  font-size: 10.5px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 26px 0;
+  color: var(--paper);
+  font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 
-.fileStrip span {
-  opacity: 0.6;
+.labelNo {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.5;
 }
 
-.fileStrip span:nth-child(2) {
-  text-align: center;
+.tabName {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.fileStrip span:last-child {
-  text-align: right;
+.short {
+  display: none;
 }
 
 .window {
   position: absolute;
-  top: 40px;
+  top: calc(var(--th) + 8px);
   left: 10px;
   right: 10px;
   bottom: 10px;
   overflow: hidden;
   border-radius: 3px;
   background: #111;
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
 }
 
-.video {
-  position: absolute;
-  top: -16%; /* past the letterbox bars, as the stills */
-  left: 0;
-  width: 100%;
-  height: 132%;
-  object-fit: cover;
-  animation: fadeIn 0.9s var(--ease) both;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-}
-
-.shade {
+/* the others sink back into the dark */
+.window::after {
+  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgb(0 0 0 / 0.55), transparent 50%);
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.9s var(--ease);
+  pointer-events: none;
+}
+
+.folderAway .window::after {
+  opacity: 0.5;
+}
+
+.shade,
+.cardShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgb(0 0 0 / 0.55), transparent 55%);
   pointer-events: none;
 }
 
@@ -406,13 +204,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding: clamp(14px, 2.4vh, 26px) clamp(16px, 2vw, 30px);
+  padding: clamp(10px, 1.6vh, 18px) clamp(16px, 2vw, 30px);
   color: var(--paper);
 }
 
 .title {
   display: block;
-  font-size: clamp(34px, 5.4vw, 104px);
+  font-size: clamp(24px, 3vw, 56px);
   font-weight: 300;
   line-height: 0.95;
   letter-spacing: -0.03em;
@@ -432,7 +230,10 @@
   white-space: nowrap;
 }
 
-.meta > span:not(.enter) {
+.meta > span:first-child {
+  max-width: 44vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
   opacity: 0.75;
 }
 
@@ -442,50 +243,300 @@
   transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
 }
 
-.fileOn .title {
+.folderOn .title {
   transform: translateX(0.12em);
 }
 
-.fileOn .enter {
+.folderOn .enter {
   opacity: 1;
   transform: none;
 }
 
-.fileStock:focus-visible {
+.folder:focus-visible {
   outline: none;
 }
 
-.fileStock:focus-visible .title {
+.folder:focus-visible .title {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.12em;
 }
 
-/* the back of the drawer */
-.back {
-  position: relative;
+/* film grain over everything, light on dark */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 26;
+  pointer-events: none;
+  will-change: transform; /* its own layer: drawn once, never repainted with what moves under it */
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ================= the open file ================= */
+
+.view {
+  position: fixed;
+  inset: 0;
+  z-index: 15; /* under the band, so the burger and logo stay */
+  outline: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.room {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* the folder's caption, held over the card until it's clear of the stack */
+.ghost {
+  position: fixed;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* a faint guide down the middle, as in the reference */
+.guide {
+  position: absolute;
   z-index: 2;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, rgb(247 242 238 / 0.1) 15%, rgb(247 242 238 / 0.1) 85%, transparent);
+  transform-origin: top;
+  pointer-events: none;
+}
+
+.card {
+  position: absolute;
+  z-index: 1;
+  cursor: pointer;
+  will-change: transform, opacity;
+  contain: layout style; /* resizing the card in front never re-lays the room */
+  outline: none;
+}
+
+.cardFront {
+  z-index: 2;
+  cursor: none;
+}
+
+.media {
+  position: relative;
+  overflow: hidden;
+  background: #111;
+}
+
+/* the picture runs past the top and bottom by --crop % so the letterbox bars
+   fall outside: 16 in the wide folder window, 21 in the tall card (animated) */
+.view .media img,
+.cardVideo {
+  position: absolute;
+  top: calc(var(--crop, 21) * -1%);
+  left: 0;
+  width: 100%;
+  height: calc(100% + var(--crop, 21) * 2%);
+  object-fit: cover;
+}
+
+.cardFoot {
+  position: absolute;
+  inset: 45% 0 0;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.25) 50%, transparent);
+  pointer-events: none;
+}
+
+.cardTitle {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 7%;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: clamp(40px, 10vh, 120px) var(--ui);
-  background: var(--ink);
-  color: var(--paper);
-  font-size: 11px;
+  gap: calc(var(--cw) * 0.022);
+  text-align: center;
+  pointer-events: none;
+}
+
+.kicker {
+  font-size: max(9px, calc(var(--cw) * 0.02));
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.name {
+  font-size: calc(var(--cw) * 0.088);
+  font-weight: 500;
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+/* the facts under the card: label left, value right, on hairlines */
+.facts {
+  width: 72%;
+  margin: 16px auto 0;
+  padding: 0;
+  font-size: 10.5px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 
-.back span {
+.fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0 5px;
+  border-top: 1px solid rgb(247 242 238 / 0.24);
+}
+
+.fact:last-child {
+  border-bottom: 1px solid rgb(247 242 238 / 0.24);
+}
+
+.fact dt {
+  opacity: 0.55;
+}
+
+.fact dd {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card:focus-visible .name {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12em;
+}
+
+/* the ticket: the folder's tab, hung from the band */
+.ticket {
+  position: fixed;
+  z-index: 4;
+  overflow: visible;
+  color: var(--ink);
+}
+
+.ticketLabel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 26px 0;
+  color: var(--paper);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ticketCells {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 0.8fr 1fr;
+  align-items: stretch;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ticketCells > span,
+.ticketClose {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: visible;
+  padding: 2px 10px 0;
+}
+
+.ticketCells > span:first-child {
+  justify-content: flex-start;
+  padding-left: 20px;
+}
+
+.ticketCells i {
+  font-style: normal;
   opacity: 0.5;
 }
 
-/* ================= phones, touch ================= */
+/* the punched notches on the seams, cut out of the foot */
+.ticketCells > :not(:first-child)::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  bottom: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+.ticketCells > :not(:first-child)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 1px;
+  background: rgb(10 10 10 / 0.18);
+}
+
+.notch {
+  position: absolute;
+  bottom: -7px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+.ticketClose {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.ticketClose i {
+  font-size: 12px;
+  opacity: 1;
+  transition: transform 0.5s var(--ease);
+}
+
+.ticketClose:hover i {
+  transform: rotate(90deg);
+}
+
+.ticketClose:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: -6px;
+}
+
+/* ================= phones, touch, reduced motion ================= */
 
 @media (hover: none) {
   .folder,
-  .fileStock {
+  .cardFront {
     cursor: pointer;
   }
   .enter {
@@ -502,7 +553,6 @@
   .lockup {
     flex-direction: column;
     align-items: flex-start;
-    justify-content: flex-end;
     gap: 14px;
   }
   .headline {
@@ -512,13 +562,18 @@
     max-width: none;
     font-size: 12px;
   }
-  .tab {
+  .front {
+    --fstep: 17%;
+  }
+  .tab,
+  .ticketLabel {
     justify-content: center;
     padding: 2px 8px 0;
     font-size: 9px;
     letter-spacing: 0.12em;
   }
-  .tab .labelNo {
+  .tab .labelNo,
+  .ticketLabel .labelNo {
     display: none;
   }
   .long {
@@ -526,12 +581,6 @@
   }
   .short {
     display: inline;
-  }
-  .front {
-    --fstep: 17%;
-  }
-  .folder .meta > span:first-child {
-    display: none;
   }
   .stock {
     clip-path: polygon(
@@ -545,49 +594,30 @@
       0 100%
     );
   }
-  .dividerTitle {
-    font-size: 10.5vw;
-  }
-  .dividerBody {
-    flex-direction: column;
-    gap: 24px;
-  }
-  .dividerList li {
-    grid-template-columns: 2.4em 1fr auto;
-    font-size: 10px;
-  }
-  .dividerList li span:nth-child(3) {
+  .meta > span:first-child {
     display: none;
   }
-  .fileStrip span:nth-child(2) {
-    display: none;
+  .ticketCells {
+    grid-template-columns: 1.5fr 1fr 1fr;
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
   }
-  .fileStrip {
-    grid-template-columns: 1fr 1fr;
+  .ticketRun {
+    display: none !important;
   }
-  .caption {
-    flex-direction: column;
-  }
-  .meta {
-    align-items: flex-start;
-    padding-top: 0;
-  }
-  .title {
-    font-size: 10vw;
-  }
-  .back {
-    flex-direction: column;
-    align-items: flex-start;
+  .facts {
+    width: 86%;
+    margin-top: 12px;
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .title,
   .enter,
-  .window::after {
+  .window::after,
+  .ticketClose i {
     transition: none;
-  }
-  .video {
-    animation: none;
   }
 }

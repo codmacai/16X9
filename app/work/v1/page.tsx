@@ -1,58 +1,135 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Band, EASE, EASE_CINE, EnterCursor, Info, rootClass, Still, usePlayer } from "../_shared/chrome";
-import { CATEGORIES, PROJECTS, stillFor, type CategoryId, type Project } from "../_shared/data";
+import { CATEGORIES, PROJECTS, stillFor } from "../_shared/data";
+import FileView, { type Drawer, type Origin } from "./file-view";
 import styles from "./v1.module.css";
 
 // ===========================================================================
-// WORK 01 — THE CABINET. The burger menu's drawer, opened all the way: every
-// category is a divider with its own tab, and the films are filed behind it.
-// Scroll and the files slide up and settle on the stack, one over the next.
-// The dividers' tabs stay up top as you pass them, side by side the way a
-// real drawer's do, so the top of the screen fills in as an index of where
-// you've been; click one to go back to it. Point at a film and it comes into
-// colour and starts to play.
+// WORK 01 — THE CABINET. The burger menu's drawer, in the dark: a folder for
+// each category, stacked the way the menu stacks its three. Point at one and
+// it's pulled up out of the stack and comes into colour. Click it and it opens
+// right where it is — no scrolling anywhere: the folder's body grows into the
+// room, its film becomes the card in front, its tab hangs in the corner as a
+// ticket (see file-view.tsx). Close it and it folds back into its place.
+// Once the cabinet is on screen the page stops scrolling; it's all here.
 // ===========================================================================
 
-const ORDER = CATEGORIES.map((c) => ({ ...c, films: PROJECTS.filter((p) => p.category === c.id) }));
-const LIST = ORDER.flatMap((c) => c.films); // the order they're filed in
-const TOTAL = String(LIST.length).padStart(2, "0");
+const ORDER: Drawer[] = CATEGORIES.map((c, i) => ({
+  no: String(i + 1).padStart(2, "0"),
+  label: c.label,
+  short: c.short,
+  films: PROJECTS.filter((p) => p.category === c.id),
+}));
+const LIST = ORDER.flatMap((d) => d.films);
+// each folder a shade lighter than the one behind it, so the stack reads in the dark
+const STOCK = ["#151413", "#191817", "#1d1c1a", "#21201e", "#252321"];
+const INTRO_S = 0.55 + ORDER.length * 0.1 + 1.15;
 
-const toDivider = (id: CategoryId) => {
-  const el = document.getElementById(`divider-${id}`);
-  if (!el) return;
-  // dividers are sticky, so measure where it sits in the flow, not where it's stuck
-  const top = (el.parentElement?.offsetTop ?? 0) + el.offsetTop;
-  window.scrollTo({ top, behavior: "smooth" });
-};
+const rectOf = (r: DOMRect) => ({ top: r.top, left: r.left, width: r.width, height: r.height });
+
+/** Once `ref` is fully on screen, the page stops scrolling (until it unmounts). */
+function useScrollLock(ref: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const html = document.documentElement;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.intersectionRatio < 0.98) return;
+        window.scrollTo({ top: el.offsetTop });
+        html.style.overflow = "hidden";
+        html.style.overscrollBehavior = "none";
+        io.disconnect();
+      },
+      { threshold: [0.98, 1] }
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      html.style.overflow = "";
+      html.style.overscrollBehavior = "";
+    };
+  }, [ref]);
+}
+
+type Open = { cat: number; origin: Origin };
 
 export default function WorkCabinet() {
   const reduce = !!useReducedMotion();
-  const [hover, setHover] = useState<Project | null>(null);
   const [pull, setPull] = useState<number | null>(null);
-  const { play, player } = usePlayer(LIST);
+  const [settled, setSettled] = useState(false); // the stack has dealt itself in
+  const [open, setOpen] = useState<Open | null>(null);
+  const [shown, setShown] = useState<number[]>(() => ORDER.map(() => 0)); // the film each folder shows
+  const [cursor, setCursor] = useState<string | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const frontRef = useRef<HTMLElement>(null);
+  const folderRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const { play, player, playing } = usePlayer(open ? ORDER[open.cat].films : LIST);
+
+  useScrollLock(sectionRef);
+  useEffect(() => {
+    const t = window.setTimeout(() => setSettled(true), reduce ? 0 : INTRO_S * 1000);
+    return () => window.clearTimeout(t);
+  }, [reduce]);
+
+  // While a file is open its folder stays exactly as it was clicked, so the
+  // file has the same place to fold back into.
+  const lifted = open ? (open.origin.lifted ? open.cat : null) : pull;
+
+  const measure = useCallback((c: number, isLifted: boolean): Origin | null => {
+    const folder = folderRefs.current[c];
+    const front = frontRef.current;
+    const win = folder?.querySelector<HTMLElement>(`.${styles.window}`)?.getBoundingClientRect();
+    const tab = folder?.querySelector<HTMLElement>(`.${styles.tab}`)?.getBoundingClientRect();
+    if (!front || !win || !tab) return null;
+    const next = folderRefs.current[c + 1]?.getBoundingClientRect();
+    return {
+      win: rectOf(win),
+      tab: rectOf(tab),
+      bodyTop: tab.bottom,
+      visBottom: Math.min(front.getBoundingClientRect().bottom, next ? next.top : Infinity),
+      stock: STOCK[c],
+      lifted: isLifted,
+    };
+  }, []);
+
+  const openFile = (c: number) => {
+    if (open || !settled) return;
+    const origin = measure(c, pull === c);
+    if (!origin) return;
+    setCursor(null);
+    setOpen({ cat: c, origin });
+  };
+
+  const remeasure = useCallback(() => (open ? measure(open.cat, open.origin.lifted) : null), [open, measure]);
+  const leave = useCallback(
+    (index: number) => open && setShown((s) => s.map((v, i) => (i === open.cat ? index : v))),
+    [open]
+  );
+  const closed = useCallback(() => {
+    const c = open?.cat;
+    setOpen(null);
+    setPull(null); // it settles back into the stack (and out of colour) from here
+    if (c !== undefined) folderRefs.current[c]?.focus({ preventScroll: true });
+  }, [open]);
 
   return (
     <main className={`${rootClass} ${styles.page}`}>
       <Band crumb="01 The cabinet" />
 
-      {/* ================= the front of the cabinet ================= */}
-      <motion.section
-        className={styles.sheet}
-        initial={reduce ? false : { clipPath: "inset(0% 0% 100% 0%)" }}
-        animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: { delay: 0.2, duration: 1.15, ease: EASE_CINE } }}
-      >
-        <Info left="16X9 — Selected work" centre={`${LIST.length} films · ${CATEGORIES.length} drawers`} />
+      <section ref={sectionRef} className={styles.sheet} aria-label="Work">
+        <Info left="16X9 — Selected work" centre={`${LIST.length} films · ${ORDER.length} drawers`} />
         <div className={styles.lockup}>
           <h1 className={styles.headline}>
             {["The work,", "on file"].map((line, i) => (
               <span key={line} className={styles.mask}>
                 <motion.span
                   className={styles.line}
-                  initial={reduce ? false : { y: "105%" }}
-                  animate={{ y: 0, transition: { delay: 0.6 + i * 0.12, duration: 1.15, ease: EASE } }}
+                  initial={{ y: "105%" }}
+                  animate={{ y: 0, transition: reduce ? { duration: 0 } : { delay: 0.5 + i * 0.12, duration: 1.15, ease: EASE } }}
                 >
                   {line}
                 </motion.span>
@@ -61,55 +138,67 @@ export default function WorkCabinet() {
           </h1>
           <motion.p
             className={styles.lede}
-            initial={reduce ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0, transition: { delay: 1.2, duration: 1.1, ease: EASE } }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0, transition: reduce ? { duration: 0 } : { delay: 1.1, duration: 1.1, ease: EASE } }}
           >
-            Commercials, brand films, fashion, social and documentary. Pull a folder, or scroll and let the files
-            come to you.
+            Commercials, brand films, fashion, social and documentary. Pull a folder to open it where it sits.
           </motion.p>
         </div>
 
-        {/* the front of the drawer: one folder per category, stacked the way the
-            menu stacks its three; pull one up and it opens on that divider */}
-        <nav className={styles.front} aria-label="Categories" onPointerLeave={() => setPull(null)}>
-          {ORDER.map((c, i) => {
-            const on = pull === i;
+        {/* the cabinet: one folder per category */}
+        <nav
+          ref={frontRef}
+          className={styles.front}
+          aria-label="Categories"
+          onPointerLeave={() => setPull(null)}
+          style={open ? { pointerEvents: "none" } : undefined}
+        >
+          {ORDER.map((d, i) => {
+            const on = lifted === i;
             return (
               <motion.button
-                key={c.id}
-                type="button"
-                className={`${styles.folder} ${on ? styles.folderOn : ""} ${pull !== null && !on ? styles.folderAway : ""}`}
-                style={{ ["--c" as string]: i }}
-                onClick={() => toDivider(c.id)}
-                onPointerEnter={(e) => e.pointerType === "mouse" && setPull(i)}
-                onFocus={() => setPull(i)}
-                onBlur={() => setPull(null)}
-                initial={reduce ? false : { y: "110%" }}
-                animate={{
-                  y: on ? "-4vh" : pull !== null && i > pull ? "1.6vh" : 0,
-                  transition:
-                    pull !== null
-                      ? { type: "spring", stiffness: 140, damping: 20, mass: 0.9 }
-                      : { delay: 0.55 + i * 0.1, duration: 1.15, ease: EASE_CINE },
+                key={d.no}
+                ref={(el) => {
+                  folderRefs.current[i] = el;
                 }}
-                aria-label={`${c.label}, ${c.films.length} films`}
+                type="button"
+                className={`${styles.folder} ${on ? styles.folderOn : ""} ${lifted !== null && !on ? styles.folderAway : ""}`}
+                style={{ ["--c" as string]: i, ["--stock-c" as string]: STOCK[i] }}
+                onClick={() => openFile(i)}
+                onPointerEnter={(e) => e.pointerType === "mouse" && settled && setPull(i)}
+                // keyboard focus pulls a folder up like pointing at it; a tap's focus doesn't
+                onFocus={(e) => e.currentTarget.matches(":focus-visible") && setPull(i)}
+                onBlur={() => !open && setPull(null)}
+                // the same first frame on the server and the client (reduced motion
+                // only makes the intro instant), so hydration always matches
+                initial={{ y: "110%" }}
+                animate={{
+                  y: on ? "-4vh" : lifted !== null && i > lifted ? "1.6vh" : 0,
+                  transition: settled
+                    ? { type: "spring", stiffness: 140, damping: 20, mass: 0.9 }
+                    : reduce
+                      ? { duration: 0 }
+                      : { delay: 0.45 + i * 0.1, duration: 1.15, ease: EASE_CINE },
+                }}
+                aria-label={`Open ${d.label}, ${d.films.length} films`}
+                aria-expanded={open?.cat === i}
               >
                 <span className={styles.stock}>
                   <span className={styles.tab}>
-                    <span className={styles.labelNo}>{String(i + 1).padStart(2, "0")}</span>
+                    <span className={styles.labelNo}>{d.no}</span>
                     <span className={styles.tabName}>
-                      <span className={styles.long}>{c.label}</span>
-                      <span className={styles.short}>{c.short}</span>
+                      <span className={styles.long}>{d.label}</span>
+                      <span className={styles.short}>{d.short}</span>
                     </span>
-                    <span className={styles.labelNo}>{c.films.length}</span>
+                    <span className={styles.labelNo}>{d.films.length}</span>
                   </span>
                   <span className={styles.window}>
-                    <Still src={stillFor(c.films[0].src)} on={on} />
+                    <Still src={stillFor(d.films[shown[i]].src)} on={on} />
                     <span className={styles.shade} aria-hidden="true" />
                     <span className={styles.caption}>
-                      <span className={styles.title}>{c.label}</span>
+                      <span className={styles.title}>{d.label}</span>
                       <span className={styles.meta}>
-                        <span>{c.films.map((f) => f.title).join(" · ")}</span>
+                        <span>{d.films.map((f) => f.title).join(" · ")}</span>
                         <span className={styles.enter}>
                           Open <span>→</span>
                         </span>
@@ -121,99 +210,26 @@ export default function WorkCabinet() {
             );
           })}
         </nav>
-      </motion.section>
+      </section>
 
-      {/* ================= the drawer ================= */}
-      <div className={styles.drawer}>
-        {ORDER.map((c, ci) => (
-          <Fragment key={c.id}>
-            <section id={`divider-${c.id}`} className={styles.divider} style={{ ["--c" as string]: ci }} aria-label={c.label}>
-              <span className={styles.stock}>
-                <button type="button" className={styles.tab} onClick={() => toDivider(c.id)} aria-label={`Back to ${c.label}`}>
-                  <span className={styles.labelNo}>{String(ci + 1).padStart(2, "0")}</span>
-                  <span className={styles.tabName}>
-                    <span className={styles.long}>{c.label}</span>
-                    <span className={styles.short}>{c.short}</span>
-                  </span>
-                  <span className={styles.labelNo}>{c.films.length}</span>
-                </button>
-                <span className={styles.dividerBody}>
-                  <span className={styles.dividerHead}>
-                    <span className={styles.dividerNo}>{String(ci + 1).padStart(2, "0")}</span>
-                    <h2 className={styles.dividerTitle}>{c.label}</h2>
-                  </span>
-                  <ol className={styles.dividerList}>
-                    {c.films.map((p) => (
-                      <li key={p.no}>
-                        <span>{p.title}</span>
-                        <span>{p.client}</span>
-                        <span>{p.year}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </span>
-              </span>
-            </section>
+      {open && (
+        <FileView
+          key={open.cat}
+          drawer={ORDER[open.cat]}
+          origin={open.origin}
+          start={shown[open.cat]}
+          reduce={reduce}
+          playing={playing}
+          measure={remeasure}
+          onPlay={play}
+          onCursor={setCursor}
+          onLeave={leave}
+          onClosed={closed}
+        />
+      )}
 
-            {c.films.map((p, k) => {
-              const n = LIST.indexOf(p) + 1;
-              const on = hover === p;
-              return (
-                <article
-                  key={p.no}
-                  className={`${styles.file} ${on ? styles.fileOn : ""}`}
-                  style={{ ["--k" as string]: k }}
-                  onPointerEnter={(e) => e.pointerType === "mouse" && setHover(p)}
-                  onPointerLeave={() => setHover(null)}
-                >
-                  <button
-                    type="button"
-                    className={styles.fileStock}
-                    onClick={(e) => play(p, e.currentTarget.querySelector(`.${styles.window}`) ?? e.currentTarget)}
-                    onFocus={() => setHover(p)}
-                    onBlur={() => setHover(null)}
-                    aria-label={`Play ${p.title}, ${p.client}, ${p.year}`}
-                  >
-                    <span className={styles.fileStrip} aria-hidden="true">
-                      <span>
-                        {String(n).padStart(2, "0")} / {TOTAL}
-                      </span>
-                      <span>{c.label}</span>
-                      <span>{p.client}</span>
-                    </span>
-                    <span className={styles.window}>
-                      <Still src={stillFor(p.src)} on={on} />
-                      {on && (
-                        <video className={styles.video} src={p.src} muted loop playsInline autoPlay preload="auto" aria-hidden="true" />
-                      )}
-                      <span className={styles.shade} aria-hidden="true" />
-                      <span className={styles.caption} aria-hidden="true">
-                        <span className={styles.title}>{p.title}</span>
-                        <span className={styles.meta}>
-                          <span>{p.line}</span>
-                          <span>
-                            {p.year} · {p.duration}
-                          </span>
-                          <span className={styles.enter}>
-                            Play <span>→</span>
-                          </span>
-                        </span>
-                      </span>
-                    </span>
-                  </button>
-                </article>
-              );
-            })}
-          </Fragment>
-        ))}
-        {/* the back of the drawer */}
-        <div className={styles.back}>
-          <span>End of the drawer</span>
-          <a href="#contact">Start a film with us →</a>
-        </div>
-      </div>
-
-      <EnterCursor label={hover ? hover.title : pull !== null ? ORDER[pull].label : null} />
+      <EnterCursor label={open ? cursor : pull !== null ? ORDER[pull].label : null} />
+      <span className={styles.grain} aria-hidden="true" />
       {player}
     </main>
   );
