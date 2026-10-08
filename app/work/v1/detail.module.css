@@ -1,7 +1,7 @@
-/* A FILM'S PAGE — on paper, in the brand's colours only: paper, ink, and the
-   band clock's live dot. The still is pinned at the top and the paper slides
-   up over it; the film waits further down in an old television's glass.
-   --sh is the sheet's height (the screen under the band). */
+/* A FILM'S PAGE — in the brand's colours only: black, paper, ink, and the
+   band clock's live dot. The cover: black above, paper below, the film's
+   card across the two; the film waits further down in an old television's
+   glass. --sh is the sheet's height (the screen under the band). */
 
 .sheet {
   --sh: calc(100svh - var(--band));
@@ -11,7 +11,7 @@
   bottom: 0;
   z-index: 5;
   overflow: hidden;
-  background: var(--paper);
+  background: var(--noise), var(--paper); /* one paper for the whole page: no seam where the cover ends */
   box-shadow: 0 -30px 80px rgb(0 0 0 / 0.5);
   color: var(--ink);
   will-change: transform; /* slides as one layer */
@@ -35,47 +35,78 @@
   scrollbar-color: rgb(10 10 10 / 0.25) transparent;
 }
 
-/* ================= the still ================= */
+/* ================= the cover ================= */
 
-/* pinned: the paper below scrolls up over it */
+/* the first screen: black above, paper below, the card across the two */
 .hero {
-  position: sticky;
-  top: 0;
-  z-index: 0;
-  height: calc(var(--sh) * 0.7);
+  --split: 56%;
+  --ch: min(calc(var(--sh) * 0.74), 760px); /* the card's height */
+  --cw: calc(var(--ch) / 1.42); /* and width */
+  position: relative;
+  height: var(--sh);
+  min-height: 560px;
   overflow: hidden;
-  background: var(--ink);
 }
 
-.heroMedia {
+/* black above, with the film's words in big faint rows */
+.night {
   position: absolute;
-  inset: 0;
-  transform-origin: 50% 30%;
+  inset: 0 0 auto;
+  height: var(--split);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  overflow: hidden;
+  background: #000;
+  color: rgb(247 242 238 / 0.06);
+}
+
+.row {
+  font-size: calc(var(--sh) * 0.085);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
   will-change: transform;
 }
 
-/* past the letterbox bars */
-.heroMedia img {
+/* a slow ticker along the top of the paper */
+.ticker {
   position: absolute;
-  top: -16%;
   left: 0;
-  width: 100%;
-  height: 132%;
-  object-fit: cover;
+  right: 0;
+  top: var(--split);
+  height: 48px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-/* the still darkens as the paper covers it */
-.heroDim {
-  position: absolute;
-  inset: 0;
-  background: #000;
-  opacity: 0;
-  pointer-events: none;
-  will-change: opacity;
+.tickerTrack {
+  display: flex;
+  animation: tick 60s linear infinite;
+}
+
+.tickerTrack span {
+  padding-right: 0.3em;
+  opacity: 0.6;
+}
+
+@keyframes tick {
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 .back {
   position: absolute;
+  z-index: 2;
   top: clamp(18px, 3.4vh, 34px);
   left: var(--ui);
   display: inline-flex;
@@ -114,41 +145,73 @@
   outline-offset: 6px;
 }
 
-/* ================= the paper ================= */
-
-.paper {
-  position: relative;
+/* the card, centred, standing across the black and the paper */
+.coverWrap {
+  position: absolute;
   z-index: 1;
-  background: var(--noise), var(--paper);
-}
-
-/* the first screen's foot: the category, the name, the cue */
-.intro {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(var(--sh) * 0.3);
-  padding: 14px var(--ui) 18px;
-  text-align: center;
+  left: 50%;
+  top: calc(var(--sh) * 0.09);
+  width: var(--cw);
+  height: var(--ch);
+  margin-left: calc(var(--cw) / -2);
+  transform-origin: 50% 100%;
   will-change: transform;
 }
 
+.cover {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #0a0a0a;
+  box-shadow:
+    0 50px 70px -30px rgb(0 0 0 / 0.55),
+    0 18px 30px -12px rgb(0 0 0 / 0.3);
+  color: var(--paper);
+}
+
+/* past the letterbox bars */
+.coverImg {
+  position: absolute;
+  top: -21%;
+  left: 0;
+  width: 100%;
+  height: 142%;
+  object-fit: cover;
+}
+
+.coverShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.86) 0%, rgb(0 0 0 / 0.42) 30%, rgb(0 0 0 / 0) 56%);
+}
+
+.coverType {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  bottom: 7%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
 .kicker {
-  font-size: 11px;
-  letter-spacing: 0.46em;
+  font-size: max(9.5px, calc(var(--cw) * 0.022));
+  letter-spacing: 0.44em;
   text-transform: uppercase;
-  opacity: 0.75;
+  opacity: 0.85;
 }
 
 .title {
-  margin: 0.2em 0 0.28em;
-  font-size: min(6.6vw, 9.5vh);
+  margin: 0.32em 0 0;
+  font-size: calc(var(--cw) * 0.112);
   font-weight: 600;
   font-stretch: 100%;
   font-variation-settings: "wdth" 100;
   line-height: 0.9;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.025em;
   text-transform: uppercase;
   text-wrap: balance;
 }
@@ -158,7 +221,7 @@
   display: inline-block;
   overflow: hidden;
   padding-bottom: 0.06em;
-  margin: 0 0.12em -0.06em;
+  margin: 0 0.11em -0.06em;
   vertical-align: top;
   white-space: nowrap;
 }
@@ -167,12 +230,17 @@
   display: inline-block;
 }
 
-/* the cue: an ink disc, its arrow bobbing */
+/* the cue: an ink disc on the paper, its arrow bobbing */
 .cue {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: clamp(16px, 3vh, 30px);
   display: grid;
   place-items: center;
   width: 46px;
   height: 46px;
+  margin-left: -23px;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -196,6 +264,13 @@
 .cue:focus-visible {
   outline: 1px solid var(--ink);
   outline-offset: 5px;
+}
+
+/* ================= the paper ================= */
+
+.paper {
+  position: relative;
+  z-index: 1;
 }
 
 /* ================= the screen ================= */
@@ -338,17 +413,23 @@
 
 @media (max-width: 760px) {
   .hero {
-    height: calc(var(--sh) * 0.58);
+    --split: 54%;
+    --cw: min(64vw, calc(var(--sh) * 0.66 / 1.42));
+    --ch: calc(var(--cw) * 1.42);
+    min-height: 0;
   }
-  .intro {
-    min-height: calc(var(--sh) * 0.42);
+  .coverWrap {
+    top: calc(var(--sh) * 0.1);
   }
-  .kicker {
-    font-size: 10px;
-    letter-spacing: 0.36em;
+  .row {
+    font-size: calc(var(--sh) * 0.06);
   }
-  .title {
-    font-size: 11.5vw;
+  .ticker {
+    font-size: 9.5px;
+    letter-spacing: 0.24em;
+  }
+  .back > span:last-child {
+    display: none;
   }
   .screen {
     width: 92vw;
@@ -363,7 +444,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .cueArrow,
-  .dot {
+  .dot,
+  .tickerTrack {
     animation: none;
   }
   .backDisc,

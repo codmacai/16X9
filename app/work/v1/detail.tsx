@@ -7,13 +7,15 @@ import { stillFor, type Project } from "../_shared/data";
 import d from "./detail.module.css";
 
 // ===========================================================================
-// A FILM'S PAGE — slides up over the open file, on paper. It scrolls on its
-// own, and everything on it is tied to that scroll (smoothed by a spring, so
-// even a notchy mouse wheel moves it like film through a gate):
-//   · the still, full width — pinned while the paper slides up over it; as
-//     it's covered it sinks, swells a touch and goes dark;
-//   · on the paper, the category, the film's name (rising in letter by
-//     letter) and a round cue that bobs, fades as you go, and takes you down;
+// A FILM'S PAGE — slides up over the open file. It scrolls on its own, and
+// everything on it is tied to that scroll (smoothed by a spring, so even a
+// notchy mouse wheel moves it like film through a gate):
+//   · the cover: black above, paper below, and the film's card standing in
+//     the middle across the two — its still for a cover, its category and
+//     name set on it. Behind it on the black, the film's words in big faint
+//     rows that slide apart as you scroll; along the paper, a slow ticker.
+//     The card lifts and settles back a touch as you go;
+//   · a round cue that bobs, fades as you go, and takes you down;
 //   · the screen: the film in an old television's curved glass, growing into
 //     place as you reach it while the picture settles inside, and "Watch film"
 //     to open it in the player.
@@ -23,6 +25,7 @@ import d from "./detail.module.css";
 const IN: Transition = { type: "spring", stiffness: 70, damping: 17, mass: 1 };
 const OUT: Transition = { duration: 0.6, ease: [0.7, 0, 0.84, 0] };
 const SMOOTH = { stiffness: 140, damping: 30, mass: 0.6 }; // how the scroll-tied motion follows the scroll
+const ROWS = 5; // rows of words behind the card
 
 export default function Detail({
   films,
@@ -47,14 +50,14 @@ export default function Detail({
   const heroRef = useRef<HTMLElement>(null);
   const screenRef = useRef<HTMLDivElement>(null);
 
-  // the still: pinned, and covered by the paper as you scroll
+  // the cover: the rows slide apart, the card lifts and settles back
   const { scrollYProgress: heroRaw } = useScroll({ container: scrollRef, target: heroRef, offset: ["start start", "end start"] });
   const hero = useSpring(heroRaw, SMOOTH);
-  const heroY = useTransform(hero, [0, 1], ["0%", "24%"]);
-  const heroScale = useTransform(hero, [0, 1], [1.02, 1.16]);
-  const heroDim = useTransform(hero, [0, 1], [0, 0.7]);
-  const cueFade = useTransform(hero, [0, 0.2], [1, 0]);
-  const introY = useTransform(hero, [0, 1], ["0%", "-30%"]); // the name lifts a little faster than the page
+  const rowLeft = useTransform(hero, [0, 1], ["0%", "-22%"]);
+  const rowRight = useTransform(hero, [0, 1], ["-12%", "10%"]);
+  const cardY = useTransform(hero, [0, 1], ["0%", "-16%"]);
+  const cardScale = useTransform(hero, [0, 1], [1, 0.9]);
+  const cueFade = useTransform(hero, [0, 0.15], [1, 0]);
 
   // the screen: grows into place as it comes up the page
   const { scrollYProgress: screenRaw } = useScroll({ container: scrollRef, target: screenRef, offset: ["start end", "center center"] });
@@ -80,6 +83,8 @@ export default function Detail({
 
   const words = film.title.toUpperCase().split(" ");
   const starts = words.map((_, i) => words.slice(0, i).join("").length);
+  const phrase = `${label}. ${film.client}. ${film.title}. ${film.year}. `;
+  const tick = `New film · ${film.title} · ${film.client} · ${label} · ${film.year} · ${film.duration} · `;
 
   return (
     <motion.section
@@ -101,13 +106,32 @@ export default function Detail({
       </svg>
 
       <div ref={scrollRef} className={d.scroll} tabIndex={-1}>
-        {/* ================= the still ================= */}
+        {/* ================= the cover ================= */}
         <header ref={heroRef} className={d.hero}>
-          <motion.div className={d.heroMedia} style={reduce ? undefined : { y: heroY, scale: heroScale }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={still} alt="" draggable={false} />
-          </motion.div>
-          <motion.span className={d.heroDim} style={reduce ? undefined : { opacity: heroDim }} aria-hidden="true" />
+          {/* black above, with the film's words in faint rows behind the card */}
+          <div className={d.night} aria-hidden="true">
+            {Array.from({ length: ROWS }, (_, i) => (
+              <motion.div
+                key={i}
+                className={d.row}
+                style={{ marginLeft: `${-((i * 17) % 40)}%`, ...(reduce ? {} : { x: i % 2 ? rowRight : rowLeft }) }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1.4, ease: EASE, delay: reduce ? 0 : 0.35 + i * 0.07 }}
+              >
+                {phrase.repeat(4)}
+              </motion.div>
+            ))}
+          </div>
+
+          {/* along the top of the paper, a slow ticker */}
+          <div className={d.ticker} aria-hidden="true">
+            <div className={d.tickerTrack}>
+              <span>{tick.repeat(4)}</span>
+              <span>{tick.repeat(4)}</span>
+            </div>
+          </div>
+
           <motion.button
             type="button"
             className={d.back}
@@ -121,53 +145,66 @@ export default function Detail({
             </span>
             <span>All films</span>
           </motion.button>
-        </header>
 
-        {/* ================= the paper ================= */}
-        <div className={d.paper}>
-          <motion.div className={d.intro} style={reduce ? undefined : { y: introY }}>
-            <motion.span
-              className={d.kicker}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.9, ease: EASE, delay: reduce ? 0 : 0.35 }}
+          {/* the card, across the two */}
+          <motion.div className={d.coverWrap} style={reduce ? undefined : { y: cardY, scale: cardScale }}>
+            <motion.div
+              className={d.cover}
+              initial={reduce ? false : { y: 90, opacity: 0, rotate: -1.5 }}
+              animate={{ y: 0, opacity: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 60, damping: 15, delay: 0.25 }}
             >
-              {label}
-            </motion.span>
-            <h2 className={d.title} aria-label={film.title}>
-              {words.map((w, wi) => (
-                <span key={wi} className={d.word} aria-hidden="true">
-                  {[...w].map((ch, ci) => (
-                    <motion.span
-                      key={ci}
-                      className={d.letter}
-                      initial={reduce ? false : { y: "108%" }}
-                      animate={{ y: "0%" }}
-                      transition={{ duration: 1, ease: EASE, delay: 0.42 + (starts[wi] + ci) * 0.03 }}
-                    >
-                      {ch}
-                    </motion.span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className={d.coverImg} src={still} alt="" draggable={false} />
+              <span className={d.coverShade} aria-hidden="true" />
+              <span className={d.coverType}>
+                <motion.span
+                  className={d.kicker}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.9, ease: EASE, delay: reduce ? 0 : 0.7 }}
+                >
+                  {label}
+                </motion.span>
+                <h2 className={d.title} aria-label={film.title}>
+                  {words.map((w, wi) => (
+                    <span key={wi} className={d.word} aria-hidden="true">
+                      {[...w].map((ch, ci) => (
+                        <motion.span
+                          key={ci}
+                          className={d.letter}
+                          initial={reduce ? false : { y: "108%" }}
+                          animate={{ y: "0%" }}
+                          transition={{ duration: 1, ease: EASE, delay: 0.75 + (starts[wi] + ci) * 0.03 }}
+                        >
+                          {ch}
+                        </motion.span>
+                      ))}
+                    </span>
                   ))}
-                </span>
-              ))}
-            </h2>
-            <motion.button
-              type="button"
-              className={d.cue}
-              onClick={toScreen}
-              style={reduce ? undefined : { opacity: cueFade }}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 220, damping: 18, delay: reduce ? 0 : 0.9 }}
-              aria-label="Down to the film"
-            >
-              <span className={d.cueArrow} aria-hidden="true">
-                ↓
+                </h2>
               </span>
-            </motion.button>
+            </motion.div>
           </motion.div>
 
-          {/* ================= the screen ================= */}
+          <motion.button
+            type="button"
+            className={d.cue}
+            onClick={toScreen}
+            style={reduce ? undefined : { opacity: cueFade }}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 220, damping: 18, delay: reduce ? 0 : 1.1 }}
+            aria-label="Down to the film"
+          >
+            <span className={d.cueArrow} aria-hidden="true">
+              ↓
+            </span>
+          </motion.button>
+        </header>
+
+        {/* ================= the screen ================= */}
+        <div className={d.paper}>
           <div ref={screenRef} className={d.screenWrap}>
             <motion.button
               type="button"
