@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { motion, useScroll, useSpring, useTransform, type Transition } from "framer-motion";
 import { EASE } from "../_shared/chrome";
 import { stillFor, type Project } from "../_shared/data";
+import Credits from "./credits";
 import d from "./detail.module.css";
 
 // ===========================================================================
@@ -18,7 +19,9 @@ import d from "./detail.module.css";
 //   · a round cue that bobs, fades as you go, and takes you down;
 //   · the screen: the film in an old television's curved glass, growing into
 //     place as you reach it while the picture settles inside, and "Watch
-//     behind the scenes" to open it in the player.
+//     behind the scenes" to open it in the player;
+//   · the sign-off: the lights go down and the end credits roll on an old
+//     4:3 set (credits.tsx).
 // Back (or Esc) lets the page slide down again.
 // ===========================================================================
 
@@ -237,6 +240,9 @@ export default function Detail({
             </motion.button>
           </div>
         </div>
+
+        {/* ================= the end credits ================= */}
+        <Credits film={film} label={label} container={scrollRef} reduce={reduce} />
       </div>
     </motion.section>
   );

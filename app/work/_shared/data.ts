@@ -24,7 +24,46 @@ export type Project = Clip & {
   line: string;
   /** a few sentences for the film's own page */
   synopsis: string;
+  /** the end credits, in groups (a group's rows: a role and its names; no role = names alone) */
+  credits?: CreditGroup[];
 };
+
+export type CreditGroup = { heading: string; rows: { role?: string; names: string[] }[] };
+
+// ---------------------------------------------------------------------------
+// TALISMAN — Rolls-Royce Kyiv × Oberig Jewelry. "Oberig" is Ukrainian for a
+// talisman; so is the Spirit of Ecstasy on the bonnet. The credits are the
+// production's own, as supplied. (Year and runtime are placeholders, and the
+// footage stands in until the film's own is in /public/clips.)
+// ---------------------------------------------------------------------------
+const TALISMAN_CREDITS: CreditGroup[] = [
+  { heading: "Rolls-Royce Kyiv", rows: [{ names: ["Olena Tareieva", "Valentyna Tkalenko"] }] },
+  {
+    heading: "16×9",
+    rows: [
+      { role: "Art director", names: ["Arkadiy Pasichnyk"] },
+      { role: "Director", names: ["Mykyta Kazmiruk"] },
+      { role: "Screenplay", names: ["Mykyta Kazmyruk"] },
+      { role: "Producers", names: ["Dmytro Kovalenko", "Illia Shelpuk", "Anna Bondarenko"] },
+      { role: "DOP", names: ["Volodymyr Kalishchuk"] },
+      { role: "Sound", names: ["Andriy Kozubovsky"] },
+      { role: "Gaffer", names: ["Roman Panchenko"] },
+      { role: "Production designer", names: ["Dasha Novikova"] },
+      { role: "Directors", names: ["Borys Mysharin", "Tymofiy Chepurniy"] },
+      { role: "Stylist", names: ["Natasha Shkurkina"] },
+      { role: "Makeup artist", names: ["Oleksandra Zelenska"] },
+      { role: "Actress", names: ["Masha Tsukanova"] },
+      { role: "Location manager", names: ["Heorgiy Yehorov"] },
+      { role: "Editing", names: ["Saveliy Zhukov"] },
+      { role: "Motion graphics", names: ["Vlad Khvyshchuk"] },
+      { role: "Color", names: ["Anri Adler"] },
+      { role: "Design", names: ["Roman Honcharenko"] },
+      { role: "Backstage", names: ["Illia Chumak"] },
+      { role: "Equipment", names: ["Zodiac Film"] },
+    ],
+  },
+  { heading: "Oberig Jewelry", rows: [{ names: ["Product line"] }] },
+];
 
 const P = (
   n: number,
@@ -42,12 +81,15 @@ const P = (
 };
 
 export const PROJECTS: Project[] = [
+  {
+    ...P(11, "Talisman", "Rolls-Royce Kyiv", "commercial", 2025, "1:00", "Rolls-Royce Kyiv × Oberig Jewelry", "#c9a4ff",
+      "Two talismans, one evening in Kyiv: the Spirit of Ecstasy on the bonnet, and an Oberig piece at the throat. A film about the things we carry close, made for Rolls-Royce Kyiv with Oberig Jewelry."),
+    credits: TALISMAN_CREDITS,
+  },
   P(4, "Night run", "Norrland", "commercial", 2026, "0:36", "A city after dark, one runner", "#e1142b",
     "One runner, one city, one night. We followed the light from the waterfront to the empty highway and let the streets set the pace."),
   P(9, "First light", "Tessera", "commercial", 2025, "0:45", "The Meridian, launch film", "#f2c14e",
     "A launch film for the Meridian, built around the first minutes of the morning: the face before the watch, the watch before the day."),
-  P(11, "Skin", "Lumen & Co", "commercial", 2025, "0:20", "A scent, in close-up", "#c9a4ff",
-    "A scent told entirely in close-up. No product shots until the last frame, only skin, breath and the light moving across it."),
   P(13, "Care", "Oko Health", "commercial", 2024, "1:12", "The people behind the ward", "#3cc8ff",
     "Inside the ward, with the people who run it. Shot over four nights, without a script, so the work could speak for itself."),
   P(6, "City of tomorrow", "Kaji", "brand", 2026, "1:05", "Dubai, from the edge of the frame", "#ff7ab8",
@@ -73,6 +115,28 @@ export const PROJECTS: Project[] = [
   P(15, "Sand & time", "Norrland", "documentary", 2024, "1:05", "Dunes, wind and patience", "#c9a4ff",
     "Dunes, wind and patience. A slow documentary about a landscape that rebuilds itself every night."),
 ];
+
+// ---------------------------------------------------------------------------
+// Every film has its own end credits. Talisman's are the production's own;
+// the others are built from each film's details (its client, its year) with
+// the roles credited to the studio — replace each with the film's real
+// credits, in the same shape as TALISMAN_CREDITS, as they come in.
+// ---------------------------------------------------------------------------
+const studioCredits = (p: Project): CreditGroup[] => [
+  { heading: p.client, rows: [{ role: "Client", names: [p.client] }] },
+  {
+    heading: "16×9",
+    rows: [
+      { role: "Direction", names: ["16×9 Studio"] },
+      { role: "Production", names: ["16×9 Studio"] },
+      { role: "Camera & light", names: ["16×9 Studio"] },
+      { role: "Editing & colour", names: ["16×9 Post"] },
+      { role: "Sound", names: ["16×9 Post"] },
+    ],
+  },
+  { heading: "Filmed in", rows: [{ names: [`Dubai, ${p.year}`] }] },
+];
+for (const p of PROJECTS) p.credits ??= studioCredits(p);
 
 export const categoryOf = (id: CategoryId) => CATEGORIES.find((c) => c.id === id)!;
 export const countIn = (id: CategoryId) => PROJECTS.filter((p) => p.category === id).length;
