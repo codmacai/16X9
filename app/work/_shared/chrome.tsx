@@ -31,6 +31,20 @@ export const rootClass = `${styles.root} ${wide.variable}`;
 export function Band({ crumb }: { crumb: string }) {
   const reduce = !!useReducedMotion();
   const [menu, setMenu] = useState(false);
+  // come from the menu's Work folder: its band was already here, so this one doesn't slide in
+  const [arrived] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return sessionStorage.getItem("16x9:from-menu") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem("16x9:from-menu");
+    } catch {}
+  }, []);
   const close = useCallback(() => setMenu(false), []);
 
   useEffect(() => {
@@ -50,7 +64,7 @@ export function Band({ crumb }: { crumb: string }) {
       <motion.header
         className={styles.band}
         data-band="" /* pages measure it to lay out beneath it */
-        initial={{ y: "-100%" }} /* same first frame on server and client; reduced motion just makes it instant */
+        initial={arrived ? false : { y: "-100%" }} /* same first frame on server and client; reduced motion just makes it instant */
         animate={{ y: 0, transition: reduce ? { duration: 0 } : { duration: 1.1, ease: EASE_CINE } }}
       >
         <Link href="/" className={styles.logo} aria-label="16x9 home">

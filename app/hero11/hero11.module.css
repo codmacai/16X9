@@ -650,12 +650,20 @@
   color: var(--paper);
 }
 
-/* the leaving file: black from the clicked folder's edge up to the top */
-.leave {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 50;
-  background: #000;
+/* leaving for a page: the line lifts away under the band */
+.info,
+.lockup {
+  transition:
+    opacity 0.45s var(--ease),
+    transform 0.6s var(--ease);
+}
+
+.leaving .info,
+.leaving .lockup {
+  opacity: 0 !important;
+  transform: translateY(-28px);
+}
+
+.leaving .cursor {
+  display: none;
 }

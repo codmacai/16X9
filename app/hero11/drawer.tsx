@@ -47,25 +47,30 @@ const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.we
 export default function Drawer({ onClose }: { onClose?: () => void }) {
   const reduce = !!useReducedMotion();
   const [hover, setHover] = useState<number | null>(null);
-  const [leaving, setLeaving] = useState<{ top: number } | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const router = useRouter();
   const path = usePathname();
 
-  // a route folder (Work): the folder rises and fills the screen in its own
-  // black, then the page changes underneath; the page lifts the same black away
+  // a route folder (Work): the band stays; the line lifts away and the folders
+  // sink out of sight, and the page that comes in (on the same paper, under the
+  // same band) raises its own line and its own folders in their place
   const enter = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     if (!href.startsWith("/")) return;
     e.preventDefault();
     if (path === href) return onClose?.();
     router.prefetch(href);
     if (reduce) return router.push(href);
-    setLeaving({ top: e.currentTarget.getBoundingClientRect().top });
-    window.setTimeout(() => router.push(href), 900);
+    setLeaving(true);
+    setHover(null);
+    try {
+      sessionStorage.setItem("16x9:from-menu", "1");
+    } catch {}
+    window.setTimeout(() => router.push(href), 720);
   };
 
   return (
     <section
-      className={`${styles.root} ${wide.variable}`}
+      className={`${styles.root} ${wide.variable} ${leaving ? styles.leaving : ""}`}
       aria-label={onClose ? "Menu" : "16x9 — Bringing brands to life"}
       id={onClose ? "hero12-menu" : undefined}
     >
@@ -173,18 +178,10 @@ export default function Drawer({ onClose }: { onClose?: () => void }) {
             hover={hover}
             onHover={setHover}
             onEnter={enter}
+            leaving={leaving}
           />
         ))}
       </nav>
-
-      {leaving && (
-        <motion.div
-          className={styles.leave}
-          initial={{ top: leaving.top }}
-          animate={{ top: 0, transition: { duration: 0.9, ease: EASE_CINE } }}
-          aria-hidden="true"
-        />
-      )}
 
       <EnterCursor show={hover !== null && !leaving} label={hover !== null ? FOLDERS[hover].label : ""} />
     </section>
@@ -202,6 +199,7 @@ function Folder({
   hover,
   onHover,
   onEnter,
+  leaving,
 }: {
   folder: (typeof FOLDERS)[number];
   index: number;
@@ -209,6 +207,7 @@ function Folder({
   hover: number | null;
   onHover: (i: number | null) => void;
   onEnter: (e: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
+  leaving: boolean;
 }) {
   const on = hover === index;
   const away = hover !== null && !on;
@@ -222,8 +221,10 @@ function Folder({
       initial={reduce ? false : { y: "110%" }}
       animate={{
         // pulled up out of the stack; the folders in front of it make way, the ones behind stay put
-        y: on ? "-7vh" : hover !== null && index > hover ? "2.5vh" : 0,
-        transition: on || away ? { type: "spring", stiffness: 140, damping: 20, mass: 0.9 } : { delay: 0.55 + index * 0.14, duration: 1.15, ease: EASE_CINE },
+        y: leaving ? "110%" : on ? "-7vh" : hover !== null && index > hover ? "2.5vh" : 0,
+        transition: leaving
+          ? { duration: 0.62, ease: [0.55, 0, 0.75, 0.15], delay: (2 - index) * 0.05 }
+          : on || away ? { type: "spring", stiffness: 140, damping: 20, mass: 0.9 } : { delay: 0.55 + index * 0.14, duration: 1.15, ease: EASE_CINE },
       }}
       onPointerEnter={(e) => e.pointerType === "mouse" && onHover(index)}
       onPointerLeave={() => onHover(null)}

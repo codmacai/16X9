@@ -127,6 +127,7 @@ export default function FileView({
   const [layer, setLayer] = useState(0); // each page opened slides up over the last
   // where the front card's picture was when it was clicked: its page grows around it
   const [from, setFrom] = useState<DOMRect | null>(null);
+  const [fromLine, setFromLine] = useState(true); // opened from the line, or from "Next film"
   const closeDetail = useCallback(() => {
     setExit("close");
     setDetail(false);
@@ -345,6 +346,7 @@ export default function FileView({
     }
     if (k !== live.current.index) return go(k);
     onCursor(null);
+    setFromLine(true);
     setFrom(focuses.current[k]?.querySelector<HTMLElement>(`.${s.media}`)?.getBoundingClientRect() ?? null);
     setLayer((l) => l + 1);
     setDetail(true);
@@ -461,13 +463,14 @@ export default function FileView({
             label={drawer.label}
             band={geo.band}
             layer={layer}
-            from={from}
+            rect={from}
+            fromLine={fromLine}
             reduce={reduce}
             onClose={closeDetail}
             onNext={() => {
               // the next film's page slides up over this one, and the line follows underneath
               setExit("next");
-              setFrom(null);
+              setFromLine(false);
               setLayer((l) => l + 1);
               go((live.current.index + 1) % n);
             }}

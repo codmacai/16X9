@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { animate, motion, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
 import { EASE } from "./_shared/chrome";
 import { stillFor, type Project } from "./_shared/data";
 import Credits from "./credits";
 import Edge from "./edge";
+import { useHeavyScroll } from "./heavy";
 import d from "./detail.module.css";
 
 // ===========================================================================
@@ -30,8 +31,7 @@ import d from "./detail.module.css";
 // Opened from the line, the page doesn't slide up: the card stays exactly
 // where it was and the page is built around it — the line falls away into
 // the black, the paper rises from the foot of the screen to the card's
-// waist, the words come up behind — and only then does the card settle into
-// its place on the cover. Opened from "Next film", it slides up over the last.
+// waist, the words come up behind. The card never moves or changes size. Opened from "Next film", it slides up over the last.
 // Back (or Esc) lets the page slide down again.
 // ===========================================================================
 
@@ -55,7 +55,8 @@ export default function Detail({
   label,
   band,
   layer,
-  from,
+  rect,
+  fromLine,
   reduce,
   onClose,
   onNext,
@@ -67,8 +68,10 @@ export default function Detail({
   band: number;
   /** stacking: each new page slides up over the last */
   layer: number;
-  /** the front card's picture on screen, when opened from the line */
-  from: DOMRect | null;
+  /** the front card's picture on screen: the cover card takes exactly its size and place */
+  rect: DOMRect | null;
+  /** opened from the line (the page builds around the card), or from "Next film" (it slides up) */
+  fromLine: boolean;
   reduce: boolean;
   onClose: () => void;
   onNext: () => void;
@@ -107,7 +110,6 @@ export default function Detail({
   const rowLeft = useTransform(hero, [0, 1], ["0%", "-22%"]);
   const rowRight = useTransform(hero, [0, 1], ["-12%", "10%"]);
   const cardY = useTransform(hero, [0, 1], ["0%", "-16%"]);
-  const cardScale = useTransform(hero, [0, 1], [1, 0.9]);
   const cueFade = useTransform(hero, [0, 0.15], [1, 0]);
 
   // the screen: grows into place as it comes up the page
@@ -119,29 +121,15 @@ export default function Detail({
   const watchFade = useTransform(screen, [0.55, 1], [0, 1]);
   const watchScale = useTransform(screen, [0.55, 1], [0.7, 1]);
 
-  // opened from the line: the cover card starts exactly on the clicked card,
-  // holds while the page is built around it, then settles into its place
-  const anchored = !!from && !reduce;
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const [anchor] = useState(() => from); // the rect at the moment of the click, kept
-  useLayoutEffect(() => {
-    const el = wrapRef.current;
-    if (!anchor || reduce || !el) return;
-    const to = el.getBoundingClientRect();
-    const sx = anchor.width / to.width;
-    const sy = anchor.height / to.height;
-    const dx = anchor.left + anchor.width / 2 - (to.left + to.width / 2);
-    const dy = anchor.top + anchor.height / 2 - (to.top + to.height / 2);
-    const cover = el.firstElementChild as HTMLElement | null;
-    if (!cover) return;
-    cover.style.transformOrigin = "50% 50%";
-    const a = animate(
-      cover,
-      { x: [dx, 0], y: [dy, 0], scaleX: [sx, 1], scaleY: [sy, 1] },
-      { type: "spring", stiffness: 70, damping: 18, mass: 1, delay: 0.95 }
-    );
-    return () => a.stop();
-  }, [anchor, reduce]);
+  // the cover card is the clicked card: same size, same place, never resized
+  const anchored = fromLine && !!rect && !reduce;
+  const [box] = useState(() => rect); // the card's rect at the moment of the click, kept
+  const coverBox = box
+    ? { left: box.left, top: box.top - band, width: box.width, height: box.height, marginLeft: 0 }
+    : undefined;
+
+  // the page has weight: the wheel sets where it's going, it glides there
+  useHeavyScroll(scrollRef, reduce);
 
   // keyboard scrolling lands on the page
   useEffect(() => {
@@ -244,7 +232,7 @@ export default function Detail({
           </motion.button>
 
           {/* the card, across the two */}
-          <motion.div ref={wrapRef} className={d.coverWrap} style={reduce ? undefined : { y: cardY, scale: cardScale }}>
+          <motion.div className={d.coverWrap} style={reduce ? coverBox : { ...coverBox, y: cardY }}>
             <motion.div
               className={d.cover}
               initial={reduce || anchored ? false : { y: 90, opacity: 0, rotate: -1.5 }}

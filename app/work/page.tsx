@@ -147,7 +147,6 @@ export default function WorkCabinet() {
   return (
     <main className={`${rootClass} ${styles.page}`}>
       <Band crumb="Index" />
-      <Arrival reduce={reduce} />
 
       <section
         ref={sectionRef}
@@ -262,21 +261,5 @@ export default function WorkCabinet() {
       <span className={styles.grain} aria-hidden="true" />
       {player}
     </main>
-  );
-}
-
-/** The menu's Work folder fills the screen in black before the page changes;
- *  here that black lifts away, up past the band, and the cabinet is underneath. */
-function Arrival({ reduce }: { reduce: boolean }) {
-  const [done, setDone] = useState(false);
-  if (done) return null;
-  return (
-    <motion.div
-      className={styles.arrival}
-      initial={{ y: 0 }}
-      animate={{ y: "-100%", transition: reduce ? { duration: 0 } : { delay: 0.1, duration: 1.05, ease: EASE_CINE } }}
-      onAnimationComplete={() => setDone(true)}
-      aria-hidden="true"
-    />
   );
 }

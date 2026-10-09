@@ -401,11 +401,16 @@
   color: var(--paper);
 }
 
-/* the black the menu left on screen, lifting away */
-.arrival {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  background: #000;
-  pointer-events: none;
+/* taken out, the folder opens fully: the tab flattens into the edge and the
+   stock runs out to the sides and down past the foot of the screen */
+.stock {
+  transition:
+    background-color 0.8s var(--ease),
+    clip-path 0.7s var(--ease),
+    inset 0.7s var(--ease);
+}
+
+.folderOut .stock {
+  inset: 0 -40px -100vh;
+  clip-path: polygon(0 0, var(--tx) 0, calc(var(--tx) + 16px) 0, calc(var(--tx) + var(--tw) - 16px) 0, calc(var(--tx) + var(--tw)) 0, 100% 0, 100% 100%, 0 100%);
 }
