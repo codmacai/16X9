@@ -1,0 +1,434 @@
+/* OPENING — who we are: three frames open over the line, then the studio in
+   its own words, read in as you scroll. One pinned screen on paper. */
+
+.opening {
+  position: relative;
+  height: 340vh;
+  height: 340svh;
+  background: var(--noise), var(--paper);
+  color: var(--ink);
+}
+
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: clip;
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--band);
+  transform-origin: 50% 0%;
+}
+
+.info {
+  position: relative;
+  z-index: 5;
+  flex: none;
+  padding: 0 var(--ui);
+}
+
+/* ================= the first screen ================= */
+
+/* everything below the info row; what rises past its hairline goes under it.
+   The line and the windows are laid out in one unit (--u) from the middle of
+   this space, so they keep their places together on any screen. */
+.hero {
+  --u: min(1vw, 1.55svh);
+  --screen: 100%; /* the height of the first screen (held still, the line follows it) */
+  position: relative;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  overflow: clip;
+}
+
+.head {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  font-size: calc(13.4 * var(--u));
+  font-weight: 300;
+  line-height: 0.86;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-align: center;
+  will-change: transform, opacity;
+}
+
+.headLine {
+  display: block;
+}
+
+/* each word is a mask the letters rise out of; it only clips below, so the
+   letters can part as far as they like */
+.headWord {
+  display: inline-block;
+  clip-path: inset(-0.5em -200vw 0 -200vw);
+}
+
+.headWord + .headWord {
+  margin-left: 0.2em;
+}
+
+/* --spread (set by the scroll) moves each letter out from the middle, by
+   --d: how far it stands from the middle of the screen */
+.slot {
+  display: inline-block;
+  transform: translate3d(calc(var(--d) * var(--spread, 0) * 1em), 0, 0);
+  will-change: transform;
+}
+
+.glyph {
+  display: inline-block;
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------------- the windows ---------------- */
+
+.win {
+  position: absolute;
+  z-index: 3;
+  margin: 0;
+  left: calc(50% + var(--x) * var(--u));
+  top: calc(var(--screen) / 2 + var(--y) * var(--u));
+  width: calc(var(--w) * var(--u));
+  will-change: transform;
+}
+
+/* behind the line, which crosses its sky */
+.wide {
+  --x: 4;
+  --y: -4.6;
+  --w: 31;
+  z-index: 1;
+}
+
+.tall {
+  --x: -39.6;
+  --y: -26.2;
+  --w: 13.2;
+}
+
+.arch {
+  --x: -23.6;
+  --y: 4.4;
+  --w: 13;
+}
+
+.lean {
+  position: relative;
+}
+
+.shutter {
+  position: relative;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+.wide .shutter {
+  aspect-ratio: 16 / 9;
+}
+
+.tall .shutter {
+  aspect-ratio: 9 / 16;
+}
+
+.arch .shutter {
+  aspect-ratio: 3 / 4;
+  border-radius: 999px 999px 0 0;
+}
+
+.pic {
+  position: absolute;
+  inset: 0;
+}
+
+/* taller than its frame, so the picture can move inside it */
+.picIn {
+  position: absolute;
+  inset: -9% 0;
+}
+
+.picIn img,
+.picIn video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 1.4s var(--ease);
+}
+
+/* point at a window and its picture leans in */
+@media (hover: hover) {
+  .win:hover .picIn img,
+  .win:hover .picIn video {
+    transform: scale(1.06);
+  }
+}
+
+.caption {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  line-height: 1;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tall .caption {
+  top: 2px;
+  left: calc(100% + 14px);
+}
+
+.arch .caption {
+  top: auto;
+  bottom: 2px;
+  left: calc(100% + 14px);
+}
+
+/* ---------------- the cue ---------------- */
+
+.cue {
+  position: absolute;
+  left: var(--ui);
+  right: var(--ui);
+  bottom: clamp(16px, 3.2vh, 30px);
+  z-index: 4;
+}
+
+.cueIn {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.cueIn > span {
+  opacity: 0.62;
+}
+
+.cueArrow {
+  display: inline-block;
+  margin-left: 6px;
+  font-style: normal;
+  animation: bob 2.6s var(--ease) infinite;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(-2px);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+/* ================= the studio, in its own words ================= */
+
+.say {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  align-content: center;
+  padding: 0 var(--ui);
+  will-change: transform;
+}
+
+.line {
+  --lines: 6;
+  position: relative;
+  margin: 0;
+  font-size: 3.7vw;
+  font-weight: 300;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  text-indent: 18vw;
+  text-wrap: pretty;
+}
+
+/* each word sits in a mask that only clips below; its line rises out of it
+   in turn as --rise (set by the scroll) goes from 0 to 1 */
+.mask {
+  --line: 0;
+  --t: clamp(0, calc((var(--rise, 1) * (var(--lines) + 1.4) - var(--line)) / 1.4), 1);
+  display: inline-block;
+  text-indent: 0;
+  clip-path: inset(-0.4em -0.3em 0 -0.3em);
+}
+
+.rise {
+  display: inline-block;
+  transform: translate3d(0, calc((1 - var(--t)) * (1 - var(--t)) * 115%), 0);
+}
+
+/* a small label set into the indent of the first line */
+.lead {
+  width: 18vw;
+  margin-left: -18vw;
+  vertical-align: 1.1em;
+  font-size: 10.5px;
+  line-height: 1.2;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.lead .rise {
+  opacity: 0.6;
+}
+
+.keep {
+  white-space: nowrap;
+}
+
+/* a small film in the line: a faint slot the picture opens into */
+.chip {
+  position: relative;
+  display: inline-block;
+  width: 1.9em;
+  height: 0.8em;
+  margin: 0 0.04em 0 0.2em;
+  vertical-align: -0.07em;
+  border-radius: 999px;
+  background: rgb(10 10 10 / 0.07);
+}
+
+.chipPic {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.chipIn {
+  position: absolute;
+  inset: 0;
+}
+
+.chipIn img,
+.chipIn video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ================= phones ================= */
+
+@media (max-width: 760px), (max-aspect-ratio: 4/5) {
+  .hero {
+    --u: min(1vw, 0.46svh);
+  }
+
+  /* the line stacks, one word to a row, zig-zagging: WHO left, WE right, ARE left */
+  .head {
+    width: calc(90.8 * var(--u));
+    font-size: calc(33 * var(--u));
+    line-height: 0.84;
+    text-align: left;
+  }
+  .headLine {
+    display: grid;
+  }
+  .headWord:nth-child(2) {
+    justify-self: end;
+  }
+  .headWord + .headWord {
+    margin-left: 0;
+  }
+
+  .wide {
+    --x: -11.5;
+    --y: -12;
+    --w: 57;
+  }
+  .tall {
+    --x: 20.4;
+    --y: -78.6;
+    --w: 25;
+  }
+  .arch {
+    --x: -45.4;
+    --y: 36;
+    --w: 26;
+  }
+  .tall .caption {
+    left: auto;
+    right: calc(100% + 12px);
+  }
+  .wide .caption {
+    top: 4px;
+    left: auto;
+    right: calc(100% + 12px);
+  }
+
+  .line {
+    font-size: min(8vw, 4.4svh);
+    line-height: 1.1;
+    text-indent: 0;
+  }
+  .lead {
+    display: block;
+    width: auto;
+    margin: 0 0 22px;
+  }
+}
+
+/* ================= held still: the first screen, then the line ================= */
+
+.still {
+  height: auto;
+}
+
+.still .stage {
+  position: relative;
+  height: auto;
+  overflow: visible;
+}
+
+.still .frame {
+  position: relative;
+  inset: auto;
+}
+
+.still .hero {
+  --screen: calc(100svh - var(--band) - 48px);
+  grid-template-rows: var(--screen) auto;
+}
+
+.still .cue {
+  top: calc(var(--screen) - 44px);
+  bottom: auto;
+}
+
+.still .say {
+  position: relative;
+  inset: auto;
+  padding-top: 10vh;
+  padding-bottom: 22vh;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cueArrow {
+    animation: none;
+  }
+}

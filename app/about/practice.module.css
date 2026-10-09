@@ -1,0 +1,473 @@
+/* PRACTICE — what we do, then how we work. Paper and ink, light wide
+   capitals; the files are black card stock, as in the menu. */
+
+.practice {
+  position: relative;
+  background: var(--noise), var(--paper);
+  color: var(--ink);
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ================= the promise ================= */
+
+.promise {
+  --fs: clamp(30px, 5.4vw, 112px);
+  position: relative;
+  min-height: 120vh;
+  min-height: 120svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: calc(var(--band) + 10svh) var(--ui) 14svh;
+}
+
+.lead {
+  position: relative;
+}
+
+/* the label sits in the first line's indent, on its capitals */
+.kicker {
+  position: absolute;
+  top: calc(var(--fs) * 0.18 - 3px);
+  left: 0;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.line {
+  margin: 0;
+  font-size: var(--fs);
+  font-weight: 300;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  text-indent: 24vw;
+}
+
+.word {
+  display: inline-block;
+  text-indent: 0;
+  white-space: nowrap;
+}
+
+.wordText {
+  position: relative;
+  display: inline-block;
+}
+
+/* the marker: a block of ink over the word, paper letters in it, cut back
+   from the right until the pass reaches it. It reaches past the word into
+   the spaces, so a phrase reads as one stroke. */
+.ink {
+  position: absolute;
+  top: -0.02em;
+  bottom: -0.03em;
+  left: -0.13em;
+  right: -0.13em;
+  padding: 0.02em 0.13em 0.03em;
+  background: var(--ink);
+  color: var(--paper);
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ================= how we work: the held screen ================= */
+
+.how {
+  position: relative;
+  height: 320vh;
+  height: 320svh;
+}
+
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--band);
+  overflow: clip;
+}
+
+/* how we work · the count, over a hairline */
+.head {
+  position: relative;
+  z-index: 3;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 var(--ui);
+  padding: clamp(12px, 1.9vh, 20px) 0;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.18;
+}
+
+.headLabel {
+  margin: 0;
+  font: inherit;
+  opacity: 0.62;
+}
+
+.count {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.62;
+}
+
+.count i {
+  font-style: normal;
+  margin: 0 0.9em;
+  opacity: 0.5;
+}
+
+.countSlot {
+  display: inline-block;
+  height: 1.2em;
+  line-height: 1.2em;
+  overflow: clip;
+}
+
+.countReel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------------- the giant name ---------------- */
+
+.giant {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  margin: clamp(14px, 3vh, 34px) var(--ui) 0;
+  font-size: 15.2vw;
+  font-weight: 300;
+  line-height: 0.8;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.giantTrack {
+  display: grid;
+  width: max-content;
+}
+
+.name {
+  grid-area: 1 / 1;
+  display: flex;
+  white-space: nowrap;
+  margin-left: -0.055em; /* the M's stem on the gutter */
+}
+
+/* each letter's slot only clips above and below: it rolls through it */
+.slot {
+  display: block;
+  overflow-x: visible;
+  overflow-y: clip;
+  padding: 0.05em 0 0.01em;
+}
+
+.glyph {
+  display: block;
+}
+
+/* ---------------- below it: the file and the points ---------------- */
+
+.body {
+  position: relative;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 34vw 1fr;
+  column-gap: 8vw;
+  padding: clamp(18px, 4vh, 44px) var(--ui) 0;
+  min-height: 0;
+}
+
+.files {
+  position: relative;
+}
+
+.folder {
+  --th: clamp(30px, 4.2vh, 40px); /* tab height */
+  --tw: min(52%, 220px); /* tab width */
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: calc(100% + 18svh); /* runs on past the foot of the screen */
+  will-change: transform;
+  transform-origin: 50% 0%;
+}
+
+/* black stock, cut with the tab */
+.stock {
+  --tx: calc(var(--tab) * (100% - var(--tw)));
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(
+    0 var(--th),
+    var(--tx) var(--th),
+    calc(var(--tx) + 14px) 0,
+    calc(var(--tx) + var(--tw) - 14px) 0,
+    calc(var(--tx) + var(--tw)) var(--th),
+    100% var(--th),
+    100% 100%,
+    0 100%
+  );
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.035 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    #000;
+}
+
+.tab {
+  position: absolute;
+  top: 0;
+  left: calc(var(--tab) * (100% - var(--tw)));
+  width: var(--tw);
+  height: var(--th);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 24px 0;
+  color: var(--paper);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tabNo {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+}
+
+.window {
+  position: absolute;
+  top: calc(var(--th) + 10px);
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #000;
+}
+
+/* taller than the window, so it can drift inside it */
+.pic {
+  position: absolute;
+  inset: -7% 0;
+  display: block;
+}
+
+.dim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+}
+
+.pic img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---------------- the points ---------------- */
+
+.pillars {
+  position: relative;
+  display: grid;
+}
+
+/* the points at the top of the column, the pillar's line at its foot */
+.pillar {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: clamp(28px, 8vh, 80px);
+}
+
+.points {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.point {
+  overflow: clip;
+  padding: 0.12em 0 0.06em;
+  font-size: clamp(20px, 2.45vw, 46px);
+  font-weight: 300;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.point + .point {
+  margin-top: clamp(6px, 1.4vh, 16px);
+}
+
+.pointIn {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(14px, 2vw, 32px);
+}
+
+.pointNo {
+  flex: none;
+  padding-top: 0.55em;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+}
+
+.sumMask {
+  margin: auto 0 0;
+  overflow: clip;
+  padding: 0.1em 0 0.15em calc(11px * 2.6 + clamp(14px, 2vw, 32px));
+}
+
+.sum {
+  display: block;
+  max-width: 19em;
+  font-size: clamp(17px, 1.75vw, 32px);
+  font-weight: 300;
+  line-height: 1.24;
+  letter-spacing: -0.01em;
+}
+
+/* ================= reduced motion: both pillars, laid out ================= */
+
+.howStill {
+  padding: var(--band) 0 12svh;
+}
+
+.stillPillar {
+  padding-top: 8svh;
+}
+
+.stillName {
+  margin: 0 var(--ui);
+  font-size: 11.4vw;
+  font-weight: 300;
+  line-height: 0.86;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.howStill .body {
+  height: 70svh;
+}
+
+.howStill .files {
+  overflow: hidden;
+}
+
+.howStill .folder {
+  height: 100%;
+}
+
+/* ================= phones ================= */
+
+@media (max-width: 760px) {
+  .promise {
+    --fs: 8.4vw;
+    min-height: 110svh;
+    padding-top: calc(var(--band) + 8svh);
+  }
+
+  .kicker {
+    position: static;
+    margin: 0 0 22px;
+  }
+
+  .line {
+    text-indent: 0;
+    line-height: 1.1;
+  }
+
+  .giant {
+    font-size: 23vw;
+    margin-top: 18px;
+  }
+
+  .body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    padding-top: 20px;
+  }
+
+  .pillars {
+    grid-row: 1;
+  }
+
+  .files {
+    grid-row: 2;
+    margin-top: 26px;
+  }
+
+  .folder {
+    --tw: 58%;
+  }
+
+  .point {
+    font-size: 5.3vw;
+  }
+
+  .point + .point {
+    margin-top: 4px;
+  }
+
+  .pointNo {
+    padding-top: 0.42em;
+    font-size: 9.5px;
+  }
+
+  .pillar {
+    padding-bottom: 0;
+  }
+
+  .sumMask {
+    margin-top: 16px;
+    padding-left: calc(9.5px * 2.6 + 14px);
+  }
+
+  .sum {
+    font-size: 16px;
+  }
+
+  .stillName {
+    font-size: 11.6vw;
+  }
+}
