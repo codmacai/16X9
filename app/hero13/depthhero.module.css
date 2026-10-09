@@ -470,6 +470,64 @@
     text-shadow: 0 2px 18px rgb(0 0 0 / 0.6);
   }
 
+  /* the second brand, under the tagline: a small paper pill */
+  .sister {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px 9px 18px;
+    border: 1px solid rgb(247 242 238 / 0.35);
+    border-radius: 999px;
+    color: var(--paper);
+    font-family: var(--font-wide, "Archivo"), var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+    font-size: 10.5px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    text-decoration: none;
+    pointer-events: auto;
+    transition:
+      background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+      color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .sisterAlso {
+    opacity: 0.6;
+  }
+
+  .sisterName {
+    font-weight: 600;
+    letter-spacing: 0.16em;
+  }
+
+  .sisterArrow {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--paper);
+    color: var(--ink, #0a0a0a);
+    letter-spacing: 0;
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .sister:hover,
+  .sister:focus-visible {
+    background: var(--paper);
+    border-color: var(--paper);
+    color: var(--ink, #0a0a0a);
+    outline: none;
+  }
+
+  .sister:hover .sisterArrow,
+  .sister:focus-visible .sisterArrow {
+    background: var(--ink, #0a0a0a);
+    color: var(--paper);
+    transform: rotate(45deg);
+  }
+
   /* phones: the first line breaks so the heading can stay big */
   @media (max-width: 640px) {
     .headTitle {

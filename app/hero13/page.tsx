@@ -35,7 +35,9 @@ import styles from "./depthhero.module.css";
 // ===========================================================================
 const MARK_SUB = "& BEYOND"; // tiny tag on the same line as the mark, cut into the card
 const HEADLINE = ["Bringing brands", "to life"];
-const SUBHEAD = ["Turn target audience into", "visitors"]; // two lines, as set
+const SUBHEAD = ["Stories beyond fame"];
+// the second brand, linked under the tagline (its address goes here once it's live)
+const SISTER = { name: "19X6", href: "#19x6" };
 
 // Inter Tight: a Swiss, International-Style grotesk. Loaded for hero 7 only (it
 // overrides --font-sans inside this section), so the other heroes keep Archivo.
@@ -569,13 +571,14 @@ function Heading({
   const base = reduce ? 0 : first ? LEAVE.headAt : 0;
   const out = { opacity: 0, transition: { duration: reduce ? 0 : 0.35, ease: EASE_CINE } };
   return (
-    <div className={styles.head} aria-hidden="true">
+    <div className={styles.head}>
       <motion.span
         className={styles.headShade}
         initial={{ opacity: 0 }}
         animate={show ? { opacity: 1, transition: { duration: 1.6, ease: EASE } } : out}
       />
       <motion.p
+        aria-hidden="true"
         className={styles.headTitle}
         initial={reduce ? false : { opacity: 0, y: 12 }}
         animate={show ? { opacity: 1, y: 0, transition: { delay: base, duration: 1.3, ease: EASE } } : out}
@@ -587,6 +590,7 @@ function Heading({
         ))}
       </motion.p>
       <motion.p
+        aria-hidden="true"
         className={styles.headTag}
         initial={reduce ? false : { opacity: 0, y: 8 }}
         animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.3), duration: 1.2, ease: EASE } } : out}
@@ -595,6 +599,21 @@ function Heading({
           <span key={l}>{l}</span>
         ))}
       </motion.p>
+      {/* the second brand */}
+      <motion.a
+        href={SISTER.href}
+        className={styles.sister}
+        style={show ? undefined : { pointerEvents: "none" }}
+        tabIndex={show ? 0 : -1}
+        initial={reduce ? false : { opacity: 0, y: 8 }}
+        animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.55), duration: 1.2, ease: EASE } } : out}
+      >
+        <span className={styles.sisterAlso}>Also from us</span>
+        <span className={styles.sisterName}>{SISTER.name}</span>
+        <span className={styles.sisterArrow} aria-hidden="true">
+          ↗
+        </span>
+      </motion.a>
     </div>
   );
 }
