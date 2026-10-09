@@ -30,7 +30,7 @@ const FOLDERS = [
 const HERO = {
   studio: "16X9 — Video production studio",
   place: "Dubai, United Arab Emirates",
-  headline: ["Bringing brands", "to life"],
+  headline: ["Stories beyond", "the frame"],
   line: "Films, campaigns and content for brands that want to be seen — and remembered.",
   reel: "/clips/clip-10.mp4", // the film playing inside the headline
 };
@@ -71,7 +71,7 @@ export default function Drawer({ onClose }: { onClose?: () => void }) {
   return (
     <section
       className={`${styles.root} ${wide.variable} ${leaving ? styles.leaving : ""}`}
-      aria-label={onClose ? "Menu" : "16x9 — Bringing brands to life"}
+      aria-label={onClose ? "Menu" : "16x9 — Stories beyond the frame"}
       id={onClose ? "hero12-menu" : undefined}
     >
       {/* ================= the top bar ================= */}

@@ -34,8 +34,8 @@ import styles from "./depthhero.module.css";
 // COPY
 // ===========================================================================
 const MARK_SUB = "& BEYOND"; // tiny tag on the same line as the mark, cut into the card
-const HEADLINE = ["Bringing brands", "to life"];
-const SUBHEAD = ["Stories beyond fame"];
+const HEADLINE = ["Stories beyond", "the frame"];
+const SUBHEAD: string[] = []; // no line under the heading: the heading says it
 // the second brand, linked under the tagline (its address goes here once it's live)
 const SISTER = { name: "19X6", href: "#19x6" };
 
@@ -589,16 +589,18 @@ function Heading({
           </span>
         ))}
       </motion.p>
-      <motion.p
-        aria-hidden="true"
-        className={styles.headTag}
-        initial={reduce ? false : { opacity: 0, y: 8 }}
-        animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.3), duration: 1.2, ease: EASE } } : out}
-      >
-        {tagline.map((l) => (
-          <span key={l}>{l}</span>
-        ))}
-      </motion.p>
+      {tagline.length > 0 && (
+        <motion.p
+          aria-hidden="true"
+          className={styles.headTag}
+          initial={reduce ? false : { opacity: 0, y: 8 }}
+          animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.3), duration: 1.2, ease: EASE } } : out}
+        >
+          {tagline.map((l) => (
+            <span key={l}>{l}</span>
+          ))}
+        </motion.p>
+      )}
       {/* the second brand */}
       <motion.a
         href={SISTER.href}
@@ -1167,7 +1169,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
       <div className={styles.copy}>
         <h1 className={styles.sr}>
-          {mark} {MARK_SUB}. {HEADLINE.join(" ")}. {SUBHEAD.join(" ")}.
+          {mark} {MARK_SUB}. {HEADLINE.join(" ")}.
         </h1>
         <Heading
           lines={HEADLINE}
