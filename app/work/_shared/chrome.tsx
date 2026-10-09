@@ -28,7 +28,7 @@ export const rootClass = `${styles.root} ${wide.variable}`;
 // ---------------------------------------------------------------------------
 // BAND — logo, where you are, "Let's talk", the burger
 // ---------------------------------------------------------------------------
-export function Band({ crumb }: { crumb: string }) {
+export function Band({ crumb, section = "Work" }: { crumb: string; section?: string }) {
   const reduce = !!useReducedMotion();
   const [menu, setMenu] = useState(false);
   // come from the menu's Work folder: its band was already here, so this one doesn't slide in
@@ -72,7 +72,7 @@ export function Band({ crumb }: { crumb: string }) {
           <img src={LOGO_SRC} alt="16x9" />
         </Link>
         <span className={styles.crumb}>
-          <span>Work</span>
+          <span>{section}</span>
           <i aria-hidden="true">/</i>
           <span>{crumb}</span>
         </span>

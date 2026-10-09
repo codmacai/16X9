@@ -23,7 +23,7 @@ const wide = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wid
 const LOGO_SRC = "/logo.png";
 const FOLDERS = [
   { no: "01", label: "Work", line: "Films · Campaigns · Content", href: "/work", poster: "/hero11/work.webp", tab: 0.45 },
-  { no: "02", label: "About", line: "The studio · The people", href: "#about", poster: "/hero11/about.webp", tab: 0.68 },
+  { no: "02", label: "About", line: "The studio · The people", href: "/about", poster: "/hero11/about.webp", tab: 0.68 },
   { no: "03", label: "Services", line: "Production · Post · Strategy", href: "#services", poster: "/hero11/services.webp", tab: 0.91 },
 ] as const;
 

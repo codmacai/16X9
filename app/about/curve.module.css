@@ -1,0 +1,9 @@
+.curve {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% - 1px);
+  width: 100%;
+  display: block;
+  pointer-events: none;
+}
