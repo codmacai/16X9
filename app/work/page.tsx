@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { motion, useReducedMotion, type Transition } from "framer-motion";
 import { Band, EASE, EASE_CINE, EnterCursor, Info, rootClass, Still, usePlayer } from "./_shared/chrome";
-import { CATEGORIES, PROJECTS, stillFor } from "./_shared/data";
+import { CATEGORIES, PROJECTS, posterFor } from "./_shared/data";
 import FileView, { type Drawer } from "./file-view";
 import styles from "./cabinet.module.css";
 
@@ -153,10 +153,10 @@ export default function WorkCabinet() {
         className={`${styles.sheet} ${open && !open.closing ? styles.sheetOut : ""}`}
         aria-label="Work"
       >
-        <Info left="16X9 — Selected work" centre={`${LIST.length} films · ${ORDER.length} drawers`} />
+        <Info left="16X9 — Selected work" />
         <div className={styles.lockup}>
           <h1 className={styles.headline}>
-            {["The work,", "on file"].map((line, i) => (
+            {["Selected", "work"].map((line, i) => (
               <span key={line} className={styles.mask}>
                 <motion.span
                   className={styles.line}
@@ -173,8 +173,7 @@ export default function WorkCabinet() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0, transition: reduce ? { duration: 0 } : { delay: 1.1, duration: 1.1, ease: EASE } }}
           >
-            Commercials, brand films, fashion, social and documentary. Take a folder out of the drawer to see what&apos;s
-            in it.
+            Commercials, brand films, fashion, social and documentary for brands that want to be seen.
           </motion.p>
         </div>
 
@@ -226,7 +225,7 @@ export default function WorkCabinet() {
                     <span className={styles.labelNo}>{d.films.length}</span>
                   </span>
                   <span className={styles.window}>
-                    <Still src={stillFor(d.films[shown[i]].src)} on={on} />
+                    <Still src={posterFor(d.films[shown[i]])} on={on} />
                     <span className={styles.shade} aria-hidden="true" />
                     <span className={styles.caption}>
                       <span className={styles.title}>{d.label}</span>

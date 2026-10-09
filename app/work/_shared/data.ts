@@ -143,3 +143,8 @@ export const countIn = (id: CategoryId) => PROJECTS.filter((p) => p.category ===
 
 /** 1280×720 still for every film: /clips/clip-01.mp4 -> /clips/stills/clip-01.webp */
 export const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.webp");
+
+// placeholder posters until each film has its own: four, dealt round the films
+const POSTERS = [1, 2, 3, 4].map((n) => `/work/posters/poster-${n}.webp`);
+/** A film's poster (cards, the cover, the screen, the folders). */
+export const posterFor = (p: Project) => POSTERS[PROJECTS.indexOf(p) % POSTERS.length] ?? stillFor(p.src);

@@ -3,7 +3,7 @@
 import { type Ref } from "react";
 import { motion } from "framer-motion";
 import { EASE } from "./_shared/chrome";
-import { stillFor, type Project } from "./_shared/data";
+import { posterFor, type Project } from "./_shared/data";
 import s from "./file.module.css";
 
 // ===========================================================================
@@ -50,7 +50,7 @@ export default function Card({
   onOpen: () => void;
   onHover: (on: boolean) => void;
 }) {
-  const still = stillFor(film.src);
+  const still = posterFor(film);
   const words = film.title.toUpperCase().split(" ");
   const starts = words.map((_, i) => words.slice(0, i).join("").length); // each word's first letter, for the stagger
 

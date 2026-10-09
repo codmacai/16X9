@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
 import { EASE } from "./_shared/chrome";
-import { stillFor, type Project } from "./_shared/data";
+import { posterFor, type Project } from "./_shared/data";
 import Credits from "./credits";
 import Edge from "./edge";
 import { useHeavyScroll } from "./heavy";
@@ -79,7 +79,7 @@ export default function Detail({
 }) {
   const film = films[k];
   const next = films[(k + 1) % films.length];
-  const still = stillFor(film.src);
+  const still = posterFor(film);
   const scrollRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const screenRef = useRef<HTMLDivElement>(null);
@@ -345,7 +345,7 @@ export default function Detail({
           <button type="button" className={d.nextLink} onClick={onNext}>
             <span className={d.nextTitle}>
               <span className={d.nextName}>{next.title}</span>
-              <span className={d.nextReel} style={{ backgroundImage: `url(${stillFor(next.src)})` }} aria-hidden="true" />
+              <span className={d.nextReel} style={{ backgroundImage: `url(${posterFor(next)})` }} aria-hidden="true" />
             </span>
             <span className={d.nextMeta}>
               {next.client} · {next.year} · {next.duration} <i aria-hidden="true">→</i>

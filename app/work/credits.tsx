@@ -25,12 +25,12 @@ import d from "./detail.module.css";
 //     It ends on the 16X9 mark, settling in the middle, and holds there.
 //   · It's one screen tall, and it takes the screen: the first scroll that
 //     brings it in carries it the rest of the way up until it fills the
-//     view, and it holds there until the credits, rolling fast, are over.
-//     The scroll after that carries on to the next section (the roll pauses while it's off
+//     view, and the credits roll there, fast. The next scroll carries on to
+//     the next section, finished or not (the roll pauses while it's off
 //     screen, and plays again from the top if you come back after it ends).
 // ===========================================================================
 
-const SPEED = 420; // px a second: a quick roll; the screen is held until it's over
+const SPEED = 420; // px a second: a quick roll
 const SNAP_S = 1.1; // how long it takes to come up and fill the screen
 const HOLD_MS = 650; // after it lands, the rest of that scroll gesture is spent
 const LOGO_SRC = "/logo.png";
@@ -63,8 +63,7 @@ export default function Credits({
   const y = useMotionValue(4000); // below the screen until it's measured
   const inView = useInView(sectionRef, { root: container, amount: 0.55 });
 
-  const rolling = useRef(false);
-  useSnap(container, sectionRef, reduce, rolling);
+  useSnap(container, sectionRef, reduce);
 
   // light the line passing the middle; the rest wait in the dark
   const light = useCallback((at: number) => {
@@ -114,16 +113,11 @@ export default function Credits({
     const g = geo.current;
     if (y.get() <= g.end + 1) y.set(g.stage); // it had finished: from the top again
     started.current = true;
-    rolling.current = true;
     const run: AnimationPlaybackControls = animate(y, g.end, {
       duration: (y.get() - g.end) / SPEED,
       ease: "linear",
-      onComplete: () => (rolling.current = false),
     });
-    return () => {
-      run.stop();
-      rolling.current = false;
-    };
+    return () => run.stop();
   }, [inView, reduce, y]);
 
   const groups = film.credits ?? [];
@@ -194,8 +188,7 @@ export default function Credits({
 function useSnap(
   container: RefObject<HTMLDivElement | null>,
   sectionRef: RefObject<HTMLElement | null>,
-  reduce: boolean,
-  rolling: RefObject<boolean>
+  reduce: boolean
 ) {
   useEffect(() => {
     const box = container.current;
@@ -234,8 +227,7 @@ function useSnap(
       const now = performance.now();
       const gap = now - lastWheel;
       lastWheel = now;
-      const held = rolling.current && e.deltaY > 0 && Math.abs(top()) < 4; // on it, credits still running
-      if (busy || held || (now < holdUntil && gap < 180)) {
+      if (busy || (now < holdUntil && gap < 180)) {
         e.preventDefault();
         if (!busy) holdUntil = now + 120; // the inertia's still coming: keep spending it
       }
@@ -248,5 +240,5 @@ function useSnap(
       box.removeEventListener("scroll", onScroll);
       box.removeEventListener("wheel", onWheel);
     };
-  }, [container, sectionRef, reduce, rolling]);
+  }, [container, sectionRef, reduce]);
 }

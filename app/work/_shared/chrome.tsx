@@ -128,7 +128,7 @@ const dubaiTime = () =>
     new Date()
   );
 
-export function Info({ left, centre }: { left: string; centre: string }) {
+export function Info({ left, centre }: { left: string; centre?: string }) {
   const reduce = !!useReducedMotion();
   const [time, setTime] = useState("");
   useEffect(() => {
