@@ -366,3 +366,31 @@
     transition: none;
   }
 }
+
+/* ================= the band in paper, as in the menu ================= */
+.band {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.band .logo img {
+  filter: invert(1);
+}
+
+.band .talkArrow {
+  border-color: rgb(10 10 10 / 0.4);
+}
+
+.band .talk:hover .talkArrow {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.band .burger span {
+  background: var(--ink);
+}
+
+.band .burger:focus-visible,
+.band .talk:focus-visible {
+  outline-color: var(--ink);
+}

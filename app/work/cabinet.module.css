@@ -382,3 +382,30 @@
     transition: none;
   }
 }
+
+/* ================= paper on top, black files (the menu's colours) ================= */
+.page {
+  --bg: var(--paper);
+  color: var(--ink);
+}
+
+.sheet {
+  color: var(--ink);
+}
+
+.folder {
+  color: var(--paper);
+}
+
+.tab {
+  color: var(--paper);
+}
+
+/* the black the menu left on screen, lifting away */
+.arrival {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #000;
+  pointer-events: none;
+}

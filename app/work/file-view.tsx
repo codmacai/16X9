@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { animate, AnimatePresence, motion, useMotionValue, type Transition } from "framer-motion";
-import { EASE } from "../_shared/chrome";
-import { type Project } from "../_shared/data";
+import { EASE } from "./_shared/chrome";
+import { type Project } from "./_shared/data";
 import Card from "./card";
 import Detail from "./detail";
 import s from "./file.module.css";
@@ -104,7 +104,6 @@ export default function FileView({
   drawer,
   start,
   reduce,
-  playing,
   onPlay,
   onCursor,
   onClosed,
@@ -113,8 +112,6 @@ export default function FileView({
   /** the film the folder was showing */
   start: number;
   reduce: boolean;
-  /** the player is open over everything */
-  playing: boolean;
   onPlay: (film: Project, el: HTMLElement) => void;
   onCursor: (label: string | null) => void;
   /** the films are back in the folder; this film was in front */
@@ -123,12 +120,13 @@ export default function FileView({
   const films = drawer.films;
   const n = films.length;
   const [nav, setNav] = useState({ index: start, dir: 0 });
-  const [rest, setRest] = useState(start); // where the line came to rest: that film plays
   const [leaving, setLeaving] = useState(false);
   const [detail, setDetail] = useState(false);
   // how a film's page leaves: closed (it slides down), or covered by the next film's (it holds)
   const [exit, setExit] = useState<"close" | "next">("close");
   const [layer, setLayer] = useState(0); // each page opened slides up over the last
+  // where the front card's picture was when it was clicked: its page grows around it
+  const [from, setFrom] = useState<DOMRect | null>(null);
   const closeDetail = useCallback(() => {
     setExit("close");
     setDetail(false);
@@ -203,9 +201,7 @@ export default function FileView({
       const t = clamp(Math.round(to), 0, n - 1);
       setNav((p) => (p.index === t ? p : { index: t, dir: Math.sign(t - p.index) }));
       live.current.index = t;
-      animate(pos, t, reduce ? { duration: 0 } : { ...SNAP, velocity }).then(() => {
-        if (live.current.index === t) setRest(t);
-      });
+      animate(pos, t, reduce ? { duration: 0 } : { ...SNAP, velocity });
     },
     [n, pos, reduce]
   );
@@ -349,6 +345,7 @@ export default function FileView({
     }
     if (k !== live.current.index) return go(k);
     onCursor(null);
+    setFrom(focuses.current[k]?.querySelector<HTMLElement>(`.${s.media}`)?.getBoundingClientRect() ?? null);
     setLayer((l) => l + 1);
     setDetail(true);
   };
@@ -409,7 +406,6 @@ export default function FileView({
                 film={f}
                 label={drawer.label}
                 active={k === index}
-                play={k === index && k === rest && !detail && !playing && !leaving && !reduce}
                 reduce={reduce}
                 delay={booted ? 0 : ENTER_S + 0.5}
                 cardRef={(el) => {
@@ -465,11 +461,13 @@ export default function FileView({
             label={drawer.label}
             band={geo.band}
             layer={layer}
+            from={from}
             reduce={reduce}
             onClose={closeDetail}
             onNext={() => {
               // the next film's page slides up over this one, and the line follows underneath
               setExit("next");
+              setFrom(null);
               setLayer((l) => l + 1);
               go((live.current.index + 1) % n);
             }}

@@ -2,8 +2,8 @@
 
 import { type Ref } from "react";
 import { motion } from "framer-motion";
-import { EASE } from "../_shared/chrome";
-import { stillFor, type Project } from "../_shared/data";
+import { EASE } from "./_shared/chrome";
+import { stillFor, type Project } from "./_shared/data";
 import s from "./file.module.css";
 
 // ===========================================================================
@@ -13,7 +13,7 @@ import s from "./file.module.css";
 // It's drawn twice, one over the other:
 //   · soft — out of focus and in shadow, as the films either side are seen.
 //     Its blur is fixed, so it's worked out once and never again.
-//   · focus — sharp, in colour, playing. FileView sets its opacity every
+//   · focus — sharp, in colour: the poster, never the film. FileView sets its opacity every
 //     frame from how close the card is to the front, so moving along the line
 //     is a focus pull: the film arriving sharpens and lights up, the one
 //     leaving goes soft. Only the focus picture drifts against the move.
@@ -30,7 +30,6 @@ export default function Card({
   film,
   label,
   active,
-  play,
   reduce,
   delay,
   cardRef,
@@ -42,7 +41,6 @@ export default function Card({
   film: Project;
   label: string;
   active: boolean;
-  play: boolean;
   reduce: boolean;
   /** hold the title back this long (while the cards are still rising in) */
   delay: number;
@@ -100,7 +98,6 @@ export default function Card({
           <div ref={artRef} className={s.art}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className={s.still} src={still} alt="" draggable={false} decoding="async" />
-            {play && <video className={s.video} src={film.src} muted loop playsInline autoPlay preload="auto" aria-hidden="true" />}
           </div>
           <span className={s.shade} aria-hidden="true" />
           <span className={s.titleBlock}>

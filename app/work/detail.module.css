@@ -746,3 +746,29 @@
     transition: none;
   }
 }
+
+/* ================= opened from the line =================
+   The page is built around the card: no sheet of its own to slide, each
+   part brings its own ground. */
+.sheet {
+  background: none;
+}
+
+.anchored {
+  box-shadow: none;
+}
+
+/* the paper half of the cover */
+.dawn {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--split);
+  bottom: 0;
+  background: var(--noise), var(--paper);
+  will-change: transform;
+}
+
+.paper {
+  background: var(--noise), var(--paper);
+}

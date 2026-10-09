@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { motion, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
-import { EASE } from "../_shared/chrome";
-import { stillFor, type Project } from "../_shared/data";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { animate, motion, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
+import { EASE } from "./_shared/chrome";
+import { stillFor, type Project } from "./_shared/data";
 import Credits from "./credits";
 import Edge from "./edge";
 import d from "./detail.module.css";
@@ -27,6 +27,11 @@ import d from "./detail.module.css";
 //     themselves (credits.tsx);
 //   · the next film in the drawer, rising over the credits the same way;
 //     click it and its page slides up over this one.
+// Opened from the line, the page doesn't slide up: the card stays exactly
+// where it was and the page is built around it — the line falls away into
+// the black, the paper rises from the foot of the screen to the card's
+// waist, the words come up behind — and only then does the card settle into
+// its place on the cover. Opened from "Next film", it slides up over the last.
 // Back (or Esc) lets the page slide down again.
 // ===========================================================================
 
@@ -50,6 +55,7 @@ export default function Detail({
   label,
   band,
   layer,
+  from,
   reduce,
   onClose,
   onNext,
@@ -61,6 +67,8 @@ export default function Detail({
   band: number;
   /** stacking: each new page slides up over the last */
   layer: number;
+  /** the front card's picture on screen, when opened from the line */
+  from: DOMRect | null;
   reduce: boolean;
   onClose: () => void;
   onNext: () => void;
@@ -111,6 +119,30 @@ export default function Detail({
   const watchFade = useTransform(screen, [0.55, 1], [0, 1]);
   const watchScale = useTransform(screen, [0.55, 1], [0.7, 1]);
 
+  // opened from the line: the cover card starts exactly on the clicked card,
+  // holds while the page is built around it, then settles into its place
+  const anchored = !!from && !reduce;
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [anchor] = useState(() => from); // the rect at the moment of the click, kept
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (!anchor || reduce || !el) return;
+    const to = el.getBoundingClientRect();
+    const sx = anchor.width / to.width;
+    const sy = anchor.height / to.height;
+    const dx = anchor.left + anchor.width / 2 - (to.left + to.width / 2);
+    const dy = anchor.top + anchor.height / 2 - (to.top + to.height / 2);
+    const cover = el.firstElementChild as HTMLElement | null;
+    if (!cover) return;
+    cover.style.transformOrigin = "50% 50%";
+    const a = animate(
+      cover,
+      { x: [dx, 0], y: [dy, 0], scaleX: [sx, 1], scaleY: [sy, 1] },
+      { type: "spring", stiffness: 70, damping: 18, mass: 1, delay: 0.95 }
+    );
+    return () => a.stop();
+  }, [anchor, reduce]);
+
   // keyboard scrolling lands on the page
   useEffect(() => {
     scrollRef.current?.focus({ preventScroll: true });
@@ -131,12 +163,12 @@ export default function Detail({
 
   return (
     <motion.section
-      className={d.sheet}
+      className={`${d.sheet} ${anchored ? d.anchored : ""}`}
       style={{ top: band, zIndex: 5 + layer }}
       role="dialog"
       aria-label={film.title}
       variants={SHEET}
-      initial={reduce ? false : "hidden"}
+      initial={reduce || anchored ? false : "hidden"}
       animate="shown"
       exit="gone"
     >
@@ -153,7 +185,13 @@ export default function Detail({
         {/* ================= the cover ================= */}
         <header ref={heroRef} className={d.hero}>
           {/* black above, with the film's words in faint rows behind the card */}
-          <div className={d.night} aria-hidden="true">
+          <motion.div
+            className={d.night}
+            initial={{ opacity: anchored ? 0 : 1 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, ease: EASE, delay: 0.2 }}
+            aria-hidden="true"
+          >
             {Array.from({ length: ROWS }, (_, i) => (
               <motion.div
                 key={i}
@@ -166,15 +204,30 @@ export default function Detail({
                 {phrase.repeat(4)}
               </motion.div>
             ))}
-          </div>
+          </motion.div>
+
+          {/* the paper half of the cover: rises from the foot of the screen to the card's waist */}
+          <motion.div
+            className={d.dawn}
+            initial={{ y: anchored ? "100%" : "0%" }}
+            animate={{ y: "0%" }}
+            transition={{ type: "spring", stiffness: 60, damping: 16, mass: 1, delay: 0.15 }}
+            aria-hidden="true"
+          />
 
           {/* along the top of the paper, a slow ticker */}
-          <div className={d.ticker} aria-hidden="true">
+          <motion.div
+            className={d.ticker}
+            initial={{ opacity: anchored ? 0 : 1 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, ease: EASE, delay: 0.8 }}
+            aria-hidden="true"
+          >
             <div className={d.tickerTrack}>
               <span>{tick.repeat(4)}</span>
               <span>{tick.repeat(4)}</span>
             </div>
-          </div>
+          </motion.div>
 
           <motion.button
             type="button"
@@ -191,10 +244,10 @@ export default function Detail({
           </motion.button>
 
           {/* the card, across the two */}
-          <motion.div className={d.coverWrap} style={reduce ? undefined : { y: cardY, scale: cardScale }}>
+          <motion.div ref={wrapRef} className={d.coverWrap} style={reduce ? undefined : { y: cardY, scale: cardScale }}>
             <motion.div
               className={d.cover}
-              initial={reduce ? false : { y: 90, opacity: 0, rotate: -1.5 }}
+              initial={reduce || anchored ? false : { y: 90, opacity: 0, rotate: -1.5 }}
               animate={{ y: 0, opacity: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 60, damping: 15, delay: 0.25 }}
             >
@@ -204,7 +257,7 @@ export default function Detail({
               <span className={d.coverType}>
                 <motion.span
                   className={d.kicker}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={anchored ? false : { opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.9, ease: EASE, delay: reduce ? 0 : 0.7 }}
                 >
@@ -217,7 +270,7 @@ export default function Detail({
                         <motion.span
                           key={ci}
                           className={d.letter}
-                          initial={reduce ? false : { y: "108%" }}
+                          initial={reduce || anchored ? false : { y: "108%" }}
                           animate={{ y: "0%" }}
                           transition={{ duration: 1, ease: EASE, delay: 0.75 + (starts[wi] + ci) * 0.03 }}
                         >

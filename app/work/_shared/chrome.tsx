@@ -53,7 +53,7 @@ export function Band({ crumb }: { crumb: string }) {
         initial={{ y: "-100%" }} /* same first frame on server and client; reduced motion just makes it instant */
         animate={{ y: 0, transition: reduce ? { duration: 0 } : { duration: 1.1, ease: EASE_CINE } }}
       >
-        <Link href="/hero13" className={styles.logo} aria-label="16x9 home">
+        <Link href="/" className={styles.logo} aria-label="16x9 home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_SRC} alt="16x9" />
         </Link>

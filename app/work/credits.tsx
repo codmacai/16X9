@@ -9,7 +9,7 @@ import {
   type AnimationPlaybackControls,
   type MotionValue,
 } from "framer-motion";
-import type { Project } from "../_shared/data";
+import type { Project } from "./_shared/data";
 import Edge from "./edge";
 import d from "./detail.module.css";
 
@@ -23,12 +23,16 @@ import d from "./detail.module.css";
 //     pace — the film's title first, then each role over its names — and
 //     only the line passing the middle is lit; the rest wait in the dark.
 //     It ends on the 16X9 mark, settling in the middle, and holds there.
-//   · It's one screen tall: scrolling just carries on to the next section
-//     (the roll pauses while it's off screen, and plays again from the top
-//     if you come back after it has finished).
+//   · It's one screen tall, and it takes the screen: the first scroll that
+//     brings it in carries it the rest of the way up until it fills the
+//     view, and it holds there while the credits run, fast. The next scroll
+//     carries on to the next section (the roll pauses while it's off
+//     screen, and plays again from the top if you come back after it ends).
 // ===========================================================================
 
-const SPEED = 70; // px a second: the pace of a cinema's roll
+const SPEED = 250; // px a second: a quick roll, it holds the screen while it runs
+const SNAP_S = 0.9; // how long it takes to come up and fill the screen
+const HOLD_MS = 650; // after it lands, the rest of that scroll gesture is spent
 const LOGO_SRC = "/logo.png";
 const FOCUS = 0.34; // how far from the middle (a share of the screen's height) a line still catches light
 
@@ -58,6 +62,8 @@ export default function Credits({
   const started = useRef(false);
   const y = useMotionValue(4000); // below the screen until it's measured
   const inView = useInView(sectionRef, { root: container, amount: 0.55 });
+
+  useSnap(container, sectionRef, reduce);
 
   // light the line passing the middle; the rest wait in the dark
   const light = useCallback((at: number) => {
@@ -170,4 +176,62 @@ export default function Credits({
       </motion.div>
     </section>
   );
+}
+
+/**
+ * The first scroll down into the section carries it up to fill the screen and
+ * holds it there; the scroll that comes after that goes on as normal.
+ */
+function useSnap(container: RefObject<HTMLDivElement | null>, sectionRef: RefObject<HTMLElement | null>, reduce: boolean) {
+  useEffect(() => {
+    const box = container.current;
+    const el = sectionRef.current;
+    if (!box || !el || reduce) return;
+    let armed = true; // until it has taken the screen, once per pass
+    let busy = false; // carrying it up, or spending the rest of that gesture
+    let lastWheel = 0;
+    let holdUntil = 0;
+    let run: AnimationPlaybackControls | null = null;
+    const top = () => el.getBoundingClientRect().top - box.getBoundingClientRect().top;
+
+    const snap = () => {
+      armed = false;
+      busy = true;
+      box.style.overflowY = "hidden"; // stops a touch fling where it is
+      run = animate(box.scrollTop, box.scrollTop + top(), {
+        duration: SNAP_S,
+        ease: [0.65, 0, 0.35, 1],
+        onUpdate: (v) => (box.scrollTop = v),
+        onComplete: () => {
+          box.style.overflowY = "";
+          holdUntil = performance.now() + HOLD_MS;
+          busy = false;
+        },
+      });
+    };
+
+    const onScroll = () => {
+      const t = top();
+      if (t >= box.clientHeight) armed = true; // back above it: it can take the screen again
+      if (armed && !busy && t > 2 && t < box.clientHeight * 0.92) snap();
+    };
+    // the wheel: while it's coming up, and for the tail of the same gesture, no scrolling
+    const onWheel = (e: WheelEvent) => {
+      const now = performance.now();
+      const gap = now - lastWheel;
+      lastWheel = now;
+      if (busy || (now < holdUntil && gap < 180)) {
+        e.preventDefault();
+        if (!busy) holdUntil = now + 120; // the inertia's still coming: keep spending it
+      }
+    };
+    box.addEventListener("scroll", onScroll, { passive: true });
+    box.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      run?.stop();
+      box.style.overflowY = "";
+      box.removeEventListener("scroll", onScroll);
+      box.removeEventListener("wheel", onWheel);
+    };
+  }, [container, sectionRef, reduce]);
 }

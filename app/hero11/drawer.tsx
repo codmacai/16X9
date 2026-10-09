@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import { Archivo } from "next/font/google";
 import styles from "./hero11.module.css";
@@ -20,7 +22,7 @@ const wide = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wid
 
 const LOGO_SRC = "/logo.png";
 const FOLDERS = [
-  { no: "01", label: "Work", line: "Films · Campaigns · Content", href: "#work", poster: "/hero11/work.webp", tab: 0.45 },
+  { no: "01", label: "Work", line: "Films · Campaigns · Content", href: "/work", poster: "/hero11/work.webp", tab: 0.45 },
   { no: "02", label: "About", line: "The studio · The people", href: "#about", poster: "/hero11/about.webp", tab: 0.68 },
   { no: "03", label: "Services", line: "Production · Post · Strategy", href: "#services", poster: "/hero11/services.webp", tab: 0.91 },
 ] as const;
@@ -45,6 +47,21 @@ const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.we
 export default function Drawer({ onClose }: { onClose?: () => void }) {
   const reduce = !!useReducedMotion();
   const [hover, setHover] = useState<number | null>(null);
+  const [leaving, setLeaving] = useState<{ top: number } | null>(null);
+  const router = useRouter();
+  const path = usePathname();
+
+  // a route folder (Work): the folder rises and fills the screen in its own
+  // black, then the page changes underneath; the page lifts the same black away
+  const enter = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (!href.startsWith("/")) return;
+    e.preventDefault();
+    if (path === href) return onClose?.();
+    router.prefetch(href);
+    if (reduce) return router.push(href);
+    setLeaving({ top: e.currentTarget.getBoundingClientRect().top });
+    window.setTimeout(() => router.push(href), 900);
+  };
 
   return (
     <section
@@ -58,10 +75,10 @@ export default function Drawer({ onClose }: { onClose?: () => void }) {
         initial={reduce ? false : { y: "-100%" }}
         animate={{ y: 0, transition: { duration: 1.1, ease: EASE_CINE } }}
       >
-        <a href="#top" className={styles.logo} aria-label="16x9 home">
+        <Link href="/" className={styles.logo} aria-label="16x9 home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_SRC} alt="16x9" />
-        </a>
+        </Link>
         <div className={styles.bandEnd}>
           <a href="#contact" className={styles.talk}>
             <span className={styles.talkRoll}>
@@ -155,11 +172,21 @@ export default function Drawer({ onClose }: { onClose?: () => void }) {
             reduce={reduce}
             hover={hover}
             onHover={setHover}
+            onEnter={enter}
           />
         ))}
       </nav>
 
-      <EnterCursor show={hover !== null} label={hover !== null ? FOLDERS[hover].label : ""} />
+      {leaving && (
+        <motion.div
+          className={styles.leave}
+          initial={{ top: leaving.top }}
+          animate={{ top: 0, transition: { duration: 0.9, ease: EASE_CINE } }}
+          aria-hidden="true"
+        />
+      )}
+
+      <EnterCursor show={hover !== null && !leaving} label={hover !== null ? FOLDERS[hover].label : ""} />
     </section>
   );
 }
@@ -174,12 +201,14 @@ function Folder({
   reduce,
   hover,
   onHover,
+  onEnter,
 }: {
   folder: (typeof FOLDERS)[number];
   index: number;
   reduce: boolean;
   hover: number | null;
   onHover: (i: number | null) => void;
+  onEnter: (e: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
 }) {
   const on = hover === index;
   const away = hover !== null && !on;
@@ -187,6 +216,7 @@ function Folder({
   return (
     <motion.a
       href={folder.href}
+      onClick={(e) => onEnter(e, folder.href)}
       className={`${styles.folder} ${on ? styles.folderOn : ""} ${away ? styles.folderAway : ""}`}
       style={{ ["--i" as string]: index, ["--tab" as string]: folder.tab }}
       initial={reduce ? false : { y: "110%" }}

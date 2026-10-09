@@ -1,5 +1,5 @@
-import Showreel from "@/components/showreel";
+import DepthHero from "./hero13/page";
 
 export default function Home() {
-  return <Showreel />;
+  return <DepthHero />;
 }
