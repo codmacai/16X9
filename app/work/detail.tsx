@@ -91,6 +91,10 @@ export default function Detail({
   const speed = useVelocity(scrollY);
   const pull = useTransform(speed, (v) => (reduce ? 0 : Math.min(DRAG.max, Math.max(0, v / DRAG.per))));
   const drag = useSpring(pull, DRAG.spring);
+  // the credits rise on a calmer drag: an over-damped spring on a softly capped
+  // speed, so their edge swells and eases flat as they fill the screen, never wobbling
+  const calmPull = useTransform(speed, (v) => (reduce ? 0 : 34 * Math.tanh(Math.max(0, v) / 1600)));
+  const calmDrag = useSpring(calmPull, { stiffness: 70, damping: 24, mass: 1, restDelta: 0.01 });
 
   // the page above each rising section sinks back as it's covered
   const { scrollYProgress: creditsIn } = useScroll({ container: scrollRef, target: creditsRef, offset: ["start end", "start start"] });
@@ -329,7 +333,7 @@ export default function Detail({
           label={label}
           container={scrollRef}
           sectionRef={creditsRef}
-          drag={drag}
+          drag={calmDrag}
           recede={creditsRecede}
           reduce={reduce}
         />

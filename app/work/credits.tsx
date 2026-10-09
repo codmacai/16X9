@@ -31,7 +31,7 @@ import d from "./detail.module.css";
 // ===========================================================================
 
 const SPEED = 420; // px a second: a quick roll; the screen is held until it's over
-const SNAP_S = 0.9; // how long it takes to come up and fill the screen
+const SNAP_S = 1.1; // how long it takes to come up and fill the screen
 const HOLD_MS = 650; // after it lands, the rest of that scroll gesture is spent
 const LOGO_SRC = "/logo.png";
 const FOCUS = 0.34; // how far from the middle (a share of the screen's height) a line still catches light
@@ -214,7 +214,7 @@ function useSnap(
       box.style.overflowY = "hidden"; // stops a touch fling where it is
       run = animate(box.scrollTop, box.scrollTop + top(), {
         duration: SNAP_S,
-        ease: [0.65, 0, 0.35, 1],
+        ease: [0.22, 1, 0.36, 1], // leaves at the scroll's own pace and glides in: no jolt
         onUpdate: (v) => (box.scrollTop = v),
         onComplete: () => {
           box.style.overflowY = "";
