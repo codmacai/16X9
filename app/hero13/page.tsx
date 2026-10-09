@@ -36,8 +36,8 @@ import styles from "./depthhero.module.css";
 const MARK_SUB = "& BEYOND"; // tiny tag on the same line as the mark, cut into the card
 const HEADLINE = ["Stories beyond", "the frame"];
 const SUBHEAD: string[] = []; // no line under the heading: the heading says it
-// the second brand, linked under the tagline (its address goes here once it's live)
-const SISTER = { name: "19X6", href: "#19x6" };
+// the second brand, linked under the heading
+const SISTER = { name: "9X16", href: "https://9x16.studio" };
 
 // Inter Tight: a Swiss, International-Style grotesk. Loaded for hero 7 only (it
 // overrides --font-sans inside this section), so the other heroes keep Archivo.
@@ -102,7 +102,10 @@ const tilesPerLane = (vw: number, vh: number, lanes: number, gap: number) =>
 // Hover feel: how far the film turns toward the pointer (deg), how far it comes
 // forward, and how quickly it eases there (per second). Only a film you wait on
 // for INTENT_MS starts loading its video.
-const TILT = { x: 9, y: 11, scale: 1.06, ease: 9 };
+const TILT = { x: 14, y: 18, scale: 1.08, ease: 7 };
+// while a film is hovered it never sits still: it sways in a slow orbit (deg),
+// on top of turning toward the pointer, so it reads like a print turned in the hand
+const SWAY = { x: 3.2, y: 4.5, z: 1.4, speed: 1.35 };
 const INTENT_MS = 160;
 const LAMP_RES = 8; // the lamp is drawn at 1/8 of the screen and stretched
 /** The baked black-and-white still: /clips/clip-01.mp4 -> /clips/posters-gray/clip-01.webp */
@@ -931,7 +934,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     type Tilt = {
       glare: HTMLElement | null;
       on: boolean;
-      rx: number; ry: number; s: number; gx: number; gy: number; // current
+      ph: number; // the sway's phase
+      rx: number; ry: number; rz: number; s: number; gx: number; gy: number; // current
       trx: number; try: number; tgx: number; tgy: number; // target
     };
     const tilts = new Map<HTMLElement, Tilt>();
@@ -1003,7 +1007,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         tilts.set(el, {
           glare,
           on: true,
-          rx: 0, ry: 0, s: 1, gx: 0.5, gy: 0.5,
+          ph: 0,
+          rx: 0, ry: 0, rz: 0, s: 1, gx: 0.5, gy: 0.5,
           trx: 0, try: 0, tgx: 0.5, tgy: 0.5,
         });
       }
@@ -1075,12 +1080,18 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       const k = 1 - Math.exp(-dt * TILT.ease);
       tilts.forEach((t, el) => {
         const on = t.on && !reduce;
-        t.rx += ((on ? t.trx : 0) - t.rx) * k;
-        t.ry += ((on ? t.try : 0) - t.ry) * k;
+        // the sway grows in as it's picked up and dies away as it's let go
+        if (on) t.ph += dt * SWAY.speed;
+        const sx = on ? Math.sin(t.ph * 1.3) * SWAY.x : 0;
+        const sy = on ? Math.cos(t.ph) * SWAY.y : 0;
+        const sz = on ? Math.sin(t.ph * 0.8) * SWAY.z : 0;
+        t.rx += ((on ? t.trx + sx : 0) - t.rx) * k;
+        t.ry += ((on ? t.try + sy : 0) - t.ry) * k;
+        t.rz += (sz - t.rz) * k;
         t.s += ((on ? TILT.scale : 1) - t.s) * k;
         t.gx += (t.tgx - t.gx) * k;
         t.gy += (t.tgy - t.gy) * k;
-        if (!t.on && Math.abs(t.rx) < 0.01 && Math.abs(t.ry) < 0.01 && Math.abs(t.s - 1) < 0.0003) {
+        if (!t.on && Math.abs(t.rx) < 0.01 && Math.abs(t.ry) < 0.01 && Math.abs(t.rz) < 0.01 && Math.abs(t.s - 1) < 0.0003) {
           el.style.transform = "";
           el.style.willChange = "";
           if (t.glare) {
@@ -1090,7 +1101,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           tilts.delete(el);
           return;
         }
-        el.style.transform = `perspective(900px) rotateX(${t.rx.toFixed(2)}deg) rotateY(${t.ry.toFixed(2)}deg) scale(${t.s.toFixed(4)})`;
+        el.style.transform = `perspective(900px) rotateX(${t.rx.toFixed(2)}deg) rotateY(${t.ry.toFixed(2)}deg) rotateZ(${t.rz.toFixed(2)}deg) scale(${t.s.toFixed(4)})`;
         if (t.glare)
           t.glare.style.transform = `translate3d(${((t.gx - 0.5) * 62.5).toFixed(2)}%, ${((t.gy - 0.5) * 62.5).toFixed(2)}%, 0)`;
       });
