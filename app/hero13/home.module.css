@@ -1,0 +1,775 @@
+/* THE HOME — the index on the white, and the screening rooms. One typeface
+   (Archivo), ink on the paper, small spaced capitals for the labels. */
+
+.page {
+  --paper: #f6f4f0;
+  --ink: #0c0c0c;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ui: clamp(18px, 2.6vw, 40px); /* the margin round the screen */
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  min-height: 560px;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+  font-stretch: 108%;
+  font-variation-settings: "wdth" 108;
+  font-weight: 400;
+  text-transform: uppercase;
+  -webkit-font-smoothing: antialiased;
+}
+
+  .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  
+
+  /* ================= The index: the white page over the (sleeping) wall ================= */
+  .stage {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    overflow: hidden;
+    background: var(--paper);
+  }
+
+  /* a film in each format, centred behind the line; only opacity changes */
+  .film {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+    overflow: hidden;
+    background: #0c0c0c;
+    opacity: 0;
+    transition: opacity 0.45s cubic-bezier(0.33, 0, 0.2, 1);
+    pointer-events: none;
+  }
+
+  .film video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .filmOn {
+    opacity: 1;
+  }
+
+  .film_16by9 {
+    width: min(68vw, calc(64vh * 16 / 9));
+    aspect-ratio: 16 / 9;
+  }
+
+  .film_9by16 {
+    height: min(76vh, calc(86vw * 16 / 9));
+    aspect-ratio: 9 / 16;
+  }
+
+  /* Beyond: no frame at all, the whole screen */
+  .film_beyond {
+    inset: 0;
+    translate: none;
+  }
+
+  /* the line of words, at the centre of the page */
+  .namesWrap {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  /* its paper-coloured twin, clipped (from JS) to the frame showing */
+  .twin {
+    opacity: 0;
+    transition: opacity 0.45s cubic-bezier(0.33, 0, 0.2, 1);
+  }
+
+  .twinOn {
+    opacity: 1;
+  }
+
+  /* ---- the entrance: the mark in an outline frame ---- */
+  .intro {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(38vw, 560px);
+    aspect-ratio: 16 / 9;
+    translate: -50% -50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0c0c0c;
+    container-type: inline-size; /* cqw: % of the frame's width */
+    pointer-events: none;
+  }
+
+  .introEdge {
+    position: absolute;
+    background: currentColor;
+  }
+
+  .introEdge_top {
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 1px;
+    transform-origin: 0 50%;
+  }
+
+  .introEdge_right {
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 1px;
+    transform-origin: 50% 0;
+  }
+
+  .introEdge_bottom {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    transform-origin: 100% 50%;
+  }
+
+  .introEdge_left {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    transform-origin: 50% 100%;
+  }
+
+  .introMark {
+    display: flex;
+    align-items: flex-end;
+    font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+    font-size: 24cqw;
+    font-weight: 500;
+    font-stretch: 100%;
+    font-variation-settings: "wdth" 100;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+  }
+
+  /* each character rises out of its own mask */
+  .introMask {
+    display: block;
+    overflow: hidden;
+    padding: 0.06em 0 0.02em;
+  }
+
+  .introChar {
+    display: block;
+  }
+
+  /* & BEYOND: small, spaced, lifted onto the mark's baseline */
+  .introSub {
+    margin: 0 0 1.25em 0.6em;
+    font-size: 0.14em;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+  }
+
+  @media (max-width: 760px) {
+    .intro {
+      width: 74vw;
+    }
+  }
+
+  /* ---- the three formats as one quiet line: 16x9 / 9x16 / Beyond ---- */
+  .names {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.62em;
+    font-size: clamp(34px, 5.2vw, 100px);
+    color: #0c0c0c;
+  }
+
+  .namesPaper {
+    color: var(--paper);
+  }
+
+  .name {
+    position: relative;
+    display: inline-flex;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-transform: uppercase;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .name:disabled {
+    cursor: default;
+  }
+
+  .name:focus-visible .nameWord {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.12em;
+  }
+
+  .nameMask,
+  .slashMask {
+    display: block;
+    overflow: hidden;
+    padding: 0.1em 0.02em 0.06em;
+  }
+
+  /* a plain, tight grotesk at its normal width: the words carry no decoration */
+  .nameWord,
+  .slash {
+    display: block;
+    font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+    font-weight: 400;
+    font-stretch: 100%;
+    font-variation-settings: "wdth" 100;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+  }
+
+  .slash {
+    font-weight: 300;
+  }
+
+  /* the x between the numbers: lowercase and lighter */
+  .fmtX {
+    margin: 0 0.01em;
+    font-weight: 300;
+    text-transform: none;
+  }
+
+  /* the viewfinder: four hairline corners round the word pointed at */
+  .finder {
+    position: absolute;
+    width: 0.18em;
+    height: 0.18em;
+    border: 0 solid currentColor;
+    pointer-events: none;
+  }
+
+  .finder_tl {
+    left: -0.22em;
+    top: -0.04em;
+    border-width: 1.5px 0 0 1.5px;
+  }
+
+  .finder_tr {
+    right: -0.22em;
+    top: -0.04em;
+    border-width: 1.5px 1.5px 0 0;
+  }
+
+  .finder_bl {
+    left: -0.22em;
+    bottom: -0.1em;
+    border-width: 0 0 1.5px 1.5px;
+  }
+
+  .finder_br {
+    right: -0.22em;
+    bottom: -0.1em;
+    border-width: 0 1.5px 1.5px 0;
+  }
+
+  /* the index's foot: quiet links in the corners, the line between them */
+  .foot {
+    position: absolute;
+    z-index: 5;
+    left: var(--ui);
+    right: var(--ui);
+    bottom: clamp(18px, 3.4vh, 34px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    color: #0c0c0c;
+    transition: color 0.45s ease;
+  }
+
+  /* over a film that fills the screen, or the open wall, the foot and the bar turn to paper */
+  .page[data-dark] .foot,
+  .page[data-dark] .topbar {
+    color: var(--paper);
+  }
+
+  .footSide {
+    display: flex;
+    gap: clamp(14px, 1.8vw, 26px);
+  }
+
+  .foot a {
+    color: inherit;
+    text-decoration: none;
+    background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+    padding-bottom: 3px;
+    transition: background-size 0.5s var(--ease);
+  }
+
+  .foot a:hover {
+    background-size: 100% 1px;
+  }
+
+  .footLine {
+    opacity: 0.5;
+  }
+
+  @media (max-width: 760px) {
+    .names {
+      font-size: 7.6vw;
+      gap: 0.4em;
+    }
+    .footLine {
+      display: none;
+    }
+    .foot {
+      font-size: 9.5px;
+      letter-spacing: 0.14em;
+    }
+    .footSide {
+      gap: 12px;
+    }
+    /* phones keep the essentials: the studio's links left, Instagram right */
+    .footSide:last-child a:not([href="#instagram"]) {
+      display: none;
+    }
+    .readout i {
+      display: none;
+    }
+  }
+
+  .topbar {
+    position: absolute;
+    z-index: 10; /* above the index and the rooms, under the menu (40) and a film (30) */
+    top: 0;
+    left: 0;
+    right: 0;
+    height: clamp(64px, 9vh, 88px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--ui);
+    pointer-events: none;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: #0c0c0c;
+    transition: color 0.45s ease;
+  }
+
+  .logo,
+  .burger {
+    pointer-events: auto;
+  }
+
+  .logo {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* the logo file is white: ink on the paper, itself over a film or the wall */
+  .logoImg {
+    display: block;
+    height: clamp(40px, 4vw, 60px);
+    width: auto;
+    filter: invert(1);
+    transition: filter 0.45s ease;
+  }
+
+  .page[data-dark] .logoImg {
+    filter: none;
+  }
+
+  /* two thin lines, the lower one shorter; it lengthens on hover */
+  .burger {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 7px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .burger span {
+    display: block;
+    width: 28px;
+    height: 1.5px;
+    background: currentColor;
+    transition: width 0.5s var(--ease), transform 0.5s var(--ease);
+  }
+
+  .burger span + span {
+    width: 17px;
+  }
+
+  .burger:hover span + span {
+    width: 28px;
+  }
+
+  .burgerOpen span:first-child {
+    transform: translateY(4.25px) rotate(45deg);
+  }
+
+  .burgerOpen span + span {
+    width: 28px;
+    transform: translateY(-4.25px) rotate(-45deg);
+  }
+
+  /* the burger waits for the hero to settle */
+  .burger:disabled {
+    cursor: default;
+  }
+
+  .burger:focus-visible {
+    outline: 1px solid currentColor;
+    outline-offset: 4px;
+  }
+
+  /* ---- in a room: the logo steps aside (the brand is at the centre), the rooms take the bar ---- */
+  .page[data-room] .logo {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .logo {
+    transition: opacity 0.5s var(--ease);
+  }
+
+  .rooms {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: clamp(22px, 3vw, 48px);
+    translate: -50% 0;
+    color: var(--ink);
+    font-size: 11px;
+    letter-spacing: 0.24em;
+    pointer-events: auto;
+  }
+
+  .roomBack,
+  .roomTab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .roomBack span {
+    transition: transform 0.5s var(--ease);
+  }
+
+  .roomBack:hover span {
+    transform: translateX(-4px);
+  }
+
+  .roomTabs {
+    display: flex;
+    gap: clamp(16px, 2.2vw, 36px);
+    padding-left: clamp(22px, 3vw, 48px);
+    border-left: 1px solid rgb(12 12 12 / 0.2);
+  }
+
+  .roomTab {
+    color: rgb(12 12 12 / 0.45);
+    transition: color 0.4s var(--ease);
+  }
+
+  .roomTab:hover,
+  .roomTabOn {
+    color: var(--ink);
+  }
+
+  .roomGlyph {
+    height: 11px;
+    width: auto;
+  }
+
+  .roomTabLine {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 2px;
+    height: 1px;
+    background: currentColor;
+  }
+
+  .roomBack:focus-visible,
+  .roomTab:focus-visible {
+    outline: 1px solid var(--ink);
+    outline-offset: 4px;
+  }
+
+  @media (max-width: 760px) {
+    .rooms {
+      top: 100%;
+      height: 44px;
+      gap: 16px;
+      font-size: 10px;
+    }
+    .roomTabs {
+      gap: 14px;
+      padding-left: 16px;
+    }
+  }
+
+  /* ================= The screening room ================= */
+  .grid {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    overflow: hidden;
+    background: var(--paper);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .gridDragging {
+    cursor: grabbing;
+  }
+
+  .gridDragging .tile {
+    pointer-events: none;
+  }
+
+  /* placed every frame by the loop in grid.tsx */
+  .slot {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--tw);
+    transform-origin: 50% 40%;
+    will-change: transform;
+  }
+
+  /* a film: square corners, black and white until it's pointed at */
+  .tile {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: var(--ratio);
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    background: #dcd8d1;
+    cursor: pointer;
+  }
+
+  .tile img,
+  .tile video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: cover;
+    transform: scale(var(--z, 1));
+  }
+
+  .tile img {
+    filter: grayscale(1) contrast(1.04);
+    transition: filter 0.6s var(--ease);
+  }
+
+  .tile video {
+    opacity: 0;
+    transition: opacity 0.5s var(--ease);
+  }
+
+  .tile .tileVideoOn {
+    opacity: 1;
+  }
+
+  .slotOn .tile img {
+    filter: none;
+  }
+
+  .tile:focus-visible {
+    outline: 1px solid var(--ink);
+    outline-offset: 4px;
+  }
+
+  /* its title and runtime, under it */
+  .cap {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    height: 30px;
+    padding-top: 10px;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    line-height: 1.2;
+    color: rgb(12 12 12 / 0.45);
+    white-space: nowrap;
+    transition: color 0.4s var(--ease);
+  }
+
+  .cap span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .slotOn .cap {
+    color: var(--ink);
+  }
+
+  /* the paper closes in softly at the edges */
+  .gridFade {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(to bottom, var(--paper) 0, rgb(246 244 240 / 0.85) 6%, transparent 15%),
+      radial-gradient(ellipse 78% 74% at 50% 50%, transparent 58%, var(--paper) 100%);
+  }
+
+  /* ---- the brand at the centre, in a frame of the room's shape ---- */
+  .mark {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--paper);
+    color: var(--ink);
+    pointer-events: none;
+    /* it floats: the field passes under it */
+    box-shadow: 0 28px 70px -28px rgb(12 12 12 / 0.35);
+  }
+
+  .mark_16by9 {
+    width: min(22vw, 320px);
+    aspect-ratio: 16 / 9;
+  }
+
+  .mark_9by16 {
+    height: min(34vh, 300px);
+    aspect-ratio: 9 / 16;
+  }
+
+  /* Beyond: no frame, only its corners, and no paper behind */
+  .mark_beyond {
+    width: min(22vw, 320px);
+    aspect-ratio: 2.39 / 1;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .markCorner {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 0 solid currentColor;
+  }
+
+  .markCorner.finder_tl { left: 0; top: 0; border-width: 1px 0 0 1px; }
+  .markCorner.finder_tr { right: 0; top: 0; border-width: 1px 1px 0 0; }
+  .markCorner.finder_bl { left: 0; bottom: 0; border-width: 0 0 1px 1px; }
+  .markCorner.finder_br { right: 0; bottom: 0; border-width: 0 1px 1px 0; }
+
+  .markInner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .mark_beyond .markInner {
+    padding: 10px 18px;
+    background: var(--paper);
+  }
+
+  /* the logo file is white: ink here */
+  .markLogo {
+    display: block;
+    height: clamp(34px, 3.4vw, 52px);
+    width: auto;
+    filter: invert(1);
+  }
+
+  .markLabel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-align: center;
+  }
+
+  .markLabel i {
+    font-style: normal;
+    font-size: 9px;
+    opacity: 0.55;
+  }
+
+  @media (max-width: 760px) {
+    .mark_16by9,
+    .mark_beyond {
+      width: 52vw;
+    }
+    .mark_9by16 {
+      height: 30vh;
+    }
+    .markLabel i {
+      display: none;
+    }
+  }
+
+  /* ---- the menu: the hero 11 drawer, full screen over everything ---- */
+  .menuSheet {
+    position: fixed;
+    inset: 0;
+    z-index: 40; /* above the top bar (10), the letterbox (20) and the player (30) */
+    overflow: hidden;
+    background: #0a0a0a;
+  }
+
