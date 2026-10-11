@@ -3,7 +3,6 @@
 import {
   Fragment,
   memo,
-  useId,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -63,9 +62,9 @@ const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 // screen (see project-view.tsx).
 // ===========================================================================
 const EASE = [0.16, 1, 0.3, 1] as const;
-// The entrance, in seconds: the hairline draws, opens into the 16:9 gate,
-// the mark rises inside and lifts out, the gate shuts, the names rise.
-const INTRO = { line: 0.25, open: 1.0, letters: 1.55, leave: 3.35, shut: 3.6, names: 4.15 };
+// The entrance, in seconds: the frame draws in 16:9, turns to 9:16, opens
+// to its corners (Beyond), the card fills with the mark, leaves; the names rise.
+const INTRO = { draw: 0.25, portrait: 1.35, beyond: 2.05, card: 2.65, leave: 4.0, names: 4.55 };
 // from here the page answers
 const INDEX_SETTLE = INTRO.names + 0.9;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
@@ -343,59 +342,119 @@ function Menu({ open, reduce, onClose }: { open: boolean; reduce: boolean; onClo
 }
 
 // ===========================================================================
-// INTRO — the 16x9 card, on the white. A hairline draws across the page and
-// opens like a film gate into a 16:9 window cut through the white: the wall
-// runs behind it. "16X9 & BEYOND" rises inside, made of the page itself (the
-// letters are the paper colour), holds, lifts out, and the gate shuts back to
-// a line that's gone. The white layer is the index: pointing at a word fades
-// all of it away over the wall.
+// INTRO — the brand card, on the white, telling its own name. A hairline
+// frame draws itself in 16:9; it turns a quarter into 9:16 and back; its sides
+// fall away and the four corners push outward (Beyond); inside them an ink
+// card wipes up and 16X9 & BEYOND rises in the paper's colour; the letters
+// lift out, the card shuts to a slit and is gone. A caption under the frame
+// names each step. Nothing of the wall shows until a word is pointed at.
 // ===========================================================================
-const subscribeResize = (cb: () => void) => {
-  window.addEventListener("resize", cb);
-  return () => window.removeEventListener("resize", cb);
-};
+const CAPTIONS = ["16 : 9", "9 : 16", "& Beyond", "Stories beyond the frame", ""];
 
-function WhiteLayer({ hidden, interactive, reduce }: { hidden: boolean; interactive: boolean; reduce: boolean }) {
-  const size = useSyncExternalStore(subscribeResize, () => `${window.innerWidth}x${window.innerHeight}`, () => "1440x900");
-  const [vw, vh] = size.split("x").map(Number);
-  const W = Math.min(vw * (vw <= 760 ? 0.86 : 0.56), 980);
-  const H = (W * 9) / 16;
-  const cx = vw / 2;
-  const cy = vh * 0.47;
-  const maskId = `white-${useId().replace(/:/g, "")}`;
-
-  // line -> open (the gate) -> shut
-  const [phase, setPhase] = useState<"line" | "open" | "shut">(reduce ? "shut" : "line");
+function IntroCard() {
+  // 0 the frame draws, 1 turned to 9:16, 2 Beyond (corners only), 3 the card, 4 gone
+  const [p, setP] = useState(0);
   useEffect(() => {
-    if (reduce) return;
-    const a = window.setTimeout(() => setPhase("open"), INTRO.open * 1000);
-    const b = window.setTimeout(() => setPhase("shut"), INTRO.shut * 1000);
-    return () => {
-      window.clearTimeout(a);
-      window.clearTimeout(b);
-    };
-  }, [reduce]);
-  const h = phase === "open" ? H : 0;
-  const gate = phase === "open" ? { duration: 1.1, ease: EASE_CINE } : { duration: 0.7, ease: EASE_CINE };
-  const edge = (side: -1 | 1) => (
+    const at = [INTRO.portrait, INTRO.beyond, INTRO.card, INTRO.leave];
+    const ts = at.map((t, i) => window.setTimeout(() => setP(i + 1), t * 1000));
+    return () => ts.forEach((t) => window.clearTimeout(t));
+  }, []);
+  const turn = { type: "spring" as const, stiffness: 110, damping: 15, mass: 1 };
+  const corner = (k: string) => (
     <motion.span
-      className={styles.gateLine}
-      style={{ left: cx - W / 2, width: W }}
-      initial={{ top: cy, scaleX: 0 }}
+      key={k}
+      className={`${styles.cardCorner} ${styles[`cardCorner_${k}`]}`}
+      initial={{ opacity: 0, x: 0, y: 0 }}
       animate={{
-        top: cy + (side * h) / 2,
-        scaleX: phase === "shut" ? 0 : 1,
-        transition: {
-          top: gate,
-          scaleX:
-            phase === "line"
-              ? { delay: INTRO.line, duration: 0.75, ease: EASE_CINE }
-              : { delay: 0.55, duration: 0.6, ease: EASE_CINE },
-        },
+        opacity: p >= 2 && p < 4 ? 1 : 0,
+        x: p >= 2 && p < 4 ? (k.includes("l") ? -14 : 14) : 0,
+        y: p >= 2 && p < 4 ? (k.includes("t") ? -14 : 14) : 0,
       }}
+      transition={{ type: "spring", stiffness: 140, damping: 18, opacity: { duration: 0.4 } }}
     />
   );
+  return (
+    <div className={styles.card} aria-hidden="true">
+      <motion.div
+        className={styles.cardFrame}
+        initial={false}
+        animate={{ rotate: p === 1 ? 90 : 0, scale: p === 1 ? 0.62 : p >= 2 && p < 4 ? 1.04 : 1 }}
+        transition={{ rotate: turn, scale: turn }}
+      >
+        {/* the hairline frame, traced round from its top left: top, right, bottom, left */}
+        {(["top", "right", "bottom", "left"] as const).map((side, i) => (
+          <motion.span
+            key={side}
+            className={`${styles.cardEdge} ${styles[`cardEdge_${side}`]}`}
+            initial={side === "top" || side === "bottom" ? { scaleX: 0 } : { scaleY: 0 }}
+            animate={{
+              ...(side === "top" || side === "bottom" ? { scaleX: 1 } : { scaleY: 1 }),
+              opacity: p >= 2 ? 0 : 1,
+            }}
+            transition={{
+              scaleX: { delay: INTRO.draw + i * 0.24, duration: 0.42, ease: EASE_CINE },
+              scaleY: { delay: INTRO.draw + i * 0.24, duration: 0.42, ease: EASE_CINE },
+              opacity: { duration: 0.35 },
+            }}
+          />
+        ))}
+        {["tl", "tr", "bl", "br"].map(corner)}
 
+        {/* the card: ink wipes up inside the corners, then shuts to a slit */}
+        <motion.div
+          className={styles.cardInk}
+          initial={{ clipPath: "inset(100% 0% 0% 0%)" }}
+          animate={{
+            clipPath: p === 3 ? "inset(0% 0% 0% 0%)" : p >= 4 ? "inset(50% 0% 50% 0%)" : "inset(100% 0% 0% 0%)",
+          }}
+          transition={p >= 4 ? { delay: 0.35, duration: 0.6, ease: EASE_CINE } : { duration: 0.85, ease: EASE_CINE }}
+        >
+          <span className={styles.cardMask}>
+            <motion.span
+              className={styles.cardWord}
+              initial={{ y: "115%" }}
+              animate={{ y: p === 3 ? "0%" : p >= 4 ? "-115%" : "115%" }}
+              transition={
+                p >= 4
+                  ? { duration: 0.5, ease: EASE_CINE }
+                  : { type: "spring", stiffness: 90, damping: 16, delay: 0.35 }
+              }
+            >
+              16X9
+              <span className={styles.cardSub}>&amp; BEYOND</span>
+            </motion.span>
+          </span>
+        </motion.div>
+      </motion.div>
+
+      {/* the caption names each step */}
+      <span className={styles.cardCaption}>
+        <AnimatePresence mode="wait">
+          {CAPTIONS[p] && (
+            <motion.span
+              key={p}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, transition: { delay: p === 0 ? INTRO.draw + 0.5 : 0.15, duration: 0.5, ease: EASE } }}
+              exit={{ opacity: 0, y: -6, transition: { duration: 0.2 } }}
+            >
+              {CAPTIONS[p]}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </span>
+    </div>
+  );
+}
+
+/** The white over the wall: the index. Pointing at a word fades it away. */
+function WhiteLayer({ hidden, interactive, reduce }: { hidden: boolean; interactive: boolean; reduce: boolean }) {
+  // the card leaves the page once its entrance has played
+  const [intro, setIntro] = useState(!reduce);
+  useEffect(() => {
+    if (reduce) return;
+    const t = window.setTimeout(() => setIntro(false), (INTRO.names + 0.4) * 1000);
+    return () => window.clearTimeout(t);
+  }, [reduce]);
   return (
     <motion.div
       className={styles.white}
@@ -405,70 +464,13 @@ function WhiteLayer({ hidden, interactive, reduce }: { hidden: boolean; interact
       transition={{ duration: hidden ? 0.8 : 0.6, ease: EASE }}
       style={{ pointerEvents: interactive ? "auto" : "none" }}
     >
-      {/* the paper, with the gate cut through it */}
-      <svg className={styles.whitePaper} width={vw} height={vh}>
-        <defs>
-          <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={vw} height={vh}>
-            <rect width={vw} height={vh} fill="#fff" />
-            <motion.rect
-              x={cx - W / 2}
-              width={W}
-              fill="#000"
-              initial={{ y: cy, height: 0 }}
-              animate={{ y: cy - h / 2, height: h }}
-              transition={gate}
-            />
-          </mask>
-        </defs>
-        <rect width={vw} height={vh} fill="var(--paper)" mask={`url(#${maskId})`} />
-      </svg>
-
-      {/* the gate's two edges: one line that parts, and meets again */}
-      {edge(-1)}
-      {edge(1)}
-
-      {/* its format, small, at the corner */}
-      <motion.span
-        className={styles.gateTag}
-        style={{ left: cx + W / 2, top: cy - H / 2 }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: phase === "open" ? 1 : 0, transition: { delay: phase === "open" ? 0.6 : 0, duration: 0.5 } }}
-      >
-        16 : 9
-      </motion.span>
-
-      {/* the mark, in the paper's colour, rising inside the gate */}
-      <motion.div
-        className={styles.gateMark}
-        style={{ left: cx - W / 2, top: cy - H / 2, width: W, height: H, fontSize: W * 0.27 }}
-        initial={{ clipPath: "inset(50% 0% 50% 0%)" }}
-        animate={{ clipPath: phase === "open" ? "inset(0% 0% 0% 0%)" : "inset(50% 0% 50% 0%)" }}
-        transition={gate}
-      >
-        {!reduce && (
-          <motion.span
-            className={styles.gateWord}
-            initial={{ y: "120%" }}
-            animate={{
-              y: [null, "0%", "0%", "-120%"],
-              transition: {
-                duration: INTRO.leave - INTRO.letters + 0.6,
-                times: [0, 0.32, 0.8, 1],
-                delay: INTRO.letters,
-                ease: [EASE, "linear", EASE_CINE],
-              },
-            }}
-          >
-            16X9<span className={styles.gateSub}>&amp; BEYOND</span>
-          </motion.span>
-        )}
-      </motion.div>
+      {intro && <IntroCard />}
     </motion.div>
   );
 }
 
 // ===========================================================================
-// FORMATS — on the white, once the gate has shut: the heading as a small
+// FORMATS — on the white, once the card has gone: the heading as a small
 // line, and the three formats set as one line of type, 16x9 / 9x16 / Beyond.
 // The words rise one after another, then the slashes. Pointing at a word
 // steps the rest back, stands the slashes upright (the frame squares up
@@ -486,7 +488,7 @@ function Formats({
   onOpen,
 }: {
   show: boolean;
-  /** the first reveal waits for the gate to shut; later ones (after the menu, or the wall) are quick */
+  /** the first reveal waits for the card to leave; later ones (after the menu, or the wall) are quick */
   first: boolean;
   reduce: boolean;
   ready: boolean;
