@@ -457,14 +457,13 @@
     outline-offset: 4px;
   }
 
-  /* ---- in a room: the logo steps aside (the brand is at the centre), the rooms take the bar ---- */
-  .page[data-room] .logo {
-    opacity: 0;
-    pointer-events: none;
+  /* ---- in a room: the dark wall; the bar turns to paper, the rooms take its middle ---- */
+  .page[data-room] .topbar {
+    color: var(--paper);
   }
 
-  .logo {
-    transition: opacity 0.5s var(--ease);
+  .page[data-room] .logoImg {
+    filter: none;
   }
 
   .rooms {
@@ -476,7 +475,7 @@
     align-items: center;
     gap: clamp(22px, 3vw, 48px);
     translate: -50% 0;
-    color: var(--ink);
+    color: inherit;
     font-size: 11px;
     letter-spacing: 0.24em;
     pointer-events: auto;
@@ -511,17 +510,18 @@
     display: flex;
     gap: clamp(16px, 2.2vw, 36px);
     padding-left: clamp(22px, 3vw, 48px);
-    border-left: 1px solid rgb(12 12 12 / 0.2);
+    border-left: 1px solid currentColor;
+    border-image: linear-gradient(transparent, currentColor, transparent) 1;
   }
 
   .roomTab {
-    color: rgb(12 12 12 / 0.45);
-    transition: color 0.4s var(--ease);
+    opacity: 0.45;
+    transition: opacity 0.4s var(--ease);
   }
 
   .roomTab:hover,
   .roomTabOn {
-    color: var(--ink);
+    opacity: 1;
   }
 
   .roomGlyph {
@@ -540,7 +540,7 @@
 
   .roomBack:focus-visible,
   .roomTab:focus-visible {
-    outline: 1px solid var(--ink);
+    outline: 1px solid currentColor;
     outline-offset: 4px;
   }
 
@@ -557,14 +557,14 @@
     }
   }
 
-  /* ================= The screening room ================= */
+  /* ================= The screening room: a curved wall in the dark ================= */
   .grid {
     position: absolute;
     inset: 0;
     z-index: 2;
     overflow: hidden;
-    background: var(--paper);
-    perspective: max(1100px, 105vw); /* the eye, in front of the dome */
+    background: #050505;
+    perspective: max(1100px, 100vw); /* the eye, in front of the wall */
     perspective-origin: 50% 50%;
     cursor: grab;
     touch-action: none;
@@ -580,35 +580,48 @@
     pointer-events: none;
   }
 
-  /* the dome: its centre a radius behind the screen (placed by the loop in grid.tsx) */
-  .dome {
+  /* the wall: its centre a radius behind the screen (placed by the loop in grid.tsx) */
+  .wall {
     position: absolute;
     inset: 0;
     transform-style: preserve-3d;
     will-change: transform;
   }
 
-  /* each film starts at the centre of the screen and is turned out onto the dome's face */
+  /* each film starts at the centre of the screen and is turned out onto the wall's face */
   .slot {
     position: absolute;
     left: calc(50% - var(--tw) / 2);
-    top: calc(50% - var(--sh) / 2);
+    top: calc(50% - var(--th) / 2);
     width: var(--tw);
+    height: var(--th);
     transform-origin: 50% 50%;
     backface-visibility: hidden;
-    will-change: transform, opacity;
+    will-change: transform;
   }
 
-  /* a film: square corners, black and white until it's pointed at */
+  .slotIn {
+    width: 100%;
+    height: 100%;
+  }
+
+  .slotOn {
+    z-index: 2;
+  }
+
+  /* a film: square corners, black and white and quiet until it's pointed at */
   .tile {
     position: relative;
     display: block;
     width: 100%;
-    aspect-ratio: var(--ratio);
+    height: 100%;
     padding: 0;
     border: 0;
     overflow: hidden;
-    background: #dcd8d1;
+    background: #111;
+    color: var(--paper);
+    font: inherit;
+    text-transform: inherit;
     cursor: pointer;
   }
 
@@ -624,8 +637,8 @@
   }
 
   .tile img {
-    filter: grayscale(1) contrast(1.04);
-    transition: filter 0.6s var(--ease);
+    filter: grayscale(1) brightness(0.62) contrast(1.06);
+    transition: filter 0.7s var(--ease);
   }
 
   .tile video {
@@ -637,147 +650,97 @@
     opacity: 1;
   }
 
-  .slotOn .tile img {
+  /* one film pointed at: it comes up in colour, the rest go down */
+  .gridPointing .tile img {
+    filter: grayscale(1) brightness(0.32) contrast(1.06);
+  }
+
+  .gridPointing .slotOn .tile img {
     filter: none;
   }
 
-  .tile:focus-visible {
-    outline: 1px solid var(--ink);
-    outline-offset: 4px;
-  }
-
-  /* its title and runtime, under it */
-  .cap {
+  /* the film's name at its centre: number, title, a hairline, runtime */
+  .tileName {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
     display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    height: 30px;
-    padding-top: 10px;
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    line-height: 1.2;
-    color: rgb(12 12 12 / 0.45);
-    white-space: nowrap;
-    transition: color 0.4s var(--ease);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 0 8%;
+    text-align: center;
+    pointer-events: none;
+    text-shadow: 0 1px 18px rgb(0 0 0 / 0.55);
+    transition: opacity 0.5s var(--ease);
   }
 
-  .cap span:first-child {
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .tileName b {
+    font-weight: 400;
+    font-size: clamp(10px, 0.92vw, 15px);
+    letter-spacing: 0.22em;
+    line-height: 1.35;
   }
 
-  .slotOn .cap {
-    color: var(--ink);
+  .tileName i {
+    font-style: normal;
+    font-size: clamp(8px, 0.6vw, 10px);
+    letter-spacing: 0.26em;
+    opacity: 0.6;
   }
 
-  /* the paper closes in softly at the edges */
-  .gridFade {
+  .tileRule {
+    display: block;
+    width: 28px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.6;
+    transform: scaleX(0.4);
+    transition: transform 0.6s var(--ease), opacity 0.6s var(--ease);
+  }
+
+  .slotOn .tileRule {
+    opacity: 1;
+    transform: scaleX(1.6);
+  }
+
+  /* the others' names step back with their pictures */
+  .gridPointing .slot:not(.slotOn) .tileName {
+    opacity: 0.35;
+  }
+
+  .tile:focus-visible {
+    outline: 1px solid var(--paper);
+    outline-offset: -1px;
+  }
+
+  /* the dark closes in at the edges, and under the bar */
+  .vignette {
     position: absolute;
     inset: 0;
     pointer-events: none;
     background:
-      linear-gradient(to bottom, var(--paper) 0, rgb(246 244 240 / 0.85) 6%, transparent 15%),
-      radial-gradient(ellipse 78% 74% at 50% 50%, transparent 58%, var(--paper) 100%);
+      linear-gradient(to bottom, rgb(5 5 5 / 0.9) 0, transparent 16%),
+      linear-gradient(to top, rgb(5 5 5 / 0.6) 0, transparent 12%),
+      radial-gradient(ellipse 85% 80% at 50% 50%, transparent 52%, rgb(5 5 5 / 0.92) 100%);
   }
 
-  /* ---- the brand at the centre, in a frame of the room's shape ---- */
-  .mark {
+  /* a fine, still grain over the whole room */
+  .grain {
     position: absolute;
-    left: 50%;
-    top: 50%;
-    translate: -50% -50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--paper);
-    color: var(--ink);
+    inset: 0;
     pointer-events: none;
-    /* it floats: the field passes under it */
-    box-shadow: 0 28px 70px -28px rgb(12 12 12 / 0.35);
-  }
-
-  .mark_16by9 {
-    width: min(22vw, 320px);
-    aspect-ratio: 16 / 9;
-  }
-
-  .mark_9by16 {
-    height: min(34vh, 300px);
-    aspect-ratio: 9 / 16;
-  }
-
-  /* Beyond: no frame, only its corners, and no paper behind */
-  .mark_beyond {
-    width: min(22vw, 320px);
-    aspect-ratio: 2.39 / 1;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .markCorner {
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    border: 0 solid currentColor;
-  }
-
-  .markCorner.finder_tl { left: 0; top: 0; border-width: 1px 0 0 1px; }
-  .markCorner.finder_tr { right: 0; top: 0; border-width: 1px 1px 0 0; }
-  .markCorner.finder_bl { left: 0; bottom: 0; border-width: 0 0 1px 1px; }
-  .markCorner.finder_br { right: 0; bottom: 0; border-width: 0 1px 1px 0; }
-
-  .markInner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .mark_beyond .markInner {
-    padding: 10px 18px;
-    background: var(--paper);
-  }
-
-  /* the logo file is white: ink here */
-  .markLogo {
-    display: block;
-    height: clamp(34px, 3.4vw, 52px);
-    width: auto;
-    filter: invert(1);
-  }
-
-  .markLabel {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    font-size: 10px;
-    letter-spacing: 0.22em;
-    text-align: center;
-  }
-
-  .markLabel i {
-    font-style: normal;
-    font-size: 9px;
-    opacity: 0.55;
+    opacity: 0.07;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   @media (max-width: 760px) {
-    /* the tabs drop under the bar on a phone: the paper reaches further down for them */
-    .gridFade {
+    .vignette {
       background:
-        linear-gradient(to bottom, var(--paper) 0, rgb(246 244 240 / 0.9) 14%, transparent 24%),
-        radial-gradient(ellipse 78% 74% at 50% 50%, transparent 58%, var(--paper) 100%);
-    }
-    .mark_16by9,
-    .mark_beyond {
-      width: 52vw;
-    }
-    .mark_9by16 {
-      height: 30vh;
-    }
-    .markLabel i {
-      display: none;
+        linear-gradient(to bottom, rgb(5 5 5 / 0.92) 0, rgb(5 5 5 / 0.7) 14%, transparent 24%),
+        linear-gradient(to top, rgb(5 5 5 / 0.6) 0, transparent 12%),
+        radial-gradient(ellipse 90% 85% at 50% 50%, transparent 55%, rgb(5 5 5 / 0.9) 100%);
     }
   }
 
