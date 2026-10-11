@@ -564,6 +564,8 @@
     z-index: 2;
     overflow: hidden;
     background: var(--paper);
+    perspective: max(1100px, 105vw); /* the eye, in front of the dome */
+    perspective-origin: 50% 50%;
     cursor: grab;
     touch-action: none;
     user-select: none;
@@ -578,14 +580,23 @@
     pointer-events: none;
   }
 
-  /* placed every frame by the loop in grid.tsx */
+  /* the dome: its centre a radius behind the screen (placed by the loop in grid.tsx) */
+  .dome {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  /* each film starts at the centre of the screen and is turned out onto the dome's face */
   .slot {
     position: absolute;
-    left: 0;
-    top: 0;
+    left: calc(50% - var(--tw) / 2);
+    top: calc(50% - var(--sh) / 2);
     width: var(--tw);
-    transform-origin: 50% 40%;
-    will-change: transform;
+    transform-origin: 50% 50%;
+    backface-visibility: hidden;
+    will-change: transform, opacity;
   }
 
   /* a film: square corners, black and white until it's pointed at */
@@ -752,6 +763,12 @@
   }
 
   @media (max-width: 760px) {
+    /* the tabs drop under the bar on a phone: the paper reaches further down for them */
+    .gridFade {
+      background:
+        linear-gradient(to bottom, var(--paper) 0, rgb(246 244 240 / 0.9) 14%, transparent 24%),
+        radial-gradient(ellipse 78% 74% at 50% 50%, transparent 58%, var(--paper) 100%);
+    }
     .mark_16by9,
     .mark_beyond {
       width: 52vw;

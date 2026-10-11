@@ -8,16 +8,21 @@ import { EASE, EASE_CINE } from "./index-stage";
 import styles from "./home.module.css";
 
 // ===========================================================================
-// THE SCREENING ROOM — a format's films, on the paper. The tiles, all in the
-// format's proportion, lie in an endless field you can drag (or scroll) in
-// any direction; let go and it glides on, then settles into a slow drift.
-// The brand sits at the centre of the screen in a frame of the format's
-// shape, and the field passes under it. Tiles near the centre sit a touch
-// larger, as through a lens. Pointing at a film holds the drift, brings it
-// into colour and plays it; clicking it opens the film.
+// THE SCREENING ROOM — a format's films, on the paper, on a dome. The tiles,
+// all in the format's proportion, lie on the face of a great sphere that
+// bulges out toward you: the film at the centre faces you, the rest curve
+// away and fade into the paper as they turn. Drag (or scroll) and the dome
+// turns like a globe; let go and it glides on, then settles into a slow
+// drift. It breathes: the faster it turns, the more it bulges, and it
+// relaxes as it settles. It leans a little toward the pointer, like a glass
+// ball in the hand. Opening a room, the flat sheet swells into the dome.
+// The brand sits at the front, in a frame of the format's shape. Pointing at
+// a film holds the dome, brings the film into colour and plays it; clicking
+// it opens the film.
 //
-// One loop moves every tile with a transform: nothing re-renders while the
-// field moves, and only the film under the pointer has a <video>.
+// One loop places every tile with a transform (and an opacity at the rim):
+// nothing re-renders while the dome turns, and only the film under the
+// pointer has a <video>.
 // ===========================================================================
 
 type Spec = { ratio: number; desk: number; small: number };
@@ -28,10 +33,14 @@ const SPECS: Record<FormatKey, Spec> = {
   beyond: { ratio: 2.39, desk: 0.3, small: 0.78 },
 };
 const CAPTION = 30; // the line under each tile, px
-const DRIFT = { x: -9, y: -14 }; // px per second, when nothing else moves it
-const GLIDE = 3.4; // how quickly a throw settles (per second)
-const LENS = 0.07; // how much smaller the tiles at the edges are
-const PARALLAX = 0.035; // how far the field leans away from the pointer
+const DRIFT = { x: -12, y: -7 }; // px per second along the surface, when nothing else moves it
+const GLIDE = 3.2; // how quickly a throw settles (per second)
+// The dome: its radius as a share of the screen's width (wide screen, phone),
+// how much more it bulges at full speed, how far round it shows films
+// (radians from the front) and where they start to fade into the paper.
+const DOME = { desk: 0.78, small: 1.15, swell: 0.55, edge: 1.15, fade: 0.62 };
+const LEAN = 4; // degrees the dome leans toward the pointer
+const SWELL_S = 1.5; // the flat sheet swells into the dome as a room opens
 
 // These films are scope pictures with black bars baked into a 16:9 file;
 // the tiles zoom past the bars (except Beyond's, which crop them already).
@@ -116,7 +125,7 @@ export default function FormatGrid({
   const spec = SPECS[fmt];
   const f = FORMATS.find((x) => x.key === fmt) ?? FORMATS[0];
 
-  // ---- the field's geometry: just enough slots to cover the screen, plus a ring to wrap ----
+  // ---- the field: enough slots to cover the dome as far round as it shows films, plus a seam ----
   const geo = useMemo(() => {
     const small = vw <= 760;
     const gap = Math.max(14, vw * (small ? 0.04 : 0.018));
@@ -124,32 +133,31 @@ export default function FormatGrid({
     const th = Math.round(tw / spec.ratio);
     const cellW = tw + gap;
     const cellH = th + CAPTION + gap;
-    const cols = Math.ceil(vw / cellW) + 2;
-    const rows = Math.ceil(vh / cellH) + 2;
-    // a slot sits at the centre of the screen to begin with
-    const cc = Math.floor(cols / 2);
-    const rc = Math.floor(rows / 2);
-    const baseX = vw / 2 - tw / 2 - cc * cellW;
-    const baseY = vh / 2 - (th + CAPTION) / 2 - rc * cellH;
+    const R = vw * (small ? DOME.small : DOME.desk);
+    // the seam (where a slot wraps round) must sit past the rim, out of sight
+    const even = (n: number) => n + (n % 2);
+    const cols = even(Math.ceil((2 * DOME.edge * R) / cellW) + 2);
+    const rows = even(Math.ceil((2 * DOME.edge * R) / cellH) + 2);
     const slots: { id: string; c: number; r: number; clip: number; dist: number }[] = [];
     for (let r = 0; r < rows; r++)
       for (let c = 0; c < cols; c++) {
-        const x = baseX + c * cellW + tw / 2 - vw / 2;
-        const y = baseY + r * cellH + th / 2 - vh / 2;
+        const u = c * cellW - (cols * cellW) / 2;
+        const v = r * cellH - (rows * cellH) / 2;
         slots.push({
           id: `${c}-${r}`,
           c,
           r,
           clip: (c * 5 + r * 7) % clips.length,
-          dist: Math.min(1, Math.hypot(x / vw, y / vh) * 1.4),
+          dist: Math.min(1, Math.hypot(u / vw, v / vh) * 1.2),
         });
       }
-    return { tw, th, cellW, cellH, cols, rows, baseX, baseY, slots };
+    return { tw, th, cellW, cellH, cols, rows, R, slots };
   }, [vw, vh, spec, clips.length]);
 
   const [hovered, setHovered] = useState<string | null>(null);
   const slotRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const rootRef = useRef<HTMLDivElement>(null);
+  const domeRef = useRef<HTMLDivElement>(null);
   const holdRef = useRef(false);
   const pausedRef = useRef(paused);
   const draggedRef = useRef(false);
@@ -160,11 +168,12 @@ export default function FormatGrid({
     pausedRef.current = paused;
   }, [paused]);
 
-  // ---- the loop: drift, throw, drag, lean, lens; every tile written as one transform ----
+  // ---- the loop: drift, throw, drag, lean, breath; every tile placed on the dome ----
   useEffect(() => {
     const root = rootRef.current;
-    if (!root) return;
-    const { tw, th, cellW, cellH, cols, rows, baseX, baseY, slots } = geo;
+    const dome = domeRef.current;
+    if (!root || !dome) return;
+    const { cellW, cellH, cols, rows, R: R0, slots } = geo;
     const W = cols * cellW;
     const H = rows * cellH;
     const off = { x: 0, y: 0 };
@@ -173,23 +182,36 @@ export default function FormatGrid({
     const pointer = { x: vw / 2, y: vh / 2 };
     let drift = reduce ? 0 : 1;
     let dragging = false;
-    let last = performance.now();
+    let swell = 0; // extra bulge from speed, eased
+    const born = performance.now();
+    let last = born;
     let raf = 0;
     let prev = "";
-    const wrap = (v: number, span: number, cell: number) => ((((v + cell) % span) + span) % span) - cell;
+    const shown = new Map<string, boolean>();
+    const wrap = (v: number, span: number) => (((v % span) + span) % span) - span / 2;
 
-    const place = () => {
+    const place = (kappa: number) => {
+      const R = 1 / kappa;
+      dome.style.transform = `translateZ(${(-R).toFixed(1)}px) rotateX(${lean.y.toFixed(3)}deg) rotateY(${lean.x.toFixed(3)}deg)`;
       for (const s of slots) {
         const el = slotRefs.current.get(s.id);
         if (!el) continue;
-        const x = wrap(baseX + s.c * cellW + off.x + lean.x, W, cellW);
-        const y = wrap(baseY + s.r * cellH + off.y + lean.y, H, cellH);
-        // the lens: a touch smaller toward the edges
-        const dx = (x + tw / 2 - vw / 2) / vw;
-        const dy = (y + th / 2 - vh / 2) / vh;
-        const d = Math.min(1, Math.hypot(dx, dy) * 1.5);
-        const k = reduce ? 1 : 1 - LENS * d * d;
-        el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${k.toFixed(4)})`;
+        // where the slot lies on the flat sheet, measured from the front of the dome
+        const u = wrap(s.c * cellW + off.x + W / 2, W);
+        const v = wrap(s.r * cellH + off.y + H / 2, H);
+        const ax = u * kappa;
+        const ay = v * kappa;
+        const d = Math.hypot(ax, ay);
+        const on = d < DOME.edge;
+        if (shown.get(s.id) !== on) {
+          shown.set(s.id, on);
+          el.style.visibility = on ? "" : "hidden";
+        }
+        if (!on) continue;
+        el.style.transform = `rotateY(${ax.toFixed(4)}rad) rotateX(${(-ay).toFixed(4)}rad) translateZ(${R.toFixed(1)}px)`;
+        // turning away, it fades into the paper
+        const t = Math.min(1, Math.max(0, (d - DOME.fade) / (DOME.edge - DOME.fade)));
+        el.style.opacity = (1 - t * t * (3 - 2 * t)).toFixed(3);
       }
     };
 
@@ -207,17 +229,23 @@ export default function FormatGrid({
       }
       if (!reduce && !still) {
         const k = 1 - Math.exp(-dt * 2.4);
-        lean.x += ((vw / 2 - pointer.x) * PARALLAX - lean.x) * k;
-        lean.y += ((vh / 2 - pointer.y) * PARALLAX - lean.y) * k;
+        lean.x += (((pointer.x / vw) * 2 - 1) * LEAN - lean.x) * k;
+        lean.y += ((1 - (pointer.y / vh) * 2) * LEAN - lean.y) * k;
       }
-      const key = `${off.x.toFixed(1)},${off.y.toFixed(1)},${lean.x.toFixed(1)},${lean.y.toFixed(1)}`;
+      // the dome breathes with its speed, and swells out of a flat sheet as the room opens
+      const speed = Math.min(1, Math.hypot(vel.x, vel.y) / 2200);
+      swell += (speed - swell) * (1 - Math.exp(-dt * 4));
+      const open = reduce ? 1 : Math.min(1, (now - born) / 1000 / SWELL_S);
+      const grow = 1 - Math.pow(1 - open, 3);
+      const kappa = Math.max(1e-5, (grow * (1 + DOME.swell * swell)) / R0);
+      const key = `${off.x.toFixed(1)},${off.y.toFixed(1)},${lean.x.toFixed(2)},${lean.y.toFixed(2)},${kappa.toExponential(4)}`;
       if (key !== prev) {
         prev = key;
-        place();
+        place(kappa);
       }
       raf = requestAnimationFrame(frame);
     };
-    place();
+    place(reduce ? 1 / R0 : 1e-5);
     raf = requestAnimationFrame(frame);
 
     // ---- drag (mouse or finger) with a throw; wheel and trackpad push it ----
@@ -300,11 +328,13 @@ export default function FormatGrid({
     <motion.div
       ref={rootRef}
       className={styles.grid}
-      style={{ "--tw": `${geo.tw}px`, "--ratio": String(spec.ratio) } as CSSProperties}
+      style={{ "--tw": `${geo.tw}px`, "--sh": `${geo.th + CAPTION}px`, "--ratio": String(spec.ratio) } as CSSProperties}
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: reduce ? 0 : 0.5, ease: EASE, delay: reduce ? 0 : 0.15 } }}
       aria-label={`${f.label}: ${f.line}`}
     >
+      {/* the dome: its centre lies a radius behind the screen; each film is turned out onto its face */}
+      <div ref={domeRef} className={styles.dome}>
       {geo.slots.map((s) => {
         const clip = clips[s.clip];
         const on = hovered === s.id;
@@ -340,6 +370,7 @@ export default function FormatGrid({
           </div>
         );
       })}
+      </div>
 
       {/* the paper closes in softly at the edges */}
       <div className={styles.gridFade} aria-hidden="true" />
