@@ -11,7 +11,9 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
   type Ref,
+  type RefObject,
 } from "react";
 import {
   AnimatePresence,
@@ -27,6 +29,7 @@ import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-c
 import ProjectView, { type OpenProject } from "../hero7/project-view";
 import { liveBudget, posterFor, WallPlayback } from "../hero7/wall-playback";
 import Drawer from "../hero11/drawer";
+import FormatHero, { FORMATS, FrameGlyph, Ratio, type FormatKey, type Rect } from "./format-hero";
 import styles from "./depthhero.module.css";
 
 
@@ -35,9 +38,9 @@ import styles from "./depthhero.module.css";
 // ===========================================================================
 const MARK_SUB = "& BEYOND"; // tiny tag on the same line as the mark, cut into the card
 const HEADLINE = ["Stories beyond", "the frame"];
-const SUBHEAD: string[] = []; // no line under the heading: the heading says it
-// the second brand, linked under the heading
-const SISTER = { name: "9X16", href: "https://9x16.studio" };
+// Under the heading, three words in three columns: 16x9, 9x16 and Beyond (see
+// format-hero.tsx). Pointing at one reshapes the wall's tiles to its frame;
+// clicking one opens its hero.
 
 // Inter Tight: a Swiss, International-Style grotesk. Loaded for hero 7 only (it
 // overrides --font-sans inside this section), so the other heroes keep Archivo.
@@ -96,9 +99,11 @@ const LANES_MOBILE = 4;
 const PLANE = { width: 2.4, height: 2.5 }; // the tilted plane, in viewport widths / heights (see .plane)
 const GAP = { desktop: 14, mobile: 9 }; // must match --gap
 
-/** Just enough tiles per lane for one copy to cover the plane's height (the loop needs that). */
+/** Just enough tiles per lane for one copy to cover the plane's height (the loop needs that),
+ *  counted at the flattest tile a format can ask for, so a lane of scope films still covers it. */
+const SHORTEST_TILE = 1 / 2.39; // height / width: Beyond's scope tiles
 const tilesPerLane = (vw: number, vh: number, lanes: number, gap: number) =>
-  Math.min(10, Math.max(5, Math.ceil((vh * PLANE.height) / ((vw * PLANE.width) / lanes + gap)) + 1));
+  Math.min(14, Math.max(5, Math.ceil((vh * PLANE.height) / (((vw * PLANE.width) / lanes) * SHORTEST_TILE + gap)) + 1));
 // Hover feel: how far the film turns toward the pointer (deg), how far it comes
 // forward, and how quickly it eases there (per second). Only a film you wait on
 // for INTENT_MS starts loading its video.
@@ -113,6 +118,18 @@ const grayPosterFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/posters
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
 const RATIOS = ["3 / 4", "16 / 10", "4 / 5", "1 / 1", "2 / 3", "16 / 9", "5 / 6"];
+
+// Pointing at a format word reshapes the wall in a wave that starts under the
+// word: each lane fades out, takes the format's tiles, and springs back in.
+// Seconds: the delay from one lane to the next, and how long a lane is dark.
+const WAVE = { stagger: 0.075, out: 0.3 };
+// the wall slows to this while a format word is pointed at, so you can look at it
+const FORMAT_SPEED = 0.4;
+// Beyond: the wall rises toward you a little (deg off its tilt, and a scale)
+const BEYOND_LEAN = { tilt: 7, scale: 0.035 };
+// touch screens have no hover: the formats take turns on the wall instead
+const AUTO_MS = 3400;
+const AUTO_SEQ: (FormatKey | null)[] = ["16x9", "9x16", "beyond", null];
 
 // The mark
 const COBALT = "#FFFFFF";
@@ -203,7 +220,8 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: Ti
     <div
       ref={tileRef}
       className={styles.tile}
-      style={{ aspectRatio: ratio }}
+      // its own shape; a format word pointed at overrides it for the whole lane (see .lane[data-format])
+      style={{ "--r": ratio } as CSSProperties}
       data-index={index}
       onClick={(e) => onOpen(index, e.currentTarget, videoRef.current?.currentTime ?? 0)}
     >
@@ -266,16 +284,17 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: Ti
 
 // ===========================================================================
 // CURSOR — over a film the arrow becomes a thin paper ring with a small play
-// mark. It eases in once and stays while you glide from film to film. State is
+// mark (over a format word, an arrow: it leads to that format's hero). It
+// eases in once and stays while you glide from film to film. State is
 // set through a ref, so hovering never re-renders the wall, and the position
 // lives in motion values, so following the pointer never re-renders anything.
 // ===========================================================================
-type CursorLabelHandle = { show: (clip: Clip | null) => void };
+type CursorShow = { text: string; icon: "play" | "go" };
+type CursorLabelHandle = { show: (label: CursorShow | null) => void };
 
 function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
-  const [title, setTitle] = useState<string | null>(null);
-  useImperativeHandle(ref, () => ({ show: (clip) => setTitle(clip ? clip.title : null) }), []);
-  const on = title !== null;
+  const [label, setLabel] = useState<CursorShow | null>(null);
+  useImperativeHandle(ref, () => ({ show: setLabel }), []);
 
   const x = useMotionValue(-200);
   const y = useMotionValue(-200);
@@ -294,7 +313,7 @@ function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
   return (
     <motion.div className={styles.cursor} style={{ x: sx, y: sy }} aria-hidden="true">
       <AnimatePresence>
-        {on && (
+        {label && (
           <motion.div
             key="disc"
             className={styles.cursorDisc}
@@ -302,10 +321,14 @@ function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
             animate={{ scale: 1, opacity: 1, transition: { duration: 0.45, ease: EASE } }}
             exit={{ scale: 0.5, opacity: 0, transition: { duration: 0.25, ease: EASE } }}
           >
-            <svg className={styles.cursorPlay} viewBox="0 0 12 14">
-              <path d="M0 0L12 7L0 14Z" />
-            </svg>
-            <span className={styles.cursorName}>{title}</span>
+            {label.icon === "play" ? (
+              <svg className={styles.cursorPlay} viewBox="0 0 12 14">
+                <path d="M0 0L12 7L0 14Z" />
+              </svg>
+            ) : (
+              <span className={styles.cursorGo}>→</span>
+            )}
+            <span className={styles.cursorName}>{label.text}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -554,25 +577,57 @@ function Menu({ open, reduce, onClose }: { open: boolean; reduce: boolean; onClo
 }
 
 // ===========================================================================
-// HEADING — takes the card's place, centred on the screen. As the card eases
-// back and fades, the heading fades in over it, and the line under it follows.
+// FORMATS — take the card's place, centred on the screen: the heading as a
+// small line, and under it 16x9, 9x16 and Beyond in three columns, each on a
+// hairline with its number and a small outline of its frame. The words rise
+// out of a mask on a spring as the card fades. Pointing at one brings it
+// forward (the others step back), draws its hairline in and shows its line;
+// the wall behind takes its frame (see DepthInner). Clicking one opens its
+// hero: while that is open the word is "lifted" out of its column.
 // ===========================================================================
-function Heading({
-  lines,
-  tagline,
+function Formats({
   show,
   first,
   reduce,
+  ready,
+  dim,
+  active,
+  lifted,
+  wordRefs,
+  onHover,
+  onOpen,
 }: {
-  lines: string[];
-  tagline: string[];
   show: boolean;
   /** the first reveal crossfades with the card; later ones (after the menu) are quick */
   first: boolean;
   reduce: boolean;
+  ready: boolean;
+  /** a format's hero is open over everything */
+  dim: boolean;
+  /** the format pointed at (or, on touch, the one taking its turn on the wall) */
+  active: FormatKey | null;
+  /** the word that has flown into its hero */
+  lifted: FormatKey | null;
+  wordRefs: RefObject<Partial<Record<FormatKey, HTMLSpanElement | null>>>;
+  onHover: (k: FormatKey | null) => void;
+  onOpen: (k: FormatKey) => void;
 }) {
   const base = reduce ? 0 : first ? LEAVE.headAt : 0;
+  const visible = show && !dim;
   const out = { opacity: 0, transition: { duration: reduce ? 0 : 0.35, ease: EASE_CINE } };
+  // Crossing the gap between two columns isn't leaving: the wall keeps its
+  // shape unless the pointer stays off the words for a moment.
+  const leaveTimer = useRef(0);
+  const enter = (k: FormatKey) => {
+    window.clearTimeout(leaveTimer.current);
+    onHover(k);
+  };
+  const leave = () => {
+    window.clearTimeout(leaveTimer.current);
+    leaveTimer.current = window.setTimeout(() => onHover(null), 160);
+  };
+  useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
+
   return (
     <div className={styles.head}>
       <motion.span
@@ -582,43 +637,86 @@ function Heading({
       />
       <motion.p
         aria-hidden="true"
-        className={styles.headTitle}
-        initial={reduce ? false : { opacity: 0, y: 12 }}
-        animate={show ? { opacity: 1, y: 0, transition: { delay: base, duration: 1.3, ease: EASE } } : out}
+        className={styles.eyebrow}
+        initial={reduce ? false : { opacity: 0, y: 10 }}
+        animate={visible ? { opacity: 1, y: 0, transition: { delay: base, duration: 1.2, ease: EASE } } : out}
       >
-        {lines.map((l) => (
-          <span key={l} className={styles.headLine}>
-            {l}
-          </span>
-        ))}
+        {HEADLINE.join(" ")}
       </motion.p>
-      {tagline.length > 0 && (
-        <motion.p
-          aria-hidden="true"
-          className={styles.headTag}
-          initial={reduce ? false : { opacity: 0, y: 8 }}
-          animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.3), duration: 1.2, ease: EASE } } : out}
-        >
-          {tagline.map((l) => (
-            <span key={l}>{l}</span>
-          ))}
-        </motion.p>
-      )}
-      {/* the second brand */}
-      <motion.a
-        href={SISTER.href}
-        className={styles.sister}
-        style={show ? undefined : { pointerEvents: "none" }}
-        tabIndex={show ? 0 : -1}
-        initial={reduce ? false : { opacity: 0, y: 8 }}
-        animate={show ? { opacity: 1, y: 0, transition: { delay: base + (reduce ? 0 : 0.55), duration: 1.2, ease: EASE } } : out}
-      >
-        <span className={styles.sisterAlso}>Also from us</span>
-        <span className={styles.sisterName}>{SISTER.name}</span>
-        <span className={styles.sisterArrow} aria-hidden="true">
-          ↗
-        </span>
-      </motion.a>
+
+      <div className={styles.fmts}>
+        {FORMATS.map((f, i) => {
+          const on = active === f.key;
+          const stepBack = active !== null && !on;
+          return (
+            <motion.button
+              key={f.key}
+              type="button"
+              className={styles.fmt}
+              data-fmt={f.key}
+              aria-label={`${f.label}: ${f.line}`}
+              disabled={!ready || dim}
+              initial={reduce ? false : { opacity: 0 }}
+              animate={{
+                opacity: !visible ? 0 : stepBack ? 0.3 : 1,
+                transition: { duration: !visible ? (reduce ? 0 : 0.35) : 0.6, ease: EASE },
+              }}
+              onPointerEnter={(e) => e.pointerType === "mouse" && enter(f.key)}
+              onPointerLeave={(e) => e.pointerType === "mouse" && leave()}
+              onFocus={(e) => e.currentTarget.matches(":focus-visible") && enter(f.key)}
+              onBlur={leave}
+              onClick={() => onOpen(f.key)}
+            >
+              <motion.span
+                className={styles.fmtTop}
+                initial={reduce ? false : { opacity: 0, y: 6 }}
+                animate={show ? { opacity: 1, y: 0, transition: { delay: base + 0.35 + i * 0.08, duration: 1, ease: EASE } } : undefined}
+              >
+                <span>{f.no}</span>
+                <FrameGlyph k={f.key} className={styles.fmtGlyph} />
+              </motion.span>
+              <span className={styles.fmtRule}>
+                <motion.span
+                  className={styles.fmtRuleBase}
+                  initial={reduce ? false : { scaleX: 0 }}
+                  animate={show ? { scaleX: 1, transition: { delay: base + i * 0.09, duration: 1.3, ease: EASE_CINE } } : undefined}
+                />
+                <motion.span
+                  className={styles.fmtRuleOn}
+                  initial={false}
+                  animate={{ scaleX: on ? 1 : 0 }}
+                  transition={{ type: "spring", stiffness: 140, damping: 22 }}
+                />
+              </span>
+              <span className={styles.fmtMask}>
+                <motion.span
+                  ref={(el: HTMLSpanElement | null) => {
+                    wordRefs.current[f.key] = el;
+                  }}
+                  className={styles.fmtWord}
+                  style={lifted === f.key ? { visibility: "hidden" } : undefined}
+                  initial={reduce ? false : { y: "112%" }}
+                  animate={
+                    show
+                      ? { y: 0, transition: { type: "spring", stiffness: 80, damping: 17, mass: 1, delay: base + 0.12 + i * 0.1 } }
+                      : undefined
+                  }
+                >
+                  <Ratio text={f.label} className={styles.fmtX} />
+                </motion.span>
+              </span>
+              <motion.span
+                className={styles.fmtLine}
+                initial={false}
+                animate={{ opacity: on ? 1 : 0, y: on ? 0 : 8 }}
+                transition={{ duration: 0.55, ease: EASE }}
+              >
+                {f.line}
+              </motion.span>
+            </motion.button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -657,6 +755,17 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const [menuKey, setMenuKey] = useState(0);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
+  // The three format words: the one pointed at, the one taking its turn on a
+  // touch screen, the hero that's open (and the word lifted into it), and
+  // whether that hero has covered the screen (the wall then isn't drawn).
+  const [fmtHover, setFmtHover] = useState<FormatKey | null>(null);
+  const [fmtAuto, setFmtAuto] = useState<FormatKey | null>(null);
+  const wallFormat = fmtHover ?? fmtAuto;
+  const [hero, setHero] = useState<{ key: FormatKey; from: Rect } | null>(null);
+  const [lifted, setLifted] = useState<FormatKey | null>(null);
+  const [heroCovered, setHeroCovered] = useState(false);
+  const touch = useSyncExternalStore(noopSubscribe, () => !window.matchMedia("(hover: hover)").matches, () => false);
+
   // the card holds, then makes way for the heading
   const [gone, setGone] = useState(reduce);
   useEffect(() => {
@@ -687,7 +796,13 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     const t = window.setTimeout(() => setCoveredKey(menuKey), reduce ? 0 : 950);
     return () => window.clearTimeout(t);
   }, [menuOpen, menuKey, reduce]);
-  const wallHidden = menuOpen && coveredKey === menuKey;
+  // the same once a format's hero has closed over the screen
+  useEffect(() => {
+    if (!hero) return;
+    const t = window.setTimeout(() => setHeroCovered(true), reduce ? 0 : 800);
+    return () => window.clearTimeout(t);
+  }, [hero, reduce]);
+  const wallHidden = (menuOpen && coveredKey === menuKey) || heroCovered;
   const wallHiddenRef = useRef(false);
   useEffect(() => {
     wallHiddenRef.current = wallHidden;
@@ -707,6 +822,15 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const hoverRef = useRef(false);
   const projectRef = useRef(false);
   const menuRef = useRef(false);
+  const heroRef = useRef(false);
+  const heroClosingRef = useRef(false); // its word is still flying home
+  // the format the wall is in, and whether a format word is under the mouse
+  const formatRef = useRef<FormatKey | null>(null);
+  const fmtPointRef = useRef(false);
+  const wordRefs = useRef<Partial<Record<FormatKey, HTMLSpanElement | null>>>({});
+  const laneRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // set by the camera loop: re-read a lane's length after its tiles change shape
+  const remeasureRef = useRef<(l: number) => void>(() => {});
   const lastMoveRef = useRef(-Infinity);
   // Scroll / drag push on the wall (screen-heights per second), and whether the
   // last touch was a drag (so it doesn't also open the tile under the finger).
@@ -725,9 +849,15 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   useEffect(() => {
     projectRef.current = project !== null;
   }, [project]);
+  useEffect(() => {
+    heroRef.current = hero !== null;
+  }, [hero]);
+  useEffect(() => {
+    fmtPointRef.current = fmtHover !== null;
+  }, [fmtHover]);
     const closeProject = useCallback(() => setProject(null), []);
   const onOpen = useCallback((index: number, el: HTMLElement, time: number) => {
-    if (!readyRef.current) return; // still settling
+    if (!readyRef.current || heroRef.current) return; // still settling, or a format's hero is open
     if (draggedRef.current) return; // that was a drag through the wall, not a click
     const r = el.getBoundingClientRect();
     clearHoverRef.current();
@@ -770,9 +900,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   // Videos wait for the entrance to finish (decoding them mid-entrance is what
   // stutters), and stop under an open film or the menu.
   useEffect(() => {
-    pausedRef.current = !ready || project !== null || wallHidden;
+    pausedRef.current = !ready || project !== null || hero !== null || wallHidden;
     playback.setPaused(pausedRef.current || document.hidden);
-  }, [ready, project, wallHidden, playback]);
+  }, [ready, project, hero, wallHidden, playback]);
 
   const lanes = useMemo(
     () =>
@@ -804,6 +934,15 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     const warp = warpRef.current;
     let warpShown = 0;
     tracks.forEach((_, l) => place(l));
+    // a lane's tiles changed shape (a format word): keep its place in the loop, re-read its length
+    remeasureRef.current = (l: number) => {
+      const el = tracks[l];
+      if (!el) return;
+      const h = el.offsetHeight / 2;
+      pos[l] = heights[l] ? (pos[l] / heights[l]) * h : 0;
+      heights[l] = h;
+      place(l);
+    };
     window.addEventListener("resize", measure);
     if (reduce) return () => window.removeEventListener("resize", measure);
 
@@ -820,7 +959,14 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       // Ease toward it so the wall glides to a hold and back, never snaps.
       const holding = hoverRef.current && now - lastMoveRef.current < HOLD_MS;
       // while dragged, the wall goes only where the pointer takes it
-      const target = projectRef.current || wallHiddenRef.current || draggingRef.current ? 0 : holding ? HOVER_SPEED : 1;
+      const target =
+        projectRef.current || heroRef.current || wallHiddenRef.current || draggingRef.current
+          ? 0
+          : holding
+            ? HOVER_SPEED
+            : fmtPointRef.current
+              ? FORMAT_SPEED
+              : 1;
       const drag = dragAccRef.current;
       dragAccRef.current = 0;
       speed += (target - speed) * Math.min(1, dt * SPEED_EASE);
@@ -856,6 +1002,116 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     };
   }, [laneCount, lanes, reduce, variant.swap]);
 
+  // ---- Formats: the wall takes the frame of the word pointed at ----
+  // A wave that starts in the lane under the word: each lane fades out, its
+  // tiles take the format's shape while it's dark, and it springs back in
+  // (the fade and the spring are CSS transitions on .lane, so they run on the
+  // compositor). Everything is written to the lanes directly: no re-render.
+  const waveTimers = useRef<number[][]>([]);
+  const waveOrigin = useRef<number | null>(null);
+  useEffect(() => {
+    formatRef.current = wallFormat;
+    const els = laneRefs.current.slice(0, laneCount);
+    const f = FORMATS.find((x) => x.key === wallFormat) ?? null;
+    const want = f?.key ?? "";
+    // the wave starts under the word (and goes home from where it was last)
+    const word = wallFormat ? wordRefs.current[wallFormat] : null;
+    if (word) {
+      const r = word.getBoundingClientRect();
+      waveOrigin.current = r.left + r.width / 2;
+    }
+    const ox = waveOrigin.current ?? window.innerWidth / 2;
+    // Beyond widens each lane over half the gap on either side, so the lanes meet
+    const plane = planeRef.current;
+    const gap = plane ? parseFloat(getComputedStyle(plane).columnGap) || 0 : 0;
+    let origin = (laneCount - 1) / 2;
+    let best = Infinity;
+    els.forEach((el, l) => {
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const d = Math.abs(r.left + r.width / 2 - ox);
+      if (d < best) {
+        best = d;
+        origin = l;
+      }
+    });
+    els.forEach((el, l) => {
+      if (!el) return;
+      const timers = (waveTimers.current[l] ??= []);
+      timers.forEach((t) => window.clearTimeout(t));
+      timers.length = 0;
+      if ((el.dataset.format ?? "") === want && el.dataset.phase !== "out") return;
+      const swap = () => {
+        if (f) {
+          el.dataset.format = f.key;
+          el.style.setProperty("--fmt-tile", f.tile);
+        } else {
+          delete el.dataset.format;
+          el.style.removeProperty("--fmt-tile");
+        }
+        if (f?.key === "beyond" && el.offsetWidth) el.style.setProperty("--sx", (1 + gap / el.offsetWidth).toFixed(4));
+        else el.style.removeProperty("--sx");
+        remeasureRef.current(l);
+        delete el.dataset.phase; // ...and it fades back in
+      };
+      if (reduce) return swap();
+      const delay = Math.abs(l - origin) * WAVE.stagger * 1000;
+      timers.push(window.setTimeout(() => (el.dataset.phase = "out"), delay));
+      timers.push(window.setTimeout(swap, delay + WAVE.out * 1000));
+    });
+  }, [wallFormat, laneCount, lanes, reduce]);
+  useEffect(() => {
+    const timers = waveTimers.current;
+    return () => timers.forEach((ts) => ts.forEach((t) => window.clearTimeout(t)));
+  }, []);
+
+  // Touch screens can't point: once the hero is live, the formats take turns on the wall.
+  useEffect(() => {
+    if (!touch || !ready || reduce || hero || menuOpen) return;
+    let i = AUTO_SEQ.indexOf(fmtAuto);
+    const id = window.setInterval(() => {
+      i = (i + 1) % AUTO_SEQ.length;
+      setFmtAuto(AUTO_SEQ[i]);
+    }, AUTO_MS);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- picks up where it left off, never restarts on its own change
+  }, [touch, ready, reduce, hero, menuOpen]);
+
+  // A format word only answers the pointer while nothing is open over the wall.
+  const hoverFormat = useCallback((k: FormatKey | null) => {
+    if (heroRef.current) return;
+    setFmtHover(k);
+  }, []);
+  // Clicking a word opens its hero: the word lifts out of its column and flies into it.
+  const openHero = useCallback((key: FormatKey) => {
+    if (!readyRef.current || heroRef.current || heroClosingRef.current || menuRef.current) return;
+    const el = wordRefs.current[key];
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    heroRef.current = true;
+    clearHoverRef.current();
+    setLifted(key);
+    setHero({ key, from: { left: r.left, top: r.top, width: r.width, height: r.height } });
+  }, []);
+  // Closing: the wall is drawn again under the fading hero and goes back to its own mix of frames.
+  const closeHero = useCallback(() => {
+    if (!heroRef.current) return;
+    heroRef.current = false;
+    heroClosingRef.current = true;
+    setHero(null);
+    setHeroCovered(false);
+    setFmtHover(null);
+    setFmtAuto(null);
+  }, []);
+  const landed = useCallback(() => {
+    heroClosingRef.current = false;
+    setLifted(null);
+  }, []);
+  const wordRect = useCallback((k: FormatKey): Rect | null => {
+    const r = wordRefs.current[k]?.getBoundingClientRect();
+    return r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null;
+  }, []);
+
   // Drag to slide: grab the wall (mouse or finger) and it follows; let go and it
   // glides on with the throw, then settles back to its own pace. Hover is off
   // for the whole drag so tiles sliding under the pointer don't pop.
@@ -875,7 +1131,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       clearHoverRef.current();
     };
     const onDown = (e: PointerEvent) => {
-      if (e.button !== 0 || !readyRef.current || menuRef.current || projectRef.current) return;
+      if (e.button !== 0 || !readyRef.current || menuRef.current || projectRef.current || heroRef.current) return;
       id = e.pointerId;
       lastY = e.clientY;
       lastT = performance.now();
@@ -945,7 +1201,10 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     const p = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     const lampAt = { ...p };
     const lean = { x: 0, y: 0 };
+    let beyond = 0; // 0..1: how far the wall has risen toward you for Beyond
     let leanCss = "";
+    // the format word under the mouse: the ring then says where it leads
+    let word: HTMLElement | null = null;
 
     // The lamp is drawn at 1/LAMP_RES of the screen and stretched: a soft light,
     // so nobody can see the difference, at a sliver of the cost.
@@ -993,7 +1252,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       if (!el) {
         hoverRef.current = false;
         playback.setHovered(null);
-        labelRef.current?.show(null);
+        if (!word) labelRef.current?.show(null);
         return;
       }
       el.classList.add(styles.tileOn);
@@ -1013,11 +1272,22 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         });
       }
       hoverRef.current = true;
-      labelRef.current?.show(clips[Number(el.dataset.index)] ?? null);
+      const clip = clips[Number(el.dataset.index)];
+      labelRef.current?.show(clip ? { text: clip.title, icon: "play" } : null);
       const id = el.dataset.tile ?? null;
       intent = window.setTimeout(() => playback.setHovered(id), INTENT_MS);
     };
-    clearHoverRef.current = () => setHover(null);
+    const setWord = (w: HTMLElement | null) => {
+      if (w === word) return;
+      word = w;
+      const f = w && FORMATS.find((x) => x.key === w.dataset.fmt);
+      if (f) labelRef.current?.show({ text: `Enter ${f.label}`, icon: "go" });
+      else if (!hovered) labelRef.current?.show(null);
+    };
+    clearHoverRef.current = () => {
+      setHover(null);
+      setWord(null);
+    };
 
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return;
@@ -1025,9 +1295,15 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       lastMoveRef.current = lastMove;
       p.x = e.clientX;
       p.y = e.clientY;
-      if (!fine || !readyRef.current || draggingRef.current || menuRef.current || projectRef.current) return setHover(null);
-      const el = (e.target as Element | null)?.closest?.<HTMLElement>("[data-tile]") ?? null;
+      if (!fine || !readyRef.current || draggingRef.current || menuRef.current || projectRef.current || heroRef.current) {
+        setHover(null);
+        setWord(null);
+        return;
+      }
+      const target = e.target as Element | null;
+      const el = target?.closest?.<HTMLElement>("[data-tile]") ?? null;
       setHover(el);
+      setWord(target?.closest?.<HTMLElement>("[data-fmt]") ?? null);
       const t = el && tilts.get(el);
       if (!el || !t) return;
       const r = el.getBoundingClientRect();
@@ -1038,7 +1314,10 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       t.tgx = nx;
       t.tgy = ny;
     };
-    const onLeave = () => setHover(null);
+    const onLeave = () => {
+      setHover(null);
+      setWord(null);
+    };
     window.addEventListener("pointermove", onMove, { passive: true });
     document.documentElement.addEventListener("pointerleave", onLeave);
 
@@ -1063,12 +1342,16 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         if (lampDirty) drawLamp();
       }
 
-      // the wall leans a little toward the pointer, slowly
+      // the wall leans a little toward the pointer, slowly; for Beyond it rises toward you
       if (plane && fine && !reduce) {
         const k = 1 - Math.exp(-dt * 2.2);
         lean.x += ((p.x / window.innerWidth) * 2 - 1 - lean.x) * k;
         lean.y += ((p.y / window.innerHeight) * 2 - 1 - lean.y) * k;
-        const css = `translateX(${(-lean.x * 2.5).toFixed(3)}vw) rotateX(${(52 + lean.y * 2).toFixed(3)}deg)`;
+        beyond += ((formatRef.current === "beyond" ? 1 : 0) - beyond) * (1 - Math.exp(-dt * 2.6));
+        if (Math.abs(beyond) < 0.0005) beyond = 0;
+        const css = `translateX(${(-lean.x * 2.5).toFixed(3)}vw) rotateX(${(52 - beyond * BEYOND_LEAN.tilt + lean.y * 2).toFixed(3)}deg)${
+          beyond ? ` scale(${(1 + beyond * BEYOND_LEAN.scale).toFixed(4)})` : ""
+        }`;
         if (css !== leanCss) {
           plane.style.transform = css;
           leanCss = css;
@@ -1115,6 +1398,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       window.removeEventListener("resize", sizeLamp);
       document.documentElement.removeEventListener("pointerleave", onLeave);
       setHover(null);
+      setWord(null);
     };
   }, [clips, playback, reduce]);
 
@@ -1137,7 +1421,13 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         <div ref={warpRef} className={styles.warp}>
         <div ref={planeRef} className={styles.plane}>
           {lanes.map((lane, l) => (
-            <div key={l} className={styles.lane}>
+            <div
+              key={l}
+              ref={(el) => {
+                laneRefs.current[l] = el;
+              }}
+              className={styles.lane}
+            >
               <div
                 ref={(el) => {
                   trackRefs.current[l] = el;
@@ -1182,12 +1472,17 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         <h1 className={styles.sr}>
           {mark} {MARK_SUB}. {HEADLINE.join(" ")}.
         </h1>
-        <Heading
-          lines={HEADLINE}
-          tagline={SUBHEAD}
+        <Formats
           show={gone && !menuOpen}
           first={menuKey === 0}
           reduce={reduce}
+          ready={ready}
+          dim={hero !== null}
+          active={wallFormat}
+          lifted={lifted}
+          wordRefs={wordRefs}
+          onHover={hoverFormat}
+          onOpen={openHero}
         />
         <Mark mark={mark} reduce={reduce} gone={gone} menuOpen={menuOpen} menuKey={menuKey} />
       </div>
@@ -1248,6 +1543,22 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       <CursorLabel ref={labelRef} />
       <AnimatePresence>
         {project && <ProjectView key="project" clips={clips} open={project} onClose={closeProject} />}
+      </AnimatePresence>
+
+      {/* ================= A format's hero, opened from its word ================= */}
+      <AnimatePresence>
+        {hero && (
+          <FormatHero
+            key="format-hero"
+            start={hero.key}
+            from={hero.from}
+            reduce={reduce}
+            wordRect={wordRect}
+            onSwitch={setLifted}
+            onClose={closeHero}
+            onLanded={landed}
+          />
+        )}
       </AnimatePresence>
 
       {/* ================= Opening ================= */}
