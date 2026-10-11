@@ -62,9 +62,10 @@ const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 // screen (see project-view.tsx).
 // ===========================================================================
 const EASE = [0.16, 1, 0.3, 1] as const;
-// The entrance, in seconds: the frame draws in 16:9, turns to 9:16, opens
-// to its corners (Beyond), the card fills with the mark, leaves; the names rise.
-const INTRO = { draw: 0.25, portrait: 1.35, beyond: 2.05, card: 2.65, leave: 4.0, names: 4.55 };
+// The entrance, in seconds: a hairline splits open into the ink card, the
+// mark rises into it, a hairline runs along its foot, it flies into the logo's
+// place; the names rise.
+const INTRO = { line: 0.2, letters: 1.2, load: 1.8, fly: 3.05, names: 3.75 };
 // from here the page answers
 const INDEX_SETTLE = INTRO.names + 0.9;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
@@ -342,107 +343,95 @@ function Menu({ open, reduce, onClose }: { open: boolean; reduce: boolean; onClo
 }
 
 // ===========================================================================
-// INTRO — the brand card, on the white, telling its own name. A hairline
-// frame draws itself in 16:9; it turns a quarter into 9:16 and back; its sides
-// fall away and the four corners push outward (Beyond); inside them an ink
-// card wipes up and 16X9 & BEYOND rises in the paper's colour; the letters
-// lift out, the card shuts to a slit and is gone. A caption under the frame
-// names each step. Nothing of the wall shows until a word is pointed at.
+// INTRO — the brand card, alone on the white. A hairline splits open from the
+// centre and opens into an ink card; 1, 6, X, 9 rise into it one by one and
+// & BEYOND follows; a hairline runs along its foot like a quiet loader; then
+// the whole card shrinks into the logo's place at the top left and becomes
+// the logo. Nothing of the wall shows until a word is pointed at.
 // ===========================================================================
-const CAPTIONS = ["16 : 9", "9 : 16", "& Beyond", "Stories beyond the frame", ""];
+const MARK_CHARS = ["1", "6", "X", "9"];
 
 function IntroCard() {
-  // 0 the frame draws, 1 turned to 9:16, 2 Beyond (corners only), 3 the card, 4 gone
-  const [p, setP] = useState(0);
+  const cardRef = useRef<HTMLDivElement>(null);
+  // where the card lands: the logo's place in the top bar, measured as it leaves
+  const [fly, setFly] = useState<{ x: number; y: number; s: number } | null>(null);
   useEffect(() => {
-    const at = [INTRO.portrait, INTRO.beyond, INTRO.card, INTRO.leave];
-    const ts = at.map((t, i) => window.setTimeout(() => setP(i + 1), t * 1000));
-    return () => ts.forEach((t) => window.clearTimeout(t));
+    const t = window.setTimeout(() => {
+      const card = cardRef.current?.getBoundingClientRect();
+      const logo = document.querySelector<HTMLElement>("[data-logo]")?.getBoundingClientRect();
+      if (!card || !logo || !card.width) {
+        setFly({ x: 0, y: 0, s: 0.4 });
+        return;
+      }
+      setFly({
+        x: logo.left + logo.width / 2 - (card.left + card.width / 2),
+        y: logo.top + logo.height / 2 - (card.top + card.height / 2),
+        s: logo.width / card.width,
+      });
+    }, INTRO.fly * 1000);
+    return () => window.clearTimeout(t);
   }, []);
-  const turn = { type: "spring" as const, stiffness: 110, damping: 15, mass: 1 };
-  const corner = (k: string) => (
-    <motion.span
-      key={k}
-      className={`${styles.cardCorner} ${styles[`cardCorner_${k}`]}`}
-      initial={{ opacity: 0, x: 0, y: 0 }}
-      animate={{
-        opacity: p >= 2 && p < 4 ? 1 : 0,
-        x: p >= 2 && p < 4 ? (k.includes("l") ? -14 : 14) : 0,
-        y: p >= 2 && p < 4 ? (k.includes("t") ? -14 : 14) : 0,
-      }}
-      transition={{ type: "spring", stiffness: 140, damping: 18, opacity: { duration: 0.4 } }}
-    />
-  );
-  return (
-    <div className={styles.card} aria-hidden="true">
-      <motion.div
-        className={styles.cardFrame}
-        initial={false}
-        animate={{ rotate: p === 1 ? 90 : 0, scale: p === 1 ? 0.62 : p >= 2 && p < 4 ? 1.04 : 1 }}
-        transition={{ rotate: turn, scale: turn }}
-      >
-        {/* the hairline frame, traced round from its top left: top, right, bottom, left */}
-        {(["top", "right", "bottom", "left"] as const).map((side, i) => (
-          <motion.span
-            key={side}
-            className={`${styles.cardEdge} ${styles[`cardEdge_${side}`]}`}
-            initial={side === "top" || side === "bottom" ? { scaleX: 0 } : { scaleY: 0 }}
-            animate={{
-              ...(side === "top" || side === "bottom" ? { scaleX: 1 } : { scaleY: 1 }),
-              opacity: p >= 2 ? 0 : 1,
-            }}
-            transition={{
-              scaleX: { delay: INTRO.draw + i * 0.24, duration: 0.42, ease: EASE_CINE },
-              scaleY: { delay: INTRO.draw + i * 0.24, duration: 0.42, ease: EASE_CINE },
-              opacity: { duration: 0.35 },
-            }}
-          />
-        ))}
-        {["tl", "tr", "bl", "br"].map(corner)}
 
-        {/* the card: ink wipes up inside the corners, then shuts to a slit */}
-        <motion.div
-          className={styles.cardInk}
-          initial={{ clipPath: "inset(100% 0% 0% 0%)" }}
-          animate={{
-            clipPath: p === 3 ? "inset(0% 0% 0% 0%)" : p >= 4 ? "inset(50% 0% 50% 0%)" : "inset(100% 0% 0% 0%)",
-          }}
-          transition={p >= 4 ? { delay: 0.35, duration: 0.6, ease: EASE_CINE } : { duration: 0.85, ease: EASE_CINE }}
-        >
-          <span className={styles.cardMask}>
+  return (
+    <motion.div
+      ref={cardRef}
+      className={styles.card}
+      aria-hidden="true"
+      initial={{ clipPath: "inset(49.6% 50% 49.6% 50%)" }}
+      animate={
+        fly
+          ? { x: fly.x, y: fly.y, scale: fly.s, opacity: [1, 1, 0], clipPath: "inset(0% 0% 0% 0%)" }
+          : { clipPath: ["inset(49.6% 50% 49.6% 50%)", "inset(49.6% 0% 49.6% 0%)", "inset(0% 0% 0% 0%)"] }
+      }
+      transition={
+        fly
+          ? // solid all the way in; it hands over to the logo only as it touches down
+            { duration: 0.9, ease: EASE_CINE, opacity: { duration: 0.9, times: [0, 0.9, 1], ease: "linear" } }
+          : { delay: INTRO.line, duration: INTRO.letters - INTRO.line + 0.1, times: [0, 0.45, 1], ease: [EASE_CINE, EASE_CINE] }
+      }
+    >
+      {/* the mark: each character rises on its own spring, & BEYOND follows on the baseline */}
+      <span className={styles.cardMark}>
+        {MARK_CHARS.map((c, i) => (
+          <span key={i} className={styles.cardMask}>
             <motion.span
-              className={styles.cardWord}
-              initial={{ y: "115%" }}
-              animate={{ y: p === 3 ? "0%" : p >= 4 ? "-115%" : "115%" }}
-              transition={
-                p >= 4
-                  ? { duration: 0.5, ease: EASE_CINE }
-                  : { type: "spring", stiffness: 90, damping: 16, delay: 0.35 }
-              }
+              className={styles.cardChar}
+              initial={{ y: "112%" }}
+              animate={{ y: "0%" }}
+              transition={{ type: "spring", stiffness: 120, damping: 15, delay: INTRO.letters + i * 0.075 }}
             >
-              16X9
-              <span className={styles.cardSub}>&amp; BEYOND</span>
+              {c}
             </motion.span>
           </span>
-        </motion.div>
-      </motion.div>
-
-      {/* the caption names each step */}
-      <span className={styles.cardCaption}>
-        <AnimatePresence mode="wait">
-          {CAPTIONS[p] && (
-            <motion.span
-              key={p}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0, transition: { delay: p === 0 ? INTRO.draw + 0.5 : 0.15, duration: 0.5, ease: EASE } }}
-              exit={{ opacity: 0, y: -6, transition: { duration: 0.2 } }}
-            >
-              {CAPTIONS[p]}
-            </motion.span>
-          )}
-        </AnimatePresence>
+        ))}
+        <span className={`${styles.cardMask} ${styles.cardSubMask}`}>
+          <motion.span
+            className={styles.cardChar}
+            initial={{ y: "112%" }}
+            animate={{ y: "0%" }}
+            transition={{ duration: 0.7, ease: EASE, delay: INTRO.letters + 0.45 }}
+          >
+            &amp; BEYOND
+          </motion.span>
+        </span>
       </span>
-    </div>
+
+      {/* the quiet loader along the card's foot, and the © in its corner */}
+      <motion.span
+        className={styles.cardLoad}
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        transition={{ delay: INTRO.load, duration: INTRO.fly - INTRO.load - 0.2, ease: [0.65, 0, 0.35, 1] }}
+      />
+      <motion.span
+        className={styles.cardCopy}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: INTRO.load, duration: 0.6 }}
+      >
+        ©
+      </motion.span>
+    </motion.div>
   );
 }
 
@@ -1404,11 +1393,12 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       {/* ================= Top bar: logo left, burger right ================= */}
       <motion.header
         className={styles.topbar}
-        {...enter(0.2, { opacity: 0, y: -12 }, { opacity: 1, y: 0 }, 1.0)}
+        // the bar arrives as the card lands in the logo's place
+        {...enter(INTRO.fly + 0.78, { opacity: 0 }, { opacity: 1 }, 0.3)}
       >
         <Link href="/" className={styles.logo} aria-label="Home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_SRC} alt={mark} className={styles.logoImg} />
+          <img src={LOGO_SRC} alt={mark} className={styles.logoImg} data-logo="" />
         </Link>
 
         <div className={styles.barEnd}>
