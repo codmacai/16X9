@@ -557,7 +557,31 @@
     }
   }
 
-  /* ================= The screening room: a curved wall in the dark ================= */
+  /* ================= The lens wall: one surface, drawn on the GPU (lens-wall.tsx) ================= */
+  .lens {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: #050505;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .lens.gridDragging {
+    cursor: grabbing !important;
+  }
+
+  .lensCanvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ================= The fallback room without WebGL: a curved wall in the dark ================= */
   .grid {
     position: absolute;
     inset: 0;

@@ -9,7 +9,7 @@ import ProjectView, { type OpenProject } from "../hero7/project-view";
 import Drawer from "../hero11/drawer";
 import { FORMATS, FrameGlyph, Ratio, type FormatKey } from "./formats";
 import IndexStage, { EASE, EASE_CINE, INTRO } from "./index-stage";
-import FormatGrid from "./grid";
+import LensWall, { type FilmRect } from "./lens-wall";
 import styles from "./home.module.css";
 
 // ===========================================================================
@@ -18,9 +18,10 @@ import styles from "./home.module.css";
 // 1. The mark enters in outline on the white page, and the index rises:
 //    16x9 / 9x16 / BEYOND (index-stage.tsx). Pointing at a word fades in a
 //    film in its format behind the line.
-// 2. Clicking a word opens its screening room (grid.tsx): the index fades
+// 2. Clicking a word opens its screening room (lens-wall.tsx): the index fades
 //    away and the room's films settle in from the centre outward, all in
-//    that word's proportion, round the brand at the centre of the screen.
+//    that word's proportion, on a living lens surface in the dark
+//    (lens-wall.tsx; grid.tsx is its fallback without WebGL).
 //    The tabs at the top move between rooms; "Index" or Esc goes back.
 // 3. Clicking a film opens it full screen (hero7/project-view.tsx).
 // ===========================================================================
@@ -97,9 +98,8 @@ function Home({ variant }: { variant: HeroVariant }) {
     setProject(null);
     setRoom(null);
   }, []);
-  const openFilm = useCallback((index: number, el: HTMLElement) => {
-    const r = el.getBoundingClientRect();
-    setProject({ index, rect: { top: r.top, left: r.left, width: r.width, height: r.height }, time: 0 });
+  const openFilm = useCallback((index: number, rect: FilmRect) => {
+    setProject({ index, rect, time: 0 });
   }, []);
   const closeFilm = useCallback(() => setProject(null), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -132,7 +132,7 @@ function Home({ variant }: { variant: HeroVariant }) {
       {/* ================= the screening room, under the index ================= */}
       <AnimatePresence>
         {room && (
-          <FormatGrid
+          <LensWall
             key={room}
             fmt={room}
             clips={clips}
