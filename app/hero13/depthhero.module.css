@@ -412,7 +412,59 @@
     position: absolute;
     inset: 0;
     z-index: 3;
-    background: var(--paper);
+    overflow: hidden;
+  }
+
+  .whitePaper {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+
+  /* ---- the entrance: the 16:9 gate cut through the white ---- */
+  .gateLine {
+    position: absolute;
+    height: 1px;
+    margin-top: -0.5px;
+    background: #0c0c0c;
+    transform-origin: 50% 50%;
+  }
+
+  .gateTag {
+    position: absolute;
+    translate: -100% calc(-100% - 10px);
+    color: rgb(12 12 12 / 0.55);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    white-space: nowrap;
+  }
+
+  .gateMark {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    color: var(--paper);
+    will-change: clip-path;
+  }
+
+  .gateWord {
+    display: block;
+    font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+    font-stretch: 100%;
+    font-variation-settings: "wdth" 100;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    white-space: nowrap;
+  }
+
+  /* & BEYOND: tiny, on the mark's baseline */
+  .gateSub {
+    margin-left: 0.4em;
+    font-size: 0.16em;
+    letter-spacing: 0.02em;
   }
 
   /* The words are paper with a difference blend: black on the white, paper on
@@ -466,105 +518,72 @@
     color: var(--paper);
   }
 
-  /* ---- the three formats: 16x9, 9x16, Beyond, in three columns ---- */
-  .fmts {
-    position: relative;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    column-gap: clamp(12px, 2vw, 36px);
-    width: min(90vw, 1560px);
+  /* ---- the three formats as one line of type: 16x9 / 9x16 / Beyond ---- */
+  .names {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.28em;
+    font-size: clamp(34px, 6vw, 118px);
+    color: var(--paper);
   }
 
-  .fmt {
+  .name {
     position: relative;
-    display: flex;
-    flex-direction: column;
+    display: inline-flex;
     align-items: flex-start;
-    min-width: 0;
     margin: 0;
-    padding: 0 0 6px;
+    padding: 0;
     border: 0;
     background: none;
-    color: var(--paper);
+    color: inherit;
     font: inherit;
-    letter-spacing: inherit;
-    text-align: left;
-    text-transform: inherit;
+    text-transform: uppercase;
     cursor: pointer;
-    pointer-events: auto;
     outline: none;
   }
 
-  .fmt:disabled {
+  .name:disabled {
     cursor: default;
   }
 
-  .fmt:focus-visible .fmtWord {
+  .name:focus-visible .nameWord {
     text-decoration: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 0.12em;
   }
 
-  /* its number, and a small outline of its frame */
-  .fmtTop {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding-bottom: 12px;
-    font-size: clamp(9px, 0.74vw, 12px);
-    letter-spacing: 0.24em;
-    color: rgb(247 242 238 / 0.72);
-  }
-
-  .fmtGlyph {
-    height: clamp(9px, 0.8vw, 13px);
-    width: auto;
-  }
-
-  /* the hairline: drawn in with the words, and in full paper while pointed at */
-  .fmtRule {
-    position: relative;
-    display: block;
-    width: 100%;
-    height: 1px;
-  }
-
-  .fmtRuleBase,
-  .fmtRuleOn {
-    position: absolute;
-    inset: 0;
-    transform-origin: 0 50%;
-  }
-
-  .fmtRuleBase {
-    background: rgb(247 242 238 / 0.28);
-  }
-
-  .fmtRuleOn {
-    background: var(--paper);
-  }
-
-  /* the word rises out of this */
-  .fmtMask {
+  .nameMask,
+  .slashMask {
     display: block;
     overflow: hidden;
-    padding-top: clamp(10px, 1.8vh, 22px);
+    padding: 0.08em 0.02em 0.04em;
   }
 
-  /* the same face, weight and spacing as the word in its hero (format-hero.module.css),
-     so flying from one to the other is a pure scale */
-  .fmtWord {
+  .nameWord,
+  .slash {
     display: block;
-    width: max-content;
-    font-family: var(--font-wide, "Archivo"), var(--font-sans), "Helvetica Neue", Arial, sans-serif;
-    font-size: clamp(26px, 6.3vw, 122px);
+    font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
     font-weight: 300;
     font-stretch: 108%;
     font-variation-settings: "wdth" 108;
     line-height: 1;
     letter-spacing: -0.03em;
     white-space: nowrap;
+  }
+
+  /* the slashes: thin and grey, they stand up around the word pointed at */
+  .slash {
+    font-weight: 200;
+    color: rgb(247 242 238 / 0.42);
+  }
+
+  .nameNo {
+    margin: 0.2em 0 0 0.25em;
+    font-size: clamp(9px, 0.7vw, 12px);
+    letter-spacing: 0.2em;
+    line-height: 1;
+    vertical-align: top;
   }
 
   /* the x between the numbers: lowercase and lighter */
@@ -574,31 +593,38 @@
     text-transform: none;
   }
 
-  /* what the format is, shown while it's pointed at */
-  .fmtLine {
+  .caption {
+    position: relative;
+    height: 1.6em;
+    margin-top: clamp(18px, 3.4vh, 36px);
+    font-size: clamp(10px, 0.78vw, 12px);
+    letter-spacing: 0.3em;
+    color: var(--paper);
+  }
+
+  .caption > span {
     display: block;
-    margin-top: clamp(10px, 1.4vh, 16px);
-    font-size: clamp(9px, 0.74vw, 12px);
-    letter-spacing: 0.24em;
-    color: rgb(247 242 238 / 0.85);
     white-space: nowrap;
   }
 
-  /* phones: the columns tighten (Beyond, the longest word, gets a little more
-     room) so the words can stay big */
+  .captionHint {
+    opacity: 0.45;
+  }
+
+  @media (hover: hover) {
+    .name:not(:disabled) {
+      cursor: none;
+    }
+  }
+
+  /* phones: the line stays one line */
   @media (max-width: 640px) {
-    .fmts {
-      grid-template-columns: 1fr 1fr 1.4fr;
-      width: 92vw;
-      column-gap: 10px;
+    .names {
+      font-size: 7.2vw;
+      gap: 0.22em;
     }
-    .fmtWord {
-      font-size: 7vw;
-    }
-    .fmtLine {
-      white-space: normal;
-      letter-spacing: 0.16em;
-      line-height: 1.5;
+    .nameNo {
+      display: none;
     }
   }
 
@@ -967,8 +993,7 @@
   }
 
   @media (hover: hover) {
-    .tile,
-    .fmt:not(:disabled) {
+    .tile {
       cursor: none;
     }
   }

@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  Fragment,
   memo,
+  useId,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -61,8 +63,11 @@ const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 // screen (see project-view.tsx).
 // ===========================================================================
 const EASE = [0.16, 1, 0.3, 1] as const;
-// the index's words have risen in by then: from here the page answers
-const INDEX_SETTLE = 1.6;
+// The entrance, in seconds: the hairline draws, opens into the 16:9 gate,
+// the mark rises inside and lifts out, the gate shuts, the names rise.
+const INTRO = { line: 0.25, open: 1.0, letters: 1.55, leave: 3.35, shut: 3.6, names: 4.15 };
+// from here the page answers
+const INDEX_SETTLE = INTRO.names + 0.9;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
 
 const T = {
@@ -70,8 +75,6 @@ const T = {
   clients: 2.8, // logo strip
   surge: 4.4, // from here the wall surges every few seconds
 };
-// the words rise this long after the page appears
-const LEAVE = { headAt: 0.35 };
 
 // Speeds are in screen-heights per second.
 const CRAWL = 0.3;
@@ -340,13 +343,137 @@ function Menu({ open, reduce, onClose }: { open: boolean; reduce: boolean; onClo
 }
 
 // ===========================================================================
-// FORMATS — take the card's place, centred on the screen: the heading as a
-// small line, and under it 16x9, 9x16 and Beyond in three columns, each on a
-// hairline with its number and a small outline of its frame. The words rise
-// out of a mask on a spring as the card fades. Pointing at one brings it
-// forward (the others step back), draws its hairline in and shows its line;
-// the wall behind takes its frame (see DepthInner). Clicking one opens its
-// hero: while that is open the word is "lifted" out of its column.
+// INTRO — the 16x9 card, on the white. A hairline draws across the page and
+// opens like a film gate into a 16:9 window cut through the white: the wall
+// runs behind it. "16X9 & BEYOND" rises inside, made of the page itself (the
+// letters are the paper colour), holds, lifts out, and the gate shuts back to
+// a line that's gone. The white layer is the index: pointing at a word fades
+// all of it away over the wall.
+// ===========================================================================
+const subscribeResize = (cb: () => void) => {
+  window.addEventListener("resize", cb);
+  return () => window.removeEventListener("resize", cb);
+};
+
+function WhiteLayer({ hidden, interactive, reduce }: { hidden: boolean; interactive: boolean; reduce: boolean }) {
+  const size = useSyncExternalStore(subscribeResize, () => `${window.innerWidth}x${window.innerHeight}`, () => "1440x900");
+  const [vw, vh] = size.split("x").map(Number);
+  const W = Math.min(vw * (vw <= 760 ? 0.86 : 0.56), 980);
+  const H = (W * 9) / 16;
+  const cx = vw / 2;
+  const cy = vh * 0.47;
+  const maskId = `white-${useId().replace(/:/g, "")}`;
+
+  // line -> open (the gate) -> shut
+  const [phase, setPhase] = useState<"line" | "open" | "shut">(reduce ? "shut" : "line");
+  useEffect(() => {
+    if (reduce) return;
+    const a = window.setTimeout(() => setPhase("open"), INTRO.open * 1000);
+    const b = window.setTimeout(() => setPhase("shut"), INTRO.shut * 1000);
+    return () => {
+      window.clearTimeout(a);
+      window.clearTimeout(b);
+    };
+  }, [reduce]);
+  const h = phase === "open" ? H : 0;
+  const gate = phase === "open" ? { duration: 1.1, ease: EASE_CINE } : { duration: 0.7, ease: EASE_CINE };
+  const edge = (side: -1 | 1) => (
+    <motion.span
+      className={styles.gateLine}
+      style={{ left: cx - W / 2, width: W }}
+      initial={{ top: cy, scaleX: 0 }}
+      animate={{
+        top: cy + (side * h) / 2,
+        scaleX: phase === "shut" ? 0 : 1,
+        transition: {
+          top: gate,
+          scaleX:
+            phase === "line"
+              ? { delay: INTRO.line, duration: 0.75, ease: EASE_CINE }
+              : { delay: 0.55, duration: 0.6, ease: EASE_CINE },
+        },
+      }}
+    />
+  );
+
+  return (
+    <motion.div
+      className={styles.white}
+      aria-hidden="true"
+      initial={false}
+      animate={{ opacity: hidden ? 0 : 1 }}
+      transition={{ duration: hidden ? 0.8 : 0.6, ease: EASE }}
+      style={{ pointerEvents: interactive ? "auto" : "none" }}
+    >
+      {/* the paper, with the gate cut through it */}
+      <svg className={styles.whitePaper} width={vw} height={vh}>
+        <defs>
+          <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={vw} height={vh}>
+            <rect width={vw} height={vh} fill="#fff" />
+            <motion.rect
+              x={cx - W / 2}
+              width={W}
+              fill="#000"
+              initial={{ y: cy, height: 0 }}
+              animate={{ y: cy - h / 2, height: h }}
+              transition={gate}
+            />
+          </mask>
+        </defs>
+        <rect width={vw} height={vh} fill="var(--paper)" mask={`url(#${maskId})`} />
+      </svg>
+
+      {/* the gate's two edges: one line that parts, and meets again */}
+      {edge(-1)}
+      {edge(1)}
+
+      {/* its format, small, at the corner */}
+      <motion.span
+        className={styles.gateTag}
+        style={{ left: cx + W / 2, top: cy - H / 2 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: phase === "open" ? 1 : 0, transition: { delay: phase === "open" ? 0.6 : 0, duration: 0.5 } }}
+      >
+        16 : 9
+      </motion.span>
+
+      {/* the mark, in the paper's colour, rising inside the gate */}
+      <motion.div
+        className={styles.gateMark}
+        style={{ left: cx - W / 2, top: cy - H / 2, width: W, height: H, fontSize: W * 0.27 }}
+        initial={{ clipPath: "inset(50% 0% 50% 0%)" }}
+        animate={{ clipPath: phase === "open" ? "inset(0% 0% 0% 0%)" : "inset(50% 0% 50% 0%)" }}
+        transition={gate}
+      >
+        {!reduce && (
+          <motion.span
+            className={styles.gateWord}
+            initial={{ y: "120%" }}
+            animate={{
+              y: [null, "0%", "0%", "-120%"],
+              transition: {
+                duration: INTRO.leave - INTRO.letters + 0.6,
+                times: [0, 0.32, 0.8, 1],
+                delay: INTRO.letters,
+                ease: [EASE, "linear", EASE_CINE],
+              },
+            }}
+          >
+            16X9<span className={styles.gateSub}>&amp; BEYOND</span>
+          </motion.span>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ===========================================================================
+// FORMATS — on the white, once the gate has shut: the heading as a small
+// line, and the three formats set as one line of type, 16x9 / 9x16 / Beyond.
+// The words rise one after another, then the slashes. Pointing at a word
+// steps the rest back, stands the slashes upright (the frame squares up
+// around it), shows its line underneath, and the white fades away over the
+// wall, already in that word's frame (see DepthInner). Clicking it opens the wall.
 // ===========================================================================
 function Formats({
   show,
@@ -359,7 +486,7 @@ function Formats({
   onOpen,
 }: {
   show: boolean;
-  /** the first reveal crossfades with the card; later ones (after the menu) are quick */
+  /** the first reveal waits for the gate to shut; later ones (after the menu, or the wall) are quick */
   first: boolean;
   reduce: boolean;
   ready: boolean;
@@ -369,10 +496,11 @@ function Formats({
   onHover: (k: FormatKey | null) => void;
   onOpen: (k: FormatKey) => void;
 }) {
-  const base = reduce ? 0 : first ? LEAVE.headAt : 0;
-  const visible = show;
+  const base = reduce ? 0 : first ? INTRO.names : 0.1;
   const out = { opacity: 0, transition: { duration: reduce ? 0 : 0.35, ease: EASE_CINE } };
-  // Crossing the gap between two columns isn't leaving: the wall keeps its
+  const rise = (delay: number) =>
+    show ? { y: "0%", transition: { type: "spring" as const, stiffness: 85, damping: 17, mass: 1, delay } } : undefined;
+  // Crossing from one word to the next isn't leaving: the wall keeps its
   // shape unless the pointer stays off the words for a moment.
   const leaveTimer = useRef(0);
   const enter = (k: FormatKey) => {
@@ -384,97 +512,100 @@ function Formats({
     leaveTimer.current = window.setTimeout(() => onHover(null), 160);
   };
   useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
+  const caption = FORMATS.find((f) => f.key === active)?.line ?? null;
 
   return (
     <div className={styles.head}>
-      <motion.span
-        className={styles.headShade}
-        initial={{ opacity: 0 }}
-        animate={show ? { opacity: 1, transition: { duration: 1.6, ease: EASE } } : out}
-      />
       <motion.p
         aria-hidden="true"
         className={styles.eyebrow}
         initial={reduce ? false : { opacity: 0, y: 10 }}
-        animate={visible ? { opacity: 1, y: 0, transition: { delay: base, duration: 1.2, ease: EASE } } : out}
+        animate={show ? { opacity: 1, y: 0, transition: { delay: base + 0.5, duration: 1.2, ease: EASE } } : out}
       >
         {HEADLINE.join(" ")}
       </motion.p>
 
-      <div className={styles.fmts}>
+      <div className={styles.names}>
         {FORMATS.map((f, i) => {
           const on = active === f.key;
-          const stepBack = active !== null && !on;
           return (
-            <motion.button
-              key={f.key}
-              type="button"
-              className={styles.fmt}
-              data-fmt={f.key}
-              aria-label={`${f.label}: ${f.line}`}
-              disabled={!ready || !show}
-              // once the wall is open the words are gone and must not catch the pointer
-              style={{ pointerEvents: show ? "auto" : "none" }}
-              initial={reduce ? false : { opacity: 0 }}
-              animate={{
-                opacity: !visible ? 0 : stepBack ? 0.3 : 1,
-                transition: { duration: !visible ? (reduce ? 0 : 0.35) : 0.6, ease: EASE },
-              }}
-              onPointerEnter={(e) => e.pointerType === "mouse" && enter(f.key)}
-              onPointerLeave={(e) => e.pointerType === "mouse" && leave()}
-              onFocus={(e) => e.currentTarget.matches(":focus-visible") && enter(f.key)}
-              onBlur={leave}
-              onClick={() => onOpen(f.key)}
-            >
-              <motion.span
-                className={styles.fmtTop}
-                initial={reduce ? false : { opacity: 0, y: 6 }}
-                animate={show ? { opacity: 1, y: 0, transition: { delay: base + 0.35 + i * 0.08, duration: 1, ease: EASE } } : undefined}
-              >
-                <span>{f.no}</span>
-                <FrameGlyph k={f.key} className={styles.fmtGlyph} />
-              </motion.span>
-              <span className={styles.fmtRule}>
-                <motion.span
-                  className={styles.fmtRuleBase}
-                  initial={reduce ? false : { scaleX: 0 }}
-                  animate={show ? { scaleX: 1, transition: { delay: base + i * 0.09, duration: 1.3, ease: EASE_CINE } } : undefined}
-                />
-                <motion.span
-                  className={styles.fmtRuleOn}
-                  initial={false}
-                  animate={{ scaleX: on ? 1 : 0 }}
-                  transition={{ type: "spring", stiffness: 140, damping: 22 }}
-                />
-              </span>
-              <span className={styles.fmtMask}>
-                <motion.span
-                  ref={(el: HTMLSpanElement | null) => {
-                    wordRefs.current[f.key] = el;
-                  }}
-                  className={styles.fmtWord}
-                  initial={reduce ? false : { y: "112%" }}
-                  animate={
-                    show
-                      ? { y: 0, transition: { type: "spring", stiffness: 80, damping: 17, mass: 1, delay: base + 0.12 + i * 0.1 } }
-                      : undefined
-                  }
-                >
-                  <Ratio text={f.label} className={styles.fmtX} />
-                </motion.span>
-              </span>
-              <motion.span
-                className={styles.fmtLine}
+            <Fragment key={f.key}>
+              {i > 0 && (
+                <span className={styles.slashMask} aria-hidden="true">
+                  <motion.span
+                    className={styles.slash}
+                    initial={reduce ? false : { y: "112%" }}
+                    animate={{
+                      ...(show ? rise(base + 0.38 + i * 0.06) : {}),
+                      rotate: active ? -22 : 0,
+                      opacity: !show ? 0 : active ? 0.35 : 1,
+                    }}
+                    transition={{ rotate: { type: "spring", stiffness: 160, damping: 16 }, opacity: { duration: 0.5 } }}
+                  >
+                    /
+                  </motion.span>
+                </span>
+              )}
+              <motion.button
+                type="button"
+                className={styles.name}
+                data-fmt={f.key}
+                aria-label={`${f.label}: ${f.line}`}
+                disabled={!ready || !show}
+                // once the wall is open the words are gone and must not catch the pointer
+                style={{ pointerEvents: show ? "auto" : "none" }}
                 initial={false}
-                animate={{ opacity: on ? 1 : 0, y: on ? 0 : 8 }}
-                transition={{ duration: 0.55, ease: EASE }}
+                animate={{ opacity: !show ? 0 : active && !on ? 0.22 : 1 }}
+                transition={{ duration: !show ? (reduce ? 0 : 0.35) : 0.55, ease: EASE }}
+                onPointerEnter={(e) => e.pointerType === "mouse" && enter(f.key)}
+                onPointerLeave={(e) => e.pointerType === "mouse" && leave()}
+                onFocus={(e) => e.currentTarget.matches(":focus-visible") && enter(f.key)}
+                onBlur={leave}
+                onClick={() => onOpen(f.key)}
               >
-                {f.line}
-              </motion.span>
-            </motion.button>
+                <span className={styles.nameMask}>
+                  <motion.span
+                    ref={(el: HTMLSpanElement | null) => {
+                      wordRefs.current[f.key] = el;
+                    }}
+                    className={styles.nameWord}
+                    initial={reduce ? false : { y: "112%" }}
+                    animate={rise(base + i * 0.12)}
+                  >
+                    <Ratio text={f.label} className={styles.fmtX} />
+                  </motion.span>
+                </span>
+                <motion.sup
+                  className={styles.nameNo}
+                  initial={reduce ? false : { opacity: 0 }}
+                  animate={show ? { opacity: 1, transition: { delay: base + 0.6 + i * 0.08, duration: 0.8 } } : undefined}
+                >
+                  {f.no}
+                </motion.sup>
+              </motion.button>
+            </Fragment>
           );
         })}
       </div>
+
+      {/* what the format is, under the line; a quiet hint until one is pointed at */}
+      <motion.div
+        className={styles.caption}
+        initial={reduce ? false : { opacity: 0 }}
+        animate={show ? { opacity: 1, transition: { delay: base + 0.8, duration: 1 } } : out}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={caption ?? "hint"}
+            className={caption ? styles.captionOn : styles.captionHint}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE } }}
+            exit={{ opacity: 0, y: -6, transition: { duration: 0.2 } }}
+          >
+            {caption ?? "Point at a format"}
+          </motion.span>
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 }
@@ -1211,14 +1342,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       {/* ================= The index: white over the wall ================= */}
       {/* Pointing at a word fades the white away over the wall (already in that
           word's frame); clicking one takes the white away for good. */}
-      <motion.div
-        className={styles.white}
-        aria-hidden="true"
-        initial={false}
-        animate={{ opacity: wallFormat ? 0 : 1 }}
-        transition={{ duration: wallFormat ? 0.8 : 0.6, ease: EASE }}
-        style={{ pointerEvents: openFmt === null ? "auto" : "none" }}
-      />
+      <WhiteLayer hidden={wallFormat !== null} interactive={openFmt === null} reduce={reduce} />
 
       {/* the words: black on the white, paper on the wall (a difference blend) */}
       <div className={styles.copy}>
