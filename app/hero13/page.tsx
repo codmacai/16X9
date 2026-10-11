@@ -5,6 +5,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useId,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -435,36 +436,114 @@ function IntroCard() {
   );
 }
 
-/** The white over the wall: the index. Pointing at a word fades it away. */
-function WhiteLayer({ hidden, interactive, reduce }: { hidden: boolean; interactive: boolean; reduce: boolean }) {
+// ===========================================================================
+// THE WINDOW — the white over the wall is the index. Pointing at a word
+// opens a window through it, and the window is the word's format: a slit
+// opens inside the word and grows into a 16:9 frame, a 9:16 frame, or, for
+// Beyond, past every edge of the screen. Moving to another word morphs the
+// window into its shape; leaving folds it back into the word. Opening a
+// format takes the window to the whole screen.
+// ===========================================================================
+type Rect = { left: number; top: number; width: number; height: number };
+const subscribeResize = (cb: () => void) => {
+  window.addEventListener("resize", cb);
+  return () => window.removeEventListener("resize", cb);
+};
+const WINDOW_SPRING = { type: "spring", stiffness: 130, damping: 25, mass: 1 } as const; // no overshoot: it never folds past itself
+
+type Box = { x: number; y: number; width: number; height: number; rx: number };
+function windowFor(fmt: FormatKey | null, open: boolean, anchor: Rect | null, vw: number, vh: number): Box {
+  const full = { x: 0, y: 0, width: vw, height: vh, rx: 0 };
+  if (open || fmt === "beyond") return full;
+  const m = Math.min(18, Math.max(10, vw * 0.012)); // the paper margin round a framed window
+  const r = Math.min(22, vw * 0.02);
+  if (fmt) {
+    const ratio = fmt === "16x9" ? 16 / 9 : 9 / 16;
+    const width = Math.min(vw - 2 * m, (vh - 2 * m) * ratio);
+    const height = width / ratio;
+    return { x: (vw - width) / 2, y: (vh - height) / 2, width, height, rx: r };
+  }
+  // shut: a slit through the middle of the last word pointed at (never quite
+  // zero, so the spring settling onto it can't dip below)
+  const a = anchor ?? { left: vw / 2, top: vh / 2, width: 0, height: 0 };
+  return { x: a.left, y: a.top + a.height / 2, width: Math.max(0.01, a.width), height: 0.01, rx: 0 };
+}
+
+function WhiteLayer({
+  fmt,
+  open,
+  anchor,
+  reduce,
+}: {
+  /** the format shown through the window (null: shut) */
+  fmt: FormatKey | null;
+  /** the wall is open: the window is the whole screen */
+  open: boolean;
+  /** the word the window opens out of and folds back into */
+  anchor: Rect | null;
+  reduce: boolean;
+}) {
+  const size = useSyncExternalStore(subscribeResize, () => `${window.innerWidth}x${window.innerHeight}`, () => "1440x900");
+  const [vw, vh] = size.split("x").map(Number);
+  const box = windowFor(fmt, open, anchor, vw, vh);
+  const maskId = `window-${useId().replace(/:/g, "")}`;
+  const f = FORMATS.find((x) => x.key === fmt);
+  const t = reduce ? { duration: 0 } : WINDOW_SPRING;
+
   // the card leaves the page once its entrance has played
   const [intro, setIntro] = useState(!reduce);
   useEffect(() => {
     if (reduce) return;
-    const t = window.setTimeout(() => setIntro(false), (INTRO.names + 0.4) * 1000);
-    return () => window.clearTimeout(t);
+    const id = window.setTimeout(() => setIntro(false), (INTRO.names + 0.4) * 1000);
+    return () => window.clearTimeout(id);
   }, [reduce]);
+
   return (
-    <motion.div
-      className={styles.white}
-      aria-hidden="true"
-      initial={false}
-      animate={{ opacity: hidden ? 0 : 1 }}
-      transition={{ duration: hidden ? 0.8 : 0.6, ease: EASE }}
-      style={{ pointerEvents: interactive ? "auto" : "none" }}
-    >
+    <div className={styles.white} aria-hidden="true" style={{ pointerEvents: open ? "none" : "auto" }}>
+      <svg className={styles.whitePaper} width={vw} height={vh}>
+        <defs>
+          <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={vw} height={vh}>
+            <rect width={vw} height={vh} fill="#fff" />
+            <motion.rect fill="#000" initial={false} animate={box} transition={t} />
+          </mask>
+        </defs>
+        <rect width={vw} height={vh} fill="var(--paper)" mask={`url(#${maskId})`} />
+      </svg>
+
+      {/* the window's readout, along its top: the format and what it's for */}
+      <motion.span
+        className={styles.readout}
+        initial={false}
+        // centred along the window's top edge, clear of the logo and the menu
+        animate={{ x: box.x + box.width / 2, y: Math.max(box.y + 18, 30), opacity: f && !open ? 1 : 0 }}
+        transition={{ ...t, opacity: { duration: f && !open ? 0.5 : 0.2, delay: f && !open ? 0.25 : 0 } }}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          {f && (
+            <motion.span
+              key={f.key}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE } }}
+              exit={{ opacity: 0, transition: { duration: 0.15 } }}
+            >
+              {f.key === "beyond" ? "∞" : f.label.replace("x", " : ")}
+              <i>{f.line}</i>
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </motion.span>
+
       {intro && <IntroCard />}
-    </motion.div>
+    </div>
   );
 }
 
 // ===========================================================================
-// FORMATS — on the white, once the card has gone: the heading as a small
-// line, and the three formats set as one line of type, 16x9 / 9x16 / Beyond.
-// The words rise one after another, then the slashes. Pointing at a word
-// steps the rest back, stands the slashes upright (the frame squares up
-// around it), shows its line underneath, and the white fades away over the
-// wall, already in that word's frame (see DepthInner). Clicking it opens the wall.
+// FORMATS — on the white, once the card has gone: 16x9 / 9x16 / Beyond, set
+// as one quiet line. The words rise one after another, then the slashes.
+// Pointing at a word steps the rest back, stands the slashes upright, and
+// frames the word with four viewfinder corners, while the window behind it
+// opens in its format. Clicking it opens the wall.
 // ===========================================================================
 function Formats({
   show,
@@ -481,17 +560,16 @@ function Formats({
   first: boolean;
   reduce: boolean;
   ready: boolean;
-  /** the format pointed at (or, on touch, the one taking its turn on the wall) */
+  /** the format pointed at (or, on touch, the one taking its turn) */
   active: FormatKey | null;
   wordRefs: RefObject<Partial<Record<FormatKey, HTMLSpanElement | null>>>;
   onHover: (k: FormatKey | null) => void;
   onOpen: (k: FormatKey) => void;
 }) {
   const base = reduce ? 0 : first ? INTRO.names : 0.1;
-  const out = { opacity: 0, transition: { duration: reduce ? 0 : 0.35, ease: EASE_CINE } };
   const rise = (delay: number) =>
     show ? { y: "0%", transition: { type: "spring" as const, stiffness: 85, damping: 17, mass: 1, delay } } : undefined;
-  // Crossing from one word to the next isn't leaving: the wall keeps its
+  // Crossing from one word to the next isn't leaving: the window keeps its
   // shape unless the pointer stays off the words for a moment.
   const leaveTimer = useRef(0);
   const enter = (k: FormatKey) => {
@@ -503,19 +581,9 @@ function Formats({
     leaveTimer.current = window.setTimeout(() => onHover(null), 160);
   };
   useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
-  const caption = FORMATS.find((f) => f.key === active)?.line ?? null;
 
   return (
     <div className={styles.head}>
-      <motion.p
-        aria-hidden="true"
-        className={styles.eyebrow}
-        initial={reduce ? false : { opacity: 0, y: 10 }}
-        animate={show ? { opacity: 1, y: 0, transition: { delay: base + 0.5, duration: 1.2, ease: EASE } } : out}
-      >
-        {HEADLINE.join(" ")}
-      </motion.p>
-
       <div className={styles.names}>
         {FORMATS.map((f, i) => {
           const on = active === f.key;
@@ -527,11 +595,11 @@ function Formats({
                     className={styles.slash}
                     initial={reduce ? false : { y: "112%" }}
                     animate={{
-                      ...(show ? rise(base + 0.38 + i * 0.06) : {}),
-                      rotate: active ? -22 : 0,
-                      opacity: !show ? 0 : active ? 0.35 : 1,
+                      ...(show ? rise(base + 0.3 + i * 0.06) : {}),
+                      rotate: active ? -20 : 0,
+                      opacity: !show ? 0 : active ? 0.3 : 1,
                     }}
-                    transition={{ rotate: { type: "spring", stiffness: 160, damping: 16 }, opacity: { duration: 0.5 } }}
+                    transition={{ rotate: { type: "spring", stiffness: 150, damping: 18 }, opacity: { duration: 0.5 } }}
                   >
                     /
                   </motion.span>
@@ -546,7 +614,7 @@ function Formats({
                 // once the wall is open the words are gone and must not catch the pointer
                 style={{ pointerEvents: show ? "auto" : "none" }}
                 initial={false}
-                animate={{ opacity: !show ? 0 : active && !on ? 0.22 : 1 }}
+                animate={{ opacity: !show ? 0 : active && !on ? 0.2 : 1 }}
                 transition={{ duration: !show ? (reduce ? 0 : 0.35) : 0.55, ease: EASE }}
                 onPointerEnter={(e) => e.pointerType === "mouse" && enter(f.key)}
                 onPointerLeave={(e) => e.pointerType === "mouse" && leave()}
@@ -561,42 +629,31 @@ function Formats({
                     }}
                     className={styles.nameWord}
                     initial={reduce ? false : { y: "112%" }}
-                    animate={rise(base + i * 0.12)}
+                    animate={rise(base + i * 0.1)}
                   >
                     <Ratio text={f.label} className={styles.fmtX} />
                   </motion.span>
                 </span>
-                <motion.sup
-                  className={styles.nameNo}
-                  initial={reduce ? false : { opacity: 0 }}
-                  animate={show ? { opacity: 1, transition: { delay: base + 0.6 + i * 0.08, duration: 0.8 } } : undefined}
-                >
-                  {f.no}
-                </motion.sup>
+                {/* the viewfinder: four corners close in round the word pointed at */}
+                {(["tl", "tr", "bl", "br"] as const).map((c) => (
+                  <motion.span
+                    key={c}
+                    className={`${styles.finder} ${styles[`finder_${c}`]}`}
+                    aria-hidden="true"
+                    initial={false}
+                    animate={{
+                      opacity: on ? 1 : 0,
+                      x: on ? 0 : c.includes("l") ? -10 : 10,
+                      y: on ? 0 : c.includes("t") ? -10 : 10,
+                    }}
+                    transition={{ type: "spring", stiffness: 260, damping: 24, opacity: { duration: 0.3 } }}
+                  />
+                ))}
               </motion.button>
             </Fragment>
           );
         })}
       </div>
-
-      {/* what the format is, under the line; a quiet hint until one is pointed at */}
-      <motion.div
-        className={styles.caption}
-        initial={reduce ? false : { opacity: 0 }}
-        animate={show ? { opacity: 1, transition: { delay: base + 0.8, duration: 1 } } : out}
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.span
-            key={caption ?? "hint"}
-            className={caption ? styles.captionOn : styles.captionHint}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE } }}
-            exit={{ opacity: 0, y: -6, transition: { duration: 0.2 } }}
-          >
-            {caption ?? "Point at a format"}
-          </motion.span>
-        </AnimatePresence>
-      </motion.div>
     </div>
   );
 }
@@ -641,6 +698,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const [fmtAuto, setFmtAuto] = useState<FormatKey | null>(null);
   const [openFmt, setOpenFmt] = useState<FormatKey | null>(null);
   const wallFormat = openFmt ?? fmtHover ?? fmtAuto;
+  // the word the window opens out of (and folds back into), measured when it's chosen
+  const [anchor, setAnchor] = useState<Rect | null>(null);
   const touch = useSyncExternalStore(noopSubscribe, () => !window.matchMedia("(hover: hover)").matches, () => false);
 
   // Nothing responds until the words have risen in.
@@ -927,32 +986,42 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     return () => timers.forEach((ts) => ts.forEach((t) => window.clearTimeout(t)));
   }, []);
 
+  // where a format word sits on the screen
+  const rectOf = useCallback((k: FormatKey): Rect | null => {
+    const r = wordRefs.current[k]?.getBoundingClientRect();
+    return r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null;
+  }, []);
+
   // Touch screens can't point: once the hero is live, the formats take turns on the wall.
   useEffect(() => {
     if (!touch || !ready || reduce || openFmt || menuOpen) return;
     let i = AUTO_SEQ.indexOf(fmtAuto);
     const id = window.setInterval(() => {
       i = (i + 1) % AUTO_SEQ.length;
-      setFmtAuto(AUTO_SEQ[i]);
+      const k = AUTO_SEQ[i];
+      if (k) setAnchor(rectOf(k));
+      setFmtAuto(k);
     }, AUTO_MS);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- picks up where it left off, never restarts on its own change
-  }, [touch, ready, reduce, openFmt, menuOpen]);
+  }, [touch, ready, reduce, openFmt, menuOpen, rectOf]);
 
   // A format word only answers the pointer while the index is up.
   const hoverFormat = useCallback((k: FormatKey | null) => {
     if (!indexRef.current) return;
+    if (k) setAnchor(rectOf(k));
     setFmtHover(k);
-  }, []);
+  }, [rectOf]);
   // Clicking a word opens the wall in its format: the white is gone, the wall answers.
   const openWall = useCallback((key: FormatKey) => {
     if (!readyRef.current || menuRef.current) return;
     indexRef.current = false;
     clearHoverRef.current();
+    setAnchor(rectOf(key));
     setOpenFmt(key);
     setFmtHover(null);
     setFmtAuto(null);
-  }, []);
+  }, [rectOf]);
   // "Index": the white comes back over the wall.
   const backToIndex = useCallback(() => {
     indexRef.current = true;
@@ -1330,10 +1399,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         <canvas ref={lampRef} className={styles.lampLight} />
       </motion.div>
 
-      {/* ================= The index: white over the wall ================= */}
-      {/* Pointing at a word fades the white away over the wall (already in that
-          word's frame); clicking one takes the white away for good. */}
-      <WhiteLayer hidden={wallFormat !== null} interactive={openFmt === null} reduce={reduce} />
+      {/* ================= The index: white over the wall, and the window through it ================= */}
+      <WhiteLayer fmt={wallFormat} open={openFmt !== null} anchor={anchor} reduce={reduce} />
 
       {/* the words: black on the white, paper on the wall (a difference blend) */}
       <div className={styles.copy}>
@@ -1386,6 +1453,29 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           </motion.nav>
         )}
       </AnimatePresence>
+
+      {/* ================= The index's foot: quiet links in the corners ================= */}
+      <motion.footer
+        className={styles.foot}
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{
+          opacity: openFmt === null && !menuOpen ? 1 : 0,
+          transition: { delay: menuKey === 0 && openFmt === null ? INTRO.names + 0.6 : 0, duration: 0.6 },
+        }}
+        style={{ pointerEvents: openFmt === null ? "auto" : "none" }}
+      >
+        <nav className={styles.footSide} aria-label="Studio">
+          <Link href="/work">Work</Link>
+          <a href="#about">About</a>
+          <a href="#contact">Contact</a>
+        </nav>
+        <span className={styles.footLine}>{HEADLINE.join(" ")}</span>
+        <nav className={styles.footSide} aria-label="Elsewhere">
+          <a href="https://9x16.studio">9x16.studio</a>
+          <a href="#instagram">Instagram</a>
+          <a href="#linkedin">LinkedIn</a>
+        </nav>
+      </motion.footer>
 
       {/* ================= Menu (no boxes: a veil over the wall and the links) ================= */}
       <Menu open={menuOpen} reduce={reduce} onClose={closeMenu} />
