@@ -1,5 +1,5 @@
-import DepthHero from "./hero13/page";
+import Hero20 from "./hero20/page";
 
 export default function Home() {
-  return <DepthHero />;
+  return <Hero20 />;
 }
