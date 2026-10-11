@@ -4,9 +4,7 @@ import {
   memo,
   useCallback,
   useEffect,
-  useId,
   useImperativeHandle,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -29,7 +27,7 @@ import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-c
 import ProjectView, { type OpenProject } from "../hero7/project-view";
 import { liveBudget, posterFor, WallPlayback } from "../hero7/wall-playback";
 import Drawer from "../hero11/drawer";
-import FormatHero, { FORMATS, FrameGlyph, Ratio, type FormatKey, type Rect } from "./format-hero";
+import { FORMATS, FrameGlyph, Ratio, type FormatKey } from "./formats";
 import styles from "./depthhero.module.css";
 
 
@@ -38,9 +36,10 @@ import styles from "./depthhero.module.css";
 // ===========================================================================
 const MARK_SUB = "& BEYOND"; // tiny tag on the same line as the mark, cut into the card
 const HEADLINE = ["Stories beyond", "the frame"];
-// Under the heading, three words in three columns: 16x9, 9x16 and Beyond (see
-// format-hero.tsx). Pointing at one reshapes the wall's tiles to its frame;
-// clicking one opens its hero.
+// The page opens on white with three words in three columns: 16x9, 9x16 and
+// Beyond (see formats.tsx). Pointing at one fades the white away over the
+// wall, its tiles already in that word's frame; clicking one opens the wall
+// in it. "Index" brings the white back.
 
 // Inter Tight: a Swiss, International-Style grotesk. Loaded for hero 7 only (it
 // overrides --font-sans inside this section), so the other heroes keep Archivo.
@@ -51,37 +50,32 @@ const LOGO_SRC = "/logo.png"; // put your logo in /public and change this path
 
 // ===========================================================================
 // SEQUENCE, in seconds
-// 1. OPENING: on black, the letterbox parts top and bottom. Behind it the
-//    depth gallery is already rushing forward, and it brakes as the frame opens.
-// 2. The 16X9 card opens out of a slit and its letters rise into it.
-// 3. It holds, then the letters lift out and the card folds down to a white
-//    line, and the heading and tagline rise out of that line.
-// 4. The client strip fades in.
-// After that the wall surges forward every few seconds like a dolly push.
+// 1. INDEX: the page opens on white; the three words rise out of their
+//    hairlines. Under the white the depth gallery is already running.
+// 2. Pointing at a word fades the white away over the wall, its tiles in that
+//    word's frame. Clicking one takes the white away and opens the wall.
+// The wall surges forward every few seconds like a dolly push.
 // Scrolling (or dragging on a phone) pushes it faster, forwards or back, and
 // it coasts back to its own pace. Hovering a tile holds the wall, tilts the
 // tile toward the pointer and dims the rest; clicking it opens the film full
 // screen (see project-view.tsx).
 // ===========================================================================
 const EASE = [0.16, 1, 0.3, 1] as const;
+// the index's words have risen in by then: from here the page answers
+const INDEX_SETTLE = 1.6;
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
 
 const T = {
-  open: 0.3, // letterbox starts to part
-  wall: 0.3, // depth gallery is rushing behind the letterbox
-  card: 1.55, // the card opens out of a slit
-  letters: 2.05, // its letters rise into it
-  lines: 2.05, // top bar
-  leave: 4.4, // the card leaves: letters lift out, it folds to a line
+  wall: 0.3, // depth gallery is rushing under the white
   clients: 2.8, // logo strip
+  surge: 4.4, // from here the wall surges every few seconds
 };
-// The card's exit, relative to T.leave
-// The card's exit: it eases back and fades out; the heading fades in over it.
-const LEAVE = { fade: 1.1, headAt: 0.35 };
+// the words rise this long after the page appears
+const LEAVE = { headAt: 0.35 };
 
 // Speeds are in screen-heights per second.
 const CRAWL = 0.3;
-const SURGE = { first: T.leave + 1.6, every: 4.6, length: 1.8, peak: 1.8 };
+const SURGE = { first: T.surge + 1.6, every: 4.6, length: 1.8, peak: 1.8 };
 // Drag to slide: how far the wall moves per pixel dragged, the cap on the glide
 // it's thrown with (screen-heights per second), and how fast that glide settles.
 const PUSH = { drag: 1.7, max: 9, decay: 2.4, threshold: 6 };
@@ -131,31 +125,6 @@ const BEYOND_LEAN = { tilt: 7, scale: 0.035 };
 const AUTO_MS = 3400;
 const AUTO_SEQ: (FormatKey | null)[] = ["16x9", "9x16", "beyond", null];
 
-// The mark
-const COBALT = "#FFFFFF";
-// The card (and the menu bars cut from it) keep the original face, Archivo at its
-// normal width, so the card keeps its original proportions: its size is measured
-// from this lettering. (--font-wide is the same Archivo, loaded in this file.)
-const FONT = "var(--font-wide, 'Archivo'), 'Helvetica Neue', Arial, sans-serif";
-const WIDE = { fontFamily: FONT } as const; // no width axis any more
-const PAD_X = 4.5; // block geometry, in % of the block's width (cqw)
-const PAD_TOP = 3.4;
-const PAD_BOTTOM = 3.8;
-const CAP = 0.727; // Inter Tight cap height, as a fraction of the font size
-const TRACK = -0.03; // letter spacing, in em
-const MARK_WEIGHT = 700;
-// "& BEYOND" on the mark's line: its size and the space before it, as fractions of
-// the 16X9 font size. The card keeps its original size; 16X9 shrinks to make room.
-const SUB_SCALE = 0.17;
-const SUB_GAP = 0.07;
-
-// ===========================================================================
-// MENU_T — the card's letters lift out when the menu opens, and settle back
-// (at JOIN) after it closes. The menu itself is the hero 11 drawer.
-// ===========================================================================
-const MENU_T = { letters: 0.5, split: 0.46, spread: 0.85, words: 1.0, collapse: 0.6, collapseAt: 0.18, join: 0.8 };
-const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
-
 const surgeAt = (t: number) => {
   if (t < SURGE.first) return 0;
   const c = (t - SURGE.first) % SURGE.every;
@@ -164,7 +133,7 @@ const surgeAt = (t: number) => {
   return s * s;
 };
 
-/** Full speed behind the letterbox, then brakes to a creep as the frame opens. */
+/** Full speed at first, then brakes to a creep. */
 const arrivalAt = (t: number) => {
   const r = t - T.wall;
   if (r < 0) return 1;
@@ -337,212 +306,6 @@ function CursorLabel({ ref }: { ref: Ref<CursorLabelHandle> }) {
 }
 
 // ===========================================================================
-// OPENING — black bars part top and bottom like a letterbox opening
-// ===========================================================================
-function Letterbox({ onDone }: { onDone: () => void }) {
-  return (
-    <div className={styles.bars} aria-hidden="true">
-      <motion.div
-        className={styles.barTop}
-        initial={{ scaleY: 1 }}
-        animate={{ scaleY: 0 }}
-        transition={{ delay: T.open, duration: 1.4, ease: EASE_CINE }}
-      />
-      <motion.div
-        className={styles.barBottom}
-        initial={{ scaleY: 1 }}
-        animate={{ scaleY: 0 }}
-        transition={{ delay: T.open, duration: 1.4, ease: EASE_CINE }}
-        onAnimationComplete={onDone}
-      />
-    </div>
-  );
-}
-
-// ===========================================================================
-// THE MARK — a block with 16X9 and © cut clean through it; the wall behind
-// shows through the letters. It opens out of a slit at T.card and its letters
-// rise in; once `gone`, the letters lift out and the block folds down to a
-// line. The block stays in the layout either way: the menu grows out of it.
-// ===========================================================================
-type Box = {
-  w: number;
-  h: number;
-  pl: number;
-  pr: number;
-  pt: number;
-  pb: number;
-  /** height of the lettering area: what 16X9 alone would fill, so the card never changes size */
-  area: number;
-  /** shared baseline for 16X9 and the tag, centred in that area */
-  base: number;
-  /** where the tag starts */
-  subX: number;
-};
-
-function Mark({
-  mark,
-  reduce,
-  gone,
-  menuOpen,
-  menuKey,
-}: {
-  mark: string;
-  reduce: boolean;
-  /** the card has made way for the heading */
-  gone: boolean;
-  menuOpen: boolean;
-  /** changes every time the menu opens, so the wheel starts fresh on WORK */
-  menuKey: number;
-}) {
-  const maskId = `dh-cut-${useId().replace(/:/g, "")}`;
-  const blockRef = useRef<HTMLDivElement>(null);
-  const probeRef = useRef<HTMLSpanElement>(null);
-  const subProbeRef = useRef<HTMLSpanElement>(null);
-  const [fontSize, setFontSize] = useState<number | null>(null);
-  const [box, setBox] = useState<Box | null>(null);
-
-  // The card is sized as if 16X9 alone filled 90% of its inner width (its original
-  // size). 16X9 + the tag then share that same 90%, sitting on one baseline,
-  // centred in the card. Re-fit on resize and font load.
-  useIsoLayoutEffect(() => {
-    const block = blockRef.current;
-    const probe = probeRef.current;
-    const subProbe = subProbeRef.current;
-    if (!block || !probe || !subProbe) return;
-    const fit = () => {
-      const cs = getComputedStyle(block);
-      const pl = parseFloat(cs.paddingLeft);
-      const pr = parseFloat(cs.paddingRight);
-      const pt = parseFloat(cs.paddingTop);
-      const pb = parseFloat(cs.paddingBottom);
-      const w = block.clientWidth;
-      const inner = w - pl - pr;
-      const tw = probe.getBoundingClientRect().width; // 16X9 measured at 100px
-      const ts = subProbe.getBoundingClientRect().width; // the tag measured at 100px
-      if (tw > 0 && ts > 0 && inner > 0) {
-        const original = (100 * inner * 0.9) / tw; // the font size 16X9 had on its own
-        const area = original * CAP;
-        const fs = (100 * inner * 0.9) / (tw + 100 * SUB_GAP + ts * SUB_SCALE);
-        setFontSize(fs);
-        setBox({
-          w,
-          h: pt + pb + area,
-          pl,
-          pr,
-          pt,
-          pb,
-          area,
-          base: pt + (area + fs * CAP) / 2,
-          subX: pl + (fs * tw) / 100 + fs * SUB_GAP,
-        });
-      }
-    };
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(block);
-    document.fonts?.ready.then(fit).catch(() => {});
-    return () => ro.disconnect();
-  }, [mark]);
-
-  return (
-    <div className={styles.wm}>
-      <div ref={blockRef} className={styles.wmBlock} style={{ padding: `${PAD_TOP}cqw ${PAD_X}cqw ${PAD_BOTTOM}cqw` }}>
-        <span
-          ref={probeRef}
-          aria-hidden
-          className={styles.wmProbe}
-          style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: 100, letterSpacing: `${TRACK}em` }}
-        >
-          {mark}
-        </span>
-        <span
-          ref={subProbeRef}
-          aria-hidden
-          className={styles.wmProbe}
-          style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: 100, letterSpacing: `${TRACK}em` }}
-        >
-          {MARK_SUB}
-        </span>
-
-        <span aria-hidden className={styles.wmSpacer} style={{ height: box ? box.area : "12cqw" }} />
-
-        {box && fontSize ? (
-          // the card's face: opens out of a slit, and later eases back and fades away
-          <motion.div
-            className={styles.wmFace}
-            initial={reduce ? { opacity: gone ? 0 : 1 } : { clipPath: "inset(50% 0% 50% 0%)", scale: 1, opacity: 1 }}
-            animate={
-              gone
-                ? { scale: 0.96, opacity: 0, transition: { duration: reduce ? 0 : LEAVE.fade, ease: "easeInOut" } }
-                : { clipPath: "inset(0% 0% 0% 0%)", scale: 1, opacity: 1, transition: { delay: T.card, duration: 0.95, ease: EASE_CINE } }
-            }
-          >
-          <motion.svg
-            aria-hidden
-            className={styles.wmCut}
-            viewBox={`0 0 ${box.w} ${box.h}`}
-            preserveAspectRatio="none"
-            initial={false}
-            animate={{ opacity: menuOpen ? 0 : 1 }}
-            transition={{ duration: 0, delay: reduce ? 0 : menuOpen ? MENU_T.split : MENU_T.join }}
-          >
-            <defs>
-              <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={box.w} height={box.h}>
-                <rect width={box.w} height={box.h} fill="#fff" />
-                {/* the letters rise into the card, lift out when the menu opens, and
-                    settle back when it closes (they stay put while the card fades) */}
-                <motion.g
-                  initial={reduce ? false : { y: box.h }}
-                  animate={{ y: menuOpen ? -box.h : 0 }}
-                  transition={
-                    reduce
-                      ? { duration: 0 }
-                      : menuOpen
-                        ? { duration: MENU_T.letters, ease: EASE_CINE }
-                        : { duration: 0.9, ease: EASE, delay: menuKey > 0 ? MENU_T.join : T.letters }
-                  }
-                >
-                <text
-                  x={box.pl}
-                  y={box.base}
-                  fill="#000"
-                  style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize, letterSpacing: `${TRACK}em` }}
-                >
-                  {mark}
-                </text>
-                {/* & BEYOND: tiny, on the same baseline, right after the mark */}
-                <text
-                  x={box.subX}
-                  y={box.base}
-                  fill="#000"
-                  style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: fontSize * SUB_SCALE, letterSpacing: `${TRACK}em` }}
-                >
-                  {MARK_SUB}
-                </text>
-                <text
-                  x={box.w - box.pr * 0.45}
-                  y={box.h - box.pb}
-                  textAnchor="end"
-                  fill="#000"
-                  style={{ fontFamily: FONT, fontWeight: 600, fontSize: Math.max(10, box.w * 0.022) }}
-                >
-                  ©
-                </text>
-                </motion.g>
-              </mask>
-            </defs>
-            <rect width={box.w} height={box.h} fill={COBALT} mask={`url(#${maskId})`} />
-          </motion.svg>
-          </motion.div>
-        ) : null}
-
-      </div>
-    </div>
-  );
-}
-
-// ===========================================================================
 // MENU — the hero 11 drawer, opened over the wall. It is wiped down from the
 // top like a sheet being pulled over the screen, then plays its own entrance
 // (band, paper, headline, folders). Closing lifts it back up.
@@ -590,9 +353,7 @@ function Formats({
   first,
   reduce,
   ready,
-  dim,
   active,
-  lifted,
   wordRefs,
   onHover,
   onOpen,
@@ -602,18 +363,14 @@ function Formats({
   first: boolean;
   reduce: boolean;
   ready: boolean;
-  /** a format's hero is open over everything */
-  dim: boolean;
   /** the format pointed at (or, on touch, the one taking its turn on the wall) */
   active: FormatKey | null;
-  /** the word that has flown into its hero */
-  lifted: FormatKey | null;
   wordRefs: RefObject<Partial<Record<FormatKey, HTMLSpanElement | null>>>;
   onHover: (k: FormatKey | null) => void;
   onOpen: (k: FormatKey) => void;
 }) {
   const base = reduce ? 0 : first ? LEAVE.headAt : 0;
-  const visible = show && !dim;
+  const visible = show;
   const out = { opacity: 0, transition: { duration: reduce ? 0 : 0.35, ease: EASE_CINE } };
   // Crossing the gap between two columns isn't leaving: the wall keeps its
   // shape unless the pointer stays off the words for a moment.
@@ -655,7 +412,9 @@ function Formats({
               className={styles.fmt}
               data-fmt={f.key}
               aria-label={`${f.label}: ${f.line}`}
-              disabled={!ready || dim}
+              disabled={!ready || !show}
+              // once the wall is open the words are gone and must not catch the pointer
+              style={{ pointerEvents: show ? "auto" : "none" }}
               initial={reduce ? false : { opacity: 0 }}
               animate={{
                 opacity: !visible ? 0 : stepBack ? 0.3 : 1,
@@ -694,7 +453,6 @@ function Formats({
                     wordRefs.current[f.key] = el;
                   }}
                   className={styles.fmtWord}
-                  style={lifted === f.key ? { visibility: "hidden" } : undefined}
                   initial={reduce ? false : { y: "112%" }}
                   animate={
                     show
@@ -749,34 +507,22 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const [grid, setGrid] = useState({ lanes: LANES_DESKTOP, perLane: 7 });
   const laneCount = grid.lanes;
   const playback = useMemo(() => new WallPlayback(), []);
-  const [opened, setOpened] = useState(false);
   const [project, setProject] = useState<OpenProject | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuKey, setMenuKey] = useState(0);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
-  // The three format words: the one pointed at, the one taking its turn on a
-  // touch screen, the hero that's open (and the word lifted into it), and
-  // whether that hero has covered the screen (the wall then isn't drawn).
+  // THE INDEX. The format word pointed at (or, on a touch screen, the one
+  // taking its turn), and the format the wall was opened in: null while the
+  // white index is up. The wall wears whichever applies.
   const [fmtHover, setFmtHover] = useState<FormatKey | null>(null);
   const [fmtAuto, setFmtAuto] = useState<FormatKey | null>(null);
-  const wallFormat = fmtHover ?? fmtAuto;
-  const [hero, setHero] = useState<{ key: FormatKey; from: Rect } | null>(null);
-  const [lifted, setLifted] = useState<FormatKey | null>(null);
-  const [heroCovered, setHeroCovered] = useState(false);
+  const [openFmt, setOpenFmt] = useState<FormatKey | null>(null);
+  const wallFormat = openFmt ?? fmtHover ?? fmtAuto;
   const touch = useSyncExternalStore(noopSubscribe, () => !window.matchMedia("(hover: hover)").matches, () => false);
 
-  // the card holds, then makes way for the heading
-  const [gone, setGone] = useState(reduce);
-  useEffect(() => {
-    if (reduce) return;
-    const t = window.setTimeout(() => setGone(true), T.leave * 1000);
-    return () => window.clearTimeout(t);
-  }, [reduce]);
-
-  // Nothing responds until the entrance has played out: the letterbox, the
-  // card, and the heading fading in over it. Then the hero is live.
-  const SETTLE_S = T.leave + LEAVE.headAt + 1.3;
+  // Nothing responds until the words have risen in.
+  const SETTLE_S = INDEX_SETTLE;
   const [ready, setReady] = useState(reduce);
   const readyRef = useRef(reduce);
   useEffect(() => {
@@ -796,13 +542,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     const t = window.setTimeout(() => setCoveredKey(menuKey), reduce ? 0 : 950);
     return () => window.clearTimeout(t);
   }, [menuOpen, menuKey, reduce]);
-  // the same once a format's hero has closed over the screen
-  useEffect(() => {
-    if (!hero) return;
-    const t = window.setTimeout(() => setHeroCovered(true), reduce ? 0 : 800);
-    return () => window.clearTimeout(t);
-  }, [hero, reduce]);
-  const wallHidden = (menuOpen && coveredKey === menuKey) || heroCovered;
+  const wallHidden = menuOpen && coveredKey === menuKey;
   const wallHiddenRef = useRef(false);
   useEffect(() => {
     wallHiddenRef.current = wallHidden;
@@ -822,8 +562,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const hoverRef = useRef(false);
   const projectRef = useRef(false);
   const menuRef = useRef(false);
-  const heroRef = useRef(false);
-  const heroClosingRef = useRef(false); // its word is still flying home
+  const indexRef = useRef(true); // the white index is up: the wall only shows, it doesn't answer
   // the format the wall is in, and whether a format word is under the mouse
   const formatRef = useRef<FormatKey | null>(null);
   const fmtPointRef = useRef(false);
@@ -850,14 +589,14 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     projectRef.current = project !== null;
   }, [project]);
   useEffect(() => {
-    heroRef.current = hero !== null;
-  }, [hero]);
+    indexRef.current = openFmt === null;
+  }, [openFmt]);
   useEffect(() => {
     fmtPointRef.current = fmtHover !== null;
   }, [fmtHover]);
     const closeProject = useCallback(() => setProject(null), []);
   const onOpen = useCallback((index: number, el: HTMLElement, time: number) => {
-    if (!readyRef.current || heroRef.current) return; // still settling, or a format's hero is open
+    if (!readyRef.current || indexRef.current) return; // still settling, or the index is up
     if (draggedRef.current) return; // that was a drag through the wall, not a click
     const r = el.getBoundingClientRect();
     clearHoverRef.current();
@@ -900,9 +639,10 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   // Videos wait for the entrance to finish (decoding them mid-entrance is what
   // stutters), and stop under an open film or the menu.
   useEffect(() => {
-    pausedRef.current = !ready || project !== null || hero !== null || wallHidden;
+    // under the white index nothing plays until a word shows the wall
+    pausedRef.current = !ready || project !== null || wallHidden || wallFormat === null;
     playback.setPaused(pausedRef.current || document.hidden);
-  }, [ready, project, hero, wallHidden, playback]);
+  }, [ready, project, wallHidden, wallFormat, playback]);
 
   const lanes = useMemo(
     () =>
@@ -960,7 +700,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       const holding = hoverRef.current && now - lastMoveRef.current < HOLD_MS;
       // while dragged, the wall goes only where the pointer takes it
       const target =
-        projectRef.current || heroRef.current || wallHiddenRef.current || draggingRef.current
+        projectRef.current || wallHiddenRef.current || draggingRef.current
           ? 0
           : holding
             ? HOVER_SPEED
@@ -1067,7 +807,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
   // Touch screens can't point: once the hero is live, the formats take turns on the wall.
   useEffect(() => {
-    if (!touch || !ready || reduce || hero || menuOpen) return;
+    if (!touch || !ready || reduce || openFmt || menuOpen) return;
     let i = AUTO_SEQ.indexOf(fmtAuto);
     const id = window.setInterval(() => {
       i = (i + 1) % AUTO_SEQ.length;
@@ -1075,42 +815,36 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     }, AUTO_MS);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- picks up where it left off, never restarts on its own change
-  }, [touch, ready, reduce, hero, menuOpen]);
+  }, [touch, ready, reduce, openFmt, menuOpen]);
 
-  // A format word only answers the pointer while nothing is open over the wall.
+  // A format word only answers the pointer while the index is up.
   const hoverFormat = useCallback((k: FormatKey | null) => {
-    if (heroRef.current) return;
+    if (!indexRef.current) return;
     setFmtHover(k);
   }, []);
-  // Clicking a word opens its hero: the word lifts out of its column and flies into it.
-  const openHero = useCallback((key: FormatKey) => {
-    if (!readyRef.current || heroRef.current || heroClosingRef.current || menuRef.current) return;
-    const el = wordRefs.current[key];
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    heroRef.current = true;
+  // Clicking a word opens the wall in its format: the white is gone, the wall answers.
+  const openWall = useCallback((key: FormatKey) => {
+    if (!readyRef.current || menuRef.current) return;
+    indexRef.current = false;
     clearHoverRef.current();
-    setLifted(key);
-    setHero({ key, from: { left: r.left, top: r.top, width: r.width, height: r.height } });
-  }, []);
-  // Closing: the wall is drawn again under the fading hero and goes back to its own mix of frames.
-  const closeHero = useCallback(() => {
-    if (!heroRef.current) return;
-    heroRef.current = false;
-    heroClosingRef.current = true;
-    setHero(null);
-    setHeroCovered(false);
+    setOpenFmt(key);
     setFmtHover(null);
     setFmtAuto(null);
   }, []);
-  const landed = useCallback(() => {
-    heroClosingRef.current = false;
-    setLifted(null);
+  // "Index": the white comes back over the wall.
+  const backToIndex = useCallback(() => {
+    indexRef.current = true;
+    clearHoverRef.current();
+    setProject(null);
+    setOpenFmt(null);
   }, []);
-  const wordRect = useCallback((k: FormatKey): Rect | null => {
-    const r = wordRefs.current[k]?.getBoundingClientRect();
-    return r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null;
-  }, []);
+  // Esc on the open wall goes back to the index (a film or the menu close first)
+  useEffect(() => {
+    if (!openFmt || project || menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && backToIndex();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openFmt, project, menuOpen, backToIndex]);
 
   // Drag to slide: grab the wall (mouse or finger) and it follows; let go and it
   // glides on with the throw, then settles back to its own pace. Hover is off
@@ -1131,7 +865,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       clearHoverRef.current();
     };
     const onDown = (e: PointerEvent) => {
-      if (e.button !== 0 || !readyRef.current || menuRef.current || projectRef.current || heroRef.current) return;
+      if (e.button !== 0 || !readyRef.current || menuRef.current || projectRef.current || indexRef.current) return;
       id = e.pointerId;
       lastY = e.clientY;
       lastT = performance.now();
@@ -1295,15 +1029,22 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       lastMoveRef.current = lastMove;
       p.x = e.clientX;
       p.y = e.clientY;
-      if (!fine || !readyRef.current || draggingRef.current || menuRef.current || projectRef.current || heroRef.current) {
+      const target = e.target as Element | null;
+      const word = target?.closest?.<HTMLElement>("[data-fmt]") ?? null;
+      if (!fine || !readyRef.current || draggingRef.current || menuRef.current || projectRef.current) {
         setHover(null);
         setWord(null);
         return;
       }
-      const target = e.target as Element | null;
+      // the index is up: only the words answer
+      if (indexRef.current) {
+        setHover(null);
+        setWord(word);
+        return;
+      }
       const el = target?.closest?.<HTMLElement>("[data-tile]") ?? null;
       setHover(el);
-      setWord(target?.closest?.<HTMLElement>("[data-fmt]") ?? null);
+      setWord(word);
       const t = el && tilts.get(el);
       if (!el || !t) return;
       const r = el.getBoundingClientRect();
@@ -1461,31 +1202,75 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       <motion.div
         className={styles.lamp}
         initial={{ opacity: 0 }}
-        animate={{ opacity: gone && !menuOpen ? 1 : 0, transition: { duration: 1.6, ease: EASE } }}
+        animate={{ opacity: !menuOpen ? 1 : 0, transition: { duration: 1.6, ease: EASE } }}
         aria-hidden="true"
       >
         <canvas ref={lampRef} className={styles.lampLight} />
       </motion.div>
 
-      {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
+      {/* ================= The index: white over the wall ================= */}
+      {/* Pointing at a word fades the white away over the wall (already in that
+          word's frame); clicking one takes the white away for good. */}
+      <motion.div
+        className={styles.white}
+        aria-hidden="true"
+        initial={false}
+        animate={{ opacity: wallFormat ? 0 : 1 }}
+        transition={{ duration: wallFormat ? 0.8 : 0.6, ease: EASE }}
+        style={{ pointerEvents: openFmt === null ? "auto" : "none" }}
+      />
+
+      {/* the words: black on the white, paper on the wall (a difference blend) */}
       <div className={styles.copy}>
         <h1 className={styles.sr}>
           {mark} {MARK_SUB}. {HEADLINE.join(" ")}.
         </h1>
         <Formats
-          show={gone && !menuOpen}
+          show={openFmt === null && !menuOpen}
           first={menuKey === 0}
           reduce={reduce}
           ready={ready}
-          dim={hero !== null}
           active={wallFormat}
-          lifted={lifted}
           wordRefs={wordRefs}
           onHover={hoverFormat}
-          onOpen={openHero}
+          onOpen={openWall}
         />
-        <Mark mark={mark} reduce={reduce} gone={gone} menuOpen={menuOpen} menuKey={menuKey} />
       </div>
+
+      {/* ================= The open wall: back to the index, and the format it's cut in ================= */}
+      <AnimatePresence>
+        {openFmt && !menuOpen && (
+          <motion.nav
+            key="open-bar"
+            className={styles.openBar}
+            aria-label="Formats"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0, transition: { delay: 0.35, duration: 0.8, ease: EASE } }}
+            exit={{ opacity: 0, transition: { duration: 0.3 } }}
+          >
+            <button type="button" className={styles.openBack} onClick={backToIndex}>
+              <span aria-hidden="true">←</span> Index
+            </button>
+            <span className={styles.openTabs}>
+              {FORMATS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  className={`${styles.openTab} ${openFmt === f.key ? styles.openTabOn : ""}`}
+                  aria-pressed={openFmt === f.key}
+                  onClick={() => setOpenFmt(f.key)}
+                >
+                  <FrameGlyph k={f.key} className={styles.openGlyph} />
+                  <Ratio text={f.label} className={styles.fmtX} />
+                  {openFmt === f.key && (
+                    <motion.span layoutId="open-tab-line" className={styles.openTabLine} transition={{ type: "spring", stiffness: 380, damping: 32 }} />
+                  )}
+                </button>
+              ))}
+            </span>
+          </motion.nav>
+        )}
+      </AnimatePresence>
 
       {/* ================= Menu (no boxes: a veil over the wall and the links) ================= */}
       <Menu open={menuOpen} reduce={reduce} onClose={closeMenu} />
@@ -1493,7 +1278,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       {/* ================= Top bar: logo left, burger right ================= */}
       <motion.header
         className={styles.topbar}
-        {...enter(T.lines, { opacity: 0, y: -12 }, { opacity: 1, y: 0 }, 1.0)}
+        {...enter(0.2, { opacity: 0, y: -12 }, { opacity: 1, y: 0 }, 1.0)}
       >
         <Link href="/" className={styles.logo} aria-label="Home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1545,24 +1330,6 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         {project && <ProjectView key="project" clips={clips} open={project} onClose={closeProject} />}
       </AnimatePresence>
 
-      {/* ================= A format's hero, opened from its word ================= */}
-      <AnimatePresence>
-        {hero && (
-          <FormatHero
-            key="format-hero"
-            start={hero.key}
-            from={hero.from}
-            reduce={reduce}
-            wordRect={wordRect}
-            onSwitch={setLifted}
-            onClose={closeHero}
-            onLanded={landed}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ================= Opening ================= */}
-      {!reduce && !opened && <Letterbox onDone={() => setOpened(true)} />}
     </section>
   );
 }
