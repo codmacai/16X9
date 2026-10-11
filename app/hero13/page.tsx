@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Archivo } from "next/font/google";
 import Link from "next/link";
@@ -71,7 +71,6 @@ function Home({ variant }: { variant: HeroVariant }) {
   const [project, setProject] = useState<OpenProject | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuKey, setMenuKey] = useState(0);
-  const wordRefs = useRef<Partial<Record<FormatKey, HTMLSpanElement | null>>>({});
 
   // touch screens: the formats take turns on the index
   useEffect(() => {
@@ -123,8 +122,6 @@ function Home({ variant }: { variant: HeroVariant }) {
     <section
       className={`${styles.page} ${archivo.variable}`}
       aria-label="16x9 & Beyond"
-      // the bar and the foot turn to paper over a film that fills the screen
-      data-dark={indexFmt === "beyond" ? "" : undefined}
       data-room={room ? "" : undefined}
     >
       <h1 className={styles.sr}>16x9 &amp; Beyond. {HEADLINE}.</h1>
@@ -151,7 +148,6 @@ function Home({ variant }: { variant: HeroVariant }) {
         reduce={reduce}
         ready={ready}
         active={indexFmt}
-        wordRefs={wordRefs}
         onHover={hover}
         onOpen={openRoom}
       />

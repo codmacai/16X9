@@ -35,7 +35,7 @@
   }
   
 
-  /* ================= The index: the white page over the (sleeping) wall ================= */
+  /* ================= The index: three frames on the white page ================= */
   .stage {
     position: absolute;
     inset: 0;
@@ -44,64 +44,190 @@
     background: var(--paper);
   }
 
-  /* a film in each format, centred behind the line; only opacity changes */
-  .film {
+  .frames {
     position: absolute;
-    left: 50%;
-    top: 50%;
-    translate: -50% -50%;
-    overflow: hidden;
-    background: #0c0c0c;
-    opacity: 0;
-    transition: opacity 0.45s cubic-bezier(0.33, 0, 0.2, 1);
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(32px, 4.6vw, 84px);
+    padding-bottom: 2vh;
     pointer-events: none;
   }
 
-  .film video {
+  /* a frame and its caption; floated with the pointer from JS */
+  .cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .frame {
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .frame:disabled {
+    cursor: default;
+  }
+
+  .frame_16by9 {
+    width: min(27vw, 440px);
+    aspect-ratio: 16 / 9;
+  }
+
+  .frame_9by16 {
+    height: min(40vh, 380px);
+    aspect-ratio: 9 / 16;
+  }
+
+  .frame_beyond {
+    width: min(27vw, 440px);
+    aspect-ratio: 2.39 / 1;
+  }
+
+  /* the frame's hairlines sit over its film */
+  .frameEdge {
+    z-index: 3;
+  }
+
+  /* Beyond's four corners */
+  .corner {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border: 0 solid currentColor;
+  }
+
+  .corner_tl { left: 0; top: 0; border-width: 1px 0 0 1px; }
+  .corner_tr { right: 0; top: 0; border-width: 1px 1px 0 0; }
+  .corner_bl { left: 0; bottom: 0; border-width: 0 0 1px 1px; }
+  .corner_br { right: 0; bottom: 0; border-width: 0 1px 1px 0; }
+
+  /* the film inside the frame: it fades in when the frame is pointed at */
+  .frameFilm {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    background: #0c0c0c;
+    opacity: 0;
+    transition: opacity 0.5s cubic-bezier(0.33, 0, 0.2, 1);
+    pointer-events: none;
+  }
+
+  .frameFilm video {
     display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 
-  .filmOn {
+  .frameOn .frameFilm {
     opacity: 1;
   }
 
-  .film_16by9 {
-    width: min(68vw, calc(64vh * 16 / 9));
-    aspect-ratio: 16 / 9;
+  /* Beyond's film doesn't stay inside: it bleeds out past its corners */
+  .frame_beyond .frameFilm {
+    inset: -26% -16%;
+    background: transparent;
+    -webkit-mask-image: radial-gradient(closest-side, #000 58%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 58%, transparent 100%);
   }
 
-  .film_9by16 {
-    height: min(76vh, calc(86vw * 16 / 9));
-    aspect-ratio: 9 / 16;
+  /* the name, rising into its frame; paper over the film */
+  .frameMask {
+    position: relative;
+    z-index: 2;
+    display: block;
+    overflow: hidden;
+    padding: 0.1em 0.04em 0.06em;
   }
 
-  /* Beyond: no frame at all, the whole screen */
-  .film_beyond {
-    inset: 0;
-    translate: none;
+  .frameWord {
+    display: block;
+    font-size: clamp(26px, 3.2vw, 54px);
+    font-weight: 400;
+    font-stretch: 100%;
+    font-variation-settings: "wdth" 100;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+    transition: color 0.45s var(--ease);
   }
 
-  /* the line of words, at the centre of the page */
-  .namesWrap {
+  .frameOn .frameWord {
+    color: var(--paper);
+  }
+
+  .frame:focus-visible .frameWord {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.12em;
+  }
+
+  /* its number and what it is, under the frame */
+  .frameCap {
+    display: flex;
+    gap: 12px;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    white-space: nowrap;
+  }
+
+  .frameCap i {
+    font-style: normal;
+    opacity: 0.6;
+  }
+
+  /* the frame clicked, opened out to the whole screen */
+  .launch {
     position: absolute;
     inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
+    z-index: 4;
+    background: #050505;
   }
 
-  /* its paper-coloured twin, clipped (from JS) to the frame showing */
-  .twin {
-    opacity: 0;
-    transition: opacity 0.45s cubic-bezier(0.33, 0, 0.2, 1);
+  .launch video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
-  .twinOn {
-    opacity: 1;
+  /* phones: the frames stand one above the other */
+  @media (max-width: 760px) {
+    .frames {
+      flex-direction: column;
+      gap: 22px;
+      padding: 70px 0 60px;
+    }
+    .cell {
+      gap: 12px;
+    }
+    .frame_16by9,
+    .frame_beyond {
+      width: 62vw;
+    }
+    .frame_9by16 {
+      height: 26vh;
+    }
+    .frameWord {
+      font-size: 6.4vw;
+    }
+    .frameCap {
+      font-size: 9px;
+    }
   }
 
   /* ---- the entrance: the mark in an outline frame ---- */
@@ -195,106 +321,11 @@
     }
   }
 
-  /* ---- the three formats as one quiet line: 16x9 / 9x16 / Beyond ---- */
-  .names {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.62em;
-    font-size: clamp(34px, 5.2vw, 100px);
-    color: #0c0c0c;
-  }
-
-  .namesPaper {
-    color: var(--paper);
-  }
-
-  .name {
-    position: relative;
-    display: inline-flex;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: inherit;
-    font: inherit;
-    text-transform: uppercase;
-    cursor: pointer;
-    outline: none;
-  }
-
-  .name:disabled {
-    cursor: default;
-  }
-
-  .name:focus-visible .nameWord {
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 0.12em;
-  }
-
-  .nameMask,
-  .slashMask {
-    display: block;
-    overflow: hidden;
-    padding: 0.1em 0.02em 0.06em;
-  }
-
-  /* a plain, tight grotesk at its normal width: the words carry no decoration */
-  .nameWord,
-  .slash {
-    display: block;
-    font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
-    font-weight: 400;
-    font-stretch: 100%;
-    font-variation-settings: "wdth" 100;
-    line-height: 1;
-    letter-spacing: -0.025em;
-    white-space: nowrap;
-  }
-
-  .slash {
-    font-weight: 300;
-  }
-
   /* the x between the numbers: lowercase and lighter */
   .fmtX {
     margin: 0 0.01em;
     font-weight: 300;
     text-transform: none;
-  }
-
-  /* the viewfinder: four hairline corners round the word pointed at */
-  .finder {
-    position: absolute;
-    width: 0.18em;
-    height: 0.18em;
-    border: 0 solid currentColor;
-    pointer-events: none;
-  }
-
-  .finder_tl {
-    left: -0.22em;
-    top: -0.04em;
-    border-width: 1.5px 0 0 1.5px;
-  }
-
-  .finder_tr {
-    right: -0.22em;
-    top: -0.04em;
-    border-width: 1.5px 1.5px 0 0;
-  }
-
-  .finder_bl {
-    left: -0.22em;
-    bottom: -0.1em;
-    border-width: 0 0 1.5px 1.5px;
-  }
-
-  .finder_br {
-    right: -0.22em;
-    bottom: -0.1em;
-    border-width: 0 1.5px 1.5px 0;
   }
 
   /* the index's foot: quiet links in the corners, the line between them */
@@ -342,10 +373,6 @@
   }
 
   @media (max-width: 760px) {
-    .names {
-      font-size: 7.6vw;
-      gap: 0.4em;
-    }
     .footLine {
       display: none;
     }
@@ -358,9 +385,6 @@
     }
     /* phones keep the essentials: the studio's links left, Instagram right */
     .footSide:last-child a:not([href="#instagram"]) {
-      display: none;
-    }
-    .readout i {
       display: none;
     }
   }
