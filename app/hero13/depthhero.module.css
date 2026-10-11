@@ -407,152 +407,164 @@
     border: 0;
   }
   
-  /* the index: white over the wall, faded away by a format word (opacity from JS) */
-  .white {
+  /* ================= The index: the white page over the (sleeping) wall ================= */
+  .stage {
     position: absolute;
     inset: 0;
     z-index: 3;
     overflow: hidden;
+    background: var(--paper);
   }
 
-  /* the window's readout, centred along its top (placed by JS) */
-  .readout {
+  /* a film in each format, centred behind the line; only opacity changes */
+  .film {
     position: absolute;
-    left: 0;
-    top: 0;
-    translate: -50% 0;
-    color: var(--paper);
-    font-size: 10px;
-    letter-spacing: 0.26em;
-    white-space: nowrap;
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+    overflow: hidden;
+    background: #0c0c0c;
+    opacity: 0;
+    transition: opacity 0.45s cubic-bezier(0.33, 0, 0.2, 1);
     pointer-events: none;
   }
 
-  .readout > span {
+  .film video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .filmOn {
+    opacity: 1;
+  }
+
+  .film_16by9 {
+    width: min(68vw, calc(64vh * 16 / 9));
+    aspect-ratio: 16 / 9;
+  }
+
+  .film_9by16 {
+    height: min(76vh, calc(86vw * 16 / 9));
+    aspect-ratio: 9 / 16;
+  }
+
+  /* Beyond: no frame at all, the whole screen */
+  .film_beyond {
+    inset: 0;
+    translate: none;
+  }
+
+  /* the line of words, at the centre of the page */
+  .namesWrap {
+    position: absolute;
+    inset: 0;
     display: flex;
-    gap: 14px;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
   }
 
-  .readout i {
-    font-style: normal;
-    opacity: 0.6;
+  /* its paper-coloured twin, clipped (from JS) to the frame showing */
+  .twin {
+    opacity: 0;
+    transition: opacity 0.45s cubic-bezier(0.33, 0, 0.2, 1);
   }
 
-  /* ---- the entrance: the brand card, alone on the paper ---- */
-  .card {
+  .twinOn {
+    opacity: 1;
+  }
+
+  /* ---- the entrance: the mark in an outline frame ---- */
+  .intro {
     position: absolute;
     left: 50%;
-    top: 47%;
-    width: min(40vw, 600px);
+    top: 50%;
+    width: min(38vw, 560px);
     aspect-ratio: 16 / 9;
     translate: -50% -50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #0c0c0c;
-    color: var(--paper);
-    container-type: inline-size; /* cqw: % of the card's width */
-    will-change: transform, clip-path;
+    color: #0c0c0c;
+    container-type: inline-size; /* cqw: % of the frame's width */
+    pointer-events: none;
   }
 
-  .cardMark {
+  .introEdge {
+    position: absolute;
+    background: currentColor;
+  }
+
+  .introEdge_top {
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 1px;
+    transform-origin: 0 50%;
+  }
+
+  .introEdge_right {
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 1px;
+    transform-origin: 50% 0;
+  }
+
+  .introEdge_bottom {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    transform-origin: 100% 50%;
+  }
+
+  .introEdge_left {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    transform-origin: 50% 100%;
+  }
+
+  .introMark {
     display: flex;
     align-items: flex-end;
     font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
-    font-size: 25cqw;
-    font-weight: 700;
+    font-size: 24cqw;
+    font-weight: 500;
     font-stretch: 100%;
     font-variation-settings: "wdth" 100;
     line-height: 1;
+    letter-spacing: -0.03em;
     white-space: nowrap;
   }
 
   /* each character rises out of its own mask */
-  .cardMask {
+  .introMask {
     display: block;
     overflow: hidden;
     padding: 0.06em 0 0.02em;
-    margin-right: -0.045em;
   }
 
-  .cardChar {
+  .introChar {
     display: block;
   }
 
   /* & BEYOND: small, spaced, lifted onto the mark's baseline */
-  .cardSubMask {
+  .introSub {
     margin: 0 0 1.25em 0.6em;
-    font-size: 0.15em;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-  }
-
-  .cardLoad {
-    position: absolute;
-    left: 4.5%;
-    right: 10%;
-    bottom: 7%;
-    height: 1px;
-    background: rgb(247 242 238 / 0.55);
-    transform-origin: 0 50%;
-  }
-
-  .cardCopy {
-    position: absolute;
-    right: 4.5%;
-    bottom: 7%;
-    translate: 0 40%;
-    font-size: 2.4cqw;
-    font-weight: 600;
-    line-height: 1;
+    font-size: 0.14em;
+    font-weight: 500;
+    letter-spacing: 0.12em;
   }
 
   @media (max-width: 760px) {
-    .card {
-      width: 76vw;
+    .intro {
+      width: 74vw;
     }
-  }
-
-  /* The words are paper with a difference blend: black on the white, paper on
-     the dark wall, so they read on both without changing colour. */
-  .copy {
-    position: absolute;
-    inset: 0;
-    z-index: 4;
-    mix-blend-mode: difference;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-bottom: 6vh;
-    pointer-events: none;
-  }
-  
-  /* ---- the heading that takes the card's place ---- */
-  /* the heading: extended and heavy, the line under it small and spaced */
-  /* centred on the screen, where the card was */
-  .head {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: clamp(20px, 3.6vh, 40px);
-    padding: 0 3vw 6vh;
-    text-align: center;
-    pointer-events: none;
-  }
-
-  /* a soft dark pool behind the words (off under the difference blend: it would only invert) */
-  .headShade {
-    display: none;
-    position: absolute;
-    left: 50%;
-    top: 47%;
-    width: min(130vw, 1800px);
-    height: 80vh;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(ellipse at center, rgb(0 0 0 / 0.55) 0%, rgb(0 0 0 / 0.3) 40%, transparent 70%);
   }
 
   /* ---- the three formats as one quiet line: 16x9 / 9x16 / Beyond ---- */
@@ -562,6 +574,10 @@
     justify-content: center;
     gap: 0.62em;
     font-size: clamp(34px, 5.2vw, 100px);
+    color: #0c0c0c;
+  }
+
+  .namesPaper {
     color: var(--paper);
   }
 
@@ -653,12 +669,6 @@
     border-width: 0 1.5px 1.5px 0;
   }
 
-  @media (hover: hover) {
-    .name:not(:disabled) {
-      cursor: none;
-    }
-  }
-
   /* the index's foot: quiet links in the corners, the line between them */
   .foot {
     position: absolute;
@@ -672,8 +682,14 @@
     gap: 24px;
     font-size: 10.5px;
     letter-spacing: 0.2em;
+    color: #0c0c0c;
+    transition: color 0.45s ease;
+  }
+
+  /* over a film that fills the screen, or the open wall, the foot and the bar turn to paper */
+  .page[data-dark] .foot,
+  .page[data-dark] .topbar {
     color: var(--paper);
-    mix-blend-mode: difference; /* black on the paper, paper on the wall */
   }
 
   .footSide {
@@ -825,7 +841,8 @@
     pointer-events: none;
     font-size: 11px;
     letter-spacing: 0.22em;
-    mix-blend-mode: difference; /* the white logo and burger read black on the index */
+    color: #0c0c0c;
+    transition: color 0.45s ease;
   }
 
   /* ---- the open wall: back to the index, and the format it's cut in ---- */
@@ -930,10 +947,17 @@
   }
 
   /* the menu's logo size */
+  /* the logo file is white: ink on the paper, itself over a film or the wall */
   .logoImg {
     display: block;
     height: clamp(40px, 4vw, 60px);
     width: auto;
+    filter: invert(1);
+    transition: filter 0.45s ease;
+  }
+
+  .page[data-dark] .logoImg {
+    filter: none;
   }
 
   .barEnd {
@@ -961,7 +985,7 @@
     display: block;
     width: 28px;
     height: 1.5px;
-    background: var(--paper);
+    background: currentColor;
     transition: width 0.5s var(--ease), transform 0.5s var(--ease);
   }
 
