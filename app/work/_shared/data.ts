@@ -26,6 +26,9 @@ export type Project = Clip & {
   line: string;
   /** a few sentences for the film's own page */
   synopsis: string;
+  /** the case, told on the film's page under the screen: who the client is, what was asked, the idea.
+   * Without it the page tells the synopsis instead. */
+  story?: { client: string; challenge: string; idea: string };
   /** the end credits, in groups (a group's rows: a role and its names; no role = names alone) */
   credits?: CreditGroup[];
 };
@@ -83,6 +86,22 @@ const P = (
 };
 
 export const PROJECTS: Project[] = [
+  {
+    // BMW iX × INSHI. The film itself isn't in yet: this plays another clip as a stand-in until the
+    // real one is hosted (see the video setup); the year is to confirm.
+    ...P(7, "INSHI", "BMW", "tvc", 2021, "0:52", "BMW iX, as a ballet", "#c8a95c",
+      "The all-new BMW iX, told through the choreography of the INSHI ballet: the car and the human body, side by side."),
+    no: "16",
+    format: "16x9",
+    story: {
+      client:
+        "German automotive and aviation conglomerate and its eponymous brand that drives the world of premium and luxury-class automobiles and motorcycles, turning their driving experience into true pleasure.",
+      challenge:
+        "The BMW iX model represents a new evolutionary stage. Sustainable consumption and a mindful approach towards nature define a new era of technological advancement. We needed to present the all-new flagship model, the BMW iX, at an unmatched level, transforming it into an emotional show.",
+      idea:
+        "BMW iX has become much closer to nature. We decided to draw visual analogies between the car and the perfect creation of nature – the human body. The choreography of the “INSHI” ballet expressed all the key advantages of the new BMW iX in motion. We created a multi-layered video with a unique atmosphere, visual metaphors, and the technical advantages of the model, allowing us to evoke the desired sensations of harmony with nature and futuristic comfort in the viewers.",
+    },
+  },
   {
     ...P(11, "Talisman", "Rolls-Royce Kyiv", "tvc", 2025, "1:00", "Rolls-Royce Kyiv × Oberig Jewelry", "#c9a4ff",
       "Two talismans, one evening in Kyiv: the Spirit of Ecstasy on the bonnet, and an Oberig piece at the throat. A film about the things we carry close, made for Rolls-Royce Kyiv with Oberig Jewelry."),

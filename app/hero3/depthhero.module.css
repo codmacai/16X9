@@ -416,6 +416,36 @@
     }
   }
   
+  /* the logo, white on the dark */
+  .wmLogo {
+    color: #ffffff;
+    transform-origin: 50% 50%;
+  }
+
+  .wmSvg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .wmWord {
+    fill: currentColor;
+    font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+    font-size: 212px;
+    font-weight: 900;
+    font-variation-settings: "wdth" 100;
+    letter-spacing: -0.02em;
+  }
+
+  .wmSub {
+    fill: currentColor;
+    font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+    font-size: 46px;
+    font-weight: 400;
+    font-variation-settings: "wdth" 100;
+  }
+
   .wmBlock {
     position: relative;
   }

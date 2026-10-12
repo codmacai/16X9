@@ -7,7 +7,6 @@ import {
   useEffect,
   useId,
   useImperativeHandle,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -125,30 +124,11 @@ const RATIOS = ["3 / 4", "16 / 10", "4 / 5", "1 / 1", "2 / 3", "16 / 9", "5 / 6"
 const AUTO_MS = 3400;
 const AUTO_SEQ: (FormatKey | null)[] = ["16x9", "9x16", "beyond", null];
 
-// The mark
-const COBALT = "#FFFFFF";
-// The card (and the menu bars cut from it) keep the original face, Archivo at its
-// normal width, so the card keeps its original proportions: its size is measured
-// from this lettering. (--font-wide is the same Archivo, loaded in this file.)
-const FONT = "var(--font-wide, 'Archivo'), 'Helvetica Neue', Arial, sans-serif";
-const WIDE = { fontFamily: FONT } as const; // no width axis any more
-const PAD_X = 4.5; // block geometry, in % of the block's width (cqw)
-const PAD_TOP = 3.4;
-const PAD_BOTTOM = 3.8;
-const CAP = 0.727; // Inter Tight cap height, as a fraction of the font size
-const TRACK = -0.03; // letter spacing, in em
-const MARK_WEIGHT = 700;
-// "& BEYOND" on the mark's line: its size and the space before it, as fractions of
-// the 16X9 font size. The card keeps its original size; 16X9 shrinks to make room.
-const SUB_SCALE = 0.17;
-const SUB_GAP = 0.07;
-
 // ===========================================================================
 // MENU_T — the card's letters lift out when the menu opens, and settle back
 // (at JOIN) after it closes. The menu itself is the hero 11 drawer.
 // ===========================================================================
 const MENU_T = { letters: 0.5, split: 0.46, spread: 0.85, words: 1.0, collapse: 0.6, collapseAt: 0.18, join: 0.8 };
-const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 const surgeAt = (t: number) => {
   if (t < SURGE.first) return 0;
@@ -350,25 +330,16 @@ function Letterbox({ onDone }: { onDone: () => void }) {
 }
 
 // ===========================================================================
-// THE MARK — a block with 16X9 and © cut clean through it; the wall behind
-// shows through the letters. It opens out of a slit at T.card and its letters
-// rise in; once `gone`, the letters lift out and the block folds down to a
-// line. The block stays in the layout either way: the menu grows out of it.
+// THE MARK — the studio's logo, drawn in on the dark: a hairline frame traces
+// itself from the corner round to the corner, 16X9 rises in heavy capitals
+// where the frame breaks open at the bottom right, and & BEYOND follows,
+// spaced out under it. Once `gone` it eases back and fades for the words;
+// while the menu is open it steps out of the way.
+// Drawn as one SVG in the logo's own proportions (the artwork's 1144 × 600).
 // ===========================================================================
-type Box = {
-  w: number;
-  h: number;
-  pl: number;
-  pr: number;
-  pt: number;
-  pb: number;
-  /** height of the lettering area: what 16X9 alone would fill, so the card never changes size */
-  area: number;
-  /** shared baseline for 16X9 and the tag, centred in that area */
-  base: number;
-  /** where the tag starts */
-  subX: number;
-};
+const LOGO = { w: 1144, h: 600 };
+// the frame, from where it meets 16X9 at the foot, round, to where it meets it on the right
+const FRAME = "M 652 486 H 62 V 95 H 929 V 314";
 
 function Mark({
   mark,
@@ -382,152 +353,69 @@ function Mark({
   /** the card has made way for the heading */
   gone: boolean;
   menuOpen: boolean;
-  /** changes every time the menu opens, so the wheel starts fresh on WORK */
+  /** changes every time the menu opens, so the letters come back fresh */
   menuKey: number;
 }) {
-  const maskId = `dh-cut-${useId().replace(/:/g, "")}`;
-  const blockRef = useRef<HTMLDivElement>(null);
-  const probeRef = useRef<HTMLSpanElement>(null);
-  const subProbeRef = useRef<HTMLSpanElement>(null);
-  const [fontSize, setFontSize] = useState<number | null>(null);
-  const [box, setBox] = useState<Box | null>(null);
-
-  // The card is sized as if 16X9 alone filled 90% of its inner width (its original
-  // size). 16X9 + the tag then share that same 90%, sitting on one baseline,
-  // centred in the card. Re-fit on resize and font load.
-  useIsoLayoutEffect(() => {
-    const block = blockRef.current;
-    const probe = probeRef.current;
-    const subProbe = subProbeRef.current;
-    if (!block || !probe || !subProbe) return;
-    const fit = () => {
-      const cs = getComputedStyle(block);
-      const pl = parseFloat(cs.paddingLeft);
-      const pr = parseFloat(cs.paddingRight);
-      const pt = parseFloat(cs.paddingTop);
-      const pb = parseFloat(cs.paddingBottom);
-      const w = block.clientWidth;
-      const inner = w - pl - pr;
-      const tw = probe.getBoundingClientRect().width; // 16X9 measured at 100px
-      const ts = subProbe.getBoundingClientRect().width; // the tag measured at 100px
-      if (tw > 0 && ts > 0 && inner > 0) {
-        const original = (100 * inner * 0.9) / tw; // the font size 16X9 had on its own
-        const area = original * CAP;
-        const fs = (100 * inner * 0.9) / (tw + 100 * SUB_GAP + ts * SUB_SCALE);
-        setFontSize(fs);
-        setBox({
-          w,
-          h: pt + pb + area,
-          pl,
-          pr,
-          pt,
-          pb,
-          area,
-          base: pt + (area + fs * CAP) / 2,
-          subX: pl + (fs * tw) / 100 + fs * SUB_GAP,
-        });
-      }
-    };
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(block);
-    document.fonts?.ready.then(fit).catch(() => {});
-    return () => ro.disconnect();
-  }, [mark]);
-
+  const clipId = `dh-logo-${useId().replace(/:/g, "")}`;
+  const back = menuKey > 0 ? MENU_T.join : 0;
+  const t = (delay: number) => (reduce ? 0 : back || delay);
   return (
     <div className={styles.wm}>
-      <div ref={blockRef} className={styles.wmBlock} style={{ padding: `${PAD_TOP}cqw ${PAD_X}cqw ${PAD_BOTTOM}cqw` }}>
-        <span
-          ref={probeRef}
-          aria-hidden
-          className={styles.wmProbe}
-          style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: 100, letterSpacing: `${TRACK}em` }}
-        >
-          {mark}
-        </span>
-        <span
-          ref={subProbeRef}
-          aria-hidden
-          className={styles.wmProbe}
-          style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: 100, letterSpacing: `${TRACK}em` }}
-        >
-          {MARK_SUB}
-        </span>
-
-        <span aria-hidden className={styles.wmSpacer} style={{ height: box ? box.area : "12cqw" }} />
-
-        {box && fontSize ? (
-          // the card's face: opens out of a slit, and later eases back and fades away
-          <motion.div
-            className={styles.wmFace}
-            initial={reduce ? { opacity: gone ? 0 : 1 } : { clipPath: "inset(50% 0% 50% 0%)", scale: 1, opacity: 1 }}
-            animate={
-              gone
-                ? { scale: 0.96, opacity: 0, transition: { duration: reduce ? 0 : LEAVE.fade, ease: "easeInOut" } }
-                : { clipPath: "inset(0% 0% 0% 0%)", scale: 1, opacity: 1, transition: { delay: T.card, duration: 0.95, ease: EASE_CINE } }
-            }
+      <motion.div
+        className={styles.wmLogo}
+        initial={reduce ? false : { opacity: 1, scale: 1 }}
+        animate={
+          gone
+            ? { opacity: 0, scale: 0.96, transition: { duration: reduce ? 0 : LEAVE.fade, ease: "easeInOut" } }
+            : { opacity: menuOpen ? 0 : 1, scale: 1, transition: { duration: menuOpen ? 0.3 : 0.6 } }
+        }
+      >
+        <svg viewBox={`0 0 ${LOGO.w} ${LOGO.h}`} className={styles.wmSvg} role="img" aria-label={`${mark} ${MARK_SUB}`}>
+          <defs>
+            {/* 16X9 rises out of its own line, as through a slot */}
+            <clipPath id={clipId}>
+              <rect x="600" y="300" width="520" height="200" />
+            </clipPath>
+          </defs>
+          {/* the frame traces itself round */}
+          <motion.path
+            d={FRAME}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="12"
+            strokeLinecap="square"
+            initial={reduce ? false : { pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: reduce ? 0 : 1.3, ease: EASE_CINE, delay: t(T.card) }}
+          />
+          <g clipPath={`url(#${clipId})`}>
+            <motion.text
+              x="642"
+              y="487"
+              textLength="438"
+              lengthAdjust="spacingAndGlyphs"
+              className={styles.wmWord}
+              initial={reduce ? false : { y: 200 }}
+              animate={{ y: 0 }}
+              transition={{ duration: reduce ? 0 : 1, ease: EASE, delay: t(T.letters) }}
+            >
+              {mark}
+            </motion.text>
+          </g>
+          <motion.text
+            x="672"
+            y="548"
+            textLength="406"
+            lengthAdjust="spacing"
+            className={styles.wmSub}
+            initial={reduce ? false : { opacity: 0, x: -14 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: reduce ? 0 : 0.9, ease: EASE, delay: t(T.letters + 0.35) }}
           >
-          <motion.svg
-            aria-hidden
-            className={styles.wmCut}
-            viewBox={`0 0 ${box.w} ${box.h}`}
-            preserveAspectRatio="none"
-            initial={false}
-            animate={{ opacity: menuOpen ? 0 : 1 }}
-            transition={{ duration: 0, delay: reduce ? 0 : menuOpen ? MENU_T.split : MENU_T.join }}
-          >
-            <defs>
-              <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={box.w} height={box.h}>
-                <rect width={box.w} height={box.h} fill="#fff" />
-                {/* the letters rise into the card, lift out when the menu opens, and
-                    settle back when it closes (they stay put while the card fades) */}
-                <motion.g
-                  initial={reduce ? false : { y: box.h }}
-                  animate={{ y: menuOpen ? -box.h : 0 }}
-                  transition={
-                    reduce
-                      ? { duration: 0 }
-                      : menuOpen
-                        ? { duration: MENU_T.letters, ease: EASE_CINE }
-                        : { duration: 0.9, ease: EASE, delay: menuKey > 0 ? MENU_T.join : T.letters }
-                  }
-                >
-                <text
-                  x={box.pl}
-                  y={box.base}
-                  fill="#000"
-                  style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize, letterSpacing: `${TRACK}em` }}
-                >
-                  {mark}
-                </text>
-                {/* & BEYOND: tiny, on the same baseline, right after the mark */}
-                <text
-                  x={box.subX}
-                  y={box.base}
-                  fill="#000"
-                  style={{ ...WIDE, fontWeight: MARK_WEIGHT, fontSize: fontSize * SUB_SCALE, letterSpacing: `${TRACK}em` }}
-                >
-                  {MARK_SUB}
-                </text>
-                <text
-                  x={box.w - box.pr * 0.45}
-                  y={box.h - box.pb}
-                  textAnchor="end"
-                  fill="#000"
-                  style={{ fontFamily: FONT, fontWeight: 600, fontSize: Math.max(10, box.w * 0.022) }}
-                >
-                  ©
-                </text>
-                </motion.g>
-              </mask>
-            </defs>
-            <rect width={box.w} height={box.h} fill={COBALT} mask={`url(#${maskId})`} />
-          </motion.svg>
-          </motion.div>
-        ) : null}
-
-      </div>
+            {MARK_SUB}
+          </motion.text>
+        </svg>
+      </motion.div>
     </div>
   );
 }
