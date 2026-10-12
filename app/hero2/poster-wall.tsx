@@ -244,6 +244,7 @@ export default function PosterWall({
   paused,
   reduce,
   delay,
+  preview = false,
   onOpen,
 }: {
   fmt: FormatKey;
@@ -253,6 +254,8 @@ export default function PosterWall({
   reduce: boolean;
   /** seconds before the posters swing up (the index is still opening its film) */
   delay: number;
+  /** shown behind something else (hero 3's index): it doesn't take the pointer and has no controls */
+  preview?: boolean;
   onOpen: PosterOpen;
 }) {
   const size = useSyncExternalStore(subscribeSize, () => `${window.innerWidth}x${window.innerHeight}`, () => "1440x900");
@@ -704,7 +707,7 @@ export default function PosterWall({
     <motion.div
       ref={rootRef}
       className={`${styles.wall} ${sphere ? styles.wallSphere : ""} ${hovered ? styles.wallPointing : ""}`}
-      style={{ "--tw": `${geo.tw}px`, "--th": `${geo.th}px` } as CSSProperties}
+      style={{ "--tw": `${geo.tw}px`, "--th": `${geo.th}px`, pointerEvents: preview ? "none" : undefined } as CSSProperties}
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: reduce ? 0 : 0.7, ease: FADE } }}
       aria-label={`${f.label}: ${f.line}`}
@@ -737,9 +740,9 @@ export default function PosterWall({
       <span ref={hairY} className={`${styles.hair} ${styles.hairY}`} aria-hidden="true" />
       <span ref={ring} className={styles.ring} aria-hidden="true" />
 
-      <ZoomBar min={zMin} max={zMax} ctl={ctl} knob={knob} fill={fill} read={read} />
+      {!preview && <ZoomBar min={zMin} max={zMax} ctl={ctl} knob={knob} fill={fill} read={read} />}
 
-      <ul className={styles.sr}>
+      <ul className={styles.sr} hidden={preview}>
         {clips.map((c, i) => (
           <li key={c.src}>
             <button type="button" onClick={() => openFromList(i)}>
