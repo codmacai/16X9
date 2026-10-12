@@ -772,3 +772,44 @@
 .paper {
   background: var(--noise), var(--paper);
 }
+
+/* "Play film" on the cover card: the film plays in the cover itself (theatre.tsx) */
+.cover {
+  cursor: pointer;
+}
+
+.playFilm {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: clamp(12px, 2vh, 20px);
+  padding: 7px 14px 7px 7px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  transition: transform 0.5s var(--ease);
+}
+
+.playFilm i {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.playFilm svg {
+  width: 8px;
+  height: 9px;
+  margin-left: 1px;
+  fill: var(--paper);
+}
+
+.cover:hover .playFilm,
+.cover:focus-visible .playFilm {
+  transform: translateY(-2px) scale(1.04);
+}

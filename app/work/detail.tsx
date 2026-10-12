@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
 import { EASE } from "./_shared/chrome";
 import { posterFor, type Project } from "./_shared/data";
 import Credits from "./credits";
 import Story from "./story";
 import Edge from "./edge";
+import Theatre, { type Rect } from "./theatre";
 import { useHeavyScroll } from "./heavy";
 import d from "./detail.module.css";
 
@@ -134,6 +135,31 @@ export default function Detail({
     ? { left: box.left, top: box.top - band, width: box.width, height: box.height, marginLeft: 0 }
     : undefined;
 
+  // the film, played in its own cover: the card grows into a screen across the hero
+  const coverRef = useRef<HTMLDivElement>(null);
+  const [theatre, setTheatre] = useState<{ from: Rect; to: Rect; closing: boolean } | null>(null);
+  const openFilm = () => {
+    const heroEl = heroRef.current;
+    const card = coverRef.current;
+    const box = scrollRef.current;
+    if (!heroEl || !card || theatre) return;
+    box?.scrollTo({ top: 0, behavior: "smooth" });
+    const h = heroEl.getBoundingClientRect();
+    const c = card.getBoundingClientRect();
+    const W = heroEl.clientWidth;
+    const H = heroEl.clientHeight;
+    const width = Math.min(W * (W < 700 ? 0.94 : 0.84), H * 0.72 * (16 / 9));
+    const height = width * (9 / 16);
+    setTheatre({
+      from: { left: c.left - h.left, top: c.top - h.top, width: c.width, height: c.height },
+      to: { left: (W - width) / 2, top: Math.max(16, (H - height - 60) / 2), width, height },
+      closing: false,
+    });
+  };
+  const closeFilm = useCallback(() => setTheatre((th) => (th && !th.closing ? { ...th, closing: true } : th)), []);
+  // scrolling on down the page closes the film
+  useEffect(() => heroRaw.on("change", (v) => v > 0.3 && closeFilm()), [heroRaw, closeFilm]);
+
   // the page has weight: the wheel sets where it's going, it glides there
   useHeavyScroll(scrollRef, reduce);
 
@@ -238,9 +264,23 @@ export default function Detail({
           </motion.button>
 
           {/* the card, across the two */}
-          <motion.div className={d.coverWrap} style={reduce ? coverBox : { ...coverBox, y: cardY }}>
+          <motion.div
+            ref={coverRef}
+            className={d.coverWrap}
+            style={{ ...(reduce ? coverBox : { ...coverBox, y: cardY }), visibility: theatre ? "hidden" : "visible" }}
+          >
             <motion.div
               className={d.cover}
+              onClick={openFilm}
+              role="button"
+              tabIndex={0}
+              aria-label={`Play ${film.title}`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openFilm();
+                }
+              }}
               initial={reduce || anchored ? false : { y: 90, opacity: 0, rotate: -1.5 }}
               animate={{ y: 0, opacity: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 60, damping: 15, delay: 0.25 }}
@@ -274,9 +314,36 @@ export default function Detail({
                     </span>
                   ))}
                 </h2>
+                <motion.span
+                  className={d.playFilm}
+                  initial={anchored || reduce ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.9, ease: EASE, delay: reduce ? 0 : 1.1 }}
+                  aria-hidden="true"
+                >
+                  <i>
+                    <svg viewBox="0 0 12 14">
+                      <path d="M1 0l11 7-11 7z" />
+                    </svg>
+                  </i>
+                  Play film
+                </motion.span>
               </span>
             </motion.div>
           </motion.div>
+
+          {theatre && (
+            <Theatre
+              src={film.film ?? film.src}
+              poster={still}
+              title={film.title}
+              from={theatre.from}
+              to={theatre.to}
+              closing={theatre.closing}
+              onClose={closeFilm}
+              onClosed={() => setTheatre(null)}
+            />
+          )}
 
           <motion.button
             type="button"
