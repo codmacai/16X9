@@ -12,6 +12,7 @@ import {
   type MotionValue,
 } from "framer-motion";
 import Curve from "./curve";
+import Files from "./files";
 import s from "./practice.module.css";
 
 // ===========================================================================
@@ -21,20 +22,13 @@ import s from "./practice.module.css";
 //     scroll, word by word out of the paper, and three phrases get a pass
 //     of black marker — find the idea, bring it to life, the right
 //     execution. Under the marker the letters turn to paper.
-//   · How we work: the screen holds while the two pillars take their turn.
-//     The pillar's name stands giant across it, every letter in its own
-//     slot; at the changeover the letters roll over like a departures
-//     board, left to right, MAKING to PARTNERSHIP, and the longer word pans
-//     across so it reads to the end. Beside it the pillar's three points
-//     light one after another, and its file — black card stock with a tab,
-//     a portrait inside — goes down into the drawer as the next comes up.
+//   · How we work: two files, Making and Partnership (files.tsx).
 // The scroll position drives all of it, so it scrubs both ways, smoothed
 // by an over-damped spring: it glides and never wobbles.
 // ===========================================================================
 
 const SMOOTH = { stiffness: 120, damping: 34, mass: 1, restDelta: 0.0001 };
 const CINE = cubicBezier(0.76, 0, 0.24, 1);
-const SETTLE = cubicBezier(0.16, 1, 0.3, 1);
 
 /** 0 → 1 between `from` and `from + span`, held at either end, eased */
 const seg = (v: number, from: number, span: number, ease = CINE) => ease(Math.min(1, Math.max(0, (v - from) / span)));
@@ -58,7 +52,7 @@ export default function Practice() {
     <section ref={ref} id="how-we-work" className={s.practice} aria-label="What we do and how we work">
       <Curve target={ref} color="#f7f2ee" />
       <TheLine still={still} />
-      {still ? <HowStill /> : <How />}
+      <Files />
     </section>
   );
 }
@@ -156,309 +150,5 @@ function PromiseWord({ word, read }: { word: Word; read: MotionValue<number> }) 
         {word.tail}
       </motion.span>{" "}
     </>
-  );
-}
-
-// ===========================================================================
-// HOW WE WORK — the held screen
-// ===========================================================================
-
-const PILLARS = [
-  {
-    no: "01",
-    name: "Making",
-    points: ["Production planning", "Content production", "Execution and delivery"],
-    line: "We build the team and approach around the project.",
-    poster: "/work/posters/poster-3.webp",
-    pos: "50% 18%",
-  },
-  {
-    no: "02",
-    name: "Partnership",
-    points: ["Creative team extension", "Ongoing collaboration", "Long-term relationships"],
-    line: "We develop a shared understanding that grows over time.",
-    poster: "/work/posters/poster-2.webp",
-    pos: "50% 30%",
-  },
-] as const;
-
-// the held screen's timeline, 0 → 1 over the hold
-const LIGHT = [
-  [0.03, 0.11, 0.19], // Making's points light, one after another
-  [0.6, 0.68, 0.76], // then Partnership's
-];
-const LIGHT_SPAN = 0.07;
-const SUM_IN = [0.2, 0.8]; // each pillar's line comes in after its points
-const SWAP = 0.4; // the changeover begins
-const ROLL_STEP = 0.012; // between one letter's roll and the next
-const ROLL_SPAN = 0.075; // how long one letter takes to roll over
-const PAN = [0.5, 0.42]; // the long word pans across (from, span)
-
-function How() {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  // `enter`: the screen coming up to the top; `p`: the hold
-  const { scrollYProgress: rawEnter } = useScroll({ target: wrapRef, offset: ["start end", "start start"] });
-  const { scrollYProgress: rawHold } = useScroll({ target: wrapRef, offset: ["start start", "end end"] });
-  const enter = useSpring(rawEnter, SMOOTH);
-  const p = useSpring(rawHold, SMOOTH);
-
-  // the counter: 01 rolls to 02 with the changeover
-  const count = useTransform(p, (v) => `${(-50 * seg(v, SWAP + 0.05, 0.08)).toFixed(3)}%`);
-
-  return (
-    <div ref={wrapRef} className={s.how}>
-      <div className={s.stage}>
-        <div className={s.head}>
-          <h2 className={s.headLabel}>How we work</h2>
-          <span className={s.count} aria-hidden="true">
-            0
-            <span className={s.countSlot}>
-              <motion.span className={s.countReel} style={{ y: count }}>
-                <span>1</span>
-                <span>2</span>
-              </motion.span>
-            </span>
-            <i>/</i>02
-          </span>
-        </div>
-
-        <Giant enter={enter} p={p} />
-
-        <div className={s.body}>
-          <div className={s.files} aria-hidden="true">
-            {PILLARS.map((pillar, k) => (
-              <MovingFolder key={pillar.name} k={k} enter={enter} p={p} />
-            ))}
-          </div>
-          <div className={s.pillars}>
-            {PILLARS.map((pillar, k) => (
-              <Pillar key={pillar.name} k={k} enter={enter} p={p} />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// GIANT — the pillar's name, each letter in its own slot
-// ---------------------------------------------------------------------------
-const FROM = PILLARS[0].name.toUpperCase();
-const TO = PILLARS[1].name.toUpperCase();
-
-function Giant({ enter, p }: { enter: MotionValue<number>; p: MotionValue<number> }) {
-  const boxRef = useRef<HTMLDivElement>(null);
-  const toRef = useRef<HTMLSpanElement>(null);
-  // how far the long word runs past the edge: it pans that far to read to its end
-  const over = useMotionValue(0);
-  useEffect(() => {
-    const box = boxRef.current;
-    const to = toRef.current;
-    if (!box || !to) return;
-    const ro = new ResizeObserver(() => over.set(Math.max(0, to.offsetWidth - box.clientWidth)));
-    ro.observe(box);
-    ro.observe(to);
-    return () => ro.disconnect();
-  }, [over]);
-  const x = useTransform([p, over], ([v, o]: number[]) => -o * seg(v, PAN[0], PAN[1], cubicBezier(0.45, 0, 0.55, 1)));
-
-  return (
-    <div ref={boxRef} className={s.giant} aria-hidden="true">
-      <motion.div className={s.giantTrack} style={{ x }}>
-        <span className={s.name}>
-          {[...FROM].map((ch, i) => (
-            <Letter key={i} ch={ch} i={i} side="from" enter={enter} p={p} />
-          ))}
-        </span>
-        <span ref={toRef} className={s.name}>
-          {[...TO].map((ch, i) => (
-            <Letter key={i} ch={ch} i={i} side="to" enter={enter} p={p} />
-          ))}
-        </span>
-      </motion.div>
-    </div>
-  );
-}
-
-function Letter({
-  ch,
-  i,
-  side,
-  enter,
-  p,
-}: {
-  ch: string;
-  i: number;
-  side: "from" | "to";
-  enter: MotionValue<number>;
-  p: MotionValue<number>;
-}) {
-  // the first word rolls up into its slots as the screen arrives, and out of
-  // them at the changeover; the second follows it up from below, slot by slot
-  const y = useTransform([enter, p], ([e, v]: number[]) => {
-    const over = seg(v, SWAP + i * ROLL_STEP, ROLL_SPAN);
-    if (side === "to") return `${(112 * (1 - over)).toFixed(3)}%`;
-    const up = seg(e, 0.4 + i * 0.05, 0.34);
-    return `${(112 * (1 - up) - 112 * over).toFixed(3)}%`;
-  });
-  return (
-    <span className={s.slot}>
-      <motion.span className={s.glyph} style={{ y }}>
-        {ch}
-      </motion.span>
-    </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// FILE — black card stock, the tab cut into it, a portrait inside
-// ---------------------------------------------------------------------------
-type FolderMotion = {
-  y: MotionValue<string>;
-  scale: MotionValue<number>;
-  imgY: MotionValue<string>;
-  dim: MotionValue<number>;
-  colour: MotionValue<number>;
-};
-
-function Folder({ k, tab = k, m }: { k: number; tab?: number; m?: FolderMotion }) {
-  const pillar = PILLARS[k];
-  const img = { src: pillar.poster, draggable: false, decoding: "async" as const, style: { objectPosition: pillar.pos } };
-  return (
-    <motion.div className={s.folder} style={{ ["--tab" as string]: tab, zIndex: k + 1, y: m?.y, scale: m?.scale }}>
-      <span className={s.stock} />
-      <span className={s.tab}>
-        <span className={s.tabNo}>{pillar.no}</span>
-        <span>{pillar.name}</span>
-      </span>
-      <span className={s.window}>
-        <motion.span className={s.pic} style={{ y: m?.imgY }}>
-          {/* black and white underneath (the filter never moves); the colour
-              fades in over it once the file has come to rest */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {m && <img className={s.gray} alt="" {...img} />}
-          <motion.img className={s.colour} alt="" {...img} style={{ ...img.style, opacity: m?.colour }} />
-        </motion.span>
-        {m && <motion.span className={s.dim} style={{ opacity: m.dim }} />}
-      </span>
-    </motion.div>
-  );
-}
-
-function MovingFolder({ k, enter, p }: { k: number; enter: MotionValue<number>; p: MotionValue<number> }) {
-  // the first rises with the screen and goes down into the drawer at the
-  // changeover, settling back a little; the second comes up in front of it
-  const y = useTransform([enter, p], ([e, v]: number[]) => {
-    if (k === 1) return `${(118 * (1 - seg(v, SWAP + 0.02, 0.16))).toFixed(3)}%`;
-    return `${(60 * (1 - seg(e, 0.2, 0.8, SETTLE)) + 118 * seg(v, SWAP, 0.22)).toFixed(3)}%`;
-  });
-  const scale = useTransform(p, (v) => (k === 0 ? 1 - 0.06 * seg(v, SWAP, 0.2) : 1));
-  // the one going away darkens as it sinks
-  const dim = useTransform(p, (v) => (k === 0 ? 0.55 * seg(v, SWAP, 0.16) : 0));
-  // each comes up in black and white and comes into colour as it lands;
-  // the one going away loses its colour first
-  const colour = useTransform([enter, p], ([e, v]: number[]) =>
-    k === 0 ? seg(e, 0.72, 0.28, SETTLE) * (1 - seg(v, SWAP, 0.08)) : seg(v, SWAP + 0.15, 0.1, SETTLE)
-  );
-  // inside, the picture drifts against the hold, as if behind glass
-  const imgY = useTransform(p, (v) => `${(-5 + 10 * v).toFixed(3)}%`);
-  return <Folder k={k} m={{ y, scale, imgY, dim, colour }} />;
-}
-
-// ---------------------------------------------------------------------------
-// PILLAR — three points that light one after another, and its line
-// ---------------------------------------------------------------------------
-function Pillar({ k, enter, p }: { k: number; enter: MotionValue<number>; p: MotionValue<number> }) {
-  const pillar = PILLARS[k];
-  const sumY = useTransform(p, (v) => {
-    const inn = seg(v, SUM_IN[k], 0.08, SETTLE);
-    const out = k === 0 ? seg(v, SWAP - 0.01, 0.06) : 0;
-    return `${(105 * (1 - inn) - 105 * out).toFixed(3)}%`;
-  });
-  return (
-    <div className={s.pillar}>
-      <h3 className={s.sr}>{pillar.name}</h3>
-      <ul className={s.points}>
-        {pillar.points.map((point, j) => (
-          <Point key={point} text={point} j={j} k={k} enter={enter} p={p} />
-        ))}
-      </ul>
-      <p className={s.sumMask}>
-        <motion.span className={s.sum} style={{ y: sumY }}>
-          {pillar.line}
-        </motion.span>
-      </p>
-    </div>
-  );
-}
-
-function Point({ text, j, k, enter, p }: { text: string; j: number; k: number; enter: MotionValue<number>; p: MotionValue<number> }) {
-  // up from its mask (Making's with the screen arriving, Partnership's at the
-  // changeover), dim, then lit in its turn; Making's leave upward at the swap
-  const y = useTransform([enter, p], ([e, v]: number[]) => {
-    if (k === 1) return `${(110 * (1 - seg(v, SWAP + 0.08 + j * 0.03, 0.09, SETTLE))).toFixed(3)}%`;
-    const inn = seg(e, 0.62 + j * 0.08, 0.3, SETTLE);
-    const out = seg(v, SWAP + j * 0.025, 0.07);
-    return `${(110 * (1 - inn) - 110 * out).toFixed(3)}%`;
-  });
-  const opacity = useTransform(p, (v) => 0.25 + 0.75 * seg(v, LIGHT[k][j], LIGHT_SPAN));
-  return (
-    <li className={s.point}>
-      <motion.span className={s.pointIn} style={{ y, opacity }}>
-        <span className={s.pointNo} aria-hidden="true">
-          0{j + 1}
-        </span>
-        <span className={s.pointText}>{text}</span>
-      </motion.span>
-    </li>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// STILL — reduced motion: both pillars, one after the other, all in view
-// ---------------------------------------------------------------------------
-function HowStill() {
-  return (
-    <div className={s.howStill}>
-      <div className={s.head}>
-        <h2 className={s.headLabel}>How we work</h2>
-        <span className={s.count} aria-hidden="true">
-          01<i>/</i>02
-        </span>
-      </div>
-      {PILLARS.map((pillar, k) => (
-        <div key={pillar.name} className={s.stillPillar}>
-          <p className={s.stillName} aria-hidden="true">
-            {pillar.name}
-          </p>
-          <div className={s.body}>
-            <div className={s.files} aria-hidden="true">
-              <Folder k={k} tab={0} />
-            </div>
-            <div className={s.pillars}>
-              <div className={s.pillar}>
-                <h3 className={s.sr}>{pillar.name}</h3>
-                <ul className={s.points}>
-                  {pillar.points.map((point, j) => (
-                    <li key={point} className={s.point}>
-                      <span className={s.pointIn}>
-                        <span className={s.pointNo} aria-hidden="true">
-                          0{j + 1}
-                        </span>
-                        <span className={s.pointText}>{point}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <p className={s.sumMask}>
-                  <span className={s.sum}>{pillar.line}</span>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }

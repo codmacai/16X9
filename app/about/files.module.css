@@ -1,0 +1,158 @@
+/* HOW WE WORK — two black files on the paper, as in the menu */
+
+.how {
+  padding: clamp(60px, 12vh, 140px) var(--ui) clamp(80px, 16vh, 180px);
+}
+
+.label {
+  margin: 0 0 clamp(28px, 6vh, 64px);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.files {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(14px, 1.6vw, 24px);
+}
+
+.file {
+  --th: clamp(34px, 5vh, 46px); /* tab height */
+  --tw: 32%; /* tab width */
+  --tx: calc(var(--tab) * (100% - var(--tw)));
+  position: relative;
+  min-height: clamp(420px, 62vh, 600px);
+  color: var(--paper);
+  transition: translate 0.7s var(--ease);
+}
+
+/* pointed at, the file is pulled up a little, like the menu's */
+.file:hover {
+  translate: 0 -10px;
+}
+
+/* the card stock, cut with its tab */
+.stock {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(
+    0 var(--th),
+    var(--tx) var(--th),
+    calc(var(--tx) + 16px) 0,
+    calc(var(--tx) + var(--tw) - 16px) 0,
+    calc(var(--tx) + var(--tw)) var(--th),
+    100% var(--th),
+    100% 100%,
+    0 100%
+  );
+  border-radius: 0 0 6px 6px;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.035 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    #000;
+}
+
+.tab {
+  position: absolute;
+  top: 0;
+  left: var(--tx);
+  width: var(--tw);
+  height: var(--th);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 26px 0;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.tabNo {
+  opacity: 0.55;
+}
+
+.body {
+  position: relative;
+  height: 100%;
+  min-height: inherit;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--th) + clamp(24px, 5vh, 56px)) clamp(22px, 2.6vw, 40px) clamp(22px, 3.4vh, 36px);
+}
+
+.name {
+  margin: 0;
+  font-size: clamp(36px, 5.2vw, 92px);
+  font-weight: 300;
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.06em;
+}
+
+.nameIn {
+  display: block;
+}
+
+.points {
+  margin: auto 0 0;
+  padding: clamp(28px, 5vh, 56px) 0 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.points li {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  font-size: clamp(14px, 1.25vw, 19px);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.points i {
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  opacity: 0.45;
+}
+
+.line {
+  margin: clamp(22px, 4vh, 40px) 0 0;
+  max-width: 34ch;
+  font-size: clamp(13px, 1vw, 15px);
+  line-height: 1.5;
+  opacity: 0.7;
+}
+
+/* phones: one file above the other */
+@media (max-width: 760px) {
+  .files {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .file {
+    min-height: 440px;
+    --tw: 60%;
+  }
+
+  .tab {
+    gap: 14px;
+    padding: 2px 18px 0;
+  }
+
+  .name {
+    font-size: 9.4vw;
+  }
+}
