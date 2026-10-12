@@ -37,7 +37,7 @@ export default function Story({ film, root, reduce }: { film: Project; root: Ref
         <span>Behind the film</span>
         <i aria-hidden="true" />
         <span>
-          {film.client} · {film.year}
+          {[film.client, film.year].filter(Boolean).join(" · ")}
         </span>
       </motion.p>
 

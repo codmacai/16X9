@@ -17,8 +17,9 @@ export type CategoryId = (typeof CATEGORIES)[number]["id"];
 export type Project = Clip & {
   no: string;
   client: string;
-  year: number;
   category: CategoryId;
+  /** when it was made; blank until it's confirmed */
+  year?: number;
   /** the frame it was made for (16x9, 9x16 or Beyond); the work page filters on it when opened from
    * that format's room (/work?format=16x9). Projects without one show under every format. */
   format?: "16x9" | "9x16" | "beyond";
@@ -138,6 +139,68 @@ export const PROJECTS: Project[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// 16x9 — the studio's real films, as filed in the Drive (WEBSITE ASSETS 16X9 →
+// 16X9 → a folder per category). Titles and clients come from the file names;
+// years and runtimes are left blank until confirmed. Until each film is hosted
+// (see the video setup) it plays a stand-in clip.
+// ---------------------------------------------------------------------------
+const KIND: Record<CategoryId, string> = { brand: "Brand film", documentary: "Documentary", music: "Music video", tvc: "TVC" };
+let realNo = 17;
+const R = (title: string, client: string, category: CategoryId): Project => {
+  const no = String(realNo++);
+  const line = client ? `${KIND[category]} for ${client}` : KIND[category];
+  return {
+    no,
+    title,
+    client,
+    category,
+    format: "16x9",
+    duration: "",
+    line,
+    accent: "#cfc8bd",
+    synopsis: `${line}.`,
+    src: `/clips/clip-${String(((realNo - 18) % 15) + 1).padStart(2, "0")}.mp4`,
+  };
+};
+
+PROJECTS.push(
+  // Brand Films
+  R("Inspiring Peaks", "Aldar", "brand"),
+  R("The Promise", "Aldar", "brand"),
+  R("NYC FC", "Etihad Airways", "brand"),
+  R("Ramadan Fridge", "Etihad Airways", "brand"),
+  R("Class Of", "Masdar Institute", "brand"),
+  R("Prime Minister's Office", "Prime Minister's Office", "brand"),
+  R("1001: One Tank Challenge", "Toyota Prius", "brand"),
+  R("Hybrid Adventurer", "Toyota Prius", "brand"),
+  R("Hybrid Falcon", "Toyota Prius", "brand"),
+  R("Hybrid Graffiti", "Toyota Prius", "brand"),
+  R("Riyadh Marathon 2025", "Riyadh Marathon", "brand"),
+  // Documentaries
+  R("Digital Divide", "GMIS", "documentary"),
+  R("General Corporation", "GMIS", "documentary"),
+  R("Rural Transformation", "GMIS", "documentary"),
+  R("Sustainable Cities", "GMIS", "documentary"),
+  R("Sustainable Energy", "GMIS", "documentary"),
+  R("UAE Pioneers", "", "documentary"),
+  // Music Videos
+  R("I Love Kuwait", "", "music"),
+  R("RELM", "", "music"),
+  // TVC's
+  R("Cleveland Clinic", "Cleveland Clinic", "tvc"),
+  R("A True Story of Recovery", "Cleveland Clinic", "tvc"),
+  R("EHS", "EHS", "tvc"),
+  R("National", "Etisalat", "tvc"),
+  R("DMI Promo", "Expo", "tvc"),
+  R("Fast Government", "UAE Government", "tvc"),
+  R("Toyota", "Filmmaster MEA", "tvc"),
+  R("Shahid", "MBC", "tvc"),
+  R("Museum of the Future", "Museum of the Future", "tvc"),
+  R("National Day — 50", "", "tvc"),
+  R("Saadiyat", "Rotana", "tvc"),
+);
+
+// ---------------------------------------------------------------------------
 // Every film has its own end credits. Talisman's are the production's own;
 // the others are built from each film's details (its client, its year) with
 // the roles credited to the studio — replace each with the film's real
@@ -155,7 +218,7 @@ const studioCredits = (p: Project): CreditGroup[] => [
       { role: "Sound", names: ["16×9 Post"] },
     ],
   },
-  { heading: "Filmed in", rows: [{ names: [`Dubai, ${p.year}`] }] },
+  { heading: "Filmed in", rows: [{ names: [p.year ? `Dubai, ${p.year}` : "Dubai"] }] },
 ];
 for (const p of PROJECTS) p.credits ??= studioCredits(p);
 

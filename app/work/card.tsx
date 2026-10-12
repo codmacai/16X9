@@ -19,12 +19,15 @@ import s from "./file.module.css";
 //     leaving goes soft. Only the focus picture drifts against the move.
 // ===========================================================================
 
+// the facts the film has (a year or runtime not yet confirmed is left out)
 const FACTS = (f: Project) =>
-  [
-    ["Year", String(f.year)],
-    ["Client", f.client],
-    ["Runtime", f.duration],
-  ] as const;
+  (
+    [
+      ["Year", f.year ? String(f.year) : ""],
+      ["Client", f.client],
+      ["Runtime", f.duration],
+    ] as const
+  ).filter(([, v]) => v);
 
 export default function Card({
   film,

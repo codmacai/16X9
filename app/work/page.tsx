@@ -38,9 +38,13 @@ const FORMAT_NAMES: Record<string, { name: string; head: [string, string]; line:
 };
 const isFormat = (k: string | null): k is FormatKey => k === "16x9" || k === "9x16" || k === "beyond";
 
+// a format with its own films listed shows only those; one without any yet shows the unmarked ones
 const orderFor = (fmt: string | null): Drawer[] =>
   fmt && FORMAT_NAMES[fmt]
-    ? ORDER.map((d) => ({ ...d, films: d.films.filter((p) => !p.format || p.format === fmt) }))
+    ? ORDER.map((d) => ({
+        ...d,
+        films: d.films.filter((p) => (PROJECTS.some((x) => x.format === fmt) ? p.format === fmt : !p.format)),
+      }))
         .filter((d) => d.films.length > 0)
         .map((d, i) => ({ ...d, no: String(i + 1).padStart(2, "0") }))
     : ORDER;

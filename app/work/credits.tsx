@@ -172,7 +172,7 @@ export default function Credits({
             <div data-line className={d.rollEnd}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={LOGO_SRC} alt="16x9" />
-              <span>{film.year}</span>
+              {film.year ? <span>{film.year}</span> : null}
             </div>
           </motion.div>
         </div>

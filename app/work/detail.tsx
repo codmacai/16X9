@@ -152,8 +152,8 @@ export default function Detail({
 
   const words = film.title.toUpperCase().split(" ");
   const starts = words.map((_, i) => words.slice(0, i).join("").length);
-  const phrase = `${label}. ${film.client}. ${film.title}. ${film.year}. `;
-  const tick = `New film · ${film.title} · ${film.client} · ${label} · ${film.year} · ${film.duration} · `;
+  const phrase = [label, film.client, film.title, film.year].filter(Boolean).join(". ") + ". ";
+  const tick = ["New film", film.title, film.client, label, film.year, film.duration].filter(Boolean).join(" · ") + " · ";
 
   return (
     <motion.section
@@ -352,7 +352,7 @@ export default function Detail({
               <span className={d.nextReel} style={{ backgroundImage: `url(${posterFor(next)})` }} aria-hidden="true" />
             </span>
             <span className={d.nextMeta}>
-              {next.client} · {next.year} · {next.duration} <i aria-hidden="true">→</i>
+              {[next.client, next.year, next.duration].filter(Boolean).join(" · ")} <i aria-hidden="true">→</i>
             </span>
           </button>
         </section>
