@@ -1036,7 +1036,7 @@
   display: none;
 }
 
-/* ================= Mono (hero 3's Beyond): black and white, quiet names, a hairline when pointed at ================= */
+/* ================= Mono (hero 3's rooms): quiet names at the centre, a hairline when pointed at ================= */
 .wallMono .posterPrint,
 .wallMono .posterTitle,
 .wallMono .posterGo,
@@ -1044,21 +1044,14 @@
   display: none;
 }
 
-.wallMono .poster img {
-  filter: grayscale(1) contrast(1.06);
-  transition: filter 0.7s var(--ease);
-}
-
-.wallMono .slotOn .poster img {
-  filter: none;
-}
+/* the pictures stay in colour (hero 3); the room keeps its quiet names and hairline */
 
 .wallMono .posterDim {
-  opacity: 0.42;
+  opacity: 0.12;
 }
 
 .wallMono.wallPointing .posterDim {
-  opacity: 0.7;
+  opacity: 0.55;
 }
 
 .wallMono.wallPointing .slotOn .posterDim {

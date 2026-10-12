@@ -264,8 +264,8 @@ export default function PosterWall({
   delay: number;
   /** shown behind something else (hero 3's index): it doesn't take the pointer and has no controls */
   preview?: boolean;
-  /** "mono": black and white at rest, the name quiet at the centre, a hairline frame round the poster
-   * pointed at as it comes into colour (hero 3's rooms) */
+  /** "mono": the quiet name at the centre and a hairline frame round the poster pointed at, no corner
+   * print or button (hero 3's rooms) */
   tone?: "colour" | "mono";
   onOpen: PosterOpen;
 }) {

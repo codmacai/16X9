@@ -142,8 +142,9 @@ vec3 wall(vec2 f, vec2 px) {
     vec2 v = 0.5 + (tz - 0.5) * uVCrop;
     img = mix(img, texture2D(uVideo, vec2(v.x, 1.0 - v.y)).rgb, uVideoOn);
   }
+  // in colour (a touch quieter at rest, full when pointed at)
   float g = dot(img, vec3(0.299, 0.587, 0.114));
-  vec3 col = mix(vec3(g), img, hov * uHoverT);
+  vec3 col = mix(vec3(g), img, 0.85 + 0.15 * hov * uHoverT);
   // the projector beam, and the wall dimming round the film pointed at
   vec2 dm = (px - uMouse) / S();
   float beam = exp(-dot(dm, dm) / 0.15);
