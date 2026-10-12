@@ -18,13 +18,13 @@ import styles from "./hero2.module.css";
 // let go and it glides on, then settles into a slow roll upward. The faster
 // it moves, the more the posters lean into the move.
 //
-// Beyond: a loose, living sphere. The posters are scattered round it rather
-// than ruled into rows, each its own size, some floating off the shell and
-// some sunk into it, each turned its own way, all of them breathing slowly
-// in and out; they shade off toward its rim. Drag and it turns under your
-// hand, its bands twisting past each other (the poles lag the equator, the
-// way a gas giant's clouds do) and the shell blooming open with the speed;
-// let go and it spins on, closes up, then slowly turns by itself.
+// Beyond: the posters cover a sphere hanging in the dark, rows of them
+// circling it from pole to pole, shading off toward its rim, and the sphere
+// answers the pointer: the posters near it swell out of the shell toward
+// you, growing and brightening, a bulge that follows the pointer round the
+// sphere. A slow swell rolls down the rows. Drag and it turns under your
+// hand, its bands twisting past each other (the poles lag the equator);
+// let go and it spins on, the bands catch up, then it slowly turns by itself.
 //
 // Zoom: grab the room and it pushes in toward you, and stays in. Pinch,
 // Ctrl/Cmd + scroll, the - and + keys or the slider at the foot take it
@@ -62,11 +62,11 @@ const LIFT = 56; // px the poster under the pointer comes toward you
 const ZOOM = { wall: [0.72, 1.8], sphere: [0.5, 1.8], held: 1.4, step: 1.25, rate: 7 } as const;
 // The sphere: its radius and a poster's width as shares of the screen's width
 // (wide screen, phone), and the latitude its rows reach toward the poles.
-const SPHERE = { r: 0.5, rSmall: 0.95, tile: 0.2, tileSmall: 0.38, lat: 1.3, tiltMax: 0.6 };
-// ...and how loose it is: how sparsely it's covered, how far a poster floats off the shell (share of
-// the radius), the range of sizes, the most a poster is turned (degrees), how much the poles lag the
-// equator as it turns, how far it breathes, and how far it blooms open at full speed.
-const LOOSE = { cover: 0.78, depth: 0.16, size: [0.72, 1.28], turn: 9, twist: 0.35, breathe: 0.035, bloom: 0.22 };
+const SPHERE = { r: 0.5, rSmall: 0.95, tile: 0.21, tileSmall: 0.4, lat: 1.25, tiltMax: 0.6 };
+// ...and how it answers: the bulge round the pointer (its reach as a share of the screen's width, how
+// far it lifts the posters as a share of the radius, how much it grows them), the swell rolling down
+// the rows (height as a share of the radius, speed) and how much the poles lag the equator as it turns.
+const ALIVE = { reach: 0.15, lift: 0.16, grow: 0.16, swell: 0.014, swellSpeed: 1.1, twist: 0.35 };
 const SWING = { s: 0.95, spread: 0.55, from: 78, back: 420 }; // the entrance: duration, stagger by distance, degrees, px
 const FADE = [0.45, 0, 0.55, 1] as const; // a room leaving fades evenly, so the next one swings up through it
 
@@ -182,10 +182,6 @@ type Slot = {
   lat: number;
   lon: number;
   tilt: { x: number; y: number; z: number };
-  /** the sphere: off the shell (share of the radius, + is out), size, and where in its breath it is */
-  depth: number;
-  size: number;
-  phase: number;
 };
 
 /** The slider at the foot: zoom out, a hairline track with a knob, zoom in, and the level (click it to reset). */
@@ -282,30 +278,23 @@ export default function PosterWall({
       const R = vw * (small ? SPHERE.rSmall : SPHERE.r);
       const tw = Math.round(vw * (small ? SPHERE.tileSmall : SPHERE.tile));
       const th = Math.round(tw / spec.ratio);
-      // scattered evenly but not in rows (a golden-angle spiral), then nudged off their places
-      const count = Math.round(((4 * Math.PI * R * R) / ((tw + gap) * (th + gap))) * LOOSE.cover);
-      const golden = Math.PI * (3 - Math.sqrt(5));
-      for (let i = 0; i < count; i++) {
-        const y = 1 - (2 * (i + 0.5)) / count;
-        const lat = Math.asin(y) + (hash(i + 3) - 0.5) * 0.12;
-        if (Math.abs(lat) > SPHERE.lat) continue;
-        const k = i * 41;
-        slots.push({
-          id: `s${i}`,
-          c: i,
-          r: 0,
-          clip: (i * step.a) % clips.length,
-          lat,
-          lon: i * golden + (hash(i + 7) - 0.5) * 0.1,
-          tilt: {
-            x: (hash(k + 5) - 0.5) * 2 * LOOSE.turn,
-            y: (hash(k + 9) - 0.5) * 2 * LOOSE.turn,
-            z: (hash(k) - 0.5) * 2 * LOOSE.turn,
-          },
-          depth: (hash(k + 11) - 0.5) * 2 * LOOSE.depth,
-          size: LOOSE.size[0] + hash(k + 13) * (LOOSE.size[1] - LOOSE.size[0]),
-          phase: hash(k + 17) * Math.PI * 2,
-        });
+      const dLat = (th + gap * 0.8) / R;
+      const half = Math.floor(SPHERE.lat / dLat);
+      for (let r = -half; r <= half; r++) {
+        const lat = r * dLat;
+        const n = Math.max(3, Math.floor((2 * Math.PI * R * Math.cos(lat)) / (tw + gap)));
+        for (let i = 0; i < n; i++) {
+          const k = (r + half) * 37 + i * 13;
+          slots.push({
+            id: `${r}:${i}`,
+            c: i,
+            r,
+            clip: (((i * step.a + (r + half) * step.b) % clips.length) + clips.length) % clips.length,
+            lat,
+            lon: ((i + (r % 2 ? 0.5 : 0)) / n) * Math.PI * 2,
+            tilt: { x: 0, y: 0, z: tilt(k).z * 0.6 },
+          });
+        }
       }
       return { tw, th, cellW: tw + gap, cellH: th + gap, cols: 0, rows: 0, R, slots };
     }
@@ -319,7 +308,7 @@ export default function PosterWall({
     const rows = even(Math.ceil((reach * vh) / cellH) + 2);
     for (let r = 0; r < rows; r++)
       for (let c = 0; c < cols; c++)
-        slots.push({ id: `${c}-${r}`, c, r, clip: (c * step.a + r * step.b) % clips.length, lat: 0, lon: 0, tilt: tilt(c * 31 + r * 17), depth: 0, size: 1, phase: 0 });
+        slots.push({ id: `${c}-${r}`, c, r, clip: (c * step.a + r * step.b) % clips.length, lat: 0, lon: 0, tilt: tilt(c * 31 + r * 17) });
     return { tw, th, cellW, cellH, cols, rows, R: 0, slots };
   }, [vw, vh, spec, clips.length, sphere]);
 
@@ -361,6 +350,7 @@ export default function PosterWall({
     const rims = new Map<string, HTMLElement | null>();
     let drift = 0;
     let speed = 0;
+    let field = 0; // 0..1: the bulge round the pointer, up while the pointer is over the sphere and not dragging
     let dragging = false;
     let settled = reduce;
     const born = performance.now();
@@ -398,11 +388,14 @@ export default function PosterWall({
         const st = Math.sin(tip);
         const ct = Math.cos(tip);
         const t = now / 1000;
+        const px0 = pointer.x - vw / 2;
+        const py0 = pointer.y - vh / 2;
+        const reach2 = (vw * ALIVE.reach) ** 2;
         for (const s of slots) {
           const el = slotRefs.current.get(s.id);
           if (!el) continue;
           // the bands turn at their own pace: the poles lag the equator
-          const lon = s.lon + lon0 * (1 - LOOSE.twist * Math.sin(s.lat) ** 2);
+          const lon = s.lon + lon0 * (1 - ALIVE.twist * Math.sin(s.lat) ** 2);
           // how squarely it faces you: 1 at the centre, 0 at the rim, below that round the back
           const face = -Math.sin(s.lat) * st + Math.cos(s.lat) * Math.cos(lon) * ct;
           const on = face > 0.06;
@@ -415,15 +408,23 @@ export default function PosterWall({
             if (p < 1) entering = true;
           }
           const e = ease(p);
-          // off the shell, breathing, blooming open with the speed, lifted when pointed at
-          const breath = reduce ? 0 : Math.sin(t * 0.7 + s.phase) * LOOSE.breathe;
-          const bloom = speed * LOOSE.bloom * (0.4 + 0.6 * ((s.phase / Math.PI) % 1));
-          const out = R * (1 + s.depth + breath + bloom) + l * LIFT + (1 - e) * SWING.back * 1.6;
-          const hang = 1 - l;
-          el.style.transform = `translateZ(${(dolly - R).toFixed(1)}px) rotateX(${(-tip).toFixed(4)}rad) rotateY(${lon.toFixed(4)}rad) rotateX(${(-s.lat).toFixed(4)}rad) translateZ(${out.toFixed(1)}px) rotateX(${(s.tilt.x * hang).toFixed(2)}deg) rotateY(${(s.tilt.y * hang).toFixed(2)}deg) rotateZ(${(s.tilt.z * hang).toFixed(2)}deg) scale(${(s.size + l * 0.08).toFixed(3)})`;
+          // where it lands on the screen, to feel the pointer: its point on the sphere, seen from the eye
+          let w = 0;
+          if (field > 0.001) {
+            const cl = Math.cos(s.lat);
+            const nx = cl * Math.sin(lon);
+            const ny = Math.sin(s.lat) * ct + cl * Math.cos(lon) * st;
+            const k = eye / (eye - (dolly - R + R * face));
+            const dx = R * nx * k - px0;
+            const dy = R * ny * k - py0;
+            w = field * Math.exp(-(dx * dx + dy * dy) / reach2);
+          }
+          const swell = reduce ? 0 : Math.sin(s.lat * 4 - t * ALIVE.swellSpeed) * ALIVE.swell;
+          const out = R * (1 + swell + w * ALIVE.lift) + l * LIFT + (1 - e) * SWING.back * 1.6;
+          el.style.transform = `translateZ(${(dolly - R).toFixed(1)}px) rotateX(${(-tip).toFixed(4)}rad) rotateY(${lon.toFixed(4)}rad) rotateX(${(-s.lat).toFixed(4)}rad) translateZ(${out.toFixed(1)}px) rotateZ(${(s.tilt.z * (1 - l) * (1 - w)).toFixed(2)}deg) scale(${(1 + w * ALIVE.grow).toFixed(3)})`;
           if (!settled) el.style.opacity = String(Math.min(1, p * 1.8));
           const rim = rimOf(s.id, el);
-          if (rim) rim.style.opacity = Math.max(0, Math.min(0.88, (0.62 - face) * 1.5)).toFixed(2);
+          if (rim) rim.style.opacity = (Math.max(0, Math.min(0.88, (0.62 - face) * 1.5)) * (1 - w)).toFixed(2);
         }
       } else {
         // ---- the wall: curved round you, the posters in sight placed, the rest skipped ----
@@ -524,6 +525,8 @@ export default function PosterWall({
         if (to === 0 && nv < 0.002) lift.delete(id);
         else lift.set(id, nv);
       });
+      const kf = 1 - Math.exp(-dt * (reduce ? 1000 : 4));
+      field += ((sphere && pointer.seen && !dragging && !still && !reduce ? 1 : 0) - field) * kf;
       place(now);
       showZoom();
       // the crosshair follows the pointer

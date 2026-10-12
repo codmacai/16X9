@@ -1021,3 +1021,12 @@
     font-size: 7.5px;
   }
 }
+
+/* on the sphere the others only step back a little, so the bulge round the pointer still reads */
+.wallSphere.wallPointing .posterDim {
+  opacity: 0.32;
+}
+
+.wallSphere.wallPointing .slotOn .posterDim {
+  opacity: 0;
+}
