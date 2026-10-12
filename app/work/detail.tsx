@@ -24,7 +24,7 @@ import d from "./detail.module.css";
 //   · the screen: the film in an old television's curved glass, growing into
 //     place as you reach it while the picture settles inside, and "Watch
 //     behind the scenes" to open it in the player;
-//   · the case under it (story.tsx): client, challenge, idea;
+//   · the case above it (story.tsx): client, task, solution;
 //   · the sign-off: black rises over the page by a dragged edge (edge.tsx) —
 //     the middle leads, the sides trail, stretching with the scroll's speed —
 //     while the page above sinks back; then the end credits roll by
@@ -363,6 +363,9 @@ export default function Detail({
 
         {/* ================= the screen ================= */}
         <motion.div className={d.paper} style={reduce ? undefined : { scale: paperScale, y: paperY, opacity: paperFade }}>
+          {/* ================= the case: client, task, solution ================= */}
+          <Story film={film} root={scrollRef} reduce={reduce} />
+
           <div ref={screenRef} className={d.screenWrap}>
             <motion.button
               type="button"
@@ -394,8 +397,6 @@ export default function Detail({
               </motion.span>
             </motion.button>
           </div>
-          {/* ================= the case: client, challenge, idea ================= */}
-          <Story film={film} root={scrollRef} reduce={reduce} />
         </motion.div>
 
         {/* ================= the end credits ================= */}

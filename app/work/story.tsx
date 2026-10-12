@@ -1,78 +1,99 @@
 "use client";
 
-import type { RefObject } from "react";
-import { motion } from "framer-motion";
-import { EASE } from "./_shared/chrome";
+import { useRef, type RefObject } from "react";
+import { motion, useScroll, useSpring, useTransform, type MotionValue } from "framer-motion";
 import type { Project } from "./_shared/data";
 import s from "./story.module.css";
 
 // ===========================================================================
-// THE CASE — on a film's page, under the screen: what lies behind it, told in
-// three parts (Client, Challenge, Idea), or, for a film without its case
-// written yet, its synopsis. Each part is a row on the paper: a hairline
-// draws itself across, its number and its name rise out of a mask in the
-// wide light capitals of the headings, and the words follow, a line at a
-// time. It all plays once, as the row scrolls into view.
+// THE CASE — on a film's page, above the screen: Client, Task, Solution.
+// Minimal, on the paper. On the left one word stands still while you scroll
+// and rolls over to the next part's name; on the right the three parts pass
+// by like lines on a prompter — the one at the middle of the screen in full
+// ink, the others faded back. Everything follows the scroll through the same
+// heavy, over-damped spring as the rest of the page, so it glides, never
+// jumps and never wobbles. A film without its case written yet shows its
+// synopsis, the same way.
 // ===========================================================================
 
+const SMOOTH = { stiffness: 90, damping: 30, mass: 1, restDelta: 0.0001 };
+
 export default function Story({ film, root, reduce }: { film: Project; root: RefObject<HTMLElement | null>; reduce: boolean }) {
-  const rows = film.story
+  const parts = film.story
     ? [
         { name: "Client", text: film.story.client },
-        { name: "Challenge", text: film.story.challenge },
-        { name: "Idea", text: film.story.idea },
+        { name: "Task", text: film.story.challenge },
+        { name: "Solution", text: film.story.idea },
       ]
     : [{ name: "The film", text: film.synopsis }];
-  const view = { root, once: true, amount: 0.35 } as const;
+  const n = parts.length;
+  const ref = useRef<HTMLElement>(null);
+
+  // where we are in the case: 0 → n-1, held on each part, rolling between them
+  const { scrollYProgress } = useScroll({ container: root, target: ref, offset: ["start center", "end center"] });
+  const smooth = useSpring(scrollYProgress, SMOOTH);
+  const p = reduce ? scrollYProgress : smooth;
+  const at = useTransform(p, (v) => {
+    const x = Math.min(n - 1, Math.max(0, v * n - 0.5));
+    const i = Math.floor(x);
+    const f = x - i;
+    // hold on each word, roll quickly through the middle of the gap
+    const k = f < 0.35 ? 0 : f > 0.65 ? 1 : (f - 0.35) / 0.3;
+    return i + k * k * (3 - 2 * k);
+  });
+  const reel = useTransform(at, (v) => `${(-v * 1.05).toFixed(4)}em`);
+  const count = useTransform(at, (v) => `${(-v * 1.3).toFixed(4)}em`);
 
   return (
-    <section className={s.story} aria-label="Behind the film">
-      <motion.p
-        className={s.kicker}
-        initial={reduce ? false : { opacity: 0, y: 10 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={view}
-        transition={{ duration: 0.9, ease: EASE }}
-      >
-        <span>Behind the film</span>
-        <i aria-hidden="true" />
-        <span>
-          {[film.client, film.year].filter(Boolean).join(" · ")}
-        </span>
-      </motion.p>
+    <section ref={ref} className={s.story} aria-label="The case">
+      <div className={s.side}>
+        <div className={s.sticky}>
+          <p className={s.kicker}>{[film.client, film.year].filter(Boolean).join(" · ")}</p>
+          {/* the part's name: one word showing, the next rolling up under it */}
+          <div className={s.wordMask} aria-hidden="true">
+            <motion.div className={s.reel} style={{ y: reel }}>
+              {parts.map((part) => (
+                <span key={part.name}>{part.name}</span>
+              ))}
+            </motion.div>
+          </div>
+          {n > 1 && (
+            <p className={s.count} aria-hidden="true">
+              <span className={s.countMask}>
+                <motion.span className={s.countReel} style={{ y: count }}>
+                  {parts.map((_, i) => (
+                    <span key={i}>{String(i + 1).padStart(2, "0")}</span>
+                  ))}
+                </motion.span>
+              </span>
+              <i>/</i>
+              {String(n).padStart(2, "0")}
+            </p>
+          )}
+        </div>
+      </div>
 
-      {rows.map((r, i) => (
-        <motion.article key={r.name} className={s.row} initial={reduce ? false : "hidden"} whileInView="shown" viewport={view}>
-          {/* the hairline, drawn across */}
-          <motion.span
-            className={s.rule}
-            aria-hidden="true"
-            variants={{ hidden: { scaleX: 0 }, shown: { scaleX: 1, transition: { duration: 1.2, ease: [0.76, 0, 0.24, 1] } } }}
-          />
-          <h3 className={s.name}>
-            <motion.i
-              className={s.no}
-              variants={{ hidden: { opacity: 0 }, shown: { opacity: 1, transition: { delay: 0.2, duration: 0.8 } } }}
-            >
-              {String(i + 1).padStart(2, "0")}
-            </motion.i>
-            <span className={s.mask}>
-              <motion.span
-                className={s.word}
-                variants={{ hidden: { y: "108%" }, shown: { y: "0%", transition: { delay: 0.15, duration: 1.1, ease: EASE } } }}
-              >
-                {r.name}
-              </motion.span>
-            </span>
-          </h3>
-          <motion.p
-            className={s.text}
-            variants={{ hidden: { opacity: 0, y: 24 }, shown: { opacity: 1, y: 0, transition: { delay: 0.35, duration: 1.1, ease: EASE } } }}
-          >
-            {r.text}
-          </motion.p>
-        </motion.article>
-      ))}
+      <div className={s.parts}>
+        {parts.map((part) => (
+          <Part key={part.name} name={part.name} text={part.text} root={root} reduce={reduce} />
+        ))}
+      </div>
     </section>
+  );
+}
+
+/** One part: in full ink at the middle of the screen, faded either side of it. */
+function Part({ name, text, root, reduce }: { name: string; text: string; root: RefObject<HTMLElement | null>; reduce: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ container: root, target: ref, offset: ["start end", "end start"] });
+  const smooth = useSpring(scrollYProgress, SMOOTH);
+  const p: MotionValue<number> = reduce ? scrollYProgress : smooth;
+  const opacity = useTransform(p, [0.15, 0.42, 0.58, 0.85], [0.14, 1, 1, 0.14]);
+  const y = useTransform(p, [0, 0.5, 1], ["36px", "0px", "-36px"]);
+  return (
+    <motion.div ref={ref} className={s.part} style={reduce ? undefined : { opacity, y }}>
+      <h3 className={s.partName}>{name}</h3>
+      <p className={s.text}>{text}</p>
+    </motion.div>
   );
 }
