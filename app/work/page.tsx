@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useReducedMotion, type Transition } from "framer-motion";
 import { Band, EASE, EASE_CINE, EnterCursor, Info, rootClass, Still, usePlayer } from "./_shared/chrome";
 import { CATEGORIES, PROJECTS, posterFor } from "./_shared/data";
 import FileView, { type Drawer } from "./file-view";
 import Accounts from "./accounts";
+import RoomSwitch from "../hero3/room-switch";
+import type { FormatKey } from "../hero3/format-hero";
 import styles from "./cabinet.module.css";
 
 // ===========================================================================
@@ -27,18 +30,20 @@ const ORDER: Drawer[] = CATEGORIES.map((c, i) => ({
 }));
 // Opened from a format's room (/work?format=16x9), the cabinet holds that format's work: each
 // category keeps the films made for that frame (and those not marked with one), and empty ones go.
-const FORMAT_NAMES: Record<string, { name: string; line: string }> = {
-  "16x9": { name: "16x9", line: "Films for the big screen." },
-  "9x16": { name: "9x16", line: "Stories made for the scroll." },
-  beyond: { name: "Beyond", line: "Stories you step into." },
+// each format's page leads with its own line, not its name (the switch at the top names it)
+const FORMAT_NAMES: Record<string, { name: string; head: [string, string]; line: string }> = {
+  "16x9": { name: "16x9", head: ["Made for", "the big screen"], line: "Films for the big screen." },
+  "9x16": { name: "9x16", head: ["Made for", "the scroll"], line: "Stories made for the scroll." },
+  beyond: { name: "Beyond", head: ["Stories you", "step into"], line: "Stories you step into." },
 };
+const isFormat = (k: string | null): k is FormatKey => k === "16x9" || k === "9x16" || k === "beyond";
+
 const orderFor = (fmt: string | null): Drawer[] =>
   fmt && FORMAT_NAMES[fmt]
     ? ORDER.map((d) => ({ ...d, films: d.films.filter((p) => !p.format || p.format === fmt) }))
         .filter((d) => d.films.length > 0)
         .map((d, i) => ({ ...d, no: String(i + 1).padStart(2, "0") }))
     : ORDER;
-const noopSubscribe = () => () => {};
 // black files on the paper sheet, as in the menu; each a breath deeper than the
 // one behind it (out of the drawer, a folder goes to pure black)
 const STOCK = ["#0a0a0a", "#080808", "#060606", "#030303", "#000"];
@@ -90,9 +95,26 @@ function useScrollLock(ref: RefObject<HTMLElement | null>) {
 /** The open folder: which, how far it rises to meet the band, and whether it's going back. */
 type Open = { cat: number; rise: number; closing: boolean };
 
-export default function WorkCabinet() {
+export default function WorkPage() {
+  // useSearchParams needs a Suspense boundary on a static page
+  return (
+    <Suspense fallback={null}>
+      <WorkByFormat />
+    </Suspense>
+  );
+}
+
+function WorkByFormat() {
+  const q = useSearchParams().get("format");
+  const fmt = isFormat(q) ? q : null;
+  // 9x16's work is the Instagram accounts the studio runs; a new format remounts the page
+  if (fmt === "9x16") return <Accounts key="9x16" />;
+  return <WorkCabinet key={fmt ?? "all"} fmt={fmt} />;
+}
+
+function WorkCabinet({ fmt }: { fmt: FormatKey | null }) {
   const reduce = !!useReducedMotion();
-  const fmt = useSyncExternalStore(noopSubscribe, () => new URLSearchParams(window.location.search).get("format"), () => null);
+  const router = useRouter();
   const named = fmt ? FORMAT_NAMES[fmt] : undefined;
   const order = useMemo(() => orderFor(fmt), [fmt]);
   const list = useMemo(() => order.flatMap((d) => d.films), [order]);
@@ -162,12 +184,22 @@ export default function WorkCabinet() {
   };
   const lifted = open ? open.cat : pull;
 
-  // 9x16's work is the Instagram accounts the studio runs
-  if (fmt === "9x16") return <Accounts />;
-
   return (
     <main className={`${rootClass} ${styles.page}`}>
-      <Band crumb="Index" />
+      <Band
+        crumb="Index"
+        workHref={fmt ? `/work?format=${fmt}` : undefined}
+        center={
+          fmt ? (
+            <RoomSwitch
+              room={fmt}
+              onSwitch={(k) => router.push(`/work?format=${k}`, { scroll: false })}
+              onIndex={() => router.push("/hero3")}
+              tone="light"
+            />
+          ) : undefined
+        }
+      />
 
       <section
         ref={sectionRef}
@@ -177,7 +209,7 @@ export default function WorkCabinet() {
         <Info left={named ? `16X9 — ${named.name} work` : "16X9 — Selected work"} />
         <div className={styles.lockup}>
           <h1 className={styles.headline}>
-            {(named ? [named.name, "work"] : ["Selected", "work"]).map((line, i) => (
+            {(named ? named.head : ["Selected", "work"]).map((line, i) => (
               <span key={line} className={styles.mask}>
                 <motion.span
                   className={styles.line}

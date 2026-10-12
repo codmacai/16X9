@@ -6,8 +6,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: clamp(14px, 1.6vw, 22px);
-  margin-left: clamp(16px, 1.8vw, 26px);
+  justify-content: center;
   color: var(--paper);
   font-size: 11px;
   letter-spacing: 0.22em;
@@ -15,12 +14,22 @@
   pointer-events: auto;
 }
 
-/* a hairline between the logo and the room */
-.rule {
-  width: 1px;
-  height: 22px;
-  background: currentColor;
-  opacity: 0.3;
+/* on a paper page: ink, and the sheet in paper */
+.light {
+  color: #0c0c0c;
+}
+
+.light .sheet {
+  background: rgb(246 244 240 / 0.92);
+  box-shadow: inset 0 0 0 1px rgb(12 12 12 / 0.14);
+}
+
+.light .item:hover {
+  background: rgb(12 12 12 / 0.05);
+}
+
+.light .index {
+  border-top-color: rgb(12 12 12 / 0.12);
 }
 
 .current {
@@ -83,8 +92,9 @@
 /* the sheet: narrow, square, a hairline round it, the dark showing through a little */
 .sheet {
   position: absolute;
-  top: calc(100% + 14px);
-  left: calc(1px + clamp(14px, 1.6vw, 22px) - 16px);
+  top: calc(100% + 12px);
+  left: 50%;
+  translate: -50% 0;
   min-width: 290px;
   display: flex;
   flex-direction: column;

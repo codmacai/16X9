@@ -6,11 +6,11 @@ import { FORMATS, FrameGlyph, Ratio, type FormatKey } from "./format-hero";
 import styles from "./room-switch.module.css";
 
 // ===========================================================================
-// THE ROOM SWITCH — beside the logo while a room is open: a hairline, the
-// room you're in (its frame and its name) and a small caret. Click it and a
-// narrow sheet unrolls under it: the three rooms, each with its number, frame
-// and line (the one you're in marked), and the way back to the index. The
-// sheet closes on a choice, a click outside or Esc.
+// THE ROOM SWITCH — at the top, in the middle, in every room and on every
+// format's work page: the room you're in (its frame and its name) and a
+// small caret. Click it and a narrow sheet unrolls under it: the three rooms,
+// each with its number, frame and line (the one you're in marked), and the
+// way back to the index. The sheet closes on a choice, a click outside or Esc.
 // ===========================================================================
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -19,10 +19,13 @@ export default function RoomSwitch({
   room,
   onSwitch,
   onIndex,
+  tone = "dark",
 }: {
   room: FormatKey;
   onSwitch: (k: FormatKey) => void;
   onIndex: () => void;
+  /** "light": ink on a paper page */
+  tone?: "dark" | "light";
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -50,12 +53,11 @@ export default function RoomSwitch({
   return (
     <motion.div
       ref={rootRef}
-      className={styles.root}
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0, transition: { delay: 0.35, duration: 0.6, ease: EASE } }}
+      className={`${styles.root} ${tone === "light" ? styles.light : ""}`}
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0, transition: { delay: 0.35, duration: 0.6, ease: EASE } }}
       exit={{ opacity: 0, transition: { duration: 0.2 } }}
     >
-      <span className={styles.rule} aria-hidden="true" />
       <button
         type="button"
         className={styles.current}

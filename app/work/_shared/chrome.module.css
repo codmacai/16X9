@@ -394,3 +394,20 @@
 .band .talk:focus-visible {
   outline-color: var(--ink);
 }
+
+/* the middle holding the room switch: fully opaque, and it takes the pointer */
+.crumbSlot {
+  opacity: 1;
+  justify-self: center;
+}
+
+/* the room switch stays on phones too */
+@media (max-width: 760px) {
+  .band:has(.crumbSlot) {
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+  }
+  .band .crumbSlot {
+    display: inline-flex;
+  }
+}

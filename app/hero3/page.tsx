@@ -1350,7 +1350,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       <motion.div
         ref={sceneRef}
         className={`${styles.scene} ${wallHidden ? styles.sceneHidden : ""} ${room ? styles.sceneAway : ""}`}
-        style={menuOpen || !ready ? { pointerEvents: "none", touchAction: "none" } : undefined}
+        // the moving wall is only to watch: no hover, no click, no drag (the words are the way in)
+        style={{ pointerEvents: "none", touchAction: "none" }}
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
       >
@@ -1444,6 +1445,26 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         )}
       </AnimatePresence>
 
+      {/* ================= In a room: the way to all of its work, at the foot on the right ================= */}
+      <AnimatePresence>
+        {room && !menuOpen && (
+          <motion.div
+            key={`all-${room}`}
+            className={styles.viewAll}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0, transition: { delay: 0.6, duration: 0.7, ease: EASE } }}
+            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+          >
+            <Link href={`/work?format=${room}`}>
+              <span>
+                View all <Ratio text={FORMATS.find((f) => f.key === room)?.label ?? ""} className={styles.viewAllX} /> work
+              </span>
+              <i aria-hidden="true">→</i>
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ================= Middle: the 16X9 card (cuts in after the opening) ================= */}
       <div className={styles.copy}>
         <h1 className={styles.sr}>
@@ -1487,7 +1508,10 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={LOGO_SRC} alt={mark} className={styles.logoImg} />
           </Link>
-          {/* in a room: which one, and a small sheet to switch (or go back to the index) */}
+        </div>
+
+        {/* in a room, at the top in the middle: which one, and a small sheet to switch (or go back to the index) */}
+        <div className={styles.barMid}>
           <AnimatePresence>
             {room && !menuOpen && <RoomSwitch key="switch" room={room} onSwitch={setRoom} onIndex={() => setRoom(null)} />}
           </AnimatePresence>

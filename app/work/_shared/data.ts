@@ -156,13 +156,20 @@ export const posterFor = (p: Project) => POSTERS[PROJECTS.indexOf(p) % POSTERS.l
 // these in place of the films. Followers and posts as of October 2026;
 // update them here as they grow.
 // ---------------------------------------------------------------------------
-export type Account = { name: string; handle: string; followers: string; posts: number };
+export type Account = {
+  name: string;
+  handle: string;
+  followers: string;
+  posts: number;
+  /** the brand's logo (its Instagram picture; cut from a screenshot for now, swap in the real file) */
+  logo: string;
+};
 
 export const ACCOUNTS: Account[] = [
-  { name: "DED Cafe", handle: "ded_cafe", followers: "23K", posts: 670 },
-  { name: "Amer Lounge", handle: "amerlounge", followers: "10K", posts: 148 },
-  { name: "Business Lounge", handle: "businesslounge.ae", followers: "8,508", posts: 309 },
-  { name: "Business Avenue", handle: "businessavenue.ae", followers: "7,309", posts: 99 },
+  { name: "DED Cafe", handle: "ded_cafe", followers: "23K", posts: 670, logo: "/work/accounts/ded_cafe.webp" },
+  { name: "Amer Lounge", handle: "amerlounge", followers: "10K", posts: 148, logo: "/work/accounts/amerlounge.webp" },
+  { name: "Business Lounge", handle: "businesslounge.ae", followers: "8,508", posts: 309, logo: "/work/accounts/businesslounge.webp" },
+  { name: "Business Avenue", handle: "businessavenue.ae", followers: "7,309", posts: 99, logo: "/work/accounts/businessavenue.webp" },
 ];
 
 export const instagramOf = (a: Account) => `https://www.instagram.com/${a.handle}/`;

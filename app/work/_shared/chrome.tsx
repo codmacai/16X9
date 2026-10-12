@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import { Archivo } from "next/font/google";
 import Link from "next/link";
@@ -28,7 +28,17 @@ export const rootClass = `${styles.root} ${wide.variable}`;
 // ---------------------------------------------------------------------------
 // BAND — logo, where you are, "Let's talk", the burger
 // ---------------------------------------------------------------------------
-export function Band({ crumb }: { crumb: string }) {
+export function Band({
+  crumb,
+  center,
+  workHref,
+}: {
+  crumb: string;
+  /** in the middle in place of the crumb (a format's work page puts the room switch there) */
+  center?: ReactNode;
+  /** where the menu's Work leads */
+  workHref?: string;
+}) {
   const reduce = !!useReducedMotion();
   const [menu, setMenu] = useState(false);
   // come from the menu's Work folder: its band was already here, so this one doesn't slide in
@@ -71,11 +81,15 @@ export function Band({ crumb }: { crumb: string }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_SRC} alt="16x9" />
         </Link>
-        <span className={styles.crumb}>
-          <span>Work</span>
-          <i aria-hidden="true">/</i>
-          <span>{crumb}</span>
-        </span>
+        {center ? (
+          <span className={`${styles.crumb} ${styles.crumbSlot}`}>{center}</span>
+        ) : (
+          <span className={styles.crumb}>
+            <span>Work</span>
+            <i aria-hidden="true">/</i>
+            <span>{crumb}</span>
+          </span>
+        )}
         <div className={styles.bandEnd}>
           <a href="#contact" className={styles.talk}>
             <span className={styles.talkRoll}>
@@ -112,7 +126,7 @@ export function Band({ crumb }: { crumb: string }) {
             animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: { duration: 0.9, ease: EASE_CINE } }}
             exit={{ clipPath: "inset(0% 0% 100% 0%)", transition: { duration: 0.7, ease: EASE_CINE } }}
           >
-            <Drawer onClose={close} />
+            <Drawer onClose={close} workHref={workHref} />
           </motion.div>
         )}
       </AnimatePresence>
