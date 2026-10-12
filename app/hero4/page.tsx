@@ -29,9 +29,10 @@ import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-c
 import ProjectView, { type OpenProject } from "../hero7/project-view";
 import { liveBudget, posterFor, WallPlayback } from "../hero7/wall-playback";
 import Drawer from "../hero11/drawer";
-import RoomSwitch from "../hero3/room-switch";
+import PosterWall from "../hero2/poster-wall";
+import RoomSwitch from "./room-switch";
 import FormatHero, { FORMATS, Ratio, type FormatKey, type Rect } from "../hero3/format-hero";
-import styles from "../hero3/depthhero.module.css";
+import styles from "./hero4.module.css";
 
 
 // ===========================================================================
@@ -113,6 +114,9 @@ const tilesPerLane = (vw: number, vh: number, lanes: number, gap: number) =>
 const TILT = { x: 14, y: 18, scale: 1.08, ease: 7 };
 // while a film is hovered it never sits still: it sways in a slow orbit (deg),
 // on top of turning toward the pointer, so it reads like a print turned in the hand
+// In a format, pointing toward either end turns the wall to show that side in full:
+// past `from` (of the half-width) it eases in, turning, sliding and lifting the wall.
+const EDGE = { from: 0.45, turn: 26, shift: 22, lift: 10, ease: 3 };
 const SWAY = { x: 3.2, y: 4.5, z: 1.4, speed: 1.35 };
 const INTENT_MS = 160;
 const LAMP_RES = 8; // the lamp is drawn at 1/8 of the screen and stretched
@@ -720,6 +724,10 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const projectRef = useRef(false);
   const menuRef = useRef(false);
   const heroRef = useRef(false);
+  const roomRef = useRef<FormatKey | null>(null);
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
   const heroClosingRef = useRef(false); // its word is still flying home
   // the format the wall is in, and whether a format word is under the mouse
   const wordRefs = useRef<Partial<Record<FormatKey, HTMLSpanElement | null>>>({});
@@ -980,6 +988,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     setFmtHover(null);
     setRoom(key);
   }, []);
+  const openFromSphere = useCallback((index: number, rect: { top: number; left: number; width: number; height: number }) => {
+    setProject({ index, rect, time: 0 });
+  }, []);
   // Closing: the wall is drawn again under the fading hero and goes back to its own mix of frames.
   const closeHero = useCallback(() => {
     if (!heroRef.current) return;
@@ -1088,6 +1099,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     const p = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     const lampAt = { ...p };
     const lean = { x: 0, y: 0 };
+    let side = 0;
     let leanCss = "";
     // the format word under the mouse: the ring then says where it leads
     let word: HTMLElement | null = null;
@@ -1234,7 +1246,11 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         const k = 1 - Math.exp(-dt * 2.2);
         lean.x += ((p.x / window.innerWidth) * 2 - 1 - lean.x) * k;
         lean.y += ((p.y / window.innerHeight) * 2 - 1 - lean.y) * k;
-        const css = `translateX(${(-lean.x * 2.5).toFixed(3)}vw) rotateX(${(52 + lean.y * 2).toFixed(3)}deg)`;
+        // in a format, the far left or right of the screen turns the wall to face that side
+        const ax = Math.abs(lean.x);
+        const edge = roomRef.current ? Math.sign(lean.x) * Math.min(1, Math.max(0, (ax - EDGE.from) / (1 - EDGE.from))) ** 2 : 0;
+        side += (edge - side) * (1 - Math.exp(-dt * EDGE.ease));
+        const css = `translateX(${(-lean.x * 2.5 - side * EDGE.shift).toFixed(3)}vw) rotateY(${(-side * EDGE.turn).toFixed(3)}deg) rotateX(${(52 + lean.y * 2 - Math.abs(side) * EDGE.lift).toFixed(3)}deg)`;
         if (css !== leanCss) {
           plane.style.transform = css;
           leanCss = css;
@@ -1296,9 +1312,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
       <motion.div
         ref={sceneRef}
-        className={`${styles.scene} ${wallHidden ? styles.sceneHidden : ""} `}
+        className={`${styles.scene} ${wallHidden ? styles.sceneHidden : ""} ${room === "beyond" ? styles.sceneAway : ""} ${room ? styles.sceneRoom : ""}`}
         // the moving wall is only to watch: no hover, no click, no drag (the words are the way in)
-        style={{ pointerEvents: room ? undefined : "none", touchAction: room ? "pan-y" : "none" }}
+        style={{ pointerEvents: room && room !== "beyond" ? undefined : "none", touchAction: room ? "pan-y" : "none" }}
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
       >
@@ -1351,12 +1367,35 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         <canvas ref={lampRef} className={styles.lampLight} />
       </motion.div>
 
+      {/* ================= Beyond: the sphere of films ================= */}
+      <AnimatePresence>
+        {room === "beyond" && (
+          <motion.div
+            key="sphere"
+            className={`${styles.sphere} ${styles.sphereOpen}`}
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1, transition: { duration: 0.9, ease: EASE } }}
+            exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.5, ease: EASE } }}
+          >
+            <PosterWall
+              fmt="beyond"
+              clips={clips}
+              paused={project !== null || menuOpen}
+              reduce={reduce}
+              delay={0.2}
+              tone="mono"
+              onOpen={openFromSphere}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ================= In a room: the way to all of its work, at the foot on the right ================= */}
       <AnimatePresence>
         {room && !menuOpen && (
           <motion.div
             key={`all-${room}`}
-            className={styles.viewAll}
+            className={`${styles.viewAll} ${room === "beyond" ? styles.viewAllHigh : ""}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0, transition: { delay: 0.6, duration: 0.7, ease: EASE } }}
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
@@ -1446,22 +1485,6 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         </button>
         </div>
       </motion.header>
-
-      {/* ================= Logo strip ================= */}
-      <motion.div
-        className={styles.clients}
-        style={{ opacity: room ? 0 : undefined, transition: "opacity 0.5s" }}
-        aria-label="Clients"
-        {...enter(T.clients, { opacity: 0 }, { opacity: 1 }, 1.4)}
-      >
-        <div className={styles.clientsTrack}>
-          {[...variant.clients, ...variant.clients].map((c, i) => (
-            <span key={i} aria-hidden={i >= variant.clients.length}>
-              {c.name}
-            </span>
-          ))}
-        </div>
-      </motion.div>
 
       {/* ================= Hover label and the full-screen project ================= */}
       <CursorLabel ref={labelRef} />
