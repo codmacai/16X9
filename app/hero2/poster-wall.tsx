@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type RefObject } from "react";
 import { motion } from "framer-motion";
 import type { Clip } from "@/components/Hero-config";
 import type { TileRect } from "../hero7/project-view";
@@ -8,25 +8,33 @@ import { FORMATS, Ratio, type FormatKey } from "../hero13/formats";
 import styles from "./hero2.module.css";
 
 // ===========================================================================
-// THE ROOM — a format's films hung like posters on a wall in the dark,
-// edge to edge, every one in the format's proportion.
+// THE ROOM — a format's films hung like posters in the dark, every one in
+// the format's proportion.
 //
-// The wall curves round you, the way the inside of a dome does: the posters
-// at the centre face you square, those toward the edges turn in and come
-// nearer. Each one hangs a little crooked, as if pinned up by hand.
+// 16x9 and 9x16: a wall that curves round you, the way the inside of a dome
+// does: the posters at the centre face you square, those toward the edges
+// turn in and come nearer, each one a little crooked, as if pinned up by
+// hand. Drag or scroll and it slides past in any direction (it never ends);
+// let go and it glides on, then settles into a slow roll upward. The faster
+// it moves, the more the posters lean into the move.
 //
-// Drag or scroll and the wall slides past in any direction (it never ends).
-// Held, it pushes in toward you: the posters grow, the wall curves deeper
-// and they hang more crooked; let go and it glides on, eases back out, then
-// settles into a slow roll upward. The faster it moves, the more the
-// posters lean into the move. Opening the room, the posters swing up onto the wall from the centre
+// Beyond: the posters cover a sphere hanging in the dark, rows of them
+// circling it from pole to pole, shading off toward its rim. Drag and it
+// turns under your hand; let go and it spins on, then slowly turns by itself.
+//
+// Zoom: grab the room and it pushes in toward you, and stays in. Pinch,
+// Ctrl/Cmd + scroll, the - and + keys or the slider at the foot take it
+// back out (out far enough, the whole sphere comes into view); 0 resets it.
+//
+// Opening the room, the posters swing up into place from the centre
 // outward. Pointing at one straightens it, brings it toward you, wipes its
 // still into the film playing and puts a white button with an arrow at its
 // centre while the rest go down; clicking opens the film. A fine crosshair
 // follows the pointer across the dark.
 //
 // One loop places every poster with a transform: nothing re-renders while
-// the wall moves, and only the poster under the pointer has a <video>.
+// the room moves, posters out of sight are skipped, and only the poster
+// under the pointer has a <video>.
 // ===========================================================================
 
 type Spec = { ratio: number; desk: number; small: number };
@@ -41,14 +49,16 @@ const CURVE_FAST = 16; // ...and how many more at full speed
 const NEAR = 0.07; // how far (share of the screen's width) the edges come toward you
 const SWAY = 14; // degrees the posters lean into a fast move
 const CROOKED = { z: 1.6, xy: 4 }; // the most a poster hangs off true, in degrees
-const DRIFT = -14; // px per second the wall rolls upward when nothing moves it
+const DRIFT = 14; // px per second the room moves when nothing moves it (the wall rolls up, the sphere turns)
 const GLIDE = 3; // how quickly a throw settles (per second)
 const TOP_SPEED = 2600; // px per second counted as full speed
 const LIFT = 56; // px the poster under the pointer comes toward you
-// While the wall is held (dragged, or still running fast) it pushes in toward you: the posters grow by
-// `zoom`, the wall curves `curve` degrees deeper and the posters hang `crooked` times more off true.
-// It pushes in at rate `in` and eases back out, once let go, at rate `out` (per second).
-const PUSH = { zoom: 1.42, curve: 9, crooked: 1.8, in: 5, out: 2.4 };
+// Zoom, as a scale of the posters: the range on the wall and on the sphere, the
+// level a drag pushes in to (and stays at), a step of the keys and buttons, and how fast it follows.
+const ZOOM = { wall: [0.72, 1.8], sphere: [0.5, 1.8], held: 1.4, step: 1.25, rate: 7 } as const;
+// The sphere: its radius and a poster's width as shares of the screen's width
+// (wide screen, phone), and the latitude its rows reach toward the poles.
+const SPHERE = { r: 0.5, rSmall: 0.95, tile: 0.21, tileSmall: 0.4, lat: 1.25, tiltMax: 0.6 };
 const SWING = { s: 0.95, spread: 0.55, from: 78, back: 420 }; // the entrance: duration, stagger by distance, degrees, px
 const FADE = [0.45, 0, 0.55, 1] as const; // a room leaving fades evenly, so the next one swings up through it
 
@@ -130,6 +140,8 @@ const Poster = memo(function Poster({
         />
       )}
       <span className={styles.posterShade} />
+      <span className={styles.posterDim} />
+      <span className={styles.posterRim} data-rim="" />
       {/* a poster's small print: number and format above, runtime and studio below; the title at its centre */}
       <span className={`${styles.posterPrint} ${styles.posterPrintTop}`}>
         <i>{pad2(index + 1)}</i>
@@ -152,6 +164,73 @@ const Poster = memo(function Poster({
   );
 });
 
+type Slot = {
+  id: string;
+  clip: number;
+  /** the wall: column and row */
+  c: number;
+  r: number;
+  /** the sphere: latitude (down is positive) and longitude, in radians */
+  lat: number;
+  lon: number;
+  tilt: { x: number; y: number; z: number };
+};
+
+/** The slider at the foot: zoom out, a hairline track with a knob, zoom in, and the level (click it to reset). */
+function ZoomBar({
+  min,
+  max,
+  ctl,
+  knob,
+  fill,
+  read,
+}: {
+  min: number;
+  max: number;
+  ctl: RefObject<{ set: (z: number) => void; by: (f: number) => void } | null>;
+  knob: RefObject<HTMLSpanElement | null>;
+  fill: RefObject<HTMLSpanElement | null>;
+  read: RefObject<HTMLButtonElement | null>;
+}) {
+  const track = useRef<HTMLSpanElement>(null);
+  const at = (x: number) => {
+    const r = track.current?.getBoundingClientRect();
+    if (!r) return;
+    const t = Math.max(0, Math.min(1, (x - r.left) / r.width));
+    ctl.current?.set(Math.exp(Math.log(min) + t * (Math.log(max) - Math.log(min))));
+  };
+  return (
+    <div className={styles.zoom} data-nodrag="">
+      <button type="button" className={styles.zoomBtn} aria-label="Zoom out" onClick={() => ctl.current?.by(1 / ZOOM.step)}>
+        <svg viewBox="0 0 12 12" aria-hidden="true">
+          <path d="M2 6h8" stroke="currentColor" strokeWidth="1.2" />
+        </svg>
+      </button>
+      <span
+        ref={track}
+        className={styles.zoomTrack}
+        role="presentation"
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          at(e.clientX);
+        }}
+        onPointerMove={(e) => e.buttons & 1 && at(e.clientX)}
+      >
+        <span ref={fill} className={styles.zoomFill} />
+        <span ref={knob} className={styles.zoomKnob} />
+      </span>
+      <button type="button" className={styles.zoomBtn} aria-label="Zoom in" onClick={() => ctl.current?.by(ZOOM.step)}>
+        <svg viewBox="0 0 12 12" aria-hidden="true">
+          <path d="M2 6h8M6 2v8" stroke="currentColor" strokeWidth="1.2" />
+        </svg>
+      </button>
+      <button ref={read} type="button" className={styles.zoomRead} aria-label="Reset zoom" onClick={() => ctl.current?.set(1)}>
+        100%
+      </button>
+    </div>
+  );
+}
+
 export default function PosterWall({
   fmt,
   clips,
@@ -162,7 +241,7 @@ export default function PosterWall({
 }: {
   fmt: FormatKey;
   clips: Clip[];
-  /** a film or the menu is open over the room: the wall holds still */
+  /** a film or the menu is open over the room: it holds still */
   paused: boolean;
   reduce: boolean;
   /** seconds before the posters swing up (the index is still opening its film) */
@@ -173,37 +252,57 @@ export default function PosterWall({
   const [vw, vh] = size.split("x").map(Number);
   const spec = SPECS[fmt];
   const f = FORMATS.find((x) => x.key === fmt) ?? FORMATS[0];
+  const sphere = fmt === "beyond";
+  const [zMin, zMax] = sphere ? ZOOM.sphere : ZOOM.wall;
 
-  // ---- the wall: enough posters to cover the screen past its edges, with the seam out of sight ----
+  // ---- the posters: on the wall, enough to cover the screen past its edges at the widest zoom; on the sphere, rows round it ----
   const geo = useMemo(() => {
     const small = vw <= 760;
     const gap = Math.max(10, vw * (small ? 0.03 : 0.014));
+    const step = steps(clips.length);
+    const tilt = (n: number) => ({
+      x: (hash(n + 5) - 0.5) * 2 * CROOKED.xy,
+      y: (hash(n + 9) - 0.5) * 2 * CROOKED.xy,
+      z: (hash(n) - 0.5) * 2 * CROOKED.z,
+    });
+    const slots: Slot[] = [];
+    if (sphere) {
+      const R = vw * (small ? SPHERE.rSmall : SPHERE.r);
+      const tw = Math.round(vw * (small ? SPHERE.tileSmall : SPHERE.tile));
+      const th = Math.round(tw / spec.ratio);
+      const dLat = (th + gap * 0.8) / R;
+      const half = Math.floor(SPHERE.lat / dLat);
+      for (let r = -half; r <= half; r++) {
+        const lat = r * dLat;
+        const n = Math.max(3, Math.floor((2 * Math.PI * R * Math.cos(lat)) / (tw + gap)));
+        for (let i = 0; i < n; i++) {
+          const k = (r + half) * 37 + i * 13;
+          slots.push({
+            id: `${r}:${i}`,
+            c: i,
+            r,
+            clip: (((i * step.a + (r + half) * step.b) % clips.length) + clips.length) % clips.length,
+            lat,
+            lon: ((i + (r % 2 ? 0.5 : 0)) / n) * Math.PI * 2,
+            tilt: { x: 0, y: 0, z: tilt(k).z * 0.6 },
+          });
+        }
+      }
+      return { tw, th, cellW: tw + gap, cellH: th + gap, cols: 0, rows: 0, R, slots };
+    }
     const tw = Math.round(vw * (small ? spec.small : spec.desk));
     const th = Math.round(tw / spec.ratio);
     const cellW = tw + gap;
     const cellH = th + gap;
     const even = (n: number) => n + (n % 2);
-    const cols = even(Math.ceil((1.3 * vw) / cellW) + 2);
-    const rows = even(Math.ceil((1.3 * vh) / cellH) + 2);
-    const step = steps(clips.length);
-    const slots: { id: string; c: number; r: number; clip: number; tilt: { x: number; y: number; z: number } }[] = [];
+    const reach = 1 / ZOOM.wall[0] + 0.12;
+    const cols = even(Math.ceil((reach * vw) / cellW) + 2);
+    const rows = even(Math.ceil((reach * vh) / cellH) + 2);
     for (let r = 0; r < rows; r++)
-      for (let c = 0; c < cols; c++) {
-        const n = c * 31 + r * 17;
-        slots.push({
-          id: `${c}-${r}`,
-          c,
-          r,
-          clip: (c * step.a + r * step.b) % clips.length,
-          tilt: {
-            x: (hash(n + 5) - 0.5) * 2 * CROOKED.xy,
-            y: (hash(n + 9) - 0.5) * 2 * CROOKED.xy,
-            z: (hash(n) - 0.5) * 2 * CROOKED.z,
-          },
-        });
-      }
-    return { tw, th, cellW, cellH, cols, rows, slots };
-  }, [vw, spec, clips.length, vh]);
+      for (let c = 0; c < cols; c++)
+        slots.push({ id: `${c}-${r}`, c, r, clip: (c * step.a + r * step.b) % clips.length, lat: 0, lon: 0, tilt: tilt(c * 31 + r * 17) });
+    return { tw, th, cellW, cellH, cols, rows, R: 0, slots };
+  }, [vw, vh, spec, clips.length, sphere]);
 
   const [hovered, setHovered] = useState<string | null>(null);
   const slotRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -211,6 +310,10 @@ export default function PosterWall({
   const hairX = useRef<HTMLSpanElement>(null);
   const hairY = useRef<HTMLSpanElement>(null);
   const ring = useRef<HTMLSpanElement>(null);
+  const knob = useRef<HTMLSpanElement>(null);
+  const fill = useRef<HTMLSpanElement>(null);
+  const read = useRef<HTMLButtonElement>(null);
+  const ctl = useRef<{ set: (z: number) => void; by: (f: number) => void } | null>(null);
   const hoverRef = useRef<string | null>(null);
   const pausedRef = useRef(paused);
   const draggedRef = useRef(false);
@@ -221,11 +324,11 @@ export default function PosterWall({
     pausedRef.current = paused;
   }, [paused]);
 
-  // ---- the loop: drift, throw, drag, curve, sway, lift, the entrance; every poster placed ----
+  // ---- the loop: drift, throw, drag, pinch, zoom, curve, sway, lift, the entrance; every poster in sight placed ----
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    const { cellW, cellH, cols, rows, slots } = geo;
+    const { tw, th, cellW, cellH, cols, rows, R, slots } = geo;
     const W = cols * cellW;
     const H = rows * cellH;
     const off = { x: 0, y: 0 };
@@ -233,65 +336,122 @@ export default function PosterWall({
     const sway = { x: 0, y: 0 };
     const pointer = { x: vw / 2, y: vh / 2, seen: false };
     const cross = { x: vw / 2, y: vh / 2 };
+    const zoom = { now: 1, to: 1, shown: -1 };
     const lift = new Map<string, number>(); // 0..1 per poster, eased
     const shown = new Map<string, boolean>();
+    const rims = new Map<string, HTMLElement | null>();
     let drift = 0;
     let speed = 0;
-    let push = 0; // 0 at rest, 1 held: how far the wall has pushed in
     let dragging = false;
-    // the eye's distance from the wall (the CSS perspective), and how near the wall comes when held
-    const eye = parseFloat(getComputedStyle(root).perspective) || 1000;
-    const near = eye * (1 - 1 / PUSH.zoom);
-    // how much bigger the wall looks right now: a drag moves it under the pointer at that scale
-    const scale = () => 1 / (1 - (push * near) / eye);
     let settled = reduce;
     const born = performance.now();
     let last = born;
     let raf = 0;
+    let rect = root.getBoundingClientRect();
+    // the eye's distance from the screen (the CSS perspective): the room comes toward it to zoom in
+    const eye = parseFloat(getComputedStyle(root).perspective) || 1000;
+    const clampZ = (z: number) => Math.max(zMin, Math.min(zMax, z));
     const wrap = (v: number, span: number) => (((v % span) + span) % span) - span / 2;
     const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+    const rimOf = (id: string, el: HTMLElement) => {
+      if (!rims.has(id)) rims.set(id, el.querySelector<HTMLElement>("[data-rim]"));
+      return rims.get(id) ?? null;
+    };
+    const show = (id: string, el: HTMLElement, on: boolean) => {
+      if (shown.get(id) === on) return;
+      shown.set(id, on);
+      el.style.visibility = on ? "" : "hidden";
+    };
+
+    ctl.current = {
+      set: (z) => (zoom.to = clampZ(z)),
+      by: (k) => (zoom.to = clampZ(zoom.to * k)),
+    };
 
     const place = (now: number) => {
       const age = (now - born) / 1000 - delay;
-      const curve = CURVE + CURVE_FAST * speed + PUSH.curve * push;
-      const crooked = 1 + PUSH.crooked * push;
-      const dolly = push * near;
+      const dolly = eye * (1 - 1 / zoom.now);
       let entering = false;
-      for (const s of slots) {
-        const el = slotRefs.current.get(s.id);
-        if (!el) continue;
-        const u = wrap(s.c * cellW + off.x, W);
-        const v = wrap(s.r * cellH + off.y, H);
-        // the seam, where a poster wraps round to the far side, stays out of sight
-        const on = Math.abs(u) < W / 2 - cellW * 0.55 && Math.abs(v) < H / 2 - cellH * 0.55;
-        if (shown.get(s.id) !== on) {
-          shown.set(s.id, on);
-          el.style.visibility = on ? "" : "hidden";
+      if (sphere) {
+        // ---- the sphere: its centre a radius behind the screen; turned by the drag, tipped (a little) by it too ----
+        const lon0 = off.x / R;
+        const tip = Math.max(-SPHERE.tiltMax, Math.min(SPHERE.tiltMax, off.y / R));
+        const st = Math.sin(tip);
+        const ct = Math.cos(tip);
+        for (const s of slots) {
+          const el = slotRefs.current.get(s.id);
+          if (!el) continue;
+          const lon = s.lon + lon0;
+          // how squarely it faces you: 1 at the centre, 0 at the rim, below that round the back
+          const face = -Math.sin(s.lat) * st + Math.cos(s.lat) * Math.cos(lon) * ct;
+          const on = face > 0.06;
+          show(s.id, el, on);
+          if (!on) continue;
+          const l = lift.get(s.id) ?? 0;
+          let p = 1;
+          if (!settled) {
+            p = Math.max(0, Math.min(1, (age - (1 - face) * SWING.spread * 1.4) / SWING.s));
+            if (p < 1) entering = true;
+          }
+          const e = ease(p);
+          const out = R + l * LIFT + (1 - e) * SWING.back * 1.6;
+          el.style.transform = `translateZ(${(dolly - R).toFixed(1)}px) rotateX(${(-tip).toFixed(4)}rad) rotateY(${lon.toFixed(4)}rad) rotateX(${(-s.lat).toFixed(4)}rad) translateZ(${out.toFixed(1)}px) rotateZ(${(s.tilt.z * (1 - l)).toFixed(2)}deg)`;
+          if (!settled) el.style.opacity = String(Math.min(1, p * 1.8));
+          const rim = rimOf(s.id, el);
+          if (rim) rim.style.opacity = Math.max(0, Math.min(0.88, (0.62 - face) * 1.5)).toFixed(2);
         }
-        if (!on) continue;
-        const nx = u / (vw / 2);
-        const ny = v / (vh / 2);
-        const l = lift.get(s.id) ?? 0;
-        const hang = (1 - l) * crooked;
-        // the entrance: each poster swings up onto the wall, the centre first
-        let p = 1;
-        if (!settled) {
-          const dist = Math.min(1.4, Math.hypot(nx * 0.8, ny * 0.6));
-          p = Math.max(0, Math.min(1, (age - dist * SWING.spread) / SWING.s));
-          if (p < 1) entering = true;
+      } else {
+        // ---- the wall: curved round you, the posters in sight placed, the rest skipped ----
+        const curve = CURVE + CURVE_FAST * speed;
+        const z0 = zoom.now;
+        const reachX = vw / 2 / z0 + tw;
+        const reachY = vh / 2 / z0 + th;
+        for (const s of slots) {
+          const el = slotRefs.current.get(s.id);
+          if (!el) continue;
+          const u = wrap(s.c * cellW + off.x, W);
+          const v = wrap(s.r * cellH + off.y, H);
+          // in sight, and away from the seam where a poster wraps round to the far side
+          const on =
+            Math.abs(u) < Math.min(reachX * 1.08, W / 2 - cellW * 0.55) && Math.abs(v) < Math.min(reachY * 1.08, H / 2 - cellH * 0.55);
+          show(s.id, el, on);
+          if (!on) continue;
+          const nx = u / (vw / 2);
+          const ny = v / (vh / 2);
+          const l = lift.get(s.id) ?? 0;
+          const hang = 1 - l;
+          let p = 1;
+          if (!settled) {
+            const dist = Math.min(1.4, Math.hypot(nx * 0.8, ny * 0.6));
+            p = Math.max(0, Math.min(1, (age - dist * SWING.spread) / SWING.s));
+            if (p < 1) entering = true;
+          }
+          const e = ease(p);
+          // the curve is set by where a poster lands on the screen, so it holds as the wall zooms
+          const sx = nx * z0;
+          const sy = ny * z0;
+          const rx = sy * curve * 0.8 + sway.y + s.tilt.x * hang + (1 - e) * SWING.from;
+          const ry = -sx * curve + sway.x + s.tilt.y * hang;
+          const rz = s.tilt.z * hang;
+          const z = ((sx * sx * 0.65 + sy * sy * 0.35) * NEAR * vw) / z0 + l * LIFT + dolly - (1 - e) * SWING.back;
+          el.style.transform = `translate3d(${u.toFixed(1)}px, ${v.toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) rotateZ(${rz.toFixed(2)}deg)`;
+          if (!settled) el.style.opacity = String(Math.min(1, p * 1.8));
         }
-        const e = ease(p);
-        const rx = ny * curve * 0.8 + sway.y + s.tilt.x * hang + (1 - e) * SWING.from;
-        const ry = -nx * curve + sway.x + s.tilt.y * hang;
-        const rz = s.tilt.z * hang;
-        const z = (nx * nx * 0.65 + ny * ny * 0.35) * NEAR * vw + l * LIFT + dolly - (1 - e) * SWING.back;
-        el.style.transform = `translate3d(${u.toFixed(1)}px, ${v.toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg) rotateZ(${rz.toFixed(3)}deg)`;
-        if (!settled) el.style.opacity = String(Math.min(1, p * 1.8));
       }
       if (!settled && !entering && age > 0) {
         settled = true;
         slotRefs.current.forEach((el) => (el.style.opacity = "1"));
       }
+    };
+
+    // the slider at the foot follows the zoom
+    const showZoom = () => {
+      if (Math.abs(zoom.shown - zoom.now) < 0.0005) return;
+      zoom.shown = zoom.now;
+      const t = (Math.log(zoom.now) - Math.log(zMin)) / (Math.log(zMax) - Math.log(zMin));
+      if (knob.current) knob.current.style.left = `${(t * 100).toFixed(2)}%`;
+      if (fill.current) fill.current.style.transform = `scaleX(${t.toFixed(4)})`;
+      if (read.current) read.current.textContent = `${Math.round(zoom.now * 100)}%`;
     };
 
     const frame = (now: number) => {
@@ -300,27 +460,36 @@ export default function PosterWall({
       const still = pausedRef.current;
       const held = hoverRef.current !== null;
       const age = (now - born) / 1000 - delay;
-      // the slow roll waits for the posters to be up, and holds while one is pointed at
+      // the slow drift waits for the posters to be up, and holds while one is pointed at
       const rolling = !(still || held || dragging || reduce || age < SWING.s);
       drift += ((rolling ? 1 : 0) - drift) * (1 - Math.exp(-dt * 1.6));
       if (!dragging) {
         const g = Math.exp(-GLIDE * dt);
         vel.x *= g;
         vel.y *= g;
-        off.x += vel.x * dt;
-        off.y += (vel.y + DRIFT * drift) * dt;
+        off.x += (vel.x + (sphere ? DRIFT * 1.6 * drift : 0)) * dt;
+        off.y += (vel.y - (sphere ? 0 : DRIFT * drift)) * dt;
       }
-      // the faster it goes, the deeper it curves and the more the posters lean into it
+      // the sphere only tips so far: past it, it eases back
+      if (sphere) {
+        const lim = SPHERE.tiltMax * R;
+        if (Math.abs(off.y) > lim) {
+          off.y += (Math.sign(off.y) * lim - off.y) * (1 - Math.exp(-dt * 8));
+          if (!dragging) vel.y *= 0.8;
+        }
+      }
+      // zoom follows its target, evenly in scale
+      const kz = 1 - Math.exp(-dt * (reduce ? 1000 : ZOOM.rate));
+      zoom.now = Math.exp(Math.log(zoom.now) + (Math.log(zoom.to) - Math.log(zoom.now)) * kz);
+      if (Math.abs(zoom.now - zoom.to) < 0.0005) zoom.now = zoom.to;
+      // the faster it goes, the more the posters lean into it
       const k = 1 - Math.exp(-dt * 5);
       const sp = reduce ? 0 : Math.min(1, Math.hypot(vel.x, vel.y) / TOP_SPEED);
       speed += (sp - speed) * k;
-      // held, the wall pushes in; let go, it eases back out as the throw dies away
-      const want = reduce ? 0 : Math.max(dragging ? 1 : 0, Math.min(1, speed * 1.4));
-      push += (want - push) * (1 - Math.exp(-dt * (want > push ? PUSH.in : PUSH.out)));
       const clamp = (n: number) => Math.max(-1, Math.min(1, n));
       sway.x += ((reduce ? 0 : -clamp(vel.x / TOP_SPEED) * SWAY) - sway.x) * k;
       sway.y += ((reduce ? 0 : clamp(vel.y / TOP_SPEED) * SWAY) - sway.y) * k;
-      // the poster under the pointer comes off the wall and straightens; the one left goes back
+      // the poster under the pointer comes toward you and straightens; the one left goes back
       const kl = 1 - Math.exp(-dt * (reduce ? 1000 : 9));
       const target = hoverRef.current;
       if (target && !lift.has(target)) lift.set(target, 0);
@@ -331,6 +500,7 @@ export default function PosterWall({
         else lift.set(id, nv);
       });
       place(now);
+      showZoom();
       // the crosshair follows the pointer
       if (pointer.seen) {
         const kc = 1 - Math.exp(-dt * 16);
@@ -343,17 +513,40 @@ export default function PosterWall({
       raf = requestAnimationFrame(frame);
     };
     place(performance.now());
+    showZoom();
     raf = requestAnimationFrame(frame);
 
-    // ---- drag (mouse or finger) with a throw; wheel and trackpad push it ----
+    // ---- drag (mouse or finger) with a throw, which also pushes the room in; two fingers pinch ----
+    const pts = new Map<number, { x: number; y: number }>();
+    let pinch: { d0: number; z0: number } | null = null;
+    const spread = () => {
+      const [a, b] = [...pts.values()];
+      return Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    };
     let id = -1;
     let sx = 0;
     let sy = 0;
     let lx = 0;
     let ly = 0;
     let lt = 0;
+    const endDrag = () => {
+      id = -1;
+      if (!dragging) return;
+      dragging = false;
+      root.classList.remove(styles.wallDragging);
+    };
     const down = (e: PointerEvent) => {
-      if (e.button !== 0 || pausedRef.current) return;
+      if ((e.pointerType === "mouse" && e.button !== 0) || pausedRef.current) return;
+      if ((e.target as Element | null)?.closest("[data-nodrag]")) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) {
+        pinch = { d0: spread(), z0: zoom.to };
+        draggedRef.current = true;
+        endDrag();
+        vel.x = vel.y = 0;
+        return;
+      }
+      if (pts.size > 2) return;
       id = e.pointerId;
       sx = lx = e.clientX;
       sy = ly = e.clientY;
@@ -363,15 +556,19 @@ export default function PosterWall({
     };
     const move = (e: PointerEvent) => {
       if (e.pointerType === "mouse") {
-        const r = root.getBoundingClientRect();
-        pointer.x = e.clientX - r.left;
-        pointer.y = e.clientY - r.top;
+        pointer.x = e.clientX - rect.left;
+        pointer.y = e.clientY - rect.top;
         if (!pointer.seen) {
           pointer.seen = true;
           cross.x = pointer.x;
           cross.y = pointer.y;
           root.classList.add(styles.hudOn);
         }
+      }
+      if (pts.has(e.pointerId)) pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && pts.size === 2) {
+        zoom.to = clampZ((pinch.z0 * spread()) / pinch.d0);
+        return;
       }
       if (e.pointerId !== id) return;
       if (!dragging && Math.hypot(e.clientX - sx, e.clientY - sy) > 6) {
@@ -380,12 +577,14 @@ export default function PosterWall({
         root.classList.add(styles.wallDragging);
         root.setPointerCapture?.(id);
         setHovered(null);
+        // grabbing the room pulls it in toward you, and it stays in
+        if (!reduce) zoom.to = clampZ(Math.max(zoom.to, ZOOM.held));
       }
       if (!dragging) return;
       const now = performance.now();
-      const z = scale();
-      const dx = (e.clientX - lx) / z;
-      const dy = (e.clientY - ly) / z;
+      // the room moves under the pointer at the scale it's shown at
+      const dx = (e.clientX - lx) / zoom.now;
+      const dy = (e.clientY - ly) / zoom.now;
       off.x += dx;
       off.y += dy;
       const inv = 1000 / Math.max(8, now - lt);
@@ -396,11 +595,12 @@ export default function PosterWall({
       lt = now;
     };
     const up = (e: PointerEvent) => {
+      pts.delete(e.pointerId);
+      if (pts.size < 2) pinch = null;
       if (e.pointerId !== id) return;
-      id = -1;
-      if (!dragging) return;
-      dragging = false;
-      root.classList.remove(styles.wallDragging);
+      const wasDragging = dragging;
+      endDrag();
+      if (!wasDragging) return;
       if (performance.now() - lt > 80) vel.x = vel.y = 0; // held still before letting go: no throw
       vel.x = Math.max(-4200, Math.min(4200, vel.x));
       vel.y = Math.max(-4200, Math.min(4200, vel.y));
@@ -409,31 +609,54 @@ export default function PosterWall({
       pointer.seen = false;
       root.classList.remove(styles.hudOn);
     };
+    // scroll moves the room; Ctrl/Cmd + scroll (and a trackpad pinch) zooms it
     const wheel = (e: WheelEvent) => {
       if (pausedRef.current) return;
       e.preventDefault();
-      // the wall slides out from under the pointer: let go of the poster it was on
-      if (hoverRef.current) setHovered(null);
       const unit = e.deltaMode === 1 ? 32 : 1;
+      if (e.ctrlKey || e.metaKey) {
+        zoom.to = clampZ(zoom.to * Math.exp(-e.deltaY * unit * 0.01));
+        return;
+      }
+      // the room slides out from under the pointer: let go of the poster it was on
+      if (hoverRef.current) setHovered(null);
+      if (sphere) {
+        // the sphere turns with either direction of scroll
+        vel.x = Math.max(-3600, Math.min(3600, vel.x - (e.deltaY + e.deltaX) * unit * 6));
+        return;
+      }
       vel.x = Math.max(-3600, Math.min(3600, vel.x - e.deltaX * unit * 6));
       vel.y = Math.max(-3600, Math.min(3600, vel.y - e.deltaY * unit * 6));
     };
+    const key = (e: KeyboardEvent) => {
+      if (pausedRef.current || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.target instanceof HTMLElement && e.target.closest("input, textarea, [contenteditable]")) return;
+      if (e.key === "+" || e.key === "=") zoom.to = clampZ(zoom.to * ZOOM.step);
+      else if (e.key === "-" || e.key === "_") zoom.to = clampZ(zoom.to / ZOOM.step);
+      else if (e.key === "0") zoom.to = 1;
+    };
+    const resize = () => (rect = root.getBoundingClientRect());
     root.addEventListener("pointerdown", down);
     root.addEventListener("pointerleave", out);
     window.addEventListener("pointermove", move, { passive: true });
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
+    window.addEventListener("keydown", key);
+    window.addEventListener("resize", resize);
     root.addEventListener("wheel", wheel, { passive: false });
     return () => {
       cancelAnimationFrame(raf);
+      ctl.current = null;
       root.removeEventListener("pointerdown", down);
       root.removeEventListener("pointerleave", out);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
+      window.removeEventListener("keydown", key);
+      window.removeEventListener("resize", resize);
       root.removeEventListener("wheel", wheel);
     };
-  }, [geo, vw, vh, reduce, delay]);
+  }, [geo, vw, vh, reduce, delay, sphere, zMin, zMax]);
 
   const open = useCallback(
     (index: number, el: HTMLElement) => {
@@ -446,7 +669,7 @@ export default function PosterWall({
   const hover = useCallback((id: string | null) => setHovered(id), []);
   // the films for a screen reader or the keyboard: a plain list
   const openFromList = (index: number) => {
-    const w = Math.min(vw * 0.5, ((vh * 0.5) * spec.ratio));
+    const w = Math.min(vw * 0.5, vh * 0.5 * spec.ratio);
     const h = w / spec.ratio;
     onOpen(index, { top: (vh - h) / 2, left: (vw - w) / 2, width: w, height: h });
   };
@@ -454,7 +677,7 @@ export default function PosterWall({
   return (
     <motion.div
       ref={rootRef}
-      className={`${styles.wall} ${hovered ? styles.wallPointing : ""}`}
+      className={`${styles.wall} ${sphere ? styles.wallSphere : ""} ${hovered ? styles.wallPointing : ""}`}
       style={{ "--tw": `${geo.tw}px`, "--th": `${geo.th}px` } as CSSProperties}
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: reduce ? 0 : 0.7, ease: FADE } }}
@@ -487,6 +710,8 @@ export default function PosterWall({
       <span ref={hairX} className={`${styles.hair} ${styles.hairX}`} aria-hidden="true" />
       <span ref={hairY} className={`${styles.hair} ${styles.hairY}`} aria-hidden="true" />
       <span ref={ring} className={styles.ring} aria-hidden="true" />
+
+      <ZoomBar min={zMin} max={zMax} ctl={ctl} knob={knob} fill={fill} read={read} />
 
       <ul className={styles.sr}>
         {clips.map((c, i) => (

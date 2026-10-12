@@ -633,7 +633,6 @@
   font: inherit;
   text-transform: inherit;
   cursor: pointer;
-  box-shadow: 0 24px 50px -24px rgb(0 0 0 / 0.9);
 }
 
 .poster img,
@@ -647,10 +646,6 @@
   transform: scale(var(--z, 1));
 }
 
-.poster img {
-  filter: brightness(0.78) saturate(0.9) contrast(1.04);
-  transition: filter 0.6s var(--ease);
-}
 
 /* the film wipes up over its still, like a new poster pasted over the old */
 .poster video {
@@ -662,13 +657,31 @@
   clip-path: inset(0 0 0 0);
 }
 
-/* one poster pointed at: it comes up, the rest go down */
-.wallPointing .poster img {
-  filter: brightness(0.34) saturate(0.55) contrast(1.04);
+/* one poster pointed at: it comes up, the rest go down (a dark veil: cheaper to fade than a filter) */
+.posterDim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0.2;
+  transition: opacity 0.5s var(--ease);
+  pointer-events: none;
 }
 
-.wallPointing .slotOn .poster img {
-  filter: none;
+.wallPointing .posterDim {
+  opacity: 0.62;
+}
+
+.wallPointing .slotOn .posterDim {
+  opacity: 0;
+}
+
+/* on the sphere, the posters darken toward its rim (set from JS) */
+.posterRim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .posterShade {
@@ -769,6 +782,106 @@
 .slotOn .posterGo svg {
   opacity: 1;
   transform: none;
+}
+
+/* ---- the zoom, at the foot: - a hairline track with a knob + and the level ---- */
+.zoom {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: clamp(12px, 2.6vh, 28px);
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--paper);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+}
+
+.zoomBtn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.3s var(--ease);
+}
+
+.zoomBtn svg {
+  width: 11px;
+  height: 11px;
+}
+
+.zoomBtn:hover,
+.zoomRead:hover {
+  opacity: 1;
+}
+
+.zoomTrack {
+  position: relative;
+  width: clamp(90px, 9vw, 140px);
+  height: 22px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.zoomTrack::before,
+.zoomFill {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgb(246 244 240 / 0.25);
+}
+
+.zoomFill {
+  background: var(--paper);
+  transform-origin: 0 50%;
+  transform: scaleX(0.5);
+}
+
+.zoomKnob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: var(--paper);
+  transition: transform 0.3s var(--ease);
+}
+
+.zoomTrack:hover .zoomKnob {
+  transform: scale(1.35);
+}
+
+.zoomRead {
+  min-width: 4.2em;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.zoomBtn:focus-visible,
+.zoomRead:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 2px;
 }
 
 /* the crosshair: two hairlines across the dark and a ring where they meet */
@@ -894,6 +1007,9 @@
   }
   .hud span:last-child {
     display: none;
+  }
+  .zoom {
+    bottom: 46px;
   }
   .vignette {
     background:

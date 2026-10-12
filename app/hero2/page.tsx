@@ -271,7 +271,7 @@ function Home({ variant }: { variant: HeroVariant }) {
               <i>{roomF.no}</i> {roomF.line} <i>— {clips.length} films</i>
             </span>
             <span>
-              Drag or scroll <i>·</i> Click to play
+              Drag to explore <i>·</i> Click to play
             </span>
           </motion.div>
         )}
