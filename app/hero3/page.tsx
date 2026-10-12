@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   memo,
   useCallback,
   useEffect,
@@ -645,8 +646,26 @@ function Formats({
           const on = active === f.key;
           const stepBack = active !== null && !on;
           return (
+            <Fragment key={f.key}>
+            {i > 0 && (
+              <span className={styles.fmtSlashMask} aria-hidden="true">
+                <motion.span
+                  className={styles.fmtSlash}
+                  initial={reduce ? false : { y: "112%" }}
+                  animate={{
+                    ...(show ? { y: 0 } : {}),
+                    opacity: !visible ? 0 : active ? 0.3 : 1,
+                  }}
+                  transition={{
+                    y: { type: "spring", stiffness: 80, damping: 17, delay: base + 0.2 + i * 0.08 },
+                    opacity: { duration: 0.45 },
+                  }}
+                >
+                  /
+                </motion.span>
+              </span>
+            )}
             <motion.button
-              key={f.key}
               type="button"
               className={styles.fmt}
               data-fmt={f.key}
@@ -663,27 +682,6 @@ function Formats({
               onBlur={leave}
               onClick={() => onOpen(f.key)}
             >
-              <motion.span
-                className={styles.fmtTop}
-                initial={reduce ? false : { opacity: 0, y: 6 }}
-                animate={show ? { opacity: 1, y: 0, transition: { delay: base + 0.35 + i * 0.08, duration: 1, ease: EASE } } : undefined}
-              >
-                <span>{f.no}</span>
-                <FrameGlyph k={f.key} className={styles.fmtGlyph} />
-              </motion.span>
-              <span className={styles.fmtRule}>
-                <motion.span
-                  className={styles.fmtRuleBase}
-                  initial={reduce ? false : { scaleX: 0 }}
-                  animate={show ? { scaleX: 1, transition: { delay: base + i * 0.09, duration: 1.3, ease: EASE_CINE } } : undefined}
-                />
-                <motion.span
-                  className={styles.fmtRuleOn}
-                  initial={false}
-                  animate={{ scaleX: on ? 1 : 0 }}
-                  transition={{ type: "spring", stiffness: 140, damping: 22 }}
-                />
-              </span>
               <span className={styles.fmtMask}>
                 <motion.span
                   ref={(el: HTMLSpanElement | null) => {
@@ -701,17 +699,28 @@ function Formats({
                   <Ratio text={f.label} className={styles.fmtX} />
                 </motion.span>
               </span>
-              <motion.span
-                className={styles.fmtLine}
-                initial={false}
-                animate={{ opacity: on ? 1 : 0, y: on ? 0 : 8 }}
-                transition={{ duration: 0.55, ease: EASE }}
-              >
-                {f.line}
-              </motion.span>
             </motion.button>
+            </Fragment>
           );
         })}
+        {/* the format pointed at, in a line under the words */}
+        <span className={styles.fmtCap} aria-hidden="true">
+          <AnimatePresence mode="wait" initial={false}>
+            {active && visible && (
+              <motion.span
+                key={active}
+                className={styles.fmtCapIn}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE, delay: 0.1 } }}
+                exit={{ opacity: 0, y: -6, transition: { duration: 0.18 } }}
+              >
+                <i>{FORMATS.find((x) => x.key === active)?.no}</i>
+                <span className={styles.fmtCapRule} />
+                {FORMATS.find((x) => x.key === active)?.line}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </span>
       </div>
     </div>
   );

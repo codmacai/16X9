@@ -484,22 +484,23 @@
   }
 
   /* ---- the three formats: 16x9, 9x16, Beyond, in three columns ---- */
+  /* one line: 16x9 / 9x16 / BEYOND, centred, the caption hanging under it */
   .fmts {
     position: relative;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    column-gap: clamp(12px, 2vw, 36px);
-    width: min(90vw, 1560px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.62em;
+    font-size: clamp(34px, 5.2vw, 100px);
   }
 
   .fmt {
     position: relative;
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     min-width: 0;
     margin: 0;
-    padding: 0 0 6px;
+    padding: 0;
     border: 0;
     background: none;
     color: var(--paper);
@@ -563,10 +564,11 @@
   }
 
   /* the word rises out of this */
-  .fmtMask {
+  .fmtMask,
+  .fmtSlashMask {
     display: block;
     overflow: hidden;
-    padding-top: clamp(10px, 1.8vh, 22px);
+    padding: 0.1em 0.02em 0.06em;
   }
 
   /* the same face, weight and spacing as the word in its hero (format-hero.module.css),
@@ -575,24 +577,72 @@
     display: block;
     width: max-content;
     font-family: var(--font-wide, "Archivo"), var(--font-sans), "Helvetica Neue", Arial, sans-serif;
-    font-size: clamp(26px, 6.3vw, 122px);
-    font-weight: 300;
-    font-stretch: 108%;
-    font-variation-settings: "wdth" 108;
+    font-size: 1em;
+    font-weight: 400;
+    font-stretch: 100%;
+    font-variation-settings: "wdth" 100;
     line-height: 1;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.025em;
     white-space: nowrap;
     text-shadow: 0 4px 40px rgb(0 0 0 / 0.35);
   }
 
   /* the x between the numbers: lowercase and lighter */
   .fmtX {
-    margin: 0 0.015em;
-    font-weight: 200;
+    margin: 0 0.01em;
+    font-weight: 300;
     text-transform: none;
   }
 
   /* what the format is, shown while it's pointed at */
+  /* the slashes between the words: lighter */
+  .fmtSlash {
+    display: block;
+    font-family: var(--font-wide, "Archivo"), var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+    font-weight: 300;
+    font-variation-settings: "wdth" 100;
+    line-height: 1;
+    color: var(--paper);
+    text-shadow: 0 4px 40px rgb(0 0 0 / 0.35);
+  }
+
+  /* the caption under the line: the format pointed at */
+  .fmtCap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: clamp(16px, 2.6vh, 30px);
+    color: rgb(247 242 238 / 0.85);
+    font-size: 10.5px;
+    letter-spacing: 0.24em;
+    line-height: 1;
+    white-space: nowrap;
+    text-shadow: 0 2px 14px rgb(0 0 0 / 0.7);
+    pointer-events: none;
+  }
+
+  .fmtCapIn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .fmtCapIn i {
+    font-style: normal;
+    opacity: 0.6;
+  }
+
+  .fmtCapRule {
+    display: block;
+    width: 26px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
   .fmtLine {
     display: block;
     margin-top: clamp(10px, 1.4vh, 16px);
@@ -607,17 +657,12 @@
      room) so the words can stay big */
   @media (max-width: 640px) {
     .fmts {
-      grid-template-columns: 1fr 1fr 1.4fr;
-      width: 92vw;
-      column-gap: 10px;
+      font-size: 7.6vw;
+      gap: 0.4em;
     }
-    .fmtWord {
-      font-size: 7vw;
-    }
-    .fmtLine {
-      white-space: normal;
-      letter-spacing: 0.16em;
-      line-height: 1.5;
+    .fmtCap {
+      font-size: 9px;
+      letter-spacing: 0.18em;
     }
   }
 
