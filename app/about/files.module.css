@@ -1,7 +1,7 @@
 /* HOW WE WORK — two black files on the paper, as in the menu */
 
 .how {
-  padding: clamp(60px, 12vh, 140px) var(--ui) clamp(80px, 16vh, 180px);
+  padding: clamp(40px, 8vh, 96px) var(--ui) clamp(60px, 12vh, 140px);
 }
 
 .label {
@@ -24,7 +24,7 @@
   --tw: 32%; /* tab width */
   --tx: calc(var(--tab) * (100% - var(--tw)));
   position: relative;
-  min-height: clamp(420px, 62vh, 600px);
+  min-height: clamp(320px, 46vh, 460px);
   color: var(--paper);
   transition: translate 0.7s var(--ease);
 }
@@ -143,7 +143,7 @@
   }
 
   .file {
-    min-height: 440px;
+    min-height: 340px;
     --tw: 60%;
   }
 
