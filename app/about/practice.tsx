@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   cubicBezier,
   motion,
@@ -108,7 +108,7 @@ function TheLine({ still }: { still: boolean }) {
   const lineRef = useRef<HTMLParagraphElement>(null);
   // the reading runs from the line coming up the screen to its last line
   // passing the middle
-  const { scrollYProgress } = useScroll({ target: lineRef, offset: ["start 0.9", "end 0.5"] });
+  const { scrollYProgress } = useScroll({ target: lineRef, offset: ["start 0.92", "end 0.62"] });
   const eased = useSpring(scrollYProgress, SMOOTH);
   const read = useMotionValue(0);
   useEffect(() => {
@@ -314,31 +314,33 @@ function Letter({
 // ---------------------------------------------------------------------------
 // FILE — black card stock, the tab cut into it, a portrait inside
 // ---------------------------------------------------------------------------
-function Folder({
-  k,
-  style,
-  imgStyle,
-  dim,
-}: {
-  k: number;
-  style?: CSSProperties | Record<string, MotionValue<number> | MotionValue<string> | number | string>;
-  imgStyle?: Record<string, MotionValue<string> | string>;
-  dim?: MotionValue<number>;
-}) {
+type FolderMotion = {
+  y: MotionValue<string>;
+  scale: MotionValue<number>;
+  imgY: MotionValue<string>;
+  dim: MotionValue<number>;
+  colour: MotionValue<number>;
+};
+
+function Folder({ k, tab = k, m }: { k: number; tab?: number; m?: FolderMotion }) {
   const pillar = PILLARS[k];
+  const img = { src: pillar.poster, draggable: false, decoding: "async" as const, style: { objectPosition: pillar.pos } };
   return (
-    <motion.div className={s.folder} style={{ ["--tab" as string]: k, zIndex: k + 1, ...style }}>
+    <motion.div className={s.folder} style={{ ["--tab" as string]: tab, zIndex: k + 1, y: m?.y, scale: m?.scale }}>
       <span className={s.stock} />
       <span className={s.tab}>
         <span className={s.tabNo}>{pillar.no}</span>
         <span>{pillar.name}</span>
       </span>
       <span className={s.window}>
-        <motion.span className={s.pic} style={imgStyle}>
+        <motion.span className={s.pic} style={{ y: m?.imgY }}>
+          {/* black and white underneath (the filter never moves); the colour
+              fades in over it once the file has come to rest */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={pillar.poster} alt="" draggable={false} decoding="async" style={{ objectPosition: pillar.pos }} />
+          {m && <img className={s.gray} alt="" {...img} />}
+          <motion.img className={s.colour} alt="" {...img} style={{ ...img.style, opacity: m?.colour }} />
         </motion.span>
-        {dim && <motion.span className={s.dim} style={{ opacity: dim }} />}
+        {m && <motion.span className={s.dim} style={{ opacity: m.dim }} />}
       </span>
     </motion.div>
   );
@@ -354,9 +356,14 @@ function MovingFolder({ k, enter, p }: { k: number; enter: MotionValue<number>; 
   const scale = useTransform(p, (v) => (k === 0 ? 1 - 0.06 * seg(v, SWAP, 0.2) : 1));
   // the one going away darkens as it sinks
   const dim = useTransform(p, (v) => (k === 0 ? 0.55 * seg(v, SWAP, 0.16) : 0));
+  // each comes up in black and white and comes into colour as it lands;
+  // the one going away loses its colour first
+  const colour = useTransform([enter, p], ([e, v]: number[]) =>
+    k === 0 ? seg(e, 0.72, 0.28, SETTLE) * (1 - seg(v, SWAP, 0.08)) : seg(v, SWAP + 0.15, 0.1, SETTLE)
+  );
   // inside, the picture drifts against the hold, as if behind glass
   const imgY = useTransform(p, (v) => `${(-5 + 10 * v).toFixed(3)}%`);
-  return <Folder k={k} style={{ y, scale }} imgStyle={{ y: imgY }} dim={dim} />;
+  return <Folder k={k} m={{ y, scale, imgY, dim, colour }} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -427,7 +434,7 @@ function HowStill() {
           </p>
           <div className={s.body}>
             <div className={s.files} aria-hidden="true">
-              <Folder k={k} style={{ ["--tab" as string]: 0 }} />
+              <Folder k={k} tab={0} />
             </div>
             <div className={s.pillars}>
               <div className={s.pillar}>

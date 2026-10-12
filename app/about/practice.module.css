@@ -295,10 +295,16 @@
 }
 
 .pic img {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.gray {
+  filter: grayscale(1) contrast(1.06);
 }
 
 /* ---------------- the points ---------------- */
@@ -344,6 +350,7 @@
 
 .pointNo {
   flex: none;
+  width: 2.6em;
   padding-top: 0.55em;
   font-size: 11px;
   font-weight: 400;
@@ -356,6 +363,7 @@
   margin: auto 0 0;
   overflow: clip;
   padding: 0.1em 0 0.15em calc(11px * 2.6 + clamp(14px, 2vw, 32px));
+  /* (the numbers' column and the gap: the line starts where the points do) */
 }
 
 .sum {
@@ -418,7 +426,7 @@
   }
 
   .giant {
-    font-size: 23vw;
+    font-size: 22vw;
     margin-top: 18px;
   }
 
