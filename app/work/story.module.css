@@ -1,0 +1,107 @@
+/* THE CASE (story.tsx): ink on the film page's paper */
+
+.story {
+  position: relative;
+  padding: 0 var(--ui) clamp(90px, 16vh, 180px);
+  color: var(--ink);
+}
+
+/* a small line over it: what this is, the client and the year */
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  max-width: 1320px;
+  margin: 0 auto clamp(30px, 6vh, 60px);
+  font-size: 10.5px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+
+.kicker i {
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.2;
+}
+
+.kicker span:last-child {
+  opacity: 0.55;
+}
+
+/* a part of the case: its name on the left, its words on the right */
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(24px, 6vw, 120px);
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: clamp(34px, 6vh, 64px) 0 clamp(40px, 8vh, 80px);
+}
+
+.rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.22;
+  transform-origin: 0 50%;
+}
+
+.name {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(14px, 1.6vw, 26px);
+  margin: 0;
+  font-weight: 300;
+}
+
+.no {
+  padding-top: 0.9em;
+  font-style: normal;
+  font-size: 10.5px;
+  letter-spacing: 0.24em;
+  opacity: 0.5;
+}
+
+.mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.06em;
+}
+
+/* the name: the headings' wide light capitals */
+.word {
+  display: block;
+  font-size: clamp(40px, 5.8vw, 104px);
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.text {
+  max-width: 46ch;
+  margin: 0;
+  padding-top: 0.5em;
+  font-size: clamp(15px, 1.15vw, 19px);
+  line-height: 1.62;
+  letter-spacing: 0.005em;
+}
+
+/* the first line of the words a touch larger, like a lede */
+.text::first-line {
+  font-weight: 500;
+}
+
+@media (max-width: 760px) {
+  .row {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .word {
+    font-size: 13vw;
+  }
+}

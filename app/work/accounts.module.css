@@ -1,0 +1,143 @@
+/* WORK, 9x16 (accounts.tsx): four slim frames in the dark */
+
+.page {
+  --paper: #f6f4f0;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  min-height: 100svh;
+  background: #050505;
+  color: var(--paper);
+}
+
+.sheet {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(28px, 6vh, 56px);
+  padding: calc(var(--band) + 24px) var(--ui) 48px;
+  box-sizing: border-box;
+}
+
+.kicker {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+  gap: clamp(16px, 2.6vw, 44px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--paper);
+  text-decoration: none;
+  outline: none;
+}
+
+/* the frame: a hairline 9:16, the brand's logo at its centre */
+.frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: min(58svh, 40vw);
+  aspect-ratio: 9 / 16;
+  margin-bottom: 12px;
+  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.3);
+  transition: background-color 0.5s var(--ease), box-shadow 0.5s var(--ease), transform 0.6s var(--ease);
+}
+
+/* the logo: its Instagram picture, in a circle */
+.logo {
+  width: 68%;
+  max-width: none;
+  aspect-ratio: 1;
+  object-fit: cover;
+  clip-path: circle(48.5% at 50% 50%);
+  transition: transform 0.7s var(--ease);
+}
+
+.stats {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  text-align: center;
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  transition: color 0.5s var(--ease), opacity 0.5s var(--ease);
+}
+
+.item:hover .frame,
+.item:focus-visible .frame {
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--paper);
+  transform: translateY(-6px);
+}
+
+.item:hover .logo,
+.item:focus-visible .logo {
+  transform: scale(1.08);
+}
+
+.item:hover .stats,
+.item:focus-visible .stats {
+  color: #050505;
+  opacity: 0.7;
+}
+
+.name {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.handle {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  opacity: 0.5;
+  transition: opacity 0.4s ease;
+}
+
+.handle i {
+  display: inline-block;
+  font-style: normal;
+  opacity: 0;
+  transform: translate(-3px, 3px);
+  transition: opacity 0.4s ease, transform 0.5s var(--ease);
+}
+
+.item:hover .handle {
+  opacity: 0.9;
+}
+
+.item:hover .handle i {
+  opacity: 1;
+  transform: none;
+}
+
+/* phones: two by two */
+@media (max-width: 760px) {
+  .row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 18px;
+  }
+  .frame {
+    height: auto;
+    width: 100%;
+  }
+}

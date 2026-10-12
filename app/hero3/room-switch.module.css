@@ -1,0 +1,208 @@
+/* THE ROOM SWITCH (room-switch.tsx): beside the logo, paper on the dark */
+
+.root {
+  --paper: #f6f4f0;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--paper);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  pointer-events: auto;
+}
+
+/* on a paper page: ink, and the sheet in paper */
+.light {
+  color: #0c0c0c;
+}
+
+.light .sheet {
+  background: rgb(246 244 240 / 0.92);
+  box-shadow: inset 0 0 0 1px rgb(12 12 12 / 0.14);
+}
+
+.light .item:hover {
+  background: rgb(12 12 12 / 0.05);
+}
+
+.light .index {
+  border-top-color: rgb(12 12 12 / 0.12);
+}
+
+.current {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.currentIn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.glyph {
+  height: 11px;
+  width: auto;
+  flex: none;
+}
+
+.x {
+  margin: 0 0.3em;
+  font-weight: 300;
+  text-transform: none;
+}
+
+.caret {
+  width: 9px;
+  height: 6px;
+  opacity: 0.7;
+  transition: transform 0.5s var(--ease), opacity 0.3s ease;
+}
+
+.current:hover .caret {
+  opacity: 1;
+}
+
+.caretOpen {
+  transform: rotate(180deg);
+}
+
+.current:focus-visible,
+.item:focus-visible,
+.index:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 4px;
+}
+
+/* the sheet: narrow, square, a hairline round it, the dark showing through a little */
+.sheet {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  translate: -50% 0;
+  min-width: 290px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  background: rgb(8 8 8 / 0.86);
+  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.14);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 22px 26px 1fr 8px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 10px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-transform: inherit;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.3s var(--ease), background-color 0.3s var(--ease);
+}
+
+.item:hover,
+.itemOn {
+  opacity: 1;
+}
+
+.item:hover {
+  background: rgb(246 244 240 / 0.05);
+}
+
+.no {
+  font-style: normal;
+  font-size: 9.5px;
+  opacity: 0.6;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.label small {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  opacity: 0.55;
+}
+
+/* the room you're in */
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.3s ease, transform 0.4s var(--ease);
+}
+
+.itemOn .dot {
+  opacity: 1;
+  transform: none;
+}
+
+.index {
+  margin-top: 6px;
+  padding: 12px 10px 8px;
+  border: 0;
+  border-top: 1px solid rgb(246 244 240 / 0.12);
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-transform: inherit;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.3s ease;
+}
+
+.index:hover {
+  opacity: 1;
+}
+
+.index span {
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 0.5s var(--ease);
+}
+
+.index:hover span {
+  transform: translateX(-4px);
+}
+
+@media (max-width: 760px) {
+  .root {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+  }
+  .sheet {
+    min-width: 250px;
+  }
+}

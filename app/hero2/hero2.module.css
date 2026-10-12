@@ -1,0 +1,1124 @@
+/* HERO 2 — the index on the white, and the rooms of posters in the dark.
+   One typeface (Archivo), ink on the paper, small spaced capitals for the labels. */
+
+.page {
+  --paper: #f6f4f0;
+  --ink: #0c0c0c;
+  --dark: #070707;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ui: clamp(18px, 2.6vw, 40px); /* the margin round the screen */
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  min-height: 560px;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+  font-stretch: 108%;
+  font-variation-settings: "wdth" 108;
+  font-weight: 400;
+  text-transform: uppercase;
+  -webkit-font-smoothing: antialiased;
+  /* leaving a room, the dark stays until the room has faded */
+  transition: background-color 0s linear 0.7s;
+}
+
+/* in a room the page itself is the dark: rooms are see-through, so one can fade into the next */
+.page[data-room] {
+  background: var(--dark);
+  transition: none;
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ================= The index: the white page ================= */
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+/* the line of words, at the centre of the page */
+.namesWrap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* a film: a full-page layer clipped (from JS) to the window showing; the line rides inside in paper */
+.film {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #050505;
+  opacity: 0;
+  clip-path: inset(50% 50% 50% 50%);
+  pointer-events: none;
+  will-change: clip-path, opacity;
+}
+
+.filmBox {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  overflow: hidden;
+  background: #0c0c0c;
+}
+
+.filmBox video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.film_16by9 .filmBox {
+  width: min(68vw, calc(64vh * 16 / 9));
+  aspect-ratio: 16 / 9;
+}
+
+.film_9by16 .filmBox {
+  height: min(76vh, calc(86vw * 16 / 9));
+  aspect-ratio: 9 / 16;
+}
+
+/* Beyond: no frame at all, the whole screen */
+.film_beyond .filmBox {
+  inset: 0;
+  translate: none;
+}
+
+/* the line's paper copy, over its film */
+.film .namesWrap {
+  z-index: 2;
+}
+
+/* ---- the three formats as one quiet line: 16x9 / 9x16 / Beyond ---- */
+.names {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.62em;
+  font-size: clamp(34px, 5.2vw, 100px);
+  color: var(--ink);
+}
+
+.namesPaper {
+  color: var(--paper);
+}
+
+.name {
+  position: relative;
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-transform: uppercase;
+  cursor: pointer;
+  outline: none;
+}
+
+.name:disabled {
+  cursor: default;
+}
+
+.name:focus-visible .nameWord {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12em;
+}
+
+.nameMask,
+.slashMask {
+  display: block;
+  overflow: hidden;
+  padding: 0.1em 0.02em 0.06em;
+}
+
+/* a plain, tight grotesk at its normal width: the words carry no decoration */
+.nameWord,
+.slash {
+  display: block;
+  font-family: var(--font-wide, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-variation-settings: "wdth" 100;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+}
+
+.slash {
+  font-weight: 300;
+}
+
+/* the x between the numbers: lowercase and lighter */
+.fmtX {
+  margin: 0 0.01em;
+  font-weight: 300;
+  text-transform: none;
+}
+
+/* the viewfinder: four hairline corners round the word pointed at */
+.finder {
+  position: absolute;
+  width: 0.18em;
+  height: 0.18em;
+  border: 0 solid currentColor;
+  pointer-events: none;
+}
+
+.finder_tl {
+  left: -0.22em;
+  top: -0.04em;
+  border-width: 1.5px 0 0 1.5px;
+}
+
+.finder_tr {
+  right: -0.22em;
+  top: -0.04em;
+  border-width: 1.5px 1.5px 0 0;
+}
+
+.finder_bl {
+  left: -0.22em;
+  bottom: -0.1em;
+  border-width: 0 0 1.5px 1.5px;
+}
+
+.finder_br {
+  right: -0.22em;
+  bottom: -0.1em;
+  border-width: 0 1.5px 1.5px 0;
+}
+
+/* the caption under the line: the format pointed at */
+.cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: clamp(16px, 2.6vh, 30px);
+  font-size: 10.5px;
+  letter-spacing: 0.24em;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.capIn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.capIn i {
+  font-style: normal;
+  opacity: 0.55;
+}
+
+.capRule {
+  display: block;
+  width: 26px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+/* ---- the entrance: the mark in an outline frame ---- */
+.intro {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 50%;
+  width: min(38vw, 560px);
+  aspect-ratio: 16 / 9;
+  translate: -50% -50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  container-type: inline-size; /* cqw: % of the frame's width */
+  pointer-events: none;
+}
+
+.introEdge {
+  position: absolute;
+  background: currentColor;
+}
+
+.introEdge_top {
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  transform-origin: 0 50%;
+}
+
+.introEdge_right {
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 1px;
+  transform-origin: 50% 0;
+}
+
+.introEdge_bottom {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  transform-origin: 100% 50%;
+}
+
+.introEdge_left {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  transform-origin: 50% 100%;
+}
+
+.introMark {
+  display: flex;
+  align-items: flex-end;
+  font-size: 24cqw;
+  font-weight: 500;
+  font-stretch: 100%;
+  font-variation-settings: "wdth" 100;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+/* each character rises out of its own mask */
+.introMask {
+  display: block;
+  overflow: hidden;
+  padding: 0.06em 0 0.02em;
+}
+
+.introChar {
+  display: block;
+}
+
+/* & BEYOND: small, spaced, lifted onto the mark's baseline */
+.introSub {
+  margin: 0 0 1.25em 0.6em;
+  font-size: 0.14em;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+}
+
+/* ---- the index's foot: quiet links in the corners, the line between them ---- */
+.foot {
+  position: absolute;
+  z-index: 5;
+  left: var(--ui);
+  right: var(--ui);
+  bottom: clamp(18px, 3.4vh, 34px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  color: var(--ink);
+  transition: color 0.45s ease;
+}
+
+/* over a film that fills the screen, or in a room, the foot and the bar turn to paper */
+.page[data-dark] .foot,
+.page[data-dark] .topbar {
+  color: var(--paper);
+}
+
+.footSide {
+  display: flex;
+  gap: clamp(14px, 1.8vw, 26px);
+}
+
+.foot a {
+  color: inherit;
+  text-decoration: none;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+  padding-bottom: 3px;
+  transition: background-size 0.5s var(--ease);
+}
+
+.foot a:hover {
+  background-size: 100% 1px;
+}
+
+.footLine {
+  opacity: 0.5;
+}
+
+/* ---- the top bar ---- */
+.topbar {
+  position: absolute;
+  z-index: 10; /* above the index and the rooms, under the menu (40) and a film (30) */
+  top: 0;
+  left: 0;
+  right: 0;
+  height: clamp(64px, 9vh, 88px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--ui);
+  pointer-events: none;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--ink);
+  transition: color 0.45s ease;
+}
+
+.logo,
+.burger {
+  pointer-events: auto;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* the logo file is white: ink on the paper, itself in the dark */
+.logoImg {
+  display: block;
+  height: clamp(40px, 4vw, 60px);
+  width: auto;
+  filter: invert(1);
+  transition: filter 0.45s ease;
+}
+
+.page[data-dark] .logoImg {
+  filter: none;
+}
+
+/* two thin lines, the lower one shorter; it lengthens on hover */
+.burger {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 7px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.burger span {
+  display: block;
+  width: 28px;
+  height: 1.5px;
+  background: currentColor;
+  transition: width 0.5s var(--ease), transform 0.5s var(--ease);
+}
+
+.burger span + span {
+  width: 17px;
+}
+
+.burger:hover span + span {
+  width: 28px;
+}
+
+.burgerOpen span:first-child {
+  transform: translateY(4.25px) rotate(45deg);
+}
+
+.burgerOpen span + span {
+  width: 28px;
+  transform: translateY(-4.25px) rotate(-45deg);
+}
+
+.burger:disabled {
+  cursor: default;
+}
+
+.burger:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 4px;
+}
+
+/* ---- in a room: small labels at the top, the one you're in on a paper chip ---- */
+.rooms {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 1.6vw, 26px);
+  translate: -50% 0;
+  color: var(--paper);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  pointer-events: auto;
+}
+
+.pills {
+  display: flex;
+  gap: 4px;
+}
+
+.pill {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0.62;
+  transition: color 0.35s var(--ease), opacity 0.35s var(--ease);
+}
+
+.pill:hover {
+  opacity: 1;
+}
+
+.pillOn {
+  color: var(--ink);
+  opacity: 1;
+  cursor: default;
+}
+
+.pillBg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--paper);
+}
+
+.pillBack {
+  opacity: 1;
+  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.28);
+}
+
+.pillBack span {
+  transition: transform 0.5s var(--ease);
+}
+
+.pillBack:hover span {
+  transform: translateX(-4px);
+}
+
+.pillGlyph {
+  height: 10px;
+  width: auto;
+}
+
+.pill:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 3px;
+}
+
+/* the room's foot: what it holds, and how to move it */
+.hud {
+  position: absolute;
+  z-index: 5;
+  left: var(--ui);
+  right: var(--ui);
+  bottom: clamp(18px, 3.4vh, 34px);
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  color: var(--paper);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  pointer-events: none;
+}
+
+.hud i {
+  font-style: normal;
+  opacity: 0.5;
+}
+
+/* ================= The room: posters round a curved wall in the dark (poster-wall.tsx) ================= */
+.wall {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  perspective: max(1000px, 80vw); /* the eye, in front of the wall */
+  perspective-origin: 50% 50%;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.wallDragging {
+  cursor: grabbing;
+}
+
+.wallDragging .poster {
+  pointer-events: none;
+}
+
+.wallPlane {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  pointer-events: none; /* the posters take the pointer; the dark between them is the wall's (for dragging) */
+}
+
+/* each poster starts at the centre of the screen and is placed by the loop */
+.slot {
+  position: absolute;
+  left: calc(50% - var(--tw) / 2);
+  top: calc(50% - var(--th) / 2);
+  width: var(--tw);
+  height: var(--th);
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  will-change: transform;
+  pointer-events: auto;
+}
+
+.slotOn {
+  z-index: 2;
+}
+
+/* a poster: square corners, a film's still, its small print, its title at the centre */
+.poster {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: #141414;
+  color: var(--paper);
+  font: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.poster img,
+.poster video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  transform: scale(var(--z, 1));
+}
+
+
+/* the film wipes up over its still, like a new poster pasted over the old */
+.poster video {
+  clip-path: inset(100% 0 0 0);
+  transition: clip-path 0.8s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+.poster .posterFilmOn {
+  clip-path: inset(0 0 0 0);
+}
+
+/* one poster pointed at: it comes up, the rest go down (a dark veil: cheaper to fade than a filter) */
+.posterDim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0.2;
+  transition: opacity 0.5s var(--ease);
+  pointer-events: none;
+}
+
+.wallPointing .posterDim {
+  opacity: 0.62;
+}
+
+.wallPointing .slotOn .posterDim {
+  opacity: 0;
+}
+
+/* on the sphere, the posters darken toward its rim (set from JS) */
+.posterRim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.posterShade {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgb(0 0 0 / 0.32), transparent 75%),
+    linear-gradient(to bottom, rgb(0 0 0 / 0.42), transparent 24%, transparent 76%, rgb(0 0 0 / 0.42));
+  transition: opacity 0.6s var(--ease);
+}
+
+/* the small print in the corners */
+.posterPrint {
+  position: absolute;
+  left: clamp(8px, 0.8vw, 14px);
+  right: clamp(8px, 0.8vw, 14px);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: clamp(8px, 0.58vw, 10px);
+  letter-spacing: 0.22em;
+  line-height: 1;
+  opacity: 0.72;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.posterPrint i {
+  font-style: normal;
+}
+
+.posterPrintTop {
+  top: clamp(8px, 0.8vw, 14px);
+}
+
+.posterPrintFoot {
+  bottom: clamp(8px, 0.8vw, 14px);
+}
+
+/* the title, at the centre; it steps down under the button when the poster is pointed at */
+.posterTitle {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 50%;
+  translate: 0 -50%;
+  text-align: center;
+  font-size: clamp(11px, 0.92vw, 16px);
+  letter-spacing: 0.2em;
+  line-height: 1.35;
+  text-shadow: 0 1px 16px rgb(0 0 0 / 0.5);
+  pointer-events: none;
+  transition: transform 0.6s var(--ease), opacity 0.5s var(--ease);
+}
+
+.slotOn .posterTitle {
+  transform: translateY(calc(var(--go) / 2 + 1.6em));
+}
+
+.wallPointing .slot:not(.slotOn) .posterTitle,
+.wallPointing .slot:not(.slotOn) .posterPrint {
+  opacity: 0.35;
+}
+
+/* the button: a white disc with an arrow, at the centre */
+.poster {
+  --go: clamp(48px, 4.4vw, 70px);
+}
+
+.posterGo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--go);
+  height: var(--go);
+  margin: calc(var(--go) / -2) 0 0 calc(var(--go) / -2);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  transform: scale(0);
+  transition: transform 0.5s cubic-bezier(0.34, 1.5, 0.64, 1);
+  pointer-events: none;
+}
+
+.posterGo svg {
+  width: 44%;
+  opacity: 0;
+  transform: translateX(-35%);
+  transition: transform 0.55s var(--ease) 0.08s, opacity 0.3s ease 0.08s;
+}
+
+.slotOn .posterGo {
+  transform: scale(1);
+}
+
+.slotOn .posterGo svg {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- the zoom, at the foot: - a hairline track with a knob + and the level ---- */
+.zoom {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: clamp(12px, 2.6vh, 28px);
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--paper);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+}
+
+.zoomBtn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.3s var(--ease);
+}
+
+.zoomBtn svg {
+  width: 11px;
+  height: 11px;
+}
+
+.zoomBtn:hover,
+.zoomRead:hover {
+  opacity: 1;
+}
+
+.zoomTrack {
+  position: relative;
+  width: clamp(90px, 9vw, 140px);
+  height: 22px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.zoomTrack::before,
+.zoomFill {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgb(246 244 240 / 0.25);
+}
+
+.zoomFill {
+  background: var(--paper);
+  transform-origin: 0 50%;
+  transform: scaleX(0.5);
+}
+
+.zoomKnob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: var(--paper);
+  transition: transform 0.3s var(--ease);
+}
+
+.zoomTrack:hover .zoomKnob {
+  transform: scale(1.35);
+}
+
+.zoomRead {
+  min-width: 4.2em;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.zoomBtn:focus-visible,
+.zoomRead:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 2px;
+}
+
+/* the crosshair: two hairlines across the dark and a ring where they meet */
+.hair {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  top: 0;
+  background: rgb(246 244 240 / 0.1);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+.hairX {
+  right: 0;
+  height: 1px;
+}
+
+.hairY {
+  bottom: 0;
+  width: 1px;
+}
+
+.ring {
+  position: absolute;
+  z-index: 3;
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgb(246 244 240 / 0.7);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.hudOn .hair,
+.hudOn .ring {
+  opacity: 1;
+}
+
+/* over a poster the button takes the ring's place */
+.wallPointing .ring {
+  opacity: 0;
+}
+
+/* the dark closes in at the edges, and under the bar */
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgb(7 7 7 / 0.88) 0, transparent 15%),
+    linear-gradient(to top, rgb(7 7 7 / 0.7) 0, transparent 13%),
+    radial-gradient(ellipse 90% 85% at 50% 50%, transparent 58%, rgb(7 7 7 / 0.8) 100%);
+}
+
+/* a fine, still grain over the whole room */
+.grain {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---- the menu: the hero 11 drawer, full screen over everything ---- */
+.menuSheet {
+  position: fixed;
+  inset: 0;
+  z-index: 40; /* above the top bar (10) and the player (30) */
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+/* ================= phones ================= */
+@media (max-width: 760px) {
+  .intro {
+    width: 74vw;
+  }
+  .film_16by9 .filmBox {
+    width: 90vw;
+  }
+  .names {
+    font-size: 7.6vw;
+    gap: 0.4em;
+  }
+  .cap {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+  }
+  .footLine {
+    display: none;
+  }
+  .foot {
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+  }
+  .footSide {
+    gap: 12px;
+  }
+  /* phones keep the essentials: the studio's links left, Instagram right */
+  .footSide:last-child a:not([href="#instagram"]) {
+    display: none;
+  }
+  .rooms {
+    top: 100%;
+    height: 40px;
+    gap: 8px;
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+  }
+  .pill {
+    padding: 0 9px;
+    gap: 7px;
+  }
+  .pillGlyph {
+    display: none;
+  }
+  .hud span:last-child {
+    display: none;
+  }
+  .zoom {
+    bottom: 46px;
+  }
+  .vignette {
+    background:
+      linear-gradient(to bottom, rgb(7 7 7 / 0.92) 0, rgb(7 7 7 / 0.7) 15%, transparent 26%),
+      linear-gradient(to top, rgb(7 7 7 / 0.7) 0, transparent 13%),
+      radial-gradient(ellipse 95% 90% at 50% 50%, transparent 60%, rgb(7 7 7 / 0.85) 100%);
+  }
+  .posterPrint {
+    font-size: 7.5px;
+  }
+}
+
+/* on the sphere the others only step back a little, so the bulge round the pointer still reads */
+.wallSphere.wallPointing .posterDim {
+  opacity: 0.32;
+}
+
+.wallSphere.wallPointing .slotOn .posterDim {
+  opacity: 0;
+}
+
+/* the quiet name: hidden on hero 2's posters, the only print in the mono rooms */
+.posterName {
+  display: none;
+}
+
+/* ================= Mono (hero 3's rooms): quiet names at the centre, a hairline when pointed at ================= */
+.wallMono .posterPrint,
+.wallMono .posterTitle,
+.wallMono .posterGo,
+.wallMono .posterShade {
+  display: none;
+}
+
+/* the pictures stay in colour (hero 3); the room keeps its quiet names and hairline */
+
+.wallMono .posterDim {
+  opacity: 0.12;
+}
+
+.wallMono.wallPointing .posterDim {
+  opacity: 0.55;
+}
+
+.wallMono.wallPointing .slotOn .posterDim {
+  opacity: 0;
+}
+
+/* the hairline round the poster pointed at */
+.wallMono .poster::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0);
+  transition: box-shadow 0.5s var(--ease);
+  pointer-events: none;
+}
+
+.wallMono .slotOn .poster::after {
+  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.95);
+}
+
+.wallMono .posterName {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8%;
+  color: var(--paper);
+  text-align: center;
+  text-shadow: 0 1px 16px rgb(0 0 0 / 0.55);
+  pointer-events: none;
+  transition: opacity 0.5s var(--ease);
+}
+
+.wallMono .posterName b {
+  font-weight: 400;
+  font-size: clamp(10px, 0.9vw, 15px);
+  letter-spacing: 0.24em;
+  line-height: 1.35;
+}
+
+.wallMono .posterName i {
+  font-style: normal;
+  font-size: clamp(8px, 0.58vw, 10px);
+  letter-spacing: 0.26em;
+  opacity: 0.6;
+}
+
+.posterRule {
+  display: block;
+  width: 26px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.6;
+  transform: scaleX(0.45);
+  transition: transform 0.6s var(--ease), opacity 0.6s var(--ease);
+}
+
+.wallMono .slotOn .posterRule {
+  opacity: 1;
+  transform: scaleX(1.5);
+}
+
+.wallMono.wallPointing .slot:not(.slotOn) .posterName {
+  opacity: 0.35;
+}

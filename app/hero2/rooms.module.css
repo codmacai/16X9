@@ -1,0 +1,71 @@
+/* HERO 14 — what it adds to hero 2's page: the room switch at the top in the middle, and View all work */
+
+.switch {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  translate: -50% 0;
+  pointer-events: auto;
+}
+
+.viewAll {
+  position: absolute;
+  z-index: 11;
+  right: var(--ui);
+  bottom: clamp(18px, 3.4vh, 34px);
+}
+
+.viewAll a {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  height: 38px;
+  padding: 0 6px 0 18px;
+  color: #f6f4f0;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-decoration: none;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.3);
+  background: rgb(5 5 5 / 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: box-shadow 0.4s ease, background-color 0.4s ease;
+}
+
+.viewAll a i {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font-style: normal;
+  background: #f6f4f0;
+  color: #0c0c0c;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.viewAll a:hover {
+  box-shadow: inset 0 0 0 1px #f6f4f0;
+  background: rgb(5 5 5 / 0.7);
+}
+
+.viewAll a:hover i {
+  transform: translateX(3px);
+}
+
+.viewAllX {
+  margin: 0 0.2em;
+  font-weight: 300;
+  text-transform: none;
+}
+
+@media (max-width: 760px) {
+  .viewAll {
+    right: 50%;
+    translate: 50% 0;
+    bottom: 92px;
+  }
+}
