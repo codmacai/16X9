@@ -30,6 +30,7 @@ import ProjectView, { type OpenProject } from "../hero7/project-view";
 import { liveBudget, posterFor, WallPlayback } from "../hero7/wall-playback";
 import Drawer from "../hero11/drawer";
 import PosterWall from "../hero2/poster-wall";
+import LensRoom from "./lens-room";
 import FormatHero, { FORMATS, FrameGlyph, Ratio, type FormatKey, type Rect } from "./format-hero";
 import styles from "./depthhero.module.css";
 
@@ -756,9 +757,12 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const [fmtHover, setFmtHover] = useState<FormatKey | null>(null);
   const [fmtAuto, setFmtAuto] = useState<FormatKey | null>(null);
   const wallFormat = fmtHover ?? fmtAuto;
-  // Beyond is a sphere of films: pointing at the word brings it up in place of the wall; clicking opens it
-  const [sphereOpen, setSphereOpen] = useState(false);
-  const sphereUp = sphereOpen || wallFormat === "beyond";
+  // Clicking a word opens its room: 16x9 and 9x16 open the lens wall (hero 13's bulging wall of films in
+  // black and white, here with the moving wall's running columns), Beyond the sphere of films. Pointing at
+  // Beyond already brings the sphere up behind the words.
+  const [room, setRoom] = useState<FormatKey | null>(null);
+  const sphereOpen = room === "beyond";
+  const sphereUp = sphereOpen || (room === null && wallFormat === "beyond");
   const [hero, setHero] = useState<{ key: FormatKey; from: Rect } | null>(null);
   const [lifted, setLifted] = useState<FormatKey | null>(null);
   const [heroCovered, setHeroCovered] = useState(false);
@@ -813,13 +817,13 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
-  // Esc closes the sphere (the menu, when it's over it, closes first)
+  // Esc closes the room (the menu, when it's over it, closes first)
   useEffect(() => {
-    if (!sphereOpen || menuOpen || project) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSphereOpen(false);
+    if (!room || menuOpen || project) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setRoom(null);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [sphereOpen, menuOpen, project]);
+  }, [room, menuOpen, project]);
   const labelRef = useRef<CursorLabelHandle>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
   const trackRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -905,9 +909,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   // Videos wait for the entrance to finish (decoding them mid-entrance is what
   // stutters), and stop under an open film or the menu.
   useEffect(() => {
-    pausedRef.current = !ready || project !== null || hero !== null || wallHidden || sphereOpen;
+    pausedRef.current = !ready || project !== null || hero !== null || wallHidden || room !== null;
     playback.setPaused(pausedRef.current || document.hidden);
-  }, [ready, project, hero, wallHidden, playback, sphereOpen]);
+  }, [ready, project, hero, wallHidden, playback, room]);
 
   const lanes = useMemo(
     () =>
@@ -1087,27 +1091,13 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     if (heroRef.current) return;
     setFmtHover(k);
   }, []);
-  // Clicking a word opens its hero: the word lifts out of its column and flies into it.
-  const openHero = useCallback((key: FormatKey) => {
-    if (!readyRef.current || heroRef.current || heroClosingRef.current || menuRef.current) return;
-    const el = wordRefs.current[key];
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    heroRef.current = true;
+  // A word opens its room where it stands: a wall of films (or Beyond's sphere), never a single film
+  const openFormat = useCallback((key: FormatKey) => {
+    if (!readyRef.current || heroRef.current || menuRef.current) return;
     clearHoverRef.current();
-    setLifted(key);
-    setHero({ key, from: { left: r.left, top: r.top, width: r.width, height: r.height } });
+    setFmtHover(null);
+    setRoom(key);
   }, []);
-  // Beyond opens its sphere where it stands; the other two open their heroes
-  const openFormat = useCallback(
-    (key: FormatKey) => {
-      if (key !== "beyond") return openHero(key);
-      if (!readyRef.current || heroRef.current || menuRef.current) return;
-      clearHoverRef.current();
-      setSphereOpen(true);
-    },
-    [openHero]
-  );
   const openFromSphere = useCallback((index: number, rect: { top: number; left: number; width: number; height: number }) => {
     setProject({ index, rect, time: 0 });
   }, []);
@@ -1433,7 +1423,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
       <motion.div
         ref={sceneRef}
-        className={`${styles.scene} ${wallHidden ? styles.sceneHidden : ""} ${sphereUp ? styles.sceneAway : ""}`}
+        className={`${styles.scene} ${wallHidden ? styles.sceneHidden : ""} ${sphereUp || room ? styles.sceneAway : ""}`}
         style={menuOpen || !ready ? { pointerEvents: "none", touchAction: "none" } : undefined}
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
@@ -1506,22 +1496,66 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
               preview={!sphereOpen}
               onOpen={openFromSphere}
             />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ================= 16x9 and 9x16: the lens wall, its columns running ================= */}
+      <AnimatePresence>
+        {room && room !== "beyond" && (
+          <motion.div
+            key="lens"
+            className={styles.room}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.6, ease: EASE } }}
+            exit={{ opacity: 0, transition: { duration: 0.5, ease: EASE } }}
+          >
             <AnimatePresence>
-              {sphereOpen && (
-                <motion.button
-                  key="back"
-                  type="button"
-                  className={styles.sphereBack}
-                  onClick={() => setSphereOpen(false)}
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0, transition: { delay: 0.3, duration: 0.6, ease: EASE } }}
-                  exit={{ opacity: 0, transition: { duration: 0.2 } }}
-                >
-                  <span aria-hidden="true">←</span> Index
-                </motion.button>
-              )}
+              <LensRoom
+                key={room}
+                fmt={room}
+                clips={clips}
+                paused={project !== null || menuOpen}
+                reduce={reduce}
+                onOpen={openFromSphere}
+              />
             </AnimatePresence>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ================= A room's bar: back to the index, and the three rooms ================= */}
+      <AnimatePresence>
+        {room && !menuOpen && (
+          <motion.nav
+            key="rooms"
+            className={styles.rooms}
+            aria-label="Formats"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0, transition: { delay: 0.3, duration: 0.6, ease: EASE } }}
+            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+          >
+            <button type="button" className={styles.roomBack} onClick={() => setRoom(null)}>
+              <span aria-hidden="true">←</span> Index
+            </button>
+            <span className={styles.roomTabs}>
+              {FORMATS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  className={`${styles.roomTab} ${room === f.key ? styles.roomTabOn : ""}`}
+                  aria-pressed={room === f.key}
+                  onClick={() => setRoom(f.key)}
+                >
+                  <FrameGlyph k={f.key} className={styles.roomGlyph} />
+                  <Ratio text={f.label} className={styles.roomX} />
+                  {room === f.key && (
+                    <motion.span layoutId="hero3-room-line" className={styles.roomLine} transition={{ type: "spring", stiffness: 380, damping: 32 }} />
+                  )}
+                </button>
+              ))}
+            </span>
+          </motion.nav>
         )}
       </AnimatePresence>
 
@@ -1531,7 +1565,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           {mark} {MARK_SUB}. {HEADLINE.join(" ")}.
         </h1>
         <Formats
-          show={gone && !menuOpen && !sphereOpen}
+          show={gone && !menuOpen && !room}
           first={menuKey === 0}
           reduce={reduce}
           ready={ready}
@@ -1585,7 +1619,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       {/* ================= Logo strip ================= */}
       <motion.div
         className={styles.clients}
-        style={{ opacity: sphereOpen ? 0 : undefined, transition: "opacity 0.5s" }}
+        style={{ opacity: room ? 0 : undefined, transition: "opacity 0.5s" }}
         aria-label="Clients"
         {...enter(T.clients, { opacity: 0 }, { opacity: 1 }, 1.4)}
       >
