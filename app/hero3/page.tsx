@@ -759,12 +759,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const [fmtHover, setFmtHover] = useState<FormatKey | null>(null);
   const [fmtAuto, setFmtAuto] = useState<FormatKey | null>(null);
   const wallFormat = fmtHover ?? fmtAuto;
-  // Clicking a word opens its room: 16x9 and 9x16 open the lens wall (hero 13's bulging wall of films in
-  // black and white, here with the moving wall's running columns), Beyond the sphere of films. Pointing at
-  // Beyond already brings the sphere up behind the words.
+  // Clicking a word opens its room: 16x9 and 9x16 open hero 2's curved wall of posters (in black and
+  // white here), Beyond the lens wall (hero 13's bulging wall, with the moving wall's running columns).
   const [room, setRoom] = useState<FormatKey | null>(null);
-  const sphereOpen = room === "beyond";
-  const sphereUp = sphereOpen;
   const [hero, setHero] = useState<{ key: FormatKey; from: Rect } | null>(null);
   const [lifted, setLifted] = useState<FormatKey | null>(null);
   const [heroCovered, setHeroCovered] = useState(false);
@@ -1352,7 +1349,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
       <motion.div
         ref={sceneRef}
-        className={`${styles.scene} ${wallHidden ? styles.sceneHidden : ""} ${sphereUp || room ? styles.sceneAway : ""}`}
+        className={`${styles.scene} ${wallHidden ? styles.sceneHidden : ""} ${room ? styles.sceneAway : ""}`}
         style={menuOpen || !ready ? { pointerEvents: "none", touchAction: "none" } : undefined}
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
@@ -1406,32 +1403,35 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         <canvas ref={lampRef} className={styles.lampLight} />
       </motion.div>
 
-      {/* ================= Beyond: the sphere of films, in place of the wall ================= */}
+      {/* ================= 16x9 and 9x16: hero 2's curved wall of posters, in black and white ================= */}
       <AnimatePresence>
-        {sphereUp && (
+        {(room === "16x9" || room === "9x16") && (
           <motion.div
-            key="sphere"
-            className={`${styles.sphere} ${sphereOpen ? styles.sphereOpen : ""}`}
+            key="posters"
+            className={`${styles.sphere} ${styles.sphereOpen}`}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { duration: 0.7, ease: EASE } }}
+            animate={{ opacity: 1, transition: { duration: 0.6, ease: EASE } }}
             exit={{ opacity: 0, transition: { duration: 0.5, ease: EASE } }}
           >
-            <PosterWall
-              fmt="beyond"
-              clips={clips}
-              paused={project !== null || menuOpen}
-              reduce={reduce}
-              delay={0}
-              tone="mono"
-              onOpen={openFromSphere}
-            />
+            <AnimatePresence>
+              <PosterWall
+                key={room}
+                fmt={room}
+                clips={clips}
+                paused={project !== null || menuOpen}
+                reduce={reduce}
+                delay={0.15}
+                tone="mono"
+                onOpen={openFromSphere}
+              />
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ================= 16x9 and 9x16: the lens wall, its columns running ================= */}
+      {/* ================= Beyond: the lens wall in scope, its columns running ================= */}
       <AnimatePresence>
-        {room && room !== "beyond" && (
+        {room === "beyond" && (
           <motion.div
             key="lens"
             className={styles.room}
@@ -1439,16 +1439,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
             animate={{ opacity: 1, transition: { duration: 0.6, ease: EASE } }}
             exit={{ opacity: 0, transition: { duration: 0.5, ease: EASE } }}
           >
-            <AnimatePresence>
-              <LensRoom
-                key={room}
-                fmt={room}
-                clips={clips}
-                paused={project !== null || menuOpen}
-                reduce={reduce}
-                onOpen={openFromSphere}
-              />
-            </AnimatePresence>
+            <LensRoom fmt="beyond" clips={clips} paused={project !== null || menuOpen} reduce={reduce} onOpen={openFromSphere} />
           </motion.div>
         )}
       </AnimatePresence>
