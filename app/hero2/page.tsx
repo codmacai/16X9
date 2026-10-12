@@ -7,22 +7,29 @@ import Link from "next/link";
 import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
 import ProjectView, { type OpenProject, type TileRect } from "../hero7/project-view";
 import Drawer from "../hero11/drawer";
-import { FORMATS, FrameGlyph, Ratio, type FormatKey } from "../hero13/formats";
+import { FORMATS, Ratio, type FormatKey } from "../hero13/formats";
 import Chooser, { EASE, EASE_CINE, INTRO } from "./chooser";
 import PosterWall from "./poster-wall";
+import LensRoom from "../hero3/lens-room";
+import RoomSwitch from "../hero3/room-switch";
 import styles from "./hero2.module.css";
+import own from "./rooms.module.css";
 
 // ===========================================================================
-// HERO 2 — 16x9 & BEYOND.
+// HERO 2 — 16x9 & BEYOND: the white start, hero 3's rooms (the same page as hero 14).
 //
 // 1. The mark enters in outline on the white page, and the index rises:
-//    16x9 / 9x16 / BEYOND, one quiet line (chooser.tsx). Pointing at a word
-//    opens it like a window onto a film in its format.
+//    16x9 / 9x16 / BEYOND, one quiet line (hero2/chooser.tsx). Pointing at a
+//    word opens it like a window onto a film in its format.
 // 2. Clicking a word opens its film to the edges of the screen, and the page
-//    gives way to that format's room (poster-wall.tsx): its films hung like
-//    posters round a curved wall in the dark, all in the word's proportion.
-//    The labels at the top move between rooms; "Index" or Esc goes back.
-// 3. Clicking a poster opens the film full screen (hero7/project-view.tsx).
+//    gives way to that format's room, as in hero 3: 16x9 and 9x16 hang their
+//    films round a curved wall (hero2/poster-wall.tsx, in hero 3's quiet
+//    tone), Beyond is the bulging lens wall with its columns running
+//    (hero3/lens-room.tsx).
+// 3. At the top in the middle, the room switch moves between the rooms or
+//    back to the index; "View all … work" at the foot leads to that format's
+//    work, and so does the menu's Work. Esc goes back too.
+// 4. Clicking a film opens it full screen (hero7/project-view.tsx).
 // ===========================================================================
 
 const archivo = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wide", display: "swap" });
@@ -138,9 +145,9 @@ function Home({ variant }: { variant: HeroVariant }) {
     >
       <h1 className={styles.sr}>16x9 &amp; Beyond. {HEADLINE}.</h1>
 
-      {/* ================= the room, under the index ================= */}
+      {/* ================= the room, under the index: hero 3's rooms ================= */}
       <AnimatePresence>
-        {room && (
+        {(room === "16x9" || room === "9x16") && (
           <PosterWall
             key={room}
             fmt={room}
@@ -148,8 +155,12 @@ function Home({ variant }: { variant: HeroVariant }) {
             paused={project !== null || menuOpen}
             reduce={reduce}
             delay={roomDelay}
+            tone="mono"
             onOpen={openFilm}
           />
+        )}
+        {room === "beyond" && (
+          <LensRoom key="beyond" fmt="beyond" clips={clips} paused={project !== null || menuOpen} reduce={reduce} onOpen={openFilm} />
         )}
       </AnimatePresence>
 
@@ -182,39 +193,14 @@ function Home({ variant }: { variant: HeroVariant }) {
           <img src={LOGO_SRC} alt="16x9" className={styles.logoImg} />
         </Link>
 
-        <AnimatePresence>
-          {room && !menuOpen && (
-            <motion.nav
-              key="rooms"
-              className={styles.rooms}
-              aria-label="Formats"
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0, transition: { delay: roomDelay + 0.2, duration: 0.7, ease: EASE } }}
-              exit={{ opacity: 0, transition: { duration: 0.25 } }}
-            >
-              <button type="button" className={`${styles.pill} ${styles.pillBack}`} onClick={toIndex}>
-                <span aria-hidden="true">←</span> Index
-              </button>
-              <span className={styles.pills}>
-                {FORMATS.map((f) => (
-                  <button
-                    key={f.key}
-                    type="button"
-                    className={`${styles.pill} ${room === f.key ? styles.pillOn : ""}`}
-                    aria-pressed={room === f.key}
-                    onClick={() => room !== f.key && switchRoom(f.key)}
-                  >
-                    {room === f.key && (
-                      <motion.span layoutId="hero2-pill" className={styles.pillBg} transition={{ type: "spring", stiffness: 420, damping: 36 }} />
-                    )}
-                    <FrameGlyph k={f.key} className={styles.pillGlyph} />
-                    <Ratio text={f.label} className={styles.fmtX} />
-                  </button>
-                ))}
-              </span>
-            </motion.nav>
-          )}
-        </AnimatePresence>
+        {/* in a room, at the top in the middle: which one, and a small sheet to switch (or go back to the index) */}
+        <div className={own.switch}>
+          <AnimatePresence>
+            {room && !menuOpen && (
+              <RoomSwitch key="switch" room={room} onSwitch={(k) => room !== k && switchRoom(k)} onIndex={toIndex} />
+            )}
+          </AnimatePresence>
+        </div>
 
         <button
           type="button"
@@ -270,9 +256,26 @@ function Home({ variant }: { variant: HeroVariant }) {
             <span>
               <i>{roomF.no}</i> {roomF.line} <i>— {clips.length} films</i>
             </span>
-            <span>
-              Drag to explore <i>·</i> Click to play
-            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ================= in a room: the way to all of its work, at the foot on the right ================= */}
+      <AnimatePresence>
+        {roomF && !menuOpen && (
+          <motion.div
+            key={`all-${roomF.key}`}
+            className={own.viewAll}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0, transition: { delay: roomDelay + 0.5, duration: 0.7, ease: EASE } }}
+            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+          >
+            <Link href={`/work?format=${roomF.key}`}>
+              <span>
+                View all <Ratio text={roomF.label} className={own.viewAllX} /> work
+              </span>
+              <i aria-hidden="true">→</i>
+            </Link>
           </motion.div>
         )}
       </AnimatePresence>
@@ -291,7 +294,7 @@ function Home({ variant }: { variant: HeroVariant }) {
             animate={reduce ? { opacity: 1 } : { clipPath: "inset(0% 0% 0% 0%)", transition: { duration: 0.9, ease: EASE_CINE } }}
             exit={reduce ? { opacity: 0 } : { clipPath: "inset(0% 0% 100% 0%)", transition: { duration: 0.75, ease: EASE_CINE } }}
           >
-            <Drawer onClose={closeMenu} />
+            <Drawer onClose={closeMenu} workHref={room ? `/work?format=${room}` : "/work"} />
           </motion.div>
         )}
       </AnimatePresence>
