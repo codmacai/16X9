@@ -12,20 +12,40 @@ import s from "./story.module.css";
 // by like lines on a prompter — the one at the middle of the screen in full
 // ink, the others faded back. Everything follows the scroll through the same
 // heavy, over-damped spring as the rest of the page, so it glides, never
-// jumps and never wobbles. A film without its case written yet shows its
-// synopsis, the same way.
+// jumps and never wobbles. Every film has all three: a film whose case isn't
+// written yet has one drafted from what we know of it (caseOf).
 // ===========================================================================
 
 const SMOOTH = { stiffness: 90, damping: 30, mass: 1, restDelta: 0.0001 };
 
+/**
+ * The three parts of a film's case. Written ones (film.story) are used as they
+ * are; until a film's is written, each part is drafted from its details: the
+ * client, the line under its title, and its synopsis. Replace the drafts by
+ * giving the film a story in data.ts.
+ */
+export function caseOf(film: Project) {
+  if (film.story)
+    return [
+      { name: "Client", text: film.story.client },
+      { name: "Task", text: film.story.challenge },
+      { name: "Solution", text: film.story.idea },
+    ];
+  const line = film.line.replace(/\.?$/, ".");
+  const synopsis = film.synopsis.trim();
+  return [
+    { name: "Client", text: film.client ? `${film.client}.` : `${film.title}.` },
+    { name: "Task", text: line },
+    {
+      name: "Solution",
+      // some films' synopsis is still just their line: don't say it twice
+      text: synopsis && synopsis !== line ? synopsis : `${film.title}, directed and produced by 16×9 & Beyond.`,
+    },
+  ];
+}
+
 export default function Story({ film, root, reduce }: { film: Project; root: RefObject<HTMLElement | null>; reduce: boolean }) {
-  const parts = film.story
-    ? [
-        { name: "Client", text: film.story.client },
-        { name: "Task", text: film.story.challenge },
-        { name: "Solution", text: film.story.idea },
-      ]
-    : [{ name: "The film", text: film.synopsis }];
+  const parts = caseOf(film);
   const n = parts.length;
   const ref = useRef<HTMLElement>(null);
 
