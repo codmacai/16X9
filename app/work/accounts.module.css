@@ -1,0 +1,185 @@
+/* WORK, 9x16 (accounts.tsx): the accounts as tall frames on the paper */
+
+.page {
+  height: auto;
+  min-height: 100svh;
+  overflow: visible;
+}
+
+.sheet {
+  height: auto;
+  min-height: 100svh;
+  padding-bottom: clamp(28px, 6vh, 60px);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(12px, 1.6vw, 26px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  justify-items: center;
+}
+
+/* a 9:16 frame in the dark, like the screen the account lives on */
+.card {
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: min(56svh, 38vw);
+  width: auto;
+  aspect-ratio: 9 / 16;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0 auto;
+  padding: clamp(14px, 1.3vw, 22px);
+  overflow: hidden;
+  background: #0b0b0b;
+  color: #f6f4f0 !important; /* paper on the dark frame, whatever the sheet's ink */
+  text-decoration: none;
+  transition: transform 0.7s var(--ease), box-shadow 0.6s var(--ease);
+}
+
+/* a soft light from above, so each frame reads as a screen */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 55% at 50% 0%, rgb(246 244 240 / 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.card:hover,
+.card:focus-visible {
+  transform: translateY(-10px);
+  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.9), 0 30px 60px -30px rgb(0 0 0 / 0.6);
+  outline: none;
+}
+
+.top,
+.foot,
+.name,
+.go {
+  color: #f6f4f0;
+}
+
+.top,
+.foot {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: clamp(8.5px, 0.62vw, 10px);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.top i {
+  font-style: normal;
+  opacity: 0.55;
+}
+
+.foot {
+  opacity: 0.7;
+}
+
+.foot b {
+  font-weight: 500;
+  letter-spacing: 0.1em;
+}
+
+/* the account at the centre: its name, a hairline, its handle */
+.name {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.name b {
+  font-size: clamp(16px, 1.6vw, 26px);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.name i {
+  font-style: normal;
+  font-size: clamp(9px, 0.7vw, 11px);
+  letter-spacing: 0.16em;
+  opacity: 0.6;
+}
+
+.rule {
+  display: block;
+  width: 26px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.6;
+  transform: scaleX(0.5);
+  transition: transform 0.6s var(--ease), opacity 0.6s var(--ease);
+}
+
+.card:hover .rule {
+  opacity: 1;
+  transform: scaleX(1.6);
+}
+
+/* the way out, coming forward over the foot */
+.go {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(44px, 4.6vw, 70px);
+  translate: -50% 0;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.5s var(--ease), transform 0.6s var(--ease);
+}
+
+.go span {
+  display: inline-block;
+  margin-left: 6px;
+  transition: transform 0.5s var(--ease);
+}
+
+.card:hover .go {
+  opacity: 1;
+  transform: none;
+}
+
+.card:hover .go span {
+  transform: translate(2px, -2px);
+}
+
+@media (max-width: 760px) {
+  .row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .row li {
+    min-width: 0;
+    width: 100%;
+  }
+  .card {
+    width: 100%;
+    height: auto;
+    padding: 12px;
+  }
+  .name b {
+    font-size: 15px;
+  }
+  .top,
+  .foot {
+    font-size: 7.5px;
+    letter-spacing: 0.14em;
+  }
+}

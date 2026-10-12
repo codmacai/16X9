@@ -150,3 +150,19 @@ export const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/still
 const POSTERS = [1, 2, 3, 4].map((n) => `/work/posters/poster-${n}.webp`);
 /** A film's poster (cards, the cover, the screen, the folders). */
 export const posterFor = (p: Project) => POSTERS[PROJECTS.indexOf(p) % POSTERS.length] ?? stillFor(p.src);
+
+// ---------------------------------------------------------------------------
+// 9x16 — the Instagram accounts the studio runs. The 9x16 work page shows
+// these in place of the films. Followers and posts as of October 2026;
+// update them here as they grow.
+// ---------------------------------------------------------------------------
+export type Account = { name: string; handle: string; followers: string; posts: number };
+
+export const ACCOUNTS: Account[] = [
+  { name: "DED Cafe", handle: "ded_cafe", followers: "23K", posts: 670 },
+  { name: "Amer Lounge", handle: "amerlounge", followers: "10K", posts: 148 },
+  { name: "Business Lounge", handle: "businesslounge.ae", followers: "8,508", posts: 309 },
+  { name: "Business Avenue", handle: "businessavenue.ae", followers: "7,309", posts: 99 },
+];
+
+export const instagramOf = (a: Account) => `https://www.instagram.com/${a.handle}/`;

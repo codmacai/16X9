@@ -5,6 +5,7 @@ import { motion, useReducedMotion, type Transition } from "framer-motion";
 import { Band, EASE, EASE_CINE, EnterCursor, Info, rootClass, Still, usePlayer } from "./_shared/chrome";
 import { CATEGORIES, PROJECTS, posterFor } from "./_shared/data";
 import FileView, { type Drawer } from "./file-view";
+import Accounts from "./accounts";
 import styles from "./cabinet.module.css";
 
 // ===========================================================================
@@ -160,6 +161,9 @@ export default function WorkCabinet() {
     return PULL;
   };
   const lifted = open ? open.cat : pull;
+
+  // 9x16's work is the Instagram accounts the studio runs
+  if (fmt === "9x16") return <Accounts />;
 
   return (
     <main className={`${rootClass} ${styles.page}`}>
