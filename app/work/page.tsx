@@ -191,8 +191,8 @@ export default function WorkCabinet() {
             animate={{ opacity: 1, y: 0, transition: reduce ? { duration: 0 } : { delay: 1.1, duration: 1.1, ease: EASE } }}
           >
             {named
-              ? `${named.line} Commercials, brand films, fashion, social and documentary in this frame.`
-              : "Commercials, brand films, fashion, social and documentary for brands that want to be seen."}
+              ? `${named.line} Brand films, documentaries, music videos and TVCs in this frame.`
+              : "Brand films, documentaries, music videos and TVCs for brands that want to be seen."}
           </motion.p>
         </div>
 
