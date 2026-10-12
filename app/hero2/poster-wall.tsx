@@ -15,10 +15,11 @@ import styles from "./hero2.module.css";
 // at the centre face you square, those toward the edges turn in and come
 // nearer. Each one hangs a little crooked, as if pinned up by hand.
 //
-// Drag or scroll and the wall slides past in any direction (it never ends);
-// let go and it glides on, then settles into a slow roll upward. The faster
-// it moves, the deeper it curves and the more the posters lean into the
-// move. Opening the room, the posters swing up onto the wall from the centre
+// Drag or scroll and the wall slides past in any direction (it never ends).
+// Held, it pushes in toward you: the posters grow, the wall curves deeper
+// and they hang more crooked; let go and it glides on, eases back out, then
+// settles into a slow roll upward. The faster it moves, the more the
+// posters lean into the move. Opening the room, the posters swing up onto the wall from the centre
 // outward. Pointing at one straightens it, brings it toward you, wipes its
 // still into the film playing and puts a white button with an arrow at its
 // centre while the rest go down; clicking opens the film. A fine crosshair
@@ -44,6 +45,10 @@ const DRIFT = -14; // px per second the wall rolls upward when nothing moves it
 const GLIDE = 3; // how quickly a throw settles (per second)
 const TOP_SPEED = 2600; // px per second counted as full speed
 const LIFT = 56; // px the poster under the pointer comes toward you
+// While the wall is held (dragged, or still running fast) it pushes in toward you: the posters grow by
+// `zoom`, the wall curves `curve` degrees deeper and the posters hang `crooked` times more off true.
+// It pushes in at rate `in` and eases back out, once let go, at rate `out` (per second).
+const PUSH = { zoom: 1.42, curve: 9, crooked: 1.8, in: 5, out: 2.4 };
 const SWING = { s: 0.95, spread: 0.55, from: 78, back: 420 }; // the entrance: duration, stagger by distance, degrees, px
 const FADE = [0.45, 0, 0.55, 1] as const; // a room leaving fades evenly, so the next one swings up through it
 
@@ -232,7 +237,13 @@ export default function PosterWall({
     const shown = new Map<string, boolean>();
     let drift = 0;
     let speed = 0;
+    let push = 0; // 0 at rest, 1 held: how far the wall has pushed in
     let dragging = false;
+    // the eye's distance from the wall (the CSS perspective), and how near the wall comes when held
+    const eye = parseFloat(getComputedStyle(root).perspective) || 1000;
+    const near = eye * (1 - 1 / PUSH.zoom);
+    // how much bigger the wall looks right now: a drag moves it under the pointer at that scale
+    const scale = () => 1 / (1 - (push * near) / eye);
     let settled = reduce;
     const born = performance.now();
     let last = born;
@@ -242,7 +253,9 @@ export default function PosterWall({
 
     const place = (now: number) => {
       const age = (now - born) / 1000 - delay;
-      const curve = CURVE + CURVE_FAST * speed;
+      const curve = CURVE + CURVE_FAST * speed + PUSH.curve * push;
+      const crooked = 1 + PUSH.crooked * push;
+      const dolly = push * near;
       let entering = false;
       for (const s of slots) {
         const el = slotRefs.current.get(s.id);
@@ -259,7 +272,7 @@ export default function PosterWall({
         const nx = u / (vw / 2);
         const ny = v / (vh / 2);
         const l = lift.get(s.id) ?? 0;
-        const hang = 1 - l;
+        const hang = (1 - l) * crooked;
         // the entrance: each poster swings up onto the wall, the centre first
         let p = 1;
         if (!settled) {
@@ -271,7 +284,7 @@ export default function PosterWall({
         const rx = ny * curve * 0.8 + sway.y + s.tilt.x * hang + (1 - e) * SWING.from;
         const ry = -nx * curve + sway.x + s.tilt.y * hang;
         const rz = s.tilt.z * hang;
-        const z = (nx * nx * 0.65 + ny * ny * 0.35) * NEAR * vw + l * LIFT - (1 - e) * SWING.back;
+        const z = (nx * nx * 0.65 + ny * ny * 0.35) * NEAR * vw + l * LIFT + dolly - (1 - e) * SWING.back;
         el.style.transform = `translate3d(${u.toFixed(1)}px, ${v.toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg) rotateZ(${rz.toFixed(3)}deg)`;
         if (!settled) el.style.opacity = String(Math.min(1, p * 1.8));
       }
@@ -301,6 +314,9 @@ export default function PosterWall({
       const k = 1 - Math.exp(-dt * 5);
       const sp = reduce ? 0 : Math.min(1, Math.hypot(vel.x, vel.y) / TOP_SPEED);
       speed += (sp - speed) * k;
+      // held, the wall pushes in; let go, it eases back out as the throw dies away
+      const want = reduce ? 0 : Math.max(dragging ? 1 : 0, Math.min(1, speed * 1.4));
+      push += (want - push) * (1 - Math.exp(-dt * (want > push ? PUSH.in : PUSH.out)));
       const clamp = (n: number) => Math.max(-1, Math.min(1, n));
       sway.x += ((reduce ? 0 : -clamp(vel.x / TOP_SPEED) * SWAY) - sway.x) * k;
       sway.y += ((reduce ? 0 : clamp(vel.y / TOP_SPEED) * SWAY) - sway.y) * k;
@@ -367,8 +383,9 @@ export default function PosterWall({
       }
       if (!dragging) return;
       const now = performance.now();
-      const dx = e.clientX - lx;
-      const dy = e.clientY - ly;
+      const z = scale();
+      const dx = (e.clientX - lx) / z;
+      const dy = (e.clientY - ly) / z;
       off.x += dx;
       off.y += dy;
       const inv = 1000 / Math.max(8, now - lt);
