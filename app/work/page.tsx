@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { motion, useReducedMotion, type Transition } from "framer-motion";
 import { Band, EASE, EASE_CINE, EnterCursor, Info, rootClass, Still, usePlayer } from "./_shared/chrome";
 import { CATEGORIES, PROJECTS, posterFor } from "./_shared/data";
@@ -24,7 +24,20 @@ const ORDER: Drawer[] = CATEGORIES.map((c, i) => ({
   short: c.short,
   films: PROJECTS.filter((p) => p.category === c.id),
 }));
-const LIST = ORDER.flatMap((d) => d.films);
+// Opened from a format's room (/work?format=16x9), the cabinet holds that format's work: each
+// category keeps the films made for that frame (and those not marked with one), and empty ones go.
+const FORMAT_NAMES: Record<string, { name: string; line: string }> = {
+  "16x9": { name: "16x9", line: "Films for the big screen." },
+  "9x16": { name: "9x16", line: "Stories made for the scroll." },
+  beyond: { name: "Beyond", line: "Stories you step into." },
+};
+const orderFor = (fmt: string | null): Drawer[] =>
+  fmt && FORMAT_NAMES[fmt]
+    ? ORDER.map((d) => ({ ...d, films: d.films.filter((p) => !p.format || p.format === fmt) }))
+        .filter((d) => d.films.length > 0)
+        .map((d, i) => ({ ...d, no: String(i + 1).padStart(2, "0") }))
+    : ORDER;
+const noopSubscribe = () => () => {};
 // black files on the paper sheet, as in the menu; each a breath deeper than the
 // one behind it (out of the drawer, a folder goes to pure black)
 const STOCK = ["#0a0a0a", "#080808", "#060606", "#030303", "#000"];
@@ -78,16 +91,20 @@ type Open = { cat: number; rise: number; closing: boolean };
 
 export default function WorkCabinet() {
   const reduce = !!useReducedMotion();
+  const fmt = useSyncExternalStore(noopSubscribe, () => new URLSearchParams(window.location.search).get("format"), () => null);
+  const named = fmt ? FORMAT_NAMES[fmt] : undefined;
+  const order = useMemo(() => orderFor(fmt), [fmt]);
+  const list = useMemo(() => order.flatMap((d) => d.films), [order]);
   const vh = useViewportHeight();
   const [pull, setPull] = useState<number | null>(null);
   const [settled, setSettled] = useState(false); // the stack has dealt itself in
   const [open, setOpen] = useState<Open | null>(null);
-  const [shown, setShown] = useState<number[]>(() => ORDER.map(() => 0)); // the film each folder shows
+  const [shown, setShown] = useState<number[]>(() => order.map(() => 0)); // the film each folder shows
   const [cursor, setCursor] = useState<string | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const frontRef = useRef<HTMLElement>(null);
   const folderRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const { play, player } = usePlayer(open ? ORDER[open.cat].films : LIST);
+  const { play, player } = usePlayer(open ? order[open.cat].films : list);
 
   useScrollLock(sectionRef);
   useEffect(() => {
@@ -153,10 +170,10 @@ export default function WorkCabinet() {
         className={`${styles.sheet} ${open && !open.closing ? styles.sheetOut : ""}`}
         aria-label="Work"
       >
-        <Info left="16X9 — Selected work" />
+        <Info left={named ? `16X9 — ${named.name} work` : "16X9 — Selected work"} />
         <div className={styles.lockup}>
           <h1 className={styles.headline}>
-            {["Selected", "work"].map((line, i) => (
+            {(named ? [named.name, "work"] : ["Selected", "work"]).map((line, i) => (
               <span key={line} className={styles.mask}>
                 <motion.span
                   className={styles.line}
@@ -173,7 +190,9 @@ export default function WorkCabinet() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0, transition: reduce ? { duration: 0 } : { delay: 1.1, duration: 1.1, ease: EASE } }}
           >
-            Commercials, brand films, fashion, social and documentary for brands that want to be seen.
+            {named
+              ? `${named.line} Commercials, brand films, fashion, social and documentary in this frame.`
+              : "Commercials, brand films, fashion, social and documentary for brands that want to be seen."}
           </motion.p>
         </div>
 
@@ -185,7 +204,7 @@ export default function WorkCabinet() {
           onPointerLeave={() => setPull(null)}
           style={open ? { pointerEvents: "none" } : undefined}
         >
-          {ORDER.map((d, i) => {
+          {order.map((d, i) => {
             const on = lifted === i;
             const out = open !== null && open.cat === i && !open.closing;
             return (
@@ -247,7 +266,7 @@ export default function WorkCabinet() {
       {open && !open.closing && (
         <FileView
           key={open.cat}
-          drawer={ORDER[open.cat]}
+          drawer={order[open.cat]}
           start={shown[open.cat]}
           reduce={reduce}
           onPlay={play}
@@ -256,7 +275,7 @@ export default function WorkCabinet() {
         />
       )}
 
-      <EnterCursor label={open ? cursor : pull !== null ? ORDER[pull].label : null} />
+      <EnterCursor label={open ? cursor : pull !== null ? order[pull].label : null} />
       <span className={styles.grain} aria-hidden="true" />
       {player}
     </main>

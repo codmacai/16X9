@@ -157,6 +157,13 @@ const Poster = memo(function Poster({
         </i>
       </span>
       <span className={styles.posterTitle}>{clip.title}</span>
+      {/* the quiet name (the mono rooms): number, title, a hairline, runtime, all at the centre */}
+      <span className={styles.posterName}>
+        <i>{pad2(index + 1)}</i>
+        <b>{clip.title}</b>
+        <span className={styles.posterRule} />
+        <i>{clip.duration}</i>
+      </span>
       <span className={`${styles.posterPrint} ${styles.posterPrintFoot}`}>
         <i>{clip.duration}</i>
         <i>16x9 &amp; Beyond</i>
@@ -245,6 +252,7 @@ export default function PosterWall({
   reduce,
   delay,
   preview = false,
+  tone = "colour",
   onOpen,
 }: {
   fmt: FormatKey;
@@ -256,6 +264,9 @@ export default function PosterWall({
   delay: number;
   /** shown behind something else (hero 3's index): it doesn't take the pointer and has no controls */
   preview?: boolean;
+  /** "mono": black and white at rest, the name quiet at the centre, a hairline frame round the poster
+   * pointed at as it comes into colour (hero 3's rooms) */
+  tone?: "colour" | "mono";
   onOpen: PosterOpen;
 }) {
   const size = useSyncExternalStore(subscribeSize, () => `${window.innerWidth}x${window.innerHeight}`, () => "1440x900");
@@ -706,7 +717,7 @@ export default function PosterWall({
   return (
     <motion.div
       ref={rootRef}
-      className={`${styles.wall} ${sphere ? styles.wallSphere : ""} ${hovered ? styles.wallPointing : ""}`}
+      className={`${styles.wall} ${sphere ? styles.wallSphere : ""} ${tone === "mono" ? styles.wallMono : ""} ${hovered ? styles.wallPointing : ""}`}
       style={{ "--tw": `${geo.tw}px`, "--th": `${geo.th}px`, pointerEvents: preview ? "none" : undefined } as CSSProperties}
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: reduce ? 0 : 0.7, ease: FADE } }}

@@ -20,6 +20,9 @@ export type Project = Clip & {
   client: string;
   year: number;
   category: CategoryId;
+  /** the frame it was made for (16x9, 9x16 or Beyond); the work page filters on it when opened from
+   * that format's room (/work?format=16x9). Projects without one show under every format. */
+  format?: "16x9" | "9x16" | "beyond";
   /** one line under the title */
   line: string;
   /** a few sentences for the film's own page */

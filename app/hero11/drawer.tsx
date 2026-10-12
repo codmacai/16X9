@@ -44,7 +44,7 @@ const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.we
  * The drawer. On its own (/hero11) it is the page's hero; given `onClose` it is
  * a full-screen menu (/hero12, /hero13), and the top bar carries a close button.
  */
-export default function Drawer({ onClose }: { onClose?: () => void }) {
+export default function Drawer({ onClose, workHref }: { onClose?: () => void; /** where Work leads (hero 3 passes the room's format) */ workHref?: string }) {
   const reduce = !!useReducedMotion();
   const [hover, setHover] = useState<number | null>(null);
   const [leaving, setLeaving] = useState(false);
@@ -172,7 +172,7 @@ export default function Drawer({ onClose }: { onClose?: () => void }) {
         {FOLDERS.map((f, i) => (
           <Folder
             key={f.label}
-            folder={f}
+            folder={workHref && f.label === "Work" ? ({ ...f, href: workHref } as unknown as typeof f) : f}
             index={i}
             reduce={reduce}
             hover={hover}
