@@ -18,17 +18,16 @@ import styles from "./hero2.module.css";
 // let go and it glides on, then settles into a slow roll upward. The faster
 // it moves, the more the posters lean into the move.
 //
-// Beyond: the posters cover a sphere hanging in the dark, rows of them
-// circling it from pole to pole, shading off toward its rim, and the sphere
-// answers the pointer: the posters near it swell out of the shell toward
-// you, growing and brightening, a bulge that follows the pointer round the
-// sphere. A slow swell rolls down the rows. Drag and it turns under your
-// hand, its bands twisting past each other (the poles lag the equator);
-// let go and it spins on, the bands catch up, then it slowly turns by itself.
+// Beyond: the posters cover a great sphere, in clean rows circling it pole
+// to pole, seen up close so it fills the screen as one curved surface; the
+// posters shade off a little toward its rim. It answers the pointer: the
+// posters near it swell out of the surface toward you, growing and
+// brightening, a bulge that follows the pointer across it. Drag and it turns
+// under your hand; let go and it spins on, then slowly turns by itself.
 //
 // Zoom: grab the room and it pushes in toward you, and stays in. Pinch,
 // Ctrl/Cmd + scroll, the - and + keys or the slider at the foot take it
-// back out (out far enough, the whole sphere comes into view); 0 resets it.
+// back out (out far enough, the whole sphere comes into view); 0 or the level resets it.
 //
 // Opening the room, the posters swing up into place from the centre
 // outward. Pointing at one straightens it, brings it toward you, wipes its
@@ -57,16 +56,16 @@ const DRIFT = 14; // px per second the room moves when nothing moves it (the wal
 const GLIDE = 3; // how quickly a throw settles (per second)
 const TOP_SPEED = 2600; // px per second counted as full speed
 const LIFT = 56; // px the poster under the pointer comes toward you
-// Zoom, as a scale of the posters: the range on the wall and on the sphere, the
-// level a drag pushes in to (and stays at), a step of the keys and buttons, and how fast it follows.
-const ZOOM = { wall: [0.72, 1.8], sphere: [0.5, 1.8], held: 1.4, step: 1.25, rate: 7 } as const;
+// Zoom, as a scale of the posters: the range on the wall and on the sphere, where each starts (the
+// sphere starts close, so it fills the screen as a curved surface rather than a ball), the level a drag
+// pushes in to (and stays at), a step of the keys and buttons, and how fast it follows.
+const ZOOM = { wall: [0.72, 1.8], sphere: [0.6, 2.4], base: { wall: 1, sphere: 1.55 }, held: { wall: 1.4, sphere: 1.8 }, step: 1.25, rate: 7 } as const;
 // The sphere: its radius and a poster's width as shares of the screen's width
 // (wide screen, phone), and the latitude its rows reach toward the poles.
-const SPHERE = { r: 0.5, rSmall: 0.95, tile: 0.21, tileSmall: 0.4, lat: 1.25, tiltMax: 0.6 };
-// ...and how it answers: the bulge round the pointer (its reach as a share of the screen's width, how
-// far it lifts the posters as a share of the radius, how much it grows them), the swell rolling down
-// the rows (height as a share of the radius, speed) and how much the poles lag the equator as it turns.
-const ALIVE = { reach: 0.15, lift: 0.16, grow: 0.16, swell: 0.014, swellSpeed: 1.1, twist: 0.35 };
+const SPHERE = { r: 0.62, rSmall: 1.1, tile: 0.23, tileSmall: 0.42, lat: 1.25, tiltMax: 0.6 };
+// ...and how it answers the pointer: the bulge round it (its reach as a share of the screen's width,
+// how far it lifts the posters as a share of the radius, how much it grows them).
+const ALIVE = { reach: 0.16, lift: 0.12, grow: 0.12 };
 const SWING = { s: 0.95, spread: 0.55, from: 78, back: 420 }; // the entrance: duration, stagger by distance, degrees, px
 const FADE = [0.45, 0, 0.55, 1] as const; // a room leaving fades evenly, so the next one swings up through it
 
@@ -195,7 +194,7 @@ function ZoomBar({
 }: {
   min: number;
   max: number;
-  ctl: RefObject<{ set: (z: number) => void; by: (f: number) => void } | null>;
+  ctl: RefObject<{ set: (z: number) => void; by: (f: number) => void; reset: () => void } | null>;
   knob: RefObject<HTMLSpanElement | null>;
   fill: RefObject<HTMLSpanElement | null>;
   read: RefObject<HTMLButtonElement | null>;
@@ -232,7 +231,7 @@ function ZoomBar({
           <path d="M2 6h8M6 2v8" stroke="currentColor" strokeWidth="1.2" />
         </svg>
       </button>
-      <button ref={read} type="button" className={styles.zoomRead} aria-label="Reset zoom" onClick={() => ctl.current?.set(1)}>
+      <button ref={read} type="button" className={styles.zoomRead} aria-label="Reset zoom" onClick={() => ctl.current?.reset()}>
         100%
       </button>
     </div>
@@ -262,6 +261,8 @@ export default function PosterWall({
   const f = FORMATS.find((x) => x.key === fmt) ?? FORMATS[0];
   const sphere = fmt === "beyond";
   const [zMin, zMax] = sphere ? ZOOM.sphere : ZOOM.wall;
+  const zBase: number = sphere ? ZOOM.base.sphere : ZOOM.base.wall;
+  const zHeld: number = sphere ? ZOOM.held.sphere : ZOOM.held.wall;
 
   // ---- the posters: on the wall, enough to cover the screen past its edges at the widest zoom; on the sphere, rows round it ----
   const geo = useMemo(() => {
@@ -284,7 +285,6 @@ export default function PosterWall({
         const lat = r * dLat;
         const n = Math.max(3, Math.floor((2 * Math.PI * R * Math.cos(lat)) / (tw + gap)));
         for (let i = 0; i < n; i++) {
-          const k = (r + half) * 37 + i * 13;
           slots.push({
             id: `${r}:${i}`,
             c: i,
@@ -292,7 +292,7 @@ export default function PosterWall({
             clip: (((i * step.a + (r + half) * step.b) % clips.length) + clips.length) % clips.length,
             lat,
             lon: ((i + (r % 2 ? 0.5 : 0)) / n) * Math.PI * 2,
-            tilt: { x: 0, y: 0, z: tilt(k).z * 0.6 },
+            tilt: { x: 0, y: 0, z: 0 },
           });
         }
       }
@@ -321,7 +321,7 @@ export default function PosterWall({
   const knob = useRef<HTMLSpanElement>(null);
   const fill = useRef<HTMLSpanElement>(null);
   const read = useRef<HTMLButtonElement>(null);
-  const ctl = useRef<{ set: (z: number) => void; by: (f: number) => void } | null>(null);
+  const ctl = useRef<{ set: (z: number) => void; by: (f: number) => void; reset: () => void } | null>(null);
   const hoverRef = useRef<string | null>(null);
   const pausedRef = useRef(paused);
   const draggedRef = useRef(false);
@@ -344,7 +344,7 @@ export default function PosterWall({
     const sway = { x: 0, y: 0 };
     const pointer = { x: vw / 2, y: vh / 2, seen: false };
     const cross = { x: vw / 2, y: vh / 2 };
-    const zoom = { now: 1, to: 1, shown: -1 };
+    const zoom = { now: zBase, to: zBase, shown: -1 };
     const lift = new Map<string, number>(); // 0..1 per poster, eased
     const shown = new Map<string, boolean>();
     const rims = new Map<string, HTMLElement | null>();
@@ -375,6 +375,7 @@ export default function PosterWall({
     ctl.current = {
       set: (z) => (zoom.to = clampZ(z)),
       by: (k) => (zoom.to = clampZ(zoom.to * k)),
+      reset: () => (zoom.to = zBase),
     };
 
     const place = (now: number) => {
@@ -387,15 +388,13 @@ export default function PosterWall({
         const tip = Math.max(-SPHERE.tiltMax, Math.min(SPHERE.tiltMax, off.y / R));
         const st = Math.sin(tip);
         const ct = Math.cos(tip);
-        const t = now / 1000;
         const px0 = pointer.x - vw / 2;
         const py0 = pointer.y - vh / 2;
         const reach2 = (vw * ALIVE.reach) ** 2;
         for (const s of slots) {
           const el = slotRefs.current.get(s.id);
           if (!el) continue;
-          // the bands turn at their own pace: the poles lag the equator
-          const lon = s.lon + lon0 * (1 - ALIVE.twist * Math.sin(s.lat) ** 2);
+          const lon = s.lon + lon0;
           // how squarely it faces you: 1 at the centre, 0 at the rim, below that round the back
           const face = -Math.sin(s.lat) * st + Math.cos(s.lat) * Math.cos(lon) * ct;
           const on = face > 0.06;
@@ -419,12 +418,11 @@ export default function PosterWall({
             const dy = R * ny * k - py0;
             w = field * Math.exp(-(dx * dx + dy * dy) / reach2);
           }
-          const swell = reduce ? 0 : Math.sin(s.lat * 4 - t * ALIVE.swellSpeed) * ALIVE.swell;
-          const out = R * (1 + swell + w * ALIVE.lift) + l * LIFT + (1 - e) * SWING.back * 1.6;
-          el.style.transform = `translateZ(${(dolly - R).toFixed(1)}px) rotateX(${(-tip).toFixed(4)}rad) rotateY(${lon.toFixed(4)}rad) rotateX(${(-s.lat).toFixed(4)}rad) translateZ(${out.toFixed(1)}px) rotateZ(${(s.tilt.z * (1 - l) * (1 - w)).toFixed(2)}deg) scale(${(1 + w * ALIVE.grow).toFixed(3)})`;
+          const out = R * (1 + w * ALIVE.lift) + l * LIFT + (1 - e) * SWING.back * 1.6;
+          el.style.transform = `translateZ(${(dolly - R).toFixed(1)}px) rotateX(${(-tip).toFixed(4)}rad) rotateY(${lon.toFixed(4)}rad) rotateX(${(-s.lat).toFixed(4)}rad) translateZ(${out.toFixed(1)}px) scale(${(1 + w * ALIVE.grow).toFixed(3)})`;
           if (!settled) el.style.opacity = String(Math.min(1, p * 1.8));
           const rim = rimOf(s.id, el);
-          if (rim) rim.style.opacity = (Math.max(0, Math.min(0.88, (0.62 - face) * 1.5)) * (1 - w)).toFixed(2);
+          if (rim) rim.style.opacity = (Math.max(0, Math.min(0.6, (0.5 - face) * 1.2)) * (1 - w)).toFixed(2);
         }
       } else {
         // ---- the wall: curved round you, the posters in sight placed, the rest skipped ----
@@ -477,7 +475,7 @@ export default function PosterWall({
       const t = (Math.log(zoom.now) - Math.log(zMin)) / (Math.log(zMax) - Math.log(zMin));
       if (knob.current) knob.current.style.left = `${(t * 100).toFixed(2)}%`;
       if (fill.current) fill.current.style.transform = `scaleX(${t.toFixed(4)})`;
-      if (read.current) read.current.textContent = `${Math.round(zoom.now * 100)}%`;
+      if (read.current) read.current.textContent = `${Math.round((zoom.now / zBase) * 100)}%`;
     };
 
     const frame = (now: number) => {
@@ -606,7 +604,7 @@ export default function PosterWall({
         root.setPointerCapture?.(id);
         setHovered(null);
         // grabbing the room pulls it in toward you, and it stays in
-        if (!reduce) zoom.to = clampZ(Math.max(zoom.to, ZOOM.held));
+        if (!reduce) zoom.to = clampZ(Math.max(zoom.to, zHeld));
       }
       if (!dragging) return;
       const now = performance.now();
@@ -661,7 +659,7 @@ export default function PosterWall({
       if (e.target instanceof HTMLElement && e.target.closest("input, textarea, [contenteditable]")) return;
       if (e.key === "+" || e.key === "=") zoom.to = clampZ(zoom.to * ZOOM.step);
       else if (e.key === "-" || e.key === "_") zoom.to = clampZ(zoom.to / ZOOM.step);
-      else if (e.key === "0") zoom.to = 1;
+      else if (e.key === "0") zoom.to = zBase;
     };
     const resize = () => (rect = root.getBoundingClientRect());
     root.addEventListener("pointerdown", down);
@@ -684,7 +682,7 @@ export default function PosterWall({
       window.removeEventListener("resize", resize);
       root.removeEventListener("wheel", wheel);
     };
-  }, [geo, vw, vh, reduce, delay, sphere, zMin, zMax]);
+  }, [geo, vw, vh, reduce, delay, sphere, zMin, zMax, zBase, zHeld]);
 
   const open = useCallback(
     (index: number, el: HTMLElement) => {
