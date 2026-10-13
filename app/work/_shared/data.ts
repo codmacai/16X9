@@ -183,16 +183,11 @@ const R = (title: string, client: string, category: CategoryId, file?: string): 
 
 PROJECTS.push(
   // Brand Films (brandfilms/)
-  R("Inspiring Peaks", "Aldar", "brand"),
-  R("The Promise", "Aldar", "brand"),
-  R("NYC FC", "Etihad Airways", "brand"),
   R("Ramadan Fridge", "Etihad Airways", "brand", "brandfilms/etihad_ramadan_fridge_introduction.mp4_v1 (720p).mp4"),
   R("Class of 2015", "Masdar Institute", "brand", "brandfilms/masdar_institute_class_of__2015_.mp4_v1 (720p).mp4"),
   R("Dr Ahmed's Story", "Prime Minister's Office", "brand", "brandfilms/Prime Minister's Office - Dr_Ahmed_uae_inspiring_story_v1 (720p).mp4"),
   R("1001: One Tank Challenge", "Toyota Prius", "brand", "brandfilms/prius_1001_one_tank_challenge_v1 (720p) (1).mp4"),
-  R("Hybrid Adventurer", "Toyota Prius", "brand"),
   R("Hybrid Falcon", "Toyota Prius", "brand", "brandfilms/prius_hybrid_falcon.mp4_v1 (1080p).mp4"),
-  R("Hybrid Graffiti", "Toyota Prius", "brand"),
   R("Riyadh Marathon 2025", "Riyadh Marathon", "brand", "brandfilms/riyadh_marathon_2025_fanzone_casestudy_v1 (1080p).mp4"),
   // Documentaries
   R("Digital Divide", "GMIS", "documentary"),
