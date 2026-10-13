@@ -2313,3 +2313,224 @@
 .tileOn .tileScrim {
   opacity: 1 !important;
 }
+
+/* ===========================================================================
+   THE TILE, REBUILT — light to draw and quiet at rest, alive under the pointer.
+   At rest: the still in black and white under a dark wash, the brand at the
+   centre. Pointed at (.tileOn, the hover layer appears): the tile comes forward
+   (scaled by the tilt loop), colour blooms out of the point you came in at,
+   the film fades up and plays, a paper frame closes in, the title rises out of
+   its mask and the runtime follows. Only that one tile changes.
+   =========================================================================== */
+.tile {
+  background: #000;
+  box-shadow: none;
+  transition: none;
+}
+
+/* only the tile itself takes the pointer: hit-testing stops at it */
+.tile * {
+  pointer-events: none;
+}
+
+.cWin {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.cStill,
+.cColour,
+.cVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  display: block;
+}
+
+/* a constant wash (a translucent colour, not opacity: no extra layer per tile) */
+.cWash {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.42);
+}
+
+.cBrand {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--paper);
+  text-align: center;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.cBrand[data-style="a"] {
+  font-size: max(11px, min(11cqw, calc(118cqw / var(--len))));
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.cBrand[data-style="b"] {
+  font-size: max(11px, min(12cqw, calc(140cqw / var(--len))));
+  font-weight: 300;
+  letter-spacing: -0.05em;
+  text-transform: lowercase;
+}
+
+.cBrand[data-style="c"] {
+  font-size: max(11px, min(10cqw, calc(130cqw / var(--len))));
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.cBrand[data-style="d"] {
+  font-size: max(9px, min(6.4cqw, calc(62cqw / var(--len))));
+  font-weight: 500;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+}
+
+/* on the landing preview the names step back behind the three words */
+.wallOn:not(.roomOn) .cBrand {
+  color: rgb(247 242 238 / 0.3);
+}
+
+/* ---- the hover layer: there only while pointed at ---- */
+.cHover {
+  display: none;
+  position: absolute;
+  inset: 0;
+}
+
+.tileOn .cHover {
+  display: block;
+}
+
+/* colour blooms out from where the pointer came in */
+.cColour {
+  clip-path: circle(0% at var(--mx, 50%) var(--my, 50%));
+  animation: cBloom 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes cBloom {
+  to {
+    clip-path: circle(150% at var(--mx, 50%) var(--my, 50%));
+  }
+}
+
+/* the film fades up over it once it's playing */
+.cVideo {
+  opacity: 0;
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cVideoOn {
+  opacity: 1;
+}
+
+/* a paper frame closes in round the picture */
+.cFrame {
+  position: absolute;
+  inset: max(5px, 3.2cqw);
+  box-shadow: inset 0 0 0 1.5px var(--paper);
+  opacity: 0;
+  animation: cFrameIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.18s forwards;
+}
+
+@keyframes cFrameIn {
+  from {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+  to {
+    opacity: 0.95;
+    transform: none;
+  }
+}
+
+/* the title rises out of its mask, the runtime follows */
+.cFoot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 18cqw max(12px, 7cqw) max(12px, 7cqw);
+  background: linear-gradient(to top, rgb(0 0 0 / 0.62), rgb(0 0 0 / 0));
+  color: var(--paper);
+  font-size: max(9px, 3.3cqw);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cNameMask {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.cName {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform: translateY(115%);
+  animation: cRise 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.28s forwards;
+}
+
+@keyframes cRise {
+  to {
+    transform: none;
+  }
+}
+
+.cMeta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: max(6px, 2cqw);
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  animation: cFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.42s forwards;
+}
+
+@keyframes cFade {
+  to {
+    opacity: 0.92;
+  }
+}
+
+.cPlay {
+  display: grid;
+  place-items: center;
+  width: max(18px, 7cqw);
+  height: max(18px, 7cqw);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.cPlay svg {
+  width: 36%;
+  height: 40%;
+  margin-left: 8%;
+  fill: currentColor;
+}
+
+/* no glow anywhere in the middle: the words carry themselves */
+.headShade {
+  display: none !important;
+}

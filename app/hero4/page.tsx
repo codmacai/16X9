@@ -126,7 +126,8 @@ const PAN = { vw: 9 }; // a small drift: just enough to bring the end cards into
 const CURVE = { span: 2.4, from: 0.45, lean: 0.8, drop: 5, shrink: 0, max: 3 };
 const INTENT_MS = 160;
 const LAMP_RES = 8; // the lamp is drawn at 1/8 of the screen and stretched
-const pad2 = (n: number) => String(n).padStart(2, "0");
+/** The baked black-and-white still: /clips/clip-01.mp4 -> /clips/posters-gray/clip-01.webp */
+const grayPosterFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/posters-gray/$1.webp");
 
 /** The brand a film was made for: the client whose name the title starts with
  *  (set in that client's own style), else the film's title. Stands in for the
@@ -220,82 +221,62 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
       data-index={index}
       onClick={(e) => onOpen(index, e.currentTarget, videoRef.current?.currentTime ?? 0)}
     >
-      {/* the film, in a white border: black and white until you point at it */}
-      <span className={styles.tileWindow}>
+      {/* At rest: the film's still in black and white under a dark wash, and
+          the brand it was made for at the centre. Pointed at: colour blooms out
+          from the pointer, the film plays, a paper frame closes round it and its
+          title rises. The hover layer only exists while it's pointed at (it's
+          display: none otherwise), so a resting tile is six elements. */}
+      <span className={styles.cWin}>
         {poster && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            className={styles.tilePoster}
-            src={posterFor(clip.src)}
+            className={styles.cStill}
+            src={grayPosterFor(clip.src)}
             alt=""
             decoding="async"
             draggable={false}
             onError={() => setPoster(false)}
           />
         )}
-        {live && (
-          <video
-            ref={videoRef}
-            className={`${styles.tileVideo} ${playing ? styles.tileVideoOn : ""}`}
-            src={clip.src}
-            muted
-            loop
-            playsInline
-            autoPlay
-            preload="auto"
-            disablePictureInPicture
-            onPlaying={() => setPlaying(true)}
-          />
-        )}
-        {/* at rest the tile is a black card with the mark at its centre; the film
-            comes up through it when you point at it, or when a format is chosen */}
-        <span className={styles.tileMark} aria-hidden="true">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_SRC} alt="" draggable={false} />
-        </span>
-        {/* the brand it was made for, at the centre, set like its logo */}
+        <span className={styles.cWash} />
         <span
-          className={styles.tileBrand}
+          className={styles.cBrand}
           data-style={brand.style}
           style={{ "--len": Math.max(5, brand.name.length) } as CSSProperties}
           aria-hidden="true"
         >
           {brand.name}
         </span>
-        <span className={styles.tileGlare} aria-hidden="true" />
-        <span className={styles.tileScrim} aria-hidden="true" />
-        <span className={styles.tileVeil} aria-hidden="true" />
-        {/* a poster's small print: number above, runtime and studio below; the title at its centre */}
-        <span className={`${styles.tilePrint} ${styles.tilePrintTop}`} aria-hidden="true">
-          <i>{pad2(index + 1)}</i>
-          <i>Film</i>
-        </span>
-        <span className={styles.tileTitle} aria-hidden="true">
-          {clip.title}
-        </span>
-        <span className={`${styles.tilePrint} ${styles.tilePrintFoot}`} aria-hidden="true">
-          <i>{clip.duration}</i>
-          <i>16x9 &amp; Beyond</i>
-        </span>
-        {/* the button: a white disc with an arrow, at the centre */}
-        <span className={styles.tileGo} aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.6" />
-          </svg>
-        </span>
-        {/* pointed at: a thin paper frame draws in round the film, and its
-            title and the way in come up at the foot */}
-        <span className={styles.tileSweep} aria-hidden="true" />
-        <span className={styles.tileFrame} aria-hidden="true" />
-        <span className={styles.tileCaption} aria-hidden="true">
-          <span className={styles.tcMask}>
-            <span className={styles.tcName}>{clip.title}</span>
-          </span>
-          <span className={styles.tcGo}>
-            {clip.duration}
-            <svg viewBox="0 0 24 24">
-              <path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.6" />
-            </svg>
+        <span className={styles.cHover} aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className={styles.cColour} src={posterFor(clip.src)} alt="" decoding="async" draggable={false} />
+          {live && (
+            <video
+              ref={videoRef}
+              className={`${styles.cVideo} ${playing ? styles.cVideoOn : ""}`}
+              src={clip.src}
+              muted
+              loop
+              playsInline
+              autoPlay
+              preload="auto"
+              disablePictureInPicture
+              onPlaying={() => setPlaying(true)}
+            />
+          )}
+          <span className={styles.cFrame} />
+          <span className={styles.cFoot}>
+            <span className={styles.cNameMask}>
+              <span className={styles.cName}>{clip.title}</span>
+            </span>
+            <span className={styles.cMeta}>
+              <i className={styles.cPlay}>
+                <svg viewBox="0 0 12 14">
+                  <path d="M1 0l11 7-11 7z" />
+                </svg>
+              </i>
+              {clip.duration}
+            </span>
           </span>
         </span>
       </span>
@@ -842,7 +823,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   // Live video budget for this device; nothing plays while a film is open or the tab is hidden.
   const pausedRef = useRef(true);
   useEffect(() => {
-    playback.start(liveBudget());
+    // the wall rests in black and white: only the film pointed at plays
+    playback.start(liveBudget(), { hoverOnly: true });
     playback.setPaused(true);
     const onVis = () => playback.setPaused(document.hidden || pausedRef.current);
     document.addEventListener("visibilitychange", onVis);
@@ -1147,6 +1129,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       trx: number; try: number; tgx: number; tgy: number; // target
     };
     const tilts = new Map<HTMLElement, Tilt>();
+    let bloomEl: HTMLElement | null = null; // the tile whose bloom origin is set
     let hovered: HTMLElement | null = null;
     let intent = 0;
     let lastMove = -Infinity;
@@ -1202,7 +1185,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       hovered = el;
       window.clearTimeout(intent);
       // the rest of the wall goes down while one film is pointed at
-      sceneRef.current?.classList.toggle(styles.scenePointing, el !== null);
+      // (no class on the whole wall: restyling every tile on each hover was a stutter)
       if (!el) {
         hoverRef.current = false;
         playback.setHovered(null);
@@ -1257,11 +1240,19 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       const el = target?.closest?.<HTMLElement>("[data-tile]") ?? null;
       setHover(el);
       setWord(target?.closest?.<HTMLElement>("[data-fmt]") ?? null);
+      if (!el) bloomEl = null;
       const t = el && tilts.get(el);
       if (!el || !t) return;
-      const r = el.getBoundingClientRect();
-      const nx = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-      const ny = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+      // where the pointer is on the film, in the tile's own (tilted) space: the
+      // event carries it, so nothing is measured on the move
+      const nx = e.target === el ? Math.min(1, Math.max(0, e.offsetX / el.offsetWidth)) : 0.5;
+      const ny = e.target === el ? Math.min(1, Math.max(0, e.offsetY / el.offsetHeight)) : 0.5;
+      // the colour blooms out from where the pointer came in
+      if (bloomEl !== el) {
+        bloomEl = el;
+        el.style.setProperty("--mx", `${(nx * 100).toFixed(1)}%`);
+        el.style.setProperty("--my", `${(ny * 100).toFixed(1)}%`);
+      }
       t.trx = (0.5 - ny) * TILT.x;
       t.try = (nx - 0.5) * TILT.y;
       t.tgx = nx;
@@ -1270,6 +1261,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     const onLeave = () => {
       setHover(null);
       setWord(null);
+      bloomEl = null;
     };
     window.addEventListener("pointermove", onMove, { passive: true });
     document.documentElement.addEventListener("pointerleave", onLeave);
