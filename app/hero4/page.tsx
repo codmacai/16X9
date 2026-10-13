@@ -31,6 +31,7 @@ import { liveBudget, posterFor, WallPlayback } from "../hero7/wall-playback";
 import Drawer from "../hero11/drawer";
 import LensRoom from "../hero3/lens-room";
 import RoomSwitch from "./room-switch";
+import WorkTile from "./work-tile";
 import FormatHero, { FORMATS, Ratio, type FormatKey, type Rect } from "../hero3/format-hero";
 import styles from "./hero4.module.css";
 
@@ -647,7 +648,8 @@ function Formats({
 // The variant depends on the URL and today's date, so it's read on the client only
 // (the server renders an empty section), without a setState-in-effect round trip.
 const noopSubscribe = () => () => {};
-export default function HeroFour({ variantId }: { variantId?: string }) {
+/** `workTile`: in a room, the way to all its work is the wall's middle tile (/hero4b) */
+export default function HeroFour({ variantId, workTile = false }: { variantId?: string; workTile?: boolean }) {
   const isClient = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const variant = useMemo<HeroVariant | null>(
     () =>
@@ -658,10 +660,19 @@ export default function HeroFour({ variantId }: { variantId?: string }) {
   );
 
   if (!variant) return <section className={`${styles.page} ${interTight.variable} ${archivo.variable}`} aria-hidden="true" />;
-  return <DepthInner key={variant.id} variant={variant} />;
+  return <DepthInner key={variant.id} variant={variant} workTile={workTile} />;
 }
 
-function DepthInner({ variant }: { variant: HeroVariant }) {
+// phones: four lanes, so the work tile (two middle lanes wide) gives way to the button
+const NARROW = "(max-width: 760px)";
+const onNarrow = (cb: () => void) => {
+  const m = window.matchMedia(NARROW);
+  m.addEventListener("change", cb);
+  return () => m.removeEventListener("change", cb);
+};
+
+function DepthInner({ variant, workTile }: { variant: HeroVariant; workTile: boolean }) {
+  const narrow = useSyncExternalStore(onNarrow, () => window.matchMedia(NARROW).matches, () => false);
   const clips = variant.clips;
   const mark = variant.wordmark ?? "16X9";
   const reduce = !!useReducedMotion();
@@ -1429,6 +1440,11 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
               </div>
             </div>
           ))}
+          <AnimatePresence>
+            {workTile && (room === "16x9" || room === "9x16") && (
+              <WorkTile key={room} room={room} />
+            )}
+          </AnimatePresence>
         </div>
         </div>
       </motion.div>
@@ -1467,7 +1483,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
       {/* ================= In a room: the way to all of its work, at the foot on the right ================= */}
       <AnimatePresence>
-        {room && !menuOpen && (
+        {room && !menuOpen && !(workTile && room !== "beyond" && !narrow) && (
           <motion.div
             key={`all-${room}`}
             className={`${styles.viewAll} ${room === "beyond" ? styles.viewAllHigh : ""}`}

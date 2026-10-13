@@ -2676,3 +2676,10 @@
 .laneOn {
   z-index: 5;
 }
+
+/* in a room the landing's words are gone: they mustn't catch the pointer
+   over the wall (or the work tile) */
+.roomOn .copy,
+.roomOn .copy * {
+  pointer-events: none !important;
+}
