@@ -1878,3 +1878,111 @@
 .page:has(.lane[data-format]) .wings {
   opacity: 1;
 }
+
+/* ===========================================================================
+   TILES — hero 12's contact sheet, packed tight, each with the brand it was
+   made for set at its centre like its logo. Point at one: the name opens out
+   and steps back, the film comes up full, the print and the way in come forward.
+   =========================================================================== */
+.page {
+  --gap: 4px;
+}
+
+@media (max-width: 760px) {
+  .page {
+    --gap: 3px;
+  }
+}
+
+.tile {
+  box-shadow: none;
+}
+
+/* in a format the brand takes the mark's place */
+.lane[data-format] .tileMark {
+  display: none;
+}
+
+.tileBrand {
+  position: absolute;
+  z-index: 3;
+  left: 6%;
+  right: 6%;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--paper);
+  text-align: center;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  pointer-events: none;
+  opacity: 0;
+  text-shadow: 0 2px 24px rgb(0 0 0 / 0.45);
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    letter-spacing 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lane[data-format] .tileBrand {
+  opacity: 1;
+}
+
+/* the four ways the clients' names are set */
+.tileBrand[data-style="a"] {
+  font-size: max(11px, min(11cqw, calc(118cqw / var(--len))));
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.tileBrand[data-style="b"] {
+  font-size: max(11px, min(12cqw, calc(140cqw / var(--len))));
+  font-weight: 300;
+  letter-spacing: -0.05em;
+  text-transform: lowercase;
+}
+
+.tileBrand[data-style="c"] {
+  font-size: max(11px, min(10cqw, calc(130cqw / var(--len))));
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.tileBrand[data-style="d"] {
+  font-size: max(9px, min(6.4cqw, calc(62cqw / var(--len))));
+  font-weight: 500;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+}
+
+/* pointed at: the name opens out and fades back, the film comes up */
+.tileOn .tileBrand {
+  opacity: 0;
+  transform: scale(1.18);
+  letter-spacing: 0.12em;
+}
+
+/* the film's own title stays hidden behind the brand until it's pointed at */
+.lane[data-format] .tile:not(.tileOn) .tileTitle {
+  opacity: 0;
+}
+
+/* the films sit a little in shadow until one is picked, so the names read */
+.lane[data-format] .tile:not(.tileOn) .tileVeil {
+  background: #000;
+  opacity: 0.32;
+}
+
+/* Beyond: hero 3's lens, the black of the cinema round it */
+.room {
+  background: #000;
+}
+
+/* between the films, black: the wall reads as one dark contact sheet */
+.page:has(.lane[data-format]) .plane {
+  background: #000;
+}

@@ -29,7 +29,7 @@ import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-c
 import ProjectView, { type OpenProject } from "../hero7/project-view";
 import { liveBudget, posterFor, WallPlayback } from "../hero7/wall-playback";
 import Drawer from "../hero11/drawer";
-import PosterWall from "../hero2/poster-wall";
+import LensRoom from "../hero3/lens-room";
 import RoomSwitch from "./room-switch";
 import FormatHero, { FORMATS, Ratio, type FormatKey, type Rect } from "../hero3/format-hero";
 import styles from "./hero4.module.css";
@@ -101,7 +101,7 @@ const ARRIVAL = { length: 2.6, peak: 2.4 };
 const LANES_DESKTOP = 8;
 const LANES_MOBILE = 4;
 const PLANE = { width: 2.4, height: 2.5 }; // the tilted plane, in viewport widths / heights (see .plane)
-const GAP = { desktop: 14, mobile: 9 }; // must match --gap
+const GAP = { desktop: 4, mobile: 3 }; // must match --gap
 
 /** Just enough tiles per lane for one copy to cover the plane's height (the loop needs that),
  *  counted at the flattest tile a format can ask for, so a lane of scope films still covers it. */
@@ -125,6 +125,16 @@ const CURVE = { span: 2.4, from: 0.35, lean: 1.6, drop: 9, shrink: 0.06, max: 4 
 const INTENT_MS = 160;
 const LAMP_RES = 8; // the lamp is drawn at 1/8 of the screen and stretched
 const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/** The brand a film was made for: the client whose name the title starts with
+ *  (set in that client's own style), else the film's title. Stands in for the
+ *  brand's logo until real logo files are added. */
+type Brand = { name: string; style: "a" | "b" | "c" | "d" };
+const brandOf = (clip: Clip, clients: { name: string; style: Brand["style"] }[]): Brand => {
+  const t = clip.title.toLowerCase();
+  const c = clients.find((x) => t.startsWith(x.name.toLowerCase()));
+  return c ? { name: c.name, style: c.style } : { name: clip.title, style: "a" };
+};
 
 const RATIOS = ["3 / 4", "16 / 10", "4 / 5", "1 / 1", "2 / 3", "16 / 9", "5 / 6"];
 
@@ -165,6 +175,7 @@ const arrivalAt = (t: number) => {
 // animation loop), so a tile has no hover handlers of its own.
 // ===========================================================================
 type TileProps = {
+  brand: Brand;
   id: string;
   clip: Clip;
   index: number;
@@ -173,7 +184,7 @@ type TileProps = {
   onOpen: (index: number, el: HTMLElement, time: number) => void;
 };
 
-const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: TileProps) {
+const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpen }: TileProps) {
   const tileRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [live, setLive] = useState(false);
@@ -239,6 +250,15 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: Ti
         <span className={styles.tileMark} aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={LOGO_SRC} alt="" draggable={false} />
+        </span>
+        {/* the brand it was made for, at the centre, set like its logo */}
+        <span
+          className={styles.tileBrand}
+          data-style={brand.style}
+          style={{ "--len": Math.max(5, brand.name.length) } as CSSProperties}
+          aria-hidden="true"
+        >
+          {brand.name}
         </span>
         <span className={styles.tileGlare} aria-hidden="true" />
         <span className={styles.tileScrim} aria-hidden="true" />
@@ -1368,6 +1388,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
                       key={`${copy}-${t}`}
                       id={`${l}-${copy}-${t}`}
                       clip={clips[it.index]}
+                      brand={brandOf(clips[it.index], variant.clients)}
                       index={it.index}
                       ratio={it.ratio}
                       playback={playback}
@@ -1397,25 +1418,17 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         <canvas ref={lampRef} className={styles.lampLight} />
       </motion.div>
 
-      {/* ================= Beyond: the sphere of films ================= */}
+      {/* ================= Beyond: hero 3's lens wall, in scope ================= */}
       <AnimatePresence>
         {room === "beyond" && (
           <motion.div
-            key="sphere"
-            className={`${styles.sphere} ${styles.sphereOpen}`}
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1, transition: { duration: 0.9, ease: EASE } }}
-            exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.5, ease: EASE } }}
+            key="lens"
+            className={styles.room}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.6, ease: EASE } }}
+            exit={{ opacity: 0, transition: { duration: 0.5, ease: EASE } }}
           >
-            <PosterWall
-              fmt="beyond"
-              clips={clips}
-              paused={project !== null || menuOpen}
-              reduce={reduce}
-              delay={0.2}
-              tone="mono"
-              onOpen={openFromSphere}
-            />
+            <LensRoom fmt="beyond" clips={clips} paused={project !== null || menuOpen} reduce={reduce} onOpen={openFromSphere} />
           </motion.div>
         )}
       </AnimatePresence>
