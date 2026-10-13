@@ -118,10 +118,10 @@ const TILT = { x: 14, y: 18, scale: 1.08, ease: 7 };
 // past `from` (of the half-width) it eases in, turning, sliding and lifting the wall.
 const EDGE = { from: 0.45, turn: 26, shift: 22, lift: 10, ease: 3 };
 const SWAY = { x: 3.2, y: 4.5, z: 1.4, speed: 1.35 };
-// the curve: how wide the plane is in screens, how far the curve follows the
-// pointer, how far a lane drops back per screen of distance (vh), how much the
-// lanes under the pointer come forward, how far the far ones shrink, the cap
-const CURVE = { span: 2.4, follow: 1.1, drop: 7, near: 0.05, shrink: 0.035, max: 3.2 };
+// the curve at the ends: how wide the plane is in screens, where the bend starts
+// (share of the half-width), how much more the side you move toward bends, how
+// far a lane sinks (vh), how far it shrinks, the cap
+const CURVE = { span: 2.4, from: 0.35, lean: 1.6, drop: 9, shrink: 0.06, max: 4 };
 const INTENT_MS = 160;
 const LAMP_RES = 8; // the lamp is drawn at 1/8 of the screen and stretched
 const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -1260,24 +1260,26 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         const ax = Math.abs(lean.x);
         const edge = roomRef.current ? Math.sign(lean.x) * Math.min(1, Math.max(0, (ax - EDGE.from) / (1 - EDGE.from))) ** 2 : 0;
         side += (edge - side) * (1 - Math.exp(-dt * EDGE.ease));
-        const css = `translateX(${(-lean.x * 2.5 - side * EDGE.shift).toFixed(3)}vw) rotateY(${(-side * EDGE.turn).toFixed(3)}deg) rotateX(${(52 + lean.y * 2 - Math.abs(side) * EDGE.lift).toFixed(3)}deg)`;
+        // the wall itself holds still: only its ends move (below)
+        const css = `rotateX(52deg)`;
         if (css !== leanCss) {
           plane.style.transform = css;
           leanCss = css;
         }
-        // the wall curves round the pointer like a wide cinema screen: the
-        // lanes under it come forward, the ones further off bow back and away,
-        // so moving toward either end rolls the curve across the wall
+        // only the ends of the wall move, like the wings of a curved cinema
+        // screen: the middle holds still, the lanes toward either edge bow
+        // back and sink away, and the side you move toward bows the most
         const lanesEls = laneRefs.current;
         const n = lanesEls.length;
         for (let l = 0; l < n; l++) {
           const el = lanesEls[l];
           if (!el) continue;
-          const u = ((l + 0.5) / n) * 2 - 1; // -1..1 across the plane
-          const d = u * CURVE.span - lean.x * CURVE.follow - side * 0.6; // distance from the pointer, in screens
-          const bow = Math.min(CURVE.max, d * d);
+          const x = (((l + 0.5) / n) * 2 - 1) * CURVE.span; // across the screen: -1..1 is what you see
+          const out = Math.max(0, Math.abs(x) - CURVE.from) / (1 - CURVE.from); // 0 in the middle
+          const toward = Math.max(0, Math.sign(x) * lean.x); // the pointer on this side
+          const bow = Math.min(CURVE.max, out * out * (1 + CURVE.lean * toward));
           const t = `0 ${(bow * CURVE.drop).toFixed(2)}vh`;
-          const sc = (1 + CURVE.near * Math.max(0, 1 - Math.abs(d)) - bow * CURVE.shrink).toFixed(4);
+          const sc = (1 - bow * CURVE.shrink).toFixed(4);
           if (el.style.translate !== t) el.style.translate = t;
           if (el.style.scale !== sc) el.style.scale = sc;
         }
@@ -1380,6 +1382,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         </div>
       </motion.div>
 
+      {/* the cinema: black falling in from the left and the right */}
+      <div className={styles.wings} aria-hidden="true" />
       {/* one layer for the whole grade */}
       <div className={styles.grade} aria-hidden="true" />
       {/* the lamp: the wall rests in shadow and a soft pool of light follows the

@@ -1861,3 +1861,20 @@
   opacity: 0;
   transform: scale(0.72);
 }
+
+/* the cinema: black falls in from both sides over the wall */
+.wings {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  background:
+    linear-gradient(to right, #000 0%, rgb(0 0 0 / 0.85) 7%, rgb(0 0 0 / 0.4) 18%, rgb(0 0 0 / 0) 32%),
+    linear-gradient(to left, #000 0%, rgb(0 0 0 / 0.85) 7%, rgb(0 0 0 / 0.4) 18%, rgb(0 0 0 / 0) 32%);
+}
+
+.page:has(.lane[data-format]) .wings {
+  opacity: 1;
+}
