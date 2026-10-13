@@ -27,11 +27,10 @@ import { Archivo, Inter_Tight } from "next/font/google";
 import Link from "next/link";
 import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-config";
 import ProjectView, { type OpenProject } from "../hero7/project-view";
-import { posterFor, WallPlayback } from "../hero7/wall-playback";
+import { liveBudget, posterFor, WallPlayback } from "../hero7/wall-playback";
 import Drawer from "../hero11/drawer";
 import LensRoom from "../hero3/lens-room";
 import RoomSwitch from "./room-switch";
-import Peek, { type PeekAt } from "./peek";
 import FormatHero, { FORMATS, Ratio, type FormatKey, type Rect } from "../hero3/format-hero";
 import styles from "./hero4.module.css";
 
@@ -112,7 +111,9 @@ const tilesPerLane = (vw: number, vh: number, lanes: number, gap: number) =>
 // Hover feel: how far the film turns toward the pointer (deg), how far it comes
 // forward, and how quickly it eases there (per second). Only a film you wait on
 // for INTENT_MS starts loading its video.
-const TILT = { x: 0, y: 0, scale: 1.03, ease: 7 }; // the lifted card carries the film; the tile under it just comes up a touch
+// the lift: how far it follows the pointer (deg), how far it comes forward, how
+// far its top tips toward you off the leaning wall (deg), how quickly it eases
+const TILT = { x: 4, y: 7, scale: 1.14, stand: 12, ease: 7 };
 // while a film is hovered it never sits still: it sways in a slow orbit (deg),
 // on top of turning toward the pointer, so it reads like a print turned in the hand
 // In a format, pointing toward either end turns the wall to show that side in full:
@@ -190,15 +191,29 @@ type TileProps = {
 
 const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpen }: TileProps) {
   const tileRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [live, setLive] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const [poster, setPoster] = useState(true);
 
-  // the wall plays nothing itself (the film you rest on plays in its lifted
-  // card), but tiles still register: playback marks each with its id
+  // only the film you rest on is live (see WallPlayback, hoverOnly)
   useEffect(() => {
     const el = tileRef.current;
     if (!el) return;
-    return playback.register(id, el, () => {});
+    return playback.register(id, el, (on) => {
+      setLive(on);
+      if (!on) setPlaying(false);
+    });
   }, [id, playback]);
+
+  // iOS needs the muted attribute (not just the property) before it will autoplay.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!live || !v) return;
+    v.muted = true;
+    v.setAttribute("muted", "");
+    v.play().catch(() => {});
+  }, [live]);
 
   return (
     <div
@@ -207,7 +222,7 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
       // its own shape; a format word pointed at overrides it for the whole lane (see .lane[data-format])
       style={{ "--r": ratio } as CSSProperties}
       data-index={index}
-      onClick={(e) => onOpen(index, e.currentTarget, 0)}
+      onClick={(e) => onOpen(index, e.currentTarget, videoRef.current?.currentTime ?? 0)}
     >
       {/* At rest: the film's still in black and white under a dark wash, and
           the brand it was made for at the centre. Pointed at: colour blooms out
@@ -235,9 +250,36 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
         >
           {brand.name}
         </span>
+        {/* pointed at: the film becomes a print — colour blooms in, the picture
+            draws back inside a paper mat, and its title is printed in ink on
+            the deeper margin at the foot */}
         <span className={styles.cHover} aria-hidden="true">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={styles.cColour} src={posterFor(clip.src)} alt="" decoding="async" draggable={false} />
+          <span className={styles.cMat} />
+          <span className={styles.cPic}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className={styles.cColour} src={posterFor(clip.src)} alt="" decoding="async" draggable={false} />
+            {live && (
+              <video
+                ref={videoRef}
+                className={`${styles.cVideo} ${playing ? styles.cVideoOn : ""}`}
+                src={clip.src}
+                muted
+                loop
+                playsInline
+                autoPlay
+                preload="auto"
+                disablePictureInPicture
+                onPlaying={() => setPlaying(true)}
+              />
+            )}
+          </span>
+          <span className={styles.cCap}>
+            <span className={styles.cCapName}>{clip.title}</span>
+            <span className={styles.cCapMeta}>
+              <i className={styles.cDot} />
+              {clip.duration}
+            </span>
+          </span>
         </span>
       </span>
     </div>
@@ -643,13 +685,6 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const [room, setRoom] = useState<FormatKey | null>(null);
   // The wall takes the frame of the word pointed at; once a word is clicked it keeps that frame.
   const wallFormat = room ?? fmtHover ?? fmtAuto;
-  // the film lifted off the wall under the pointer (rooms 16x9 and 9x16)
-  const [peek, setPeek] = useState<PeekAt | null>(null);
-  const peekSetRef = useRef(setPeek);
-  useEffect(() => {
-    const id = window.setTimeout(() => setPeek(null), 0);
-    return () => window.clearTimeout(id);
-  }, [room, menuOpen, project]);
   // at rest the landing is only paper and the choice: the wall behind it is
   // hidden, so it stops moving and its films stop decoding until it's called up
   const resting = !wallFormat;
@@ -790,9 +825,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   // Live video budget for this device; nothing plays while a film is open or the tab is hidden.
   const pausedRef = useRef(true);
   useEffect(() => {
-    // the wall rests in black and white and plays nothing itself: the film you
-    // rest on plays in its lifted card (peek.tsx), outside the wall
-    playback.start(0, { hoverOnly: true });
+    // the wall rests in black and white: only the film you rest on plays
+    playback.start(liveBudget(), { hoverOnly: true });
     playback.setPaused(true);
     const onVis = () => playback.setPaused(document.hidden || pausedRef.current);
     document.addEventListener("visibilitychange", onVis);
@@ -1098,8 +1132,6 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     };
     const tilts = new Map<HTMLElement, Tilt>();
     let bloomEl: HTMLElement | null = null; // the tile whose bloom origin is set
-    let peekOpen = false; // a film is lifted off the wall
-    let peekClose = 0;
     let hovered: HTMLElement | null = null;
     let intent = 0;
     let lastMove = -Infinity;
@@ -1149,6 +1181,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       if (el === hovered) return;
       if (hovered) {
         hovered.classList.remove(styles.tileOn);
+        hovered.previousElementSibling?.classList.remove(styles.tileAbove);
+        hovered.nextElementSibling?.classList.remove(styles.tileBelow);
+        hovered.closest(`.${styles.lane}`)?.classList.remove(styles.laneOn);
         const t = tilts.get(hovered);
         if (t) t.on = false;
       }
@@ -1159,16 +1194,15 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       if (!el) {
         hoverRef.current = false;
         if (!word) labelRef.current?.show(null);
-        // a moment's grace: crossing a gap between two films doesn't drop the card
-        window.clearTimeout(peekClose);
-        peekClose = window.setTimeout(() => {
-          peekOpen = false;
-          peekSetRef.current(null);
-        }, 140);
+        playback.setHovered(null);
         return;
       }
-      window.clearTimeout(peekClose);
       el.classList.add(styles.tileOn);
+      // the films either side of it in its lane ease away to give it room
+      el.previousElementSibling?.classList.add(styles.tileAbove);
+      el.nextElementSibling?.classList.add(styles.tileBelow);
+      // its lane comes above the lanes beside it, so the lifted film isn't cut off
+      el.closest(`.${styles.lane}`)?.classList.add(styles.laneOn);
       const t = tilts.get(el);
       if (t) t.on = true;
       else {
@@ -1187,18 +1221,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       hoverRef.current = true;
       // the film's own white button shows the way in; the cursor label is for the words
       labelRef.current?.show(null);
-      // rest on a film a moment and it lifts off the wall (sooner once one is up)
-      const id = el.dataset.tile ?? "";
-      intent = window.setTimeout(
-        () => {
-          const r = roomRef.current;
-          if (r !== "16x9" && r !== "9x16") return;
-          const b = el.getBoundingClientRect();
-          peekOpen = true;
-          peekSetRef.current({ id, index: Number(el.dataset.index), rect: { left: b.left, top: b.top, width: b.width, height: b.height } });
-        },
-        peekOpen ? 70 : INTENT_MS + 60
-      );
+      // rest on it a moment and its film starts
+      const id = el.dataset.tile ?? null;
+      intent = window.setTimeout(() => playback.setHovered(id), INTENT_MS);
     };
     const setWord = (w: HTMLElement | null) => {
       if (w === word) return;
@@ -1217,8 +1242,6 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       lastMoveRef.current = lastMove;
       p.x = e.clientX;
       p.y = e.clientY;
-      // on the lifted card: it and the film under it stay as they are
-      if ((e.target as Element | null)?.closest?.("[data-peek]")) return;
       if (!fine || !readyRef.current || draggingRef.current || menuRef.current || projectRef.current || heroRef.current) {
         setHover(null);
         setWord(null);
@@ -1318,7 +1341,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         const sx = on ? Math.sin(t.ph * 1.3) * SWAY.x : 0;
         const sy = on ? Math.cos(t.ph) * SWAY.y : 0;
         const sz = on ? Math.sin(t.ph * 0.8) * SWAY.z : 0;
-        t.rx += ((on ? t.trx + sx : 0) - t.rx) * k;
+        t.rx += ((on ? t.trx + sx - TILT.stand : 0) - t.rx) * k;
         t.ry += ((on ? t.try + sy : 0) - t.ry) * k;
         t.rz += (sz - t.rz) * k;
         t.s += ((on ? TILT.scale : 1) - t.s) * k;
@@ -1439,21 +1462,6 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           >
             <LensRoom fmt="beyond" clips={clips} paused={project !== null || menuOpen} reduce={reduce} onOpen={openFromSphere} />
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ================= The film lifted off the wall under the pointer ================= */}
-      <AnimatePresence>
-        {peek && (room === "16x9" || room === "9x16") && !menuOpen && !project && (
-          <Peek
-            key={peek.id}
-            at={peek}
-            clip={clips[peek.index]}
-            brand={brandOf(clips[peek.index], variant.clients)}
-            fmt={room}
-            poster={posterFor(clips[peek.index].src)}
-            onOpen={onOpen}
-          />
         )}
       </AnimatePresence>
 
