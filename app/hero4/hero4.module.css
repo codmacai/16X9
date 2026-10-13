@@ -1580,7 +1580,7 @@
 }
 
 /* in a room the films run to the edges */
-.page:has(.sceneRoom) .grade {
+.roomOn .grade {
   opacity: 0;
 }
 
@@ -1767,16 +1767,16 @@
   transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.page:has(.lane[data-format]) .headShade {
+.roomOn .headShade {
   opacity: 1;
 }
 
 /* in a room the films run under the top bar: the logo and burger go back to paper */
-.page:has(.sceneRoom) .logoImg {
+.roomOn .logoImg {
   filter: none;
 }
 
-.page:has(.sceneRoom) .burger span {
+.roomOn .burger span {
   background: var(--paper);
 }
 
@@ -1788,7 +1788,7 @@
   transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.page:not(:has(.lane[data-format])) .scene {
+.page:not(.wallOn) .scene {
   opacity: 0;
   pointer-events: none !important;
 }
@@ -1875,7 +1875,7 @@
     linear-gradient(to left, #000 0%, rgb(0 0 0 / 0.85) 7%, rgb(0 0 0 / 0.4) 18%, rgb(0 0 0 / 0) 32%);
 }
 
-.page:has(.lane[data-format]) .wings {
+.wallOn .wings {
   opacity: 1;
 }
 
@@ -1983,159 +1983,8 @@
 }
 
 /* between the films, black: the wall reads as one dark contact sheet */
-.page:has(.lane[data-format]) .plane {
+.wallOn .plane {
   background: #000;
-}
-
-/* ===========================================================================
-   THE TILE AS A PLAYER — pointed at, the brand goes, the film plays, and a
-   small interface comes up over it: title with a live dot, a play disc that
-   lands and breathes, the running time and a line filling as it plays.
-   =========================================================================== */
-.lane[data-format] .tileOn .tileGo,
-.lane[data-format] .tileOn .tileTitle,
-.lane[data-format] .tileOn .tilePrint {
-  opacity: 0 !important;
-}
-
-.tilePlayer {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: max(8px, 4cqw);
-  color: var(--paper);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-  background: linear-gradient(to top, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0) 42%), linear-gradient(to bottom, rgb(0 0 0 / 0.4), rgb(0 0 0 / 0) 30%);
-}
-
-.tileOn .tilePlayer {
-  opacity: 1;
-}
-
-.tpTop {
-  display: flex;
-  align-items: center;
-  gap: max(5px, 1.6cqw);
-  font-size: max(9px, 3.2cqw);
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  translate: 0 -6px;
-  transition: translate 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.tpLive {
-  flex: none;
-  width: max(5px, 1.4cqw);
-  height: max(5px, 1.4cqw);
-  border-radius: 50%;
-  background: #e1142b;
-  animation: tpBlink 1.4s ease-in-out infinite;
-}
-
-@keyframes tpBlink {
-  50% {
-    opacity: 0.25;
-  }
-}
-
-/* the play disc lands from a little larger, then breathes */
-.tpPlay {
-  align-self: center;
-  display: grid;
-  place-items: center;
-  width: max(34px, 16cqw);
-  height: max(34px, 16cqw);
-  border-radius: 50%;
-  background: rgb(247 242 238 / 0.94);
-  color: var(--ink);
-  scale: 1.6;
-  opacity: 0;
-  transition:
-    scale 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.tpPlay::after {
-  content: "";
-  position: absolute;
-  width: inherit;
-  height: inherit;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px rgb(247 242 238 / 0.8);
-  animation: tpRing 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
-}
-
-@keyframes tpRing {
-  from {
-    transform: scale(1);
-    opacity: 0.9;
-  }
-  to {
-    transform: scale(1.7);
-    opacity: 0;
-  }
-}
-
-.tpPlay svg {
-  width: 30%;
-  height: 34%;
-  margin-left: 8%;
-  fill: currentColor;
-}
-
-.tileOn .tpPlay {
-  scale: 1;
-  opacity: 1;
-  transition-delay: 0.08s;
-}
-
-.tileOn .tpTop {
-  translate: 0 0;
-}
-
-.tpFoot {
-  display: flex;
-  align-items: center;
-  gap: max(6px, 2cqw);
-  font-size: max(8px, 2.6cqw);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.tpTime {
-  flex: none;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.85;
-}
-
-.tpBar {
-  position: relative;
-  flex: 1;
-  height: 2px;
-  border-radius: 2px;
-  background: rgb(247 242 238 / 0.3);
-  overflow: hidden;
-}
-
-.tpFill {
-  position: absolute;
-  inset: 0;
-  background: var(--paper);
-  transform-origin: 0 50%;
-  transform: scaleX(var(--played, 0));
-}
-
-.tpOpen {
-  flex: none;
-  opacity: 0.85;
 }
 
 /* pointed at, the brand goes entirely (beats .lane[data-format] .tileBrand) */
@@ -2143,4 +1992,184 @@
   opacity: 0;
   transform: scale(1.18);
   letter-spacing: 0.12em;
+}
+
+/* ===========================================================================
+   SMOOTH, MINIMAL HOVER — the tile lifts and brightens, its brand slides up
+   and away, a thin paper frame draws in round the film, and its title and
+   runtime come up at the foot. Transforms and opacity only.
+   =========================================================================== */
+.tile {
+  contain: layout; /* no paint containment: the lift's shadow may fall outside */
+}
+
+.tileOn {
+  box-shadow: 0 40px 70px -30px rgb(0 0 0 / 0.85);
+}
+
+.tileBrand {
+  transition:
+    opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lane[data-format] .tileOn .tileBrand {
+  opacity: 0;
+  transform: translateY(-40%);
+  letter-spacing: inherit;
+}
+
+.tileFrame {
+  position: absolute;
+  inset: max(5px, 3cqw);
+  z-index: 4;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1.5px var(--paper);
+  opacity: 0;
+  transform: scale(1.06);
+  transition:
+    opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tileOn .tileFrame {
+  opacity: 0.9;
+  transform: none;
+}
+
+.tileCaption {
+  position: absolute;
+  z-index: 4;
+  left: max(10px, 6cqw);
+  right: max(10px, 6cqw);
+  bottom: max(10px, 6cqw);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--paper);
+  font-size: max(9px, 3.2cqw);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tcName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tcGo {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.85;
+}
+
+.tcGo svg {
+  width: 1.4em;
+  height: 1.4em;
+}
+
+.tileOn .tileCaption {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.08s;
+}
+
+/* the old centre button and print step aside: the frame and caption say it */
+.tileOn .tileGo,
+.lane[data-format] .tileOn .tileTitle,
+.lane[data-format] .tileOn .tilePrint {
+  opacity: 0 !important;
+}
+
+/* ===========================================================================
+   A FORMAT POINTED AT ON THE LANDING — its films show behind the words, full,
+   inside a thick paper frame round the screen like a screen's bezel. The
+   words turn to paper over the films; no faded middle.
+   =========================================================================== */
+.page {
+  --bezel: clamp(14px, 2.6vw, 40px);
+}
+
+.scene,
+.wings {
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    clip-path 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  clip-path: inset(18% 22% round 10px);
+}
+
+.wallOn:not(.roomOn) .scene,
+.wallOn:not(.roomOn) .wings {
+  clip-path: inset(var(--bezel) round 10px);
+}
+
+.roomOn .scene,
+.roomOn .wings {
+  clip-path: inset(0 round 0);
+}
+
+.wallOn:not(.roomOn) .headShade {
+  opacity: 0 !important; /* over its own (inline) fade */
+}
+
+/* the paper fog at the top and foot belongs to the resting page, not the films */
+.wallOn:not(.roomOn) .grade {
+  opacity: 0;
+}
+
+/* over the films, the words go to paper, held by a soft dark wash */
+.wallOn:not(.roomOn) .wings {
+  background:
+    linear-gradient(to right, #000 0%, rgb(0 0 0 / 0.7) 9%, rgb(0 0 0 / 0) 30%),
+    linear-gradient(to left, #000 0%, rgb(0 0 0 / 0.7) 9%, rgb(0 0 0 / 0) 30%),
+    rgb(0 0 0 / 0.38);
+}
+
+.wallOn:not(.roomOn) .eyebrow,
+.wallOn:not(.roomOn) .fmtTop,
+.wallOn:not(.roomOn) .fmtCap,
+.wallOn:not(.roomOn) .fmtLine {
+  color: rgb(247 242 238 / 0.8) !important;
+}
+
+.wallOn:not(.roomOn) .fmt,
+.wallOn:not(.roomOn) .fmtSlash,
+.wallOn:not(.roomOn) .fmtWord {
+  color: var(--paper) !important;
+}
+
+.wallOn:not(.roomOn) .fmtRuleBase {
+  background: rgb(247 242 238 / 0.3);
+}
+
+.wallOn:not(.roomOn) .fmtRuleOn {
+  background: var(--paper);
+}
+
+.fmt,
+.fmtSlash,
+.fmtWord,
+.eyebrow {
+  transition: color 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* the preview behind the words: the frame starts under the top bar, and the
+   names in the tiles step back so the three words read first */
+.wallOn:not(.roomOn) .scene,
+.wallOn:not(.roomOn) .wings {
+  clip-path: inset(clamp(64px, 9vh, 88px) var(--bezel) var(--bezel) round 10px);
+}
+
+.wallOn:not(.roomOn) .lane[data-format] .tileBrand {
+  opacity: 0.28;
 }

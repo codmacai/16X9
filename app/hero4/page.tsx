@@ -111,19 +111,19 @@ const tilesPerLane = (vw: number, vh: number, lanes: number, gap: number) =>
 // Hover feel: how far the film turns toward the pointer (deg), how far it comes
 // forward, and how quickly it eases there (per second). Only a film you wait on
 // for INTENT_MS starts loading its video.
-const TILT = { x: 14, y: 18, scale: 1.08, ease: 7 };
+const TILT = { x: 5, y: 7, scale: 1.07, ease: 6 };
 // while a film is hovered it never sits still: it sways in a slow orbit (deg),
 // on top of turning toward the pointer, so it reads like a print turned in the hand
 // In a format, pointing toward either end turns the wall to show that side in full:
 // past `from` (of the half-width) it eases in, turning, sliding and lifting the wall.
 const EDGE = { from: 0.45, turn: 26, shift: 22, lift: 10, ease: 3 };
-const SWAY = { x: 3.2, y: 4.5, z: 1.4, speed: 1.35 };
+const SWAY = { x: 0, y: 0, z: 0, speed: 0 }; // no idle sway: a lifted tile holds still
 // the camera pan at the ends of the screen: how far the wall travels (vw)
-const PAN = { vw: 46 };
+const PAN = { vw: 9 }; // a small drift: just enough to bring the end cards into view
 // the curve at the ends: how wide the plane is in screens, where the bend starts
 // (share of the half-width), how much more the side you move toward bends, how
 // far a lane sinks (vh), how far it shrinks, the cap
-const CURVE = { span: 2.4, from: 0.35, lean: 1.6, drop: 9, shrink: 0.06, max: 4 };
+const CURVE = { span: 2.4, from: 0.45, lean: 0.8, drop: 5, shrink: 0, max: 3 };
 const INTENT_MS = 160;
 const LAMP_RES = 8; // the lamp is drawn at 1/8 of the screen and stretched
 const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -245,14 +245,6 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
             preload="auto"
             disablePictureInPicture
             onPlaying={() => setPlaying(true)}
-            onTimeUpdate={(e) => {
-              const v = e.currentTarget;
-              const t = tileRef.current;
-              if (!t || !v.duration) return;
-              t.style.setProperty("--played", (v.currentTime / v.duration).toFixed(4));
-              const clock = t.querySelector<HTMLElement>("[data-clock]");
-              if (clock) clock.textContent = `${Math.floor(v.currentTime / 60)}:${String(Math.floor(v.currentTime % 60)).padStart(2, "0")}`;
-            }}
           />
         )}
         {/* at rest the tile is a black card with the mark at its centre; the film
@@ -291,26 +283,16 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
             <path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.6" />
           </svg>
         </span>
-        {/* pointed at, the tile becomes a small player: the title at the top, a
-            play disc at the centre, and the film's time running along the foot */}
-        <span className={styles.tilePlayer} aria-hidden="true">
-          <span className={styles.tpTop}>
-            <i className={styles.tpLive} />
-            <span>{clip.title}</span>
-          </span>
-          <span className={styles.tpPlay}>
-            <svg viewBox="0 0 12 14">
-              <path d="M1 0l11 7-11 7z" />
+        {/* pointed at: a thin paper frame draws in round the film, and its
+            title and the way in come up at the foot */}
+        <span className={styles.tileFrame} aria-hidden="true" />
+        <span className={styles.tileCaption} aria-hidden="true">
+          <span className={styles.tcName}>{clip.title}</span>
+          <span className={styles.tcGo}>
+            {clip.duration}
+            <svg viewBox="0 0 24 24">
+              <path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.6" />
             </svg>
-          </span>
-          <span className={styles.tpFoot}>
-            <span className={styles.tpTime}>
-              <span data-clock>0:00</span> / {clip.duration}
-            </span>
-            <span className={styles.tpBar}>
-              <span className={styles.tpFill} />
-            </span>
-            <span className={styles.tpOpen}>Open film</span>
           </span>
         </span>
       </span>
@@ -1332,9 +1314,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           const toward = Math.max(0, Math.sign(x) * lean.x); // the pointer on this side
           const bow = Math.min(CURVE.max, out * out * (1 + CURVE.lean * toward));
           const t = `0 ${(bow * CURVE.drop).toFixed(2)}vh`;
-          const sc = (1 - bow * CURVE.shrink).toFixed(4);
           if (el.style.translate !== t) el.style.translate = t;
-          if (el.style.scale !== sc) el.style.scale = sc;
         }
       }
 
@@ -1388,7 +1368,11 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       : { initial: from, animate: { ...to, transition: { delay, duration, ease: EASE } } };
 
   return (
-    <section className={`${styles.page} ${interTight.variable} ${archivo.variable}`} aria-label={mark} style={menuOpen ? { touchAction: "none" } : undefined}>
+    <section
+      className={`${styles.page} ${interTight.variable} ${archivo.variable} ${wallFormat ? styles.wallOn : ""} ${room ? styles.roomOn : ""}`}
+      aria-label={mark}
+      style={menuOpen ? { touchAction: "none" } : undefined}
+    >
       {/* ================= The depth gallery: rushing behind the letterbox ================= */}
 
       <motion.div
