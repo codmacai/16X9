@@ -699,6 +699,13 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const [room, setRoom] = useState<FormatKey | null>(null);
   // The wall takes the frame of the word pointed at; once a word is clicked it keeps that frame.
   const wallFormat = room ?? fmtHover ?? fmtAuto;
+  // at rest the landing is only paper and the choice: the wall behind it is
+  // hidden, so it stops moving and its films stop decoding until it's called up
+  const resting = !wallFormat;
+  const restingRef = useRef(resting);
+  useEffect(() => {
+    restingRef.current = resting;
+  }, [resting]);
   const [hero, setHero] = useState<{ key: FormatKey; from: Rect } | null>(null);
   const [lifted, setLifted] = useState<FormatKey | null>(null);
   const [heroCovered, setHeroCovered] = useState(false);
@@ -844,9 +851,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   // Videos wait for the entrance to finish (decoding them mid-entrance is what
   // stutters), and stop under an open film or the menu.
   useEffect(() => {
-    pausedRef.current = !ready || project !== null || hero !== null || wallHidden;
+    pausedRef.current = !ready || project !== null || hero !== null || wallHidden || resting;
     playback.setPaused(pausedRef.current || document.hidden);
-  }, [ready, project, hero, wallHidden, playback, room]);
+  }, [ready, project, hero, wallHidden, resting, playback, room]);
 
   const lanes = useMemo(
     () =>
@@ -904,7 +911,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       const holding = hoverRef.current && now - lastMoveRef.current < HOLD_MS;
       // while dragged, the wall goes only where the pointer takes it
       const target =
-        projectRef.current || heroRef.current || wallHiddenRef.current || draggingRef.current
+        projectRef.current || heroRef.current || wallHiddenRef.current || restingRef.current || draggingRef.current
           ? 0
           : holding
             ? HOVER_SPEED

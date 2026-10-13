@@ -1999,12 +1999,11 @@
    and away, a thin paper frame draws in round the film, and its title and
    runtime come up at the foot. Transforms and opacity only.
    =========================================================================== */
-.tile {
-  contain: layout; /* no paint containment: the lift's shadow may fall outside */
-}
-
+/* the lift is the tile coming forward (scale, set by the tilt loop) with the
+   others stepping back under their veil: no shadow, so each tile keeps its
+   paint contained and the wall never repaints round it */
 .tileOn {
-  box-shadow: 0 40px 70px -30px rgb(0 0 0 / 0.85);
+  box-shadow: none;
 }
 
 .tileBrand {
@@ -2172,4 +2171,19 @@
 
 .wallOn:not(.roomOn) .lane[data-format] .tileBrand {
   opacity: 0.28;
+}
+
+/* the brand names carry no blurred shadow: a hundred of them would repaint it */
+.tileBrand {
+  text-shadow: none;
+}
+
+/* at rest the hidden wall isn't drawn at all (after its fade), so nothing
+   behind the paper costs a frame */
+.page:not(.wallOn) .scene {
+  visibility: hidden;
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    clip-path 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 0.6s;
 }
