@@ -1443,6 +1443,27 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         <Mark mark={mark} reduce={reduce} gone={gone} menuOpen={menuOpen} menuKey={menuKey} />
       </div>
 
+      {/* ================= At rest: the mark, with a film playing in its frame ================= */}
+      <AnimatePresence>
+        {gone && !menuOpen && !room && !wallFormat && (
+          <motion.div
+            key="reel-mark"
+            className={styles.reelMark}
+            aria-hidden="true"
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1, transition: { duration: 0.9, ease: EASE } }}
+            exit={{ opacity: 0, scale: 1.06, transition: { duration: 0.45, ease: EASE } }}
+          >
+            <span className={styles.reelFrame}>
+              <video src="/clips/clip-10.mp4" poster="/clips/stills/clip-10.webp" muted loop playsInline autoPlay preload="metadata" />
+            </span>
+            <span className={styles.reelNum}>
+              16<i />9
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ================= Menu (no boxes: a veil over the wall and the links) ================= */}
       {/* in a room, Work leads to that format's work */}
       <Menu open={menuOpen} reduce={reduce} workHref={room ? `/work?format=${room}` : "/work"} onClose={closeMenu} />
