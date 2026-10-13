@@ -230,6 +230,12 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: Ti
             onPlaying={() => setPlaying(true)}
           />
         )}
+        {/* at rest the tile is a black card with the mark at its centre; the film
+            comes up through it when you point at it, or when a format is chosen */}
+        <span className={styles.tileMark} aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={LOGO_SRC} alt="" draggable={false} />
+        </span>
         <span className={styles.tileGlare} aria-hidden="true" />
         <span className={styles.tileScrim} aria-hidden="true" />
         <span className={styles.tileVeil} aria-hidden="true" />
@@ -1314,7 +1320,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         ref={sceneRef}
         className={`${styles.scene} ${wallHidden ? styles.sceneHidden : ""} ${room === "beyond" ? styles.sceneAway : ""} ${room ? styles.sceneRoom : ""}`}
         // the moving wall is only to watch: no hover, no click, no drag (the words are the way in)
-        style={{ pointerEvents: room && room !== "beyond" ? undefined : "none", touchAction: room ? "pan-y" : "none" }}
+        style={{ pointerEvents: room === "beyond" ? "none" : undefined, touchAction: room ? "pan-y" : "none" }}
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
       >
@@ -1401,10 +1407,17 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
           >
             <Link href={`/work?format=${room}`}>
-              <span>
-                View all <Ratio text={FORMATS.find((f) => f.key === room)?.label ?? ""} className={styles.viewAllX} /> work
+              <span className={styles.viewAllText}>
+                <small>
+                  <Ratio text={FORMATS.find((f) => f.key === room)?.label ?? ""} className={styles.viewAllX} />
+                </small>
+                Explore full work
               </span>
-              <i aria-hidden="true">→</i>
+              <i aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                </svg>
+              </i>
             </Link>
           </motion.div>
         )}
@@ -1458,7 +1471,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         {/* in a room, at the top in the middle: which one, and a small sheet to switch (or go back to the index) */}
         <div className={styles.barMid}>
           <AnimatePresence>
-            {room && !menuOpen && <RoomSwitch key="switch" room={room} onSwitch={setRoom} onIndex={() => setRoom(null)} />}
+            {room && !menuOpen && (
+              <RoomSwitch key="switch" room={room} onSwitch={setRoom} onIndex={() => setRoom(null)} tone="light" />
+            )}
           </AnimatePresence>
         </div>
 

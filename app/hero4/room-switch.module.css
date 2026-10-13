@@ -1,54 +1,78 @@
-/* THE ROOM SWITCH (room-switch.tsx): beside the logo, paper on the dark */
+/* THE ROOM SWITCH (room-switch.tsx): three frames and a pill, top centre */
 
 .root {
-  --paper: #f6f4f0;
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --paper: #f7f2ee;
+  --ink: #0a0a0a;
+  --fg: var(--paper);
+  --bg: var(--ink);
+  --line: rgb(247 242 238 / 0.22);
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: var(--paper);
-  font-size: 11px;
+  gap: 8px;
+  color: var(--fg);
+  font-size: 11.5px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   pointer-events: auto;
 }
 
-/* on a paper page: ink, and the sheet in paper */
+/* on paper: ink, and the pill is ink with paper type */
 .light {
-  color: #0c0c0c;
+  --fg: var(--ink);
+  --bg: var(--paper);
+  --line: rgb(10 10 10 / 0.16);
 }
 
-.light .sheet {
-  background: rgb(246 244 240 / 0.92);
-  box-shadow: inset 0 0 0 1px rgb(12 12 12 / 0.14);
-}
-
-.light .item:hover {
-  background: rgb(12 12 12 / 0.05);
-}
-
-.light .index {
-  border-top-color: rgb(12 12 12 / 0.12);
-}
-
-.current {
-  display: inline-flex;
+/* the three sit on a pill of their own, so they read over films or paper */
+.track {
+  position: relative;
+  display: flex;
   align-items: center;
-  gap: 12px;
-  height: 34px;
-  padding: 0;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: 0 18px 44px -18px rgb(0 0 0 / 0.5);
+}
+
+.opt {
+  position: relative;
+  height: 42px;
+  padding: 0 22px;
   border: 0;
+  border-radius: 999px;
   background: none;
   color: inherit;
   font: inherit;
   letter-spacing: inherit;
   text-transform: inherit;
   cursor: pointer;
-  overflow: hidden;
+  opacity: 0.55;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.currentIn {
+.opt:hover,
+.opt:focus-visible {
+  opacity: 1;
+  outline: none;
+}
+
+.optOn {
+  opacity: 1;
+  cursor: default;
+  color: var(--bg);
+}
+
+/* the pill: the frame you're in */
+.pill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--fg);
+}
+
+.optIn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -58,198 +82,55 @@
 .glyph {
   height: 11px;
   width: auto;
-  flex: none;
 }
 
 .x {
-  margin: 0 0.3em;
-  font-weight: 300;
-  text-transform: none;
-}
-
-.caret {
-  width: 9px;
-  height: 6px;
-  opacity: 0.7;
-  transition: transform 0.5s var(--ease), opacity 0.3s ease;
-}
-
-.current:hover .caret {
-  opacity: 1;
-}
-
-.caretOpen {
-  transform: rotate(180deg);
-}
-
-.current:focus-visible,
-.item:focus-visible,
-.index:focus-visible {
-  outline: 1px solid var(--paper);
-  outline-offset: 4px;
-}
-
-/* the sheet: narrow, square, a hairline round it, the dark showing through a little */
-.sheet {
-  position: absolute;
-  top: calc(100% + 12px);
-  left: 50%;
-  translate: -50% 0;
-  min-width: 290px;
-  display: flex;
-  flex-direction: column;
-  padding: 8px;
-  background: rgb(8 8 8 / 0.86);
-  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.14);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.item {
-  display: grid;
-  grid-template-columns: 22px 26px 1fr 8px;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 10px;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  letter-spacing: inherit;
-  text-align: left;
-  text-transform: inherit;
-  cursor: pointer;
-  opacity: 0.55;
-  transition: opacity 0.3s var(--ease), background-color 0.3s var(--ease);
-}
-
-.item:hover,
-.itemOn {
-  opacity: 1;
-}
-
-.item:hover {
-  background: rgb(246 244 240 / 0.05);
-}
-
-.no {
-  font-style: normal;
-  font-size: 9.5px;
-  opacity: 0.6;
-}
-
-.label {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  white-space: nowrap;
-}
-
-.label small {
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  opacity: 0.55;
-}
-
-/* the room you're in */
-.dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0;
-  transform: scale(0.4);
-  transition: opacity 0.3s ease, transform 0.4s var(--ease);
-}
-
-.itemOn .dot {
-  opacity: 1;
-  transform: none;
+  font-weight: 400;
 }
 
 .index {
-  margin-top: 6px;
-  padding: 12px 10px 8px;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
   border: 0;
-  border-top: 1px solid rgb(246 244 240 / 0.12);
-  background: none;
+  border-radius: 50%;
+  background: var(--bg);
   color: inherit;
-  font: inherit;
-  letter-spacing: inherit;
-  text-align: left;
-  text-transform: inherit;
   cursor: pointer;
-  opacity: 0.75;
-  transition: opacity 0.3s ease;
+  box-shadow: 0 18px 44px -18px rgb(0 0 0 / 0.5);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.index:hover {
-  opacity: 1;
+.index svg {
+  width: 13px;
+  height: 10px;
 }
 
-.index span {
-  display: inline-block;
-  margin-right: 8px;
-  transition: transform 0.5s var(--ease);
+.index:hover,
+.index:focus-visible {
+  transform: translateX(-3px);
+  outline: none;
 }
 
-.index:hover span {
-  transform: translateX(-4px);
-}
-
-@media (max-width: 760px) {
+@media (max-width: 640px) {
   .root {
     font-size: 10px;
-    letter-spacing: 0.16em;
+    gap: 6px;
   }
-  .sheet {
-    min-width: 250px;
+
+  .opt {
+    height: 32px;
+    padding: 0 10px;
   }
-}
 
-/* ===== Hero 4: the switch is the bar's centrepiece — a lit pill, larger type, a live dot ===== */
-.current {
-  height: 46px;
-  gap: 14px;
-  padding: 0 18px 0 16px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.26em;
-  background: rgb(246 244 240 / 0.1);
-  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.38), 0 0 34px rgb(246 244 240 / 0.12);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  transition: background-color 0.4s ease, box-shadow 0.4s ease;
-}
+  .glyph {
+    display: none;
+  }
 
-.current::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  flex: none;
-  border-radius: 50%;
-  background: #f6f4f0;
-  box-shadow: 0 0 0 0 rgb(246 244 240 / 0.6);
-  animation: switchLive 2.2s ease-out infinite;
-}
-
-@keyframes switchLive {
-  0% { box-shadow: 0 0 0 0 rgb(246 244 240 / 0.6); }
-  100% { box-shadow: 0 0 0 9px rgb(246 244 240 / 0); }
-}
-
-.current:hover {
-  background: rgb(246 244 240 / 0.18);
-  box-shadow: inset 0 0 0 1px #f6f4f0, 0 0 44px rgb(246 244 240 / 0.22);
-}
-
-.current .glyph {
-  height: 14px;
-}
-
-.caret {
-  width: 11px;
-  height: 7px;
-  opacity: 1;
+  .index {
+    width: 32px;
+    height: 32px;
+  }
 }
