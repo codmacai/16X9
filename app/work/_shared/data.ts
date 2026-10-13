@@ -128,7 +128,7 @@ export const PROJECTS: Project[] = [
 // domain, without the trailing slash). Until that's set, or for a film with no
 // file yet, the film plays its stand-in clip.
 // ---------------------------------------------------------------------------
-const VIDEO_BASE = (process.env.NEXT_PUBLIC_VIDEO_BASE ?? "").replace(/\/+$/, "");
+const VIDEO_BASE = (process.env.NEXT_PUBLIC_VIDEO_BASE || "https://pub-9d250cf0ea9541beac9a7e373fe10d2f.r2.dev").replace(/\/+$/, "");
 /** A file in the bucket -> its public URL (each part of the path escaped: the names have spaces, brackets, apostrophes). */
 const hosted = (key?: string) =>
   key && VIDEO_BASE ? `${VIDEO_BASE}/${key.split("/").map(encodeURIComponent).join("/")}` : undefined;
