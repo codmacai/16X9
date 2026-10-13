@@ -28,6 +28,9 @@ export type Project = Clip & {
   /** the full film (a direct video URL: an .mp4 from Vimeo, Mux, Cloudflare Stream or similar),
    * played in the film page's cover. Without it the cover plays the stand-in clip (src). */
   film?: string;
+  /** the behind-the-scenes film (a direct video URL), played in the film page's curved screen.
+   * Without it the screen plays the stand-in clip (src). */
+  bts?: string;
   /** a few sentences for the film's own page */
   synopsis: string;
   /** the case, told on the film's page under the screen: who the client is, what was asked, the idea.

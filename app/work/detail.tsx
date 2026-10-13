@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
+import { AnimatePresence, motion, useInView, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
 import { EASE } from "./_shared/chrome";
 import { posterFor, type Project } from "./_shared/data";
 import Credits from "./credits";
 import Story from "./story";
 import Edge from "./edge";
 import Theatre, { type Rect } from "./theatre";
+import ScreenBar from "./screen-bar";
 import { useHeavyScroll } from "./heavy";
 import d from "./detail.module.css";
 
@@ -63,7 +64,6 @@ export default function Detail({
   reduce,
   onClose,
   onNext,
-  onPlay,
 }: {
   films: Project[];
   k: number;
@@ -78,7 +78,8 @@ export default function Detail({
   reduce: boolean;
   onClose: () => void;
   onNext: () => void;
-  onPlay: (film: Project, el: HTMLElement) => void;
+  /** (no longer used: behind the scenes plays in the screen itself) */
+  onPlay?: (film: Project, el: HTMLElement) => void;
 }) {
   const film = films[k];
   const next = films[(k + 1) % films.length];
@@ -167,6 +168,21 @@ export default function Detail({
   useEffect(() => {
     scrollRef.current?.focus({ preventScroll: true });
   }, []);
+
+  // behind the scenes plays in the curved screen itself, in its own shape
+  const btsVideo = useRef<HTMLVideoElement>(null);
+  const [bts, setBts] = useState(false);
+  const screenInView = useInView(screenRef, { root: scrollRef, amount: 0.2 });
+  useEffect(() => {
+    if (!screenInView) btsVideo.current?.pause();
+  }, [screenInView]);
+  const pressScreen = () => {
+    if (!bts) return setBts(true);
+    const v = btsVideo.current;
+    if (!v) return;
+    if (v.paused) v.play().catch(() => {});
+    else v.pause();
+  };
 
   const toScreen = () => {
     const box = scrollRef.current;
@@ -371,20 +387,50 @@ export default function Detail({
               type="button"
               className={d.screen}
               style={reduce ? undefined : { scale: screenScale, y: screenY }}
-              onClick={(e) => onPlay(film, e.currentTarget)}
-              aria-label={`Watch behind the scenes: ${film.title}`}
+              onClick={pressScreen}
+              aria-label={bts ? `Pause or play: ${film.title}, behind the scenes` : `Watch behind the scenes: ${film.title}`}
             >
               <span className={d.glass}>
                 <motion.span className={d.picture} style={reduce ? undefined : { scale: pictureScale }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={still} alt="" draggable={false} />
                 </motion.span>
+                {/* the film itself, in the glass */}
+                <AnimatePresence>
+                  {bts && (
+                    <motion.video
+                      key="bts"
+                      ref={btsVideo}
+                      className={d.btsVideo}
+                      src={film.bts ?? film.src}
+                      poster={still}
+                      autoPlay
+                      playsInline
+                      preload="auto"
+                      onCanPlay={(e) => {
+                        const v = e.currentTarget;
+                        if (v.paused) v.play().catch(() => {
+                          v.muted = true;
+                          v.play().catch(() => {});
+                        });
+                      }}
+                      onEnded={() => setBts(false)}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1, transition: { duration: 0.8, ease: EASE } }}
+                      exit={{ opacity: 0, transition: { duration: 0.5, ease: EASE } }}
+                    />
+                  )}
+                </AnimatePresence>
                 <span className={d.vignette} aria-hidden="true" />
                 <span className={d.sheen} aria-hidden="true" />
               </span>
               {/* in the brand's own colours: a paper disc, an ink play mark, paper type,
                   and the live dot from the band's clock */}
-              <motion.span className={d.watch} style={reduce ? undefined : { opacity: watchFade, scale: watchScale }} aria-hidden="true">
+              <motion.span
+                className={`${d.watch} ${bts ? d.watchAway : ""}`}
+                style={reduce ? undefined : { opacity: watchFade, scale: watchScale }}
+                aria-hidden="true"
+              >
                 <span className={d.playDisc}>
                   <svg className={d.play} viewBox="0 0 24 28">
                     <path d="M3 2.2 Q3 0.6 4.4 1.4 L22 12.4 Q23.4 14 22 15.6 L4.4 26.6 Q3 27.4 3 25.8 Z" />
@@ -396,6 +442,7 @@ export default function Detail({
                 <span className={d.watchLabel}>Watch behind the scenes</span>
               </motion.span>
             </motion.button>
+            <ScreenBar video={btsVideo} open={bts} onClose={() => setBts(false)} />
           </div>
         </motion.div>
 

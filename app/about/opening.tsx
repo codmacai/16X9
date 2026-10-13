@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import {
   animate,
   motion,
@@ -18,13 +18,12 @@ import s from "./opening.module.css";
 
 // ===========================================================================
 // OPENING — who we are. The frames open:
-//   · on arrival, three windows in the studio's three shapes open like
-//     shutters — a 16:9 film behind the line, a 9:16 portrait and an arch
-//     (our "beyond") in front of it — while WHO WE ARE rises letter by letter
-//     out of its mask, so big it nearly fills the screen;
-//   · the screen holds while you scroll: the letters part from the middle and
-//     the line lifts away, the windows drift off at their own depths, each
-//     picture settling inside its frame as it goes;
+//   · on arrival WHO WE ARE rises letter by letter out of its mask, so big it
+//     nearly fills the screen, and one 16:9 frame set into the line between
+//     WE and ARE opens like a shutter on a film;
+//   · the screen holds while you scroll: the letters part from the middle,
+//     round the frame, which grows into the room they leave, its picture
+//     settling inside it; then the line lifts away;
 //   · underneath, the studio's own words come up and are read in, word by
 //     word, and three small films open inside the line as it names them;
 //   · as the next section rises over it, the whole screen sinks back.
@@ -183,20 +182,6 @@ export default function Opening() {
 
           {/* ================= the first screen ================= */}
           <div className={s.hero}>
-            <Window
-              kind="wide"
-              caption="16 × 9"
-              src="/clips/stills/clip-06.webp"
-              film="/clips/clip-06.mp4"
-              p={p}
-              drift={{ x: 8, y: -100, scale: 1.16, until: 0.36 }}
-              lean={lean}
-              depth={10}
-              opening={{ from: "inset(50% 0% 50% 0%)", to: "inset(0% 0% 0% 0%)", delay: 0.15 }}
-              reduce={reduce}
-              held={still}
-            />
-
             <motion.h1
               ref={headRef}
               id="about-title"
@@ -206,7 +191,9 @@ export default function Opening() {
               <span className={s.sr}>Who we are</span>
               <span className={s.headLine} aria-hidden="true">
                 {HEAD.map((word, w) => (
-                  <span key={word} className={s.headWord}>
+                  <Fragment key={word}>
+                  {w === 2 && <Reel p={p} lean={lean} reduce={reduce} held={still} />}
+                  <span className={s.headWord}>
                     {word.split("").map((ch, i) => {
                       const flat = HEAD.slice(0, w).join(" ").length + (w ? 1 : 0) + i; // place in "WHO WE ARE"
                       const all = HEAD.join(" ").length - 1;
@@ -227,38 +214,10 @@ export default function Opening() {
                       );
                     })}
                   </span>
+                  </Fragment>
                 ))}
               </span>
             </motion.h1>
-
-            <Window
-              kind="tall"
-              caption="9 × 16"
-              src="/work/posters/poster-1.webp"
-              p={p}
-              drift={{ x: -10, y: -110, scale: 1.12, until: 0.3 }}
-              lean={lean}
-              depth={22}
-              opening={{ from: "inset(100% 0% 0% 0%)", to: "inset(0% 0% 0% 0%)", delay: 0.35 }}
-              reduce={reduce}
-              held={still}
-            />
-            <Window
-              kind="arch"
-              caption="& Beyond"
-              src="/work/posters/poster-2.webp"
-              p={p}
-              drift={{ x: -2, y: -150, scale: 1.14, until: 0.34 }}
-              lean={lean}
-              depth={30}
-              opening={{
-                from: "inset(100% 0% 0% 0% round 999px 999px 0px 0px)",
-                to: "inset(0% 0% 0% 0% round 999px 999px 0px 0px)",
-                delay: 0.55,
-              }}
-              reduce={reduce}
-              held={still}
-            />
 
             {/* the cue, at the foot of the first screen */}
             <motion.div className={s.cue} style={{ opacity: cueFade }}>
@@ -314,55 +273,36 @@ export default function Opening() {
 }
 
 // ---------------------------------------------------------------------------
-// WINDOW — a picture in one of the three frames. It opens like a shutter on
-// arrival; with the scroll it drifts off at its own depth while the picture
-// settles inside it; it leans a little towards the pointer.
+// REEL — one 16:9 frame set into the line, between WE and ARE, the height of
+// the capitals, a film playing in it. It opens like a shutter as the letters
+// rise; with the scroll the letters part round it and it grows into the room
+// they leave, the picture settling inside; it leans a little to the pointer.
 // ---------------------------------------------------------------------------
-function Window({
-  kind,
-  caption,
-  src,
-  film,
+function Reel({
   p,
-  drift,
   lean,
-  depth,
-  opening,
   reduce,
   held,
 }: {
-  kind: "wide" | "tall" | "arch";
-  caption: string;
-  /** the picture (a film's still, when it has a film) */
-  src: string;
-  film?: string;
   p: MotionValue<number>;
-  /** where it ends up when it has drifted off: vw, vh, scale, and by when (share of the scroll) */
-  drift: { x: number; y: number; scale: number; until: number };
   lean: { x: MotionValue<number>; y: MotionValue<number> };
-  /** how far it leans towards the pointer, px */
-  depth: number;
-  opening: { from: string; to: string; delay: number };
   reduce: boolean;
   /** reduced motion: everything rests */
   held: boolean;
 }) {
   const video = useRef<HTMLVideoElement>(null);
-  const k = (v: number) => Math.pow(share(v, [0, drift.until]), 1.35);
-  const x = useTransform(p, (v) => `${drift.x * k(v)}vw`);
-  const y = useTransform(p, (v) => `${drift.y * k(v)}vh`);
-  const scale = useTransform(p, (v) => 1 + (drift.scale - 1) * k(v));
-  // the picture moves against its frame, and settles
-  const picY = useTransform(p, (v) => `${7 * k(v)}%`);
+  const grow = (v: number) => Math.pow(share(v, T.part), 1.7);
+  const scale = useTransform(p, (v) => 1 + 1.15 * grow(v));
+  const picY = useTransform(p, (v) => `${7 * grow(v)}%`);
   const captionFade = useTransform(p, [T.cue[0], T.cue[1] + 0.03], [1, 0]);
-  const leanX = useTransform(lean.x, (v) => v * depth);
-  const leanY = useTransform(lean.y, (v) => v * depth * 0.6);
+  const leanX = useTransform(lean.x, (v) => v * 14);
+  const leanY = useTransform(lean.y, (v) => v * 8);
 
-  // the film rests while it is out of sight (or held still), and plays when it is back
+  // the film rests once the line has gone (or held still), and plays when it's back
   const sync = (v: number) => {
     const el = video.current;
     if (!el) return;
-    const rest = held || v > drift.until + 0.04;
+    const rest = held || v > T.fade[1] + 0.04;
     if (rest && !el.paused) el.pause();
     else if (!rest && el.paused) el.play().catch(() => {});
   };
@@ -370,38 +310,33 @@ function Window({
   useEffect(() => sync(p.get()));
 
   return (
-    <motion.figure className={`${s.win} ${s[kind]}`} style={{ x, y, scale }} aria-hidden="true">
-      <motion.div className={s.lean} style={{ x: leanX, y: leanY }}>
-        <motion.div
-          className={s.shutter}
-          initial={{ clipPath: opening.from }}
-          animate={{ clipPath: opening.to, transition: reduce ? { duration: 0 } : { delay: opening.delay, duration: 1.45, ease: EASE_CINE } }}
+    <motion.span className={s.reel} style={{ scale }} aria-hidden="true">
+      <motion.span className={s.reelLean} style={{ x: leanX, y: leanY }}>
+        <motion.span
+          className={s.reelShutter}
+          initial={{ clipPath: "inset(50% 0% 50% 0%)" }}
+          animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: reduce ? { duration: 0 } : { delay: 0.6, duration: 1.45, ease: EASE_CINE } }}
         >
-          <motion.div
-            className={s.pic}
+          <motion.span
+            className={s.reelPic}
             initial={{ scale: 1.32 }}
-            animate={{ scale: 1, transition: reduce ? { duration: 0 } : { delay: opening.delay, duration: 2.2, ease: EASE } }}
+            animate={{ scale: 1, transition: reduce ? { duration: 0 } : { delay: 0.6, duration: 2.2, ease: EASE } }}
           >
-            <motion.div className={s.picIn} style={{ y: picY }}>
-              {film ? (
-                <video ref={video} src={film} poster={src} muted loop playsInline autoPlay preload="metadata" />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={src} alt="" draggable={false} decoding="async" />
-              )}
-            </motion.div>
-          </motion.div>
-        </motion.div>
-        <motion.figcaption className={s.caption} style={{ opacity: captionFade }}>
+            <motion.span className={s.reelIn} style={{ y: picY }}>
+              <video ref={video} src="/clips/clip-06.mp4" poster="/clips/stills/clip-06.webp" muted loop playsInline autoPlay preload="metadata" />
+            </motion.span>
+          </motion.span>
+        </motion.span>
+        <motion.span className={s.reelCaption} style={{ opacity: captionFade }}>
           <motion.span
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.6, transition: reduce ? { duration: 0 } : { delay: opening.delay + 1.1, duration: 1, ease: EASE } }}
+            animate={{ opacity: 0.6, transition: reduce ? { duration: 0 } : { delay: 1.7, duration: 1, ease: EASE } }}
           >
-            {caption}
+            16 × 9
           </motion.span>
-        </motion.figcaption>
-      </motion.div>
-    </motion.figure>
+        </motion.span>
+      </motion.span>
+    </motion.span>
   );
 }
 
