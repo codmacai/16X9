@@ -147,12 +147,23 @@ export const PROJECTS: Project[] = [
 // ---------------------------------------------------------------------------
 // 16x9 — the studio's real films, as filed in the Drive (WEBSITE ASSETS 16X9 →
 // 16X9 → a folder per category). Titles and clients come from the file names;
-// years and runtimes are left blank until confirmed. Until each film is hosted
-// (see the video setup) it plays a stand-in clip.
+// years and runtimes are left blank until confirmed.
+//
+// The full films live in the Cloudflare R2 bucket "my-website-videos", a
+// folder per category (brandfilms/, music/, TVC_s/); each film below names its
+// file there, exactly as it's spelled in the bucket. They play from the
+// bucket's public address, NEXT_PUBLIC_VIDEO_BASE (its r2.dev link or a custom
+// domain, without the trailing slash). Until that's set, or for a film with no
+// file yet, the film plays its stand-in clip.
 // ---------------------------------------------------------------------------
+const VIDEO_BASE = (process.env.NEXT_PUBLIC_VIDEO_BASE ?? "").replace(/\/+$/, "");
+/** A file in the bucket -> its public URL (each part of the path escaped: the names have spaces, brackets, apostrophes). */
+const hosted = (key?: string) =>
+  key && VIDEO_BASE ? `${VIDEO_BASE}/${key.split("/").map(encodeURIComponent).join("/")}` : undefined;
+
 const KIND: Record<CategoryId, string> = { brand: "Brand film", documentary: "Documentary", music: "Music video", tvc: "TVC" };
 let realNo = 17;
-const R = (title: string, client: string, category: CategoryId): Project => {
+const R = (title: string, client: string, category: CategoryId, file?: string): Project => {
   const no = String(realNo++);
   const line = client ? `${KIND[category]} for ${client}` : KIND[category];
   return {
@@ -166,22 +177,23 @@ const R = (title: string, client: string, category: CategoryId): Project => {
     accent: "#cfc8bd",
     synopsis: `${line}.`,
     src: `/clips/clip-${String(((realNo - 18) % 15) + 1).padStart(2, "0")}.mp4`,
+    film: hosted(file),
   };
 };
 
 PROJECTS.push(
-  // Brand Films
+  // Brand Films (brandfilms/)
   R("Inspiring Peaks", "Aldar", "brand"),
   R("The Promise", "Aldar", "brand"),
   R("NYC FC", "Etihad Airways", "brand"),
-  R("Ramadan Fridge", "Etihad Airways", "brand"),
-  R("Class Of", "Masdar Institute", "brand"),
-  R("Prime Minister's Office", "Prime Minister's Office", "brand"),
-  R("1001: One Tank Challenge", "Toyota Prius", "brand"),
+  R("Ramadan Fridge", "Etihad Airways", "brand", "brandfilms/etihad_ramadan_fridge_introduction.mp4_v1 (720p).mp4"),
+  R("Class of 2015", "Masdar Institute", "brand", "brandfilms/masdar_institute_class_of__2015_.mp4_v1 (720p).mp4"),
+  R("Dr Ahmed's Story", "Prime Minister's Office", "brand", "brandfilms/Prime Minister's Office - Dr_Ahmed_uae_inspiring_story_v1 (720p).mp4"),
+  R("1001: One Tank Challenge", "Toyota Prius", "brand", "brandfilms/prius_1001_one_tank_challenge_v1 (720p) (1).mp4"),
   R("Hybrid Adventurer", "Toyota Prius", "brand"),
-  R("Hybrid Falcon", "Toyota Prius", "brand"),
+  R("Hybrid Falcon", "Toyota Prius", "brand", "brandfilms/prius_hybrid_falcon.mp4_v1 (1080p).mp4"),
   R("Hybrid Graffiti", "Toyota Prius", "brand"),
-  R("Riyadh Marathon 2025", "Riyadh Marathon", "brand"),
+  R("Riyadh Marathon 2025", "Riyadh Marathon", "brand", "brandfilms/riyadh_marathon_2025_fanzone_casestudy_v1 (1080p).mp4"),
   // Documentaries
   R("Digital Divide", "GMIS", "documentary"),
   R("General Corporation", "GMIS", "documentary"),
@@ -189,21 +201,28 @@ PROJECTS.push(
   R("Sustainable Cities", "GMIS", "documentary"),
   R("Sustainable Energy", "GMIS", "documentary"),
   R("UAE Pioneers", "", "documentary"),
-  // Music Videos
-  R("I Love Kuwait", "", "music"),
-  R("RELM", "", "music"),
-  // TVC's
-  R("Cleveland Clinic", "Cleveland Clinic", "tvc"),
-  R("A True Story of Recovery", "Cleveland Clinic", "tvc"),
-  R("EHS", "EHS", "tvc"),
-  R("National", "Etisalat", "tvc"),
-  R("DMI Promo", "Expo", "tvc"),
-  R("Fast Government", "UAE Government", "tvc"),
-  R("Toyota", "Filmmaster MEA", "tvc"),
-  R("Shahid", "MBC", "tvc"),
-  R("Museum of the Future", "Museum of the Future", "tvc"),
-  R("National Day — 50", "", "tvc"),
-  R("Saadiyat", "Rotana", "tvc"),
+  // Music Videos (music/)
+  R("I Love Kuwait", "", "music", "music/I Love Kuwait - FINAL.MP4"),
+  R("RELM", "", "music", "music/RELM 2 min final 16x9.mp4"),
+  // TVC's (TVC_s/)
+  R("Cleveland Clinic", "Cleveland Clinic", "tvc", "TVC_s/cleveland_clinic_1.mp4_v1 (1080p).mp4"),
+  R("A True Story of Recovery", "Cleveland Clinic", "tvc", "TVC_s/cleveland_clinic_2.mp4_v1 (1080p).mp4"),
+  R("EHS", "EHS", "tvc", "TVC_s/EHS.MP4"),
+  R("National Campaign", "Etisalat", "tvc", "TVC_s/ETISALAT - NATIONAL CAMPAIGN.MP4"),
+  R("DMI Promo", "Expo", "tvc", "TVC_s/Expo DMI Promo.mov"),
+  R("Fast Government", "UAE Government", "tvc", "TVC_s/fast_government_uae.mp4_v1 (1080p).mp4"),
+  R("Toyota Corolla", "Filmmaster MEA", "tvc", "TVC_s/filmmaster_mea_toyota_-_corolla(1)_v1 (1080p).mp4"),
+  R("Shahid", "MBC", "tvc", "TVC_s/mbc_shahid_tvc_v1 (1080p).mp4"),
+  R("Museum of the Future", "Museum of the Future", "tvc", "TVC_s/museum_of__the_future_schools.mp4_v1 (1080p).mp4"),
+  R("National Day — 50 Years", "", "tvc", "TVC_s/National Day - 50 Years.MP4"),
+  R("Saadiyat", "Rotana", "tvc", "TVC_s/rotana_saddiyat_v1 (1080p).mp4"),
+  R("Water Projection", "Toyota", "tvc", "TVC_s/Copy of toyota_water_projection_tvc_v1 (1080p).mp4"),
+  R("Brand Film 2019", "Toyota", "tvc", "TVC_s/toyota_brand_film_2019_v1 (1080p).mp4"),
+  R("Saudi National Day", "", "tvc", "TVC_s/saudi_national_day_v1 (1080p).mp4"),
+  R("Special Olympics", "Special Olympics", "tvc", "TVC_s/special_olympics_v1 (1080p).mp4"),
+  R("Ministry of Education", "UAE Ministry of Education", "tvc", "TVC_s/uae_ministry_of_education_tvc_v1 (1080p).mp4"),
+  R("UAE National Anthem", "", "tvc", "TVC_s/uae_national_anthem_.mp4_v1 (720p).mp4"),
+  R("what3words", "what3words", "tvc", "TVC_s/what_3_words_tvc.mp4_v1 (1080p).mp4"),
 );
 
 // ---------------------------------------------------------------------------
