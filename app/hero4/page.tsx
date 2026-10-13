@@ -118,6 +118,10 @@ const TILT = { x: 14, y: 18, scale: 1.08, ease: 7 };
 // past `from` (of the half-width) it eases in, turning, sliding and lifting the wall.
 const EDGE = { from: 0.45, turn: 26, shift: 22, lift: 10, ease: 3 };
 const SWAY = { x: 3.2, y: 4.5, z: 1.4, speed: 1.35 };
+// the curve: how wide the plane is in screens, how far the curve follows the
+// pointer, how far a lane drops back per screen of distance (vh), how much the
+// lanes under the pointer come forward, how far the far ones shrink, the cap
+const CURVE = { span: 2.4, follow: 1.1, drop: 7, near: 0.05, shrink: 0.035, max: 3.2 };
 const INTENT_MS = 160;
 const LAMP_RES = 8; // the lamp is drawn at 1/8 of the screen and stretched
 const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -1260,6 +1264,22 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         if (css !== leanCss) {
           plane.style.transform = css;
           leanCss = css;
+        }
+        // the wall curves round the pointer like a wide cinema screen: the
+        // lanes under it come forward, the ones further off bow back and away,
+        // so moving toward either end rolls the curve across the wall
+        const lanesEls = laneRefs.current;
+        const n = lanesEls.length;
+        for (let l = 0; l < n; l++) {
+          const el = lanesEls[l];
+          if (!el) continue;
+          const u = ((l + 0.5) / n) * 2 - 1; // -1..1 across the plane
+          const d = u * CURVE.span - lean.x * CURVE.follow - side * 0.6; // distance from the pointer, in screens
+          const bow = Math.min(CURVE.max, d * d);
+          const t = `0 ${(bow * CURVE.drop).toFixed(2)}vh`;
+          const sc = (1 + CURVE.near * Math.max(0, 1 - Math.abs(d)) - bow * CURVE.shrink).toFixed(4);
+          if (el.style.translate !== t) el.style.translate = t;
+          if (el.style.scale !== sc) el.style.scale = sc;
         }
       }
 
