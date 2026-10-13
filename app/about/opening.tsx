@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import {
+  AnimatePresence,
   animate,
   motion,
   useMotionValue,
@@ -17,27 +18,36 @@ import { EASE, EASE_CINE, Info } from "../work/_shared/chrome";
 import s from "./opening.module.css";
 
 // ===========================================================================
-// OPENING — who we are, beyond the frame:
-//   · on arrival WHO WE ARE rises letter by letter out of its mask, so big it
-//     nearly fills the screen, and one frame opens over the middle of it like
-//     a shutter on a film (16:9; 9:16 on a phone). The line is bigger than the
-//     frame: inside it the letters are paper over the film, outside it they
-//     are ink on paper — the words carry on beyond the frame;
-//   · the screen holds while you scroll: the letters part from the middle and
-//     the frame grows after them, the picture settling inside; then the line
-//     and its frame lift away together;
+// OPENING — who we are, in two lines:
+//   · on arrival WE ARE rises letter by letter out of its mask, and under it,
+//     big and heavy, what we are: STORYTELLERS, FILMMAKERS, STRATEGISTS,
+//     PRODUCERS, 16X9 & BEYOND — one word at a time, each leaving upward
+//     letter by letter as the next rises in. Each word has a film running
+//     inside its letters (cut with the word), and under it, small, what it
+//     stands for;
+//   · the screen holds while you scroll: the letters part from the middle,
+//     slowly then all at once, and the lines lift away (the words stop);
 //   · underneath, the studio's own words come up and are read in, word by
 //     word, and three small films open inside the line as it names them;
 //   · as the next section rises over it, the whole screen sinks back.
 // Held still (reduced motion), it is simply the first screen and the line,
-// one after the other, everything open and read.
+// one after the other, everything open and read, on the first word.
 // ===========================================================================
 
 const SMOOTH = { stiffness: 120, damping: 34, mass: 1, restDelta: 0.0005 }; // over-damped: follows the scroll, never overshoots
-const HOVER = { stiffness: 60, damping: 22, mass: 1 }; // how the picture answers the pointer
 const STILL_QUERY = "(prefers-reduced-motion: reduce)";
 
-const HEAD = ["WHO", "WE", "ARE"];
+const HEAD = ["WE", "ARE"];
+// what we are, in turn: each with the film that runs in its letters, and what it stands for
+const WORDS = [
+  { word: "STORYTELLERS", note: "Concept development", film: "/clips/clip-03.mp4", still: "/clips/stills/clip-03.webp" },
+  { word: "FILMMAKERS", note: "TVCs, brand films, documentaries", film: "/clips/clip-12.mp4", still: "/clips/stills/clip-12.webp" },
+  { word: "STRATEGISTS", note: "Creative strategy", film: "/clips/clip-06.mp4", still: "/clips/stills/clip-06.webp" },
+  { word: "PRODUCERS", note: "Production, start to finish", film: "/clips/clip-10.mp4", still: "/clips/stills/clip-10.webp" },
+  { word: "16X9 & BEYOND", note: "Immersive and interactive", film: "/clips/clip-15.mp4", still: "/clips/stills/clip-15.webp" },
+] as const;
+const HOLD = 2.9; // seconds each word holds (the first waits for the arrival too)
+const LAST = 4.4; // ...and the last, the name, a little longer
 const LINE =
   "16x9 & Beyond brings concept development, creative strategy and production together. We create TVCs, brand films, cinematic documentaries, social and branded content, alongside immersive and interactive experiences.";
 
@@ -113,40 +123,21 @@ export default function Opening() {
   const sinkScale = useTransform(out, [0, 1], [1, 0.92]);
   const sinkFade = useTransform(out, [0, 1], [1, 0.3]);
 
-  // the pointer: the picture in the frame shifts against it, as through a window
-  const px = useMotionValue(0);
-  const py = useMotionValue(0);
-  const lean = { x: useSpring(px, HOVER), y: useSpring(py, HOVER) };
+  // what we are: one word at a time, while the line is on screen
+  const [shown, setShown] = useState(0); // which word
+  const [live, setLive] = useState(true);
+  const [turned, setTurned] = useState(false); // has it moved on from the first word yet
+  useMotionValueEvent(p, "change", (v) => setLive(v < T.fade[1] + 0.02));
   useEffect(() => {
-    if (still || !window.matchMedia("(hover: hover)").matches) return;
-    const move = (e: PointerEvent) => {
-      px.set(e.clientX / window.innerWidth - 0.5);
-      py.set(e.clientY / window.innerHeight - 0.5);
-    };
-    window.addEventListener("pointermove", move, { passive: true });
-    return () => window.removeEventListener("pointermove", move);
-  }, [still, px, py]);
-
-  // how far each letter stands from the middle of the screen (-1 … 1), measured
-  // where it is laid out (so it holds for the stacked phone line too); the
-  // paper line in the frame is laid out the same, so it measures the same
-  const titleRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const title = titleRef.current;
-    if (!title) return;
-    const place = () => {
-      title.querySelectorAll<HTMLElement>("[data-slot]").forEach((el) => {
-        const head = el.closest<HTMLElement>("[data-head]");
-        if (!head) return;
-        const half = head.offsetWidth / 2;
-        el.style.setProperty("--d", ((el.offsetLeft + el.offsetWidth / 2 - half) / half).toFixed(3));
-      });
-    };
-    place();
-    const ro = new ResizeObserver(place);
-    ro.observe(title);
-    return () => ro.disconnect();
-  }, []);
+    if (still || !live) return;
+    const wait = (shown === WORDS.length - 1 ? LAST : HOLD) + (turned ? 0 : 1.1);
+    const id = window.setTimeout(() => {
+      setTurned(true);
+      setShown((a) => (a + 1) % WORDS.length);
+    }, wait * 1000);
+    return () => window.clearTimeout(id);
+  }, [shown, turned, live, still]);
+  const noteFade = useTransform(p, [T.cue[0], T.cue[1] + 0.03], [1, 0]);
 
   // which line of the statement each word fell on, so the lines rise in turn
   const lineRef = useRef<HTMLParagraphElement>(null);
@@ -187,21 +178,49 @@ export default function Opening() {
 
           {/* ================= the first screen ================= */}
           <div className={s.hero}>
-            {/* the line and its frame, moving as one */}
+            {/* the two lines, moving as one */}
             <motion.div
-              ref={titleRef}
               className={s.title}
               style={{ y: headY, scale: headScale, opacity: headFade, "--spread": spread } as MotionStyle}
             >
-              <h1 id="about-title" className={s.head} data-head="">
-                <span className={s.sr}>Who we are</span>
-                <Line reduce={reduce} />
+              <h1 id="about-title" className={s.head}>
+                <span className={s.sr}>We are {WORDS.map((w) => w.word.toLowerCase()).join(", ")}</span>
+                <span className={s.weAre} aria-hidden="true">
+                  {HEAD.map((word, w) => (
+                    <span key={word} className={s.headWord}>
+                      <Letters
+                        text={word}
+                        start={HEAD.slice(0, w).join(" ").length + (w ? 1 : 0)}
+                        of={HEAD.join(" ").length}
+                        from={0.45}
+                        reduce={reduce}
+                      />
+                    </span>
+                  ))}
+                </span>
+                <span className={s.wordLine} aria-hidden="true">
+                  <AnimatePresence>
+                    <span key={shown} className={s.word} style={{ "--n": WORDS[shown].word.length } as CSSProperties}>
+                      <span className={s.wordIn}>
+                        <Letters text={WORDS[shown].word} from={turned ? 0.2 : 0.85} reduce={reduce} leave />
+                      </span>
+                    </span>
+                  </AnimatePresence>
+                  <Films at={shown} play={live && !still} />
+                </span>
               </h1>
-              <Window p={p} lean={lean} reduce={reduce} held={still}>
-                <div className={`${s.head} ${s.headLit}`} data-head="" aria-hidden="true">
-                  <Line reduce={reduce} />
-                </div>
-              </Window>
+              <motion.span className={s.note} style={{ opacity: noteFade }} aria-hidden="true">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={shown}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 0.6, y: 0, transition: { delay: reduce ? 0 : 0.35, duration: 0.6, ease: EASE } }}
+                    exit={{ opacity: 0, y: -6, transition: { duration: reduce ? 0 : 0.3, ease: EASE } }}
+                  >
+                    ({String(shown + 1).padStart(2, "0")}) {WORDS[shown].note}
+                  </motion.span>
+                </AnimatePresence>
+              </motion.span>
             </motion.div>
 
             {/* the cue, at the foot of the first screen */}
@@ -258,120 +277,79 @@ export default function Opening() {
 }
 
 // ---------------------------------------------------------------------------
-// LINE — WHO WE ARE, each letter rising out of its word's mask, and parting
-// from the middle by --spread (set on the title by the scroll)
+// LETTERS — a word's letters, each rising out of its mask in turn (and, if it
+// leaves, going up out of it again), each parting from the middle of its
+// line by --spread (set on the title by the scroll), by how far it stands
+// from it (its place, from `start`, in a line `of` letters long)
 // ---------------------------------------------------------------------------
-function Line({ reduce }: { reduce: boolean }) {
-  const all = HEAD.join(" ").length - 1;
+function Letters({
+  text,
+  start = 0,
+  of = text.length,
+  from,
+  reduce,
+  leave = false,
+}: {
+  text: string;
+  start?: number;
+  of?: number;
+  from: number;
+  reduce: boolean;
+  leave?: boolean;
+}) {
+  const half = (of - 1) / 2;
   return (
-    <span className={s.headLine} aria-hidden="true">
-      {HEAD.map((word, w) => (
-        <span key={word} className={s.headWord}>
-          {word.split("").map((ch, i) => {
-            const flat = HEAD.slice(0, w).join(" ").length + (w ? 1 : 0) + i; // place in "WHO WE ARE"
-            const d = (flat - all / 2) / (all / 2); // until it is measured: its place in the line
-            return (
-              <span key={i} className={s.slot} data-slot="" style={{ "--d": d.toFixed(3) } as CSSProperties}>
-                <motion.span
-                  className={s.glyph}
-                  initial={{ y: "112%" }}
-                  animate={{
-                    y: 0,
-                    transition: reduce ? { duration: 0 } : { delay: 0.45 + flat * 0.055, duration: 1.3, ease: EASE },
-                  }}
-                >
-                  {ch}
-                </motion.span>
-              </span>
-            );
-          })}
-        </span>
-      ))}
-    </span>
+    <>
+      {[...text].map((ch, i) => {
+        const d = half > 0 ? (start + i - half) / half : 0;
+        return (
+          <span key={i} className={s.slot} style={{ "--d": d.toFixed(3) } as CSSProperties}>
+            <motion.span
+              className={s.glyph}
+              initial={{ y: "112%" }}
+              animate={{ y: 0, transition: reduce ? { duration: 0 } : { delay: from + (start + i) * 0.045, duration: 1.1, ease: EASE } }}
+              exit={leave ? { y: "-112%", transition: reduce ? { duration: 0 } : { delay: i * 0.022, duration: 0.7, ease: EASE_CINE } } : undefined}
+            >
+              {ch === " " ? "\u00a0" : ch}
+            </motion.span>
+          </span>
+        );
+      })}
+    </>
   );
 }
 
 // ---------------------------------------------------------------------------
-// WINDOW — one frame over the middle of the line, a film playing in it. It
-// opens like a shutter as the letters rise; inside it the same line is set
-// again in paper, in register, so the words turn light where they cross the
-// film and stay ink beyond it. With the scroll it grows after the parting
-// letters (the paper line inside counter-scales, so it never slips), the
-// picture settling; the picture shifts a little against the pointer.
+// FILMS — the films that run inside the words' letters, one for each word,
+// cut with it: only the one showing plays (all are loaded, so the cut is clean)
 // ---------------------------------------------------------------------------
-function Window({
-  p,
-  lean,
-  reduce,
-  held,
-  children,
-}: {
-  p: MotionValue<number>;
-  lean: { x: MotionValue<number>; y: MotionValue<number> };
-  reduce: boolean;
-  /** reduced motion: everything rests */
-  held: boolean;
-  /** the line again, in paper */
-  children: ReactNode;
-}) {
-  const video = useRef<HTMLVideoElement>(null);
-  const grow = (v: number) => Math.pow(share(v, T.part), 1.7);
-  const scale = useTransform(p, (v) => 1 + 1.25 * grow(v));
-  const counter = useTransform(scale, (v) => 1 / v);
-  const picX = useTransform(() => `${-3 * lean.x.get()}%`);
-  const picY = useTransform(() => `${6 * grow(p.get()) - 3 * lean.y.get()}%`);
-  const captionFade = useTransform(p, [T.cue[0], T.cue[1] + 0.03], [1, 0]);
-
-  // the film rests once the line has gone (or held still), and plays when it's back
-  const sync = (v: number) => {
-    const el = video.current;
-    if (!el) return;
-    const rest = held || v > T.fade[1] + 0.04;
-    if (rest && !el.paused) el.pause();
-    else if (!rest && el.paused) el.play().catch(() => {});
-  };
-  useMotionValueEvent(p, "change", sync);
-  useEffect(() => sync(p.get()));
-
+function Films({ at, play }: { at: number; play: boolean }) {
+  const refs = useRef<(HTMLVideoElement | null)[]>([]);
+  useEffect(() => {
+    refs.current.forEach((v, k) => {
+      if (!v) return;
+      if (k === at && play) v.play().catch(() => {});
+      else v.pause();
+    });
+  }, [at, play]);
   return (
-    <motion.div className={s.window} style={{ scale }} aria-hidden="true">
-      <motion.div
-        className={s.shutter}
-        initial={{ clipPath: "inset(50% 0% 50% 0%)" }}
-        animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: reduce ? { duration: 0 } : { delay: 0.6, duration: 1.45, ease: EASE_CINE } }}
-      >
-        <motion.div
-          className={s.pic}
-          initial={{ scale: 1.32 }}
-          animate={{ scale: 1, transition: reduce ? { duration: 0 } : { delay: 0.6, duration: 2.2, ease: EASE } }}
-        >
-          <motion.div className={s.picIn} style={{ x: picX, y: picY }}>
-            <video ref={video} src="/clips/clip-06.mp4" poster="/clips/stills/clip-06.webp" muted loop playsInline autoPlay preload="metadata" />
-          </motion.div>
-        </motion.div>
-        <span className={s.shade} />
-        {/* the line again, in paper, held in register while the frame grows */}
-        <motion.div className={s.lit} style={{ scale: counter }}>
-          {children}
-        </motion.div>
-      </motion.div>
-      <motion.span className={`${s.caption} ${s.captionTop}`} style={{ opacity: captionFade }}>
-        <motion.span
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.6, transition: reduce ? { duration: 0 } : { delay: 1.7, duration: 1, ease: EASE } }}
-        >
-          16 × 9
-        </motion.span>
-      </motion.span>
-      <motion.span className={`${s.caption} ${s.captionFoot}`} style={{ opacity: captionFade }}>
-        <motion.span
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.6, transition: reduce ? { duration: 0 } : { delay: 1.85, duration: 1, ease: EASE } }}
-        >
-          &amp; Beyond
-        </motion.span>
-      </motion.span>
-    </motion.div>
+    <span className={s.film}>
+      {WORDS.map((w, k) => (
+        <video
+          key={w.word}
+          ref={(el) => {
+            refs.current[k] = el;
+          }}
+          className={k === at ? s.filmOn : undefined}
+          src={w.film}
+          poster={w.still}
+          muted
+          loop
+          playsInline
+          preload="auto"
+        />
+      ))}
+    </span>
   );
 }
 

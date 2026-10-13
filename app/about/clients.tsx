@@ -6,16 +6,16 @@ import { EASE } from "../work/_shared/chrome";
 import s from "./clients.module.css";
 
 // ===========================================================================
-// CLIENTS — who has trusted us, shown like a wall in a dark room. One light
-// hangs at the top in the middle and throws a soft beam down over the wall,
-// like a torch: the names in the beam are lit, the rest wait in the dark.
-// The light stays where it is; its beam turns after the pointer, heavily,
-// and settles back to the middle when the pointer leaves (on a phone it
-// sweeps across as you scroll). As the room comes into view the light
+// CLIENTS — who has trusted us, shown like a wall in a dark room. A small
+// light box hangs at the top in the middle and a soft cone of light comes
+// out of it, down over the wall: the names in the light are lit, the rest
+// wait in the dark. The box stays where it is and tilts, its cone turning
+// after the pointer, heavily, and settling back to the middle when the
+// pointer leaves (on a phone it sweeps across as you scroll). As the room comes into view the light
 // flickers on and the names come up, row by row.
 //
-// Nothing here repaints as the beam turns. The beam is drawn once and turned
-// as one layer; each name has a lit copy laid over its dark one, and as the
+// Nothing here repaints as the beam turns. The box and its beam are drawn
+// once and turned as one layer; each name has a lit copy laid over its dark one, and as the
 // beam turns each copy's opacity follows how squarely the beam falls on it:
 // a rotation and twenty small fades, all of which the compositor does alone.
 // ===========================================================================
@@ -75,7 +75,7 @@ export default function Clients() {
   const reduce = !!useReducedMotion();
   const ref = useRef<HTMLElement>(null);
   const wallRef = useRef<HTMLDivElement>(null);
-  const beamRef = useRef<HTMLDivElement>(null);
+  const rigRef = useRef<HTMLDivElement>(null); // where the light hangs, and turns
   const on = useInView(ref, { once: true, amount: 0.35 });
 
   // the beam's turn, in degrees (0 = straight down; + turns it towards the left)
@@ -90,8 +90,8 @@ export default function Clients() {
   useEffect(() => {
     const room = ref.current;
     const wall = wallRef.current;
-    const beam = beamRef.current;
-    if (!room || !wall || !beam) return;
+    const rig = rigRef.current;
+    if (!room || !wall || !rig) return;
     let spots: { el: HTMLElement; a: number; r: number }[] = [];
     const light = (t: number) => {
       for (const sp of spots) {
@@ -103,7 +103,7 @@ export default function Clients() {
     };
     const place = () => {
       const ox = room.clientWidth / 2;
-      const oy = beam.offsetTop;
+      const oy = rig.offsetTop;
       spots = [...wall.querySelectorAll<HTMLElement>("[data-lit]")].map((el) => {
         const li = el.parentElement as HTMLElement;
         const dx = wall.offsetLeft + li.offsetLeft + li.offsetWidth / 2 - ox;
@@ -126,8 +126,8 @@ export default function Clients() {
   // the pointer: the beam turns towards it, from where the light hangs
   useEffect(() => {
     const room = ref.current;
-    const beam = beamRef.current;
-    if (!room || !beam || reduce) return;
+    const rig = rigRef.current;
+    if (!room || !rig || reduce) return;
     if (!window.matchMedia("(hover: hover)").matches) {
       return scrollYProgress.on("change", (v) => aim.set(Math.max(-1, Math.min(1, (0.5 - v) * 3.2)) * 24));
     }
@@ -135,7 +135,7 @@ export default function Clients() {
       if (e.pointerType !== "mouse") return;
       const box = room.getBoundingClientRect(); // cheap here: nothing under it has moved since the last frame
       const dx = e.clientX - (box.left + box.width / 2);
-      const dy = Math.max(60, e.clientY - (box.top + beam.offsetTop));
+      const dy = Math.max(60, e.clientY - (box.top + rig.offsetTop));
       aim.set(Math.max(-REACH, Math.min(REACH, (-Math.atan2(dx, dy) * 180) / Math.PI)));
     };
     const leave = () => aim.set(0);
@@ -149,7 +149,7 @@ export default function Clients() {
 
   return (
     <section ref={ref} id="clients" className={s.room} aria-labelledby="clients-title">
-      {/* the light at the top, and its beam in the air: drawn once, turned */}
+      {/* the light box at the top, and the beam it throws: drawn once, turned together */}
       <motion.div
         className={s.light}
         aria-hidden="true"
@@ -157,9 +157,12 @@ export default function Clients() {
         animate={on ? { opacity: reduce ? 1 : [0, 0.7, 0.15, 0.9, 0.4, 1] } : { opacity: 0 }}
         transition={reduce ? { duration: 0 } : FLICKER}
       >
-        <motion.div ref={beamRef} className={s.beam} style={{ rotate: turn }} />
         <span className={s.glow} />
-        <span className={s.lamp} />
+        <span className={s.stem} />
+        <motion.div ref={rigRef} className={s.rig} style={{ rotate: turn }}>
+          <span className={s.beam} />
+          <span className={s.box} />
+        </motion.div>
       </motion.div>
 
       <div className={s.head}>

@@ -1481,7 +1481,7 @@ function DepthInner({ variant, workTile }: { variant: HeroVariant; workTile: boo
         )}
       </AnimatePresence>
 
-      {/* ================= In a room: the way to all of its work, at the foot on the right ================= */}
+      {/* ================= In a room: the way to all of its work, at the foot in the middle ================= */}
       <AnimatePresence>
         {room && !menuOpen && !(workTile && room !== "beyond" && !narrow) && (
           <motion.div
@@ -1491,18 +1491,24 @@ function DepthInner({ variant, workTile }: { variant: HeroVariant; workTile: boo
             animate={{ opacity: 1, y: 0, transition: { delay: 0.6, duration: 0.7, ease: EASE } }}
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
           >
-            <Link href={`/work?format=${room}`}>
-              <span className={styles.viewAllText}>
-                <small>
-                  <Ratio text={FORMATS.find((f) => f.key === room)?.label ?? ""} className={styles.viewAllX} />
-                </small>
-                Explore full work
+            <Link href={`/work?format=${room}`} className={styles.cta}>
+              {/* a viewfinder round it: its corners hunt for focus, and lock on when you point at it */}
+              <span className={styles.ctaFocus} aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
               </span>
-              <i aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.6" />
+              <span className={styles.ctaRec} aria-hidden="true" />
+              <span className={styles.ctaWords}>Explore full work</span>
+              <span className={styles.ctaRatio}>
+                <Ratio text={FORMATS.find((f) => f.key === room)?.label ?? ""} className={styles.viewAllX} />
+              </span>
+              <span className={styles.ctaArrow} aria-hidden="true">
+                <svg viewBox="0 0 28 14">
+                  <path d="M0 7h26M20 1l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.4" />
                 </svg>
-              </i>
+              </span>
             </Link>
           </motion.div>
         )}
@@ -1574,11 +1580,11 @@ function DepthInner({ variant, workTile }: { variant: HeroVariant; workTile: boo
           </Link>
         </div>
 
-        {/* in a room, at the top in the middle: which one, and a small sheet to switch (or go back to the index) */}
+        {/* in a room, at the top in the middle: which one, and a pill to switch (the logo goes back to the index) */}
         <div className={styles.barMid}>
           <AnimatePresence>
             {room && !menuOpen && (
-              <RoomSwitch key="switch" room={room} onSwitch={setRoom} onIndex={() => setRoom(null)} tone="light" />
+              <RoomSwitch key="switch" room={room} onSwitch={setRoom} tone="light" />
             )}
           </AnimatePresence>
         </div>

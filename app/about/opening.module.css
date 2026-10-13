@@ -1,6 +1,6 @@
-/* OPENING — who we are: one frame opens over the line and the words carry on
-   beyond it; then the studio in its own words, read in as you scroll. One
-   pinned screen on paper. */
+/* OPENING — WE ARE, and then what we are, word after word, each one with a
+   film running inside its letters; then the studio in its own words, read in
+   as you scroll. One pinned screen on paper. */
 
 .opening {
   position: relative;
@@ -37,8 +37,8 @@
 /* ================= the first screen ================= */
 
 /* everything below the info row; what rises past its hairline goes under it.
-   The line and its frame are laid out in one unit (--u) from the middle of
-   this space, so they keep their places together on any screen. */
+   The lines are laid out in one unit (--u) from the middle of this space, so
+   they keep their places together on any screen. */
 .hero {
   --u: min(1vw, 1.55svh);
   --screen: 100%; /* the height of the first screen (held still, the line follows it) */
@@ -52,8 +52,10 @@
 .head {
   position: relative;
   z-index: 2;
+  display: grid;
+  justify-items: center;
+  width: 100%;
   margin: 0;
-  font-size: calc(13.4 * var(--u));
   font-weight: 300;
   line-height: 0.86;
   letter-spacing: -0.02em;
@@ -62,12 +64,14 @@
   text-align: center;
 }
 
-.headLine {
+/* WE ARE: light, and a size smaller than what follows */
+.weAre {
   display: block;
+  font-size: calc(9.2 * var(--u));
 }
 
-/* each word is a mask the letters rise out of; it only clips below, so the
-   letters can part as far as they like */
+/* each word of it is a mask the letters rise out of; it only clips below,
+   so the letters can part as far as they like */
 .headWord {
   display: inline-block;
   clip-path: inset(-0.5em -200vw 0 -200vw);
@@ -75,6 +79,72 @@
 
 .headWord + .headWord {
   margin-left: 0.2em;
+}
+
+/* what we are: one word at a time, heavy, so the film reads in its letters.
+   The line is a fixed height; each word is sized to fit the width (--n: its
+   letters), and the line holds its own paper, so the film can be blended in
+   over it (lighten: the dark letters take the film, the paper stays paper) */
+.wordLine {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: calc(13.4 * var(--u) * 1.15);
+  isolation: isolate;
+  background: var(--noise), var(--paper);
+  /* its edges melt into the page, so the band it holds never shows */
+  -webkit-mask-image: linear-gradient(transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(transparent, #000 12%, #000 88%, transparent);
+}
+
+.word {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: min(calc(13.4 * var(--u)), calc(92cqw / (var(--n) * 0.74)));
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+/* its mask: clips above and below, so one word leaves upward as the next
+   rises in, each out of its own slot */
+.wordIn {
+  display: inline-block;
+  clip-path: inset(-0.02em -200vw -0.02em -200vw);
+}
+
+.film {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: lighten;
+}
+
+.film video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  filter: brightness(0.9) saturate(1.15);
+}
+
+.film .filmOn {
+  opacity: 1;
+}
+
+/* what each word stands for, small, under it */
+.note {
+  display: block;
+  height: 1em;
+  margin-top: calc(1.2 * var(--u));
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  line-height: 1;
 }
 
 /* --spread (set by the scroll) moves each letter out from the middle, by
@@ -100,8 +170,8 @@
 
 /* ---------------- the line and its frame ---------------- */
 
-/* the first screen's line and the frame over it, moving as one; a container,
-   so the paper line inside the frame can be exactly this size (100cq*) */
+/* the first screen's lines, moving as one; a container, so each word can be
+   sized to its width (cqw) */
 .title {
   position: absolute;
   left: 0;
@@ -111,89 +181,9 @@
   height: var(--screen);
   display: grid;
   place-items: center;
+  align-content: center;
   container-type: size;
   will-change: transform, opacity;
-}
-
-/* the frame: 16:9 over the middle of the line (9:16 on a phone) */
-.window {
-  --fw: 31;
-  --fh: 17.44;
-  position: absolute;
-  z-index: 3;
-  left: calc(50% - var(--fw) * var(--u) / 2);
-  top: calc(50% - var(--fh) * var(--u) / 2);
-  width: calc(var(--fw) * var(--u));
-  height: calc(var(--fh) * var(--u));
-  will-change: transform;
-}
-
-.shutter {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  background: var(--ink);
-}
-
-.pic {
-  position: absolute;
-  inset: 0;
-}
-
-/* bigger than its frame, so the picture can settle and shift inside it */
-.picIn {
-  position: absolute;
-  inset: -9% -5%;
-}
-
-.picIn video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* a touch of dark over the film, so the paper letters read on it */
-.shade {
-  position: absolute;
-  inset: 0;
-  background: rgb(10 10 10 / 0.22);
-}
-
-/* the paper line: the size of the first screen, centred on the frame (whose
-   middle is the screen's), so it lies exactly over the ink one */
-.lit {
-  position: absolute;
-  left: calc(50% - 50cqw);
-  top: calc(50% - 50cqh);
-  width: 100cqw;
-  height: 100cqh;
-  display: grid;
-  place-items: center;
-  will-change: transform;
-}
-
-.headLit {
-  color: var(--paper);
-}
-
-.caption {
-  position: absolute;
-  line-height: 1;
-  font-size: 10.5px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.captionTop {
-  bottom: calc(100% + 10px);
-  left: 0;
-}
-
-.captionFoot {
-  top: calc(100% + 10px);
-  right: 0;
 }
 
 /* ---------------- the cue ---------------- */
@@ -332,26 +322,18 @@
     --u: min(1vw, 0.46svh);
   }
 
-  /* the line stacks, one word to a row, zig-zagging: WHO left, WE right, ARE left */
-  .head {
-    width: calc(90.8 * var(--u));
-    font-size: calc(33 * var(--u));
-    line-height: 0.84;
-    text-align: left;
+  .weAre {
+    font-size: calc(12.5 * var(--u));
   }
-  .headLine {
-    display: grid;
+  .wordLine {
+    height: calc(21 * var(--u) * 1.15);
+    margin-top: calc(1 * var(--u));
   }
-  .headWord:nth-child(2) {
-    justify-self: end;
+  .word {
+    font-size: min(calc(21 * var(--u)), calc(92cqw / (var(--n) * 0.74)));
   }
-  .headWord + .headWord {
-    margin-left: 0;
-  }
-
-  .window {
-    --fw: 44;
-    --fh: 78.2;
+  .note {
+    margin-top: calc(2 * var(--u));
   }
 
   .line {
