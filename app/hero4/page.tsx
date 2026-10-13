@@ -93,7 +93,7 @@ const HOVER_SPEED = 0; // the wall stops under a film you're pointing at, so it 
 const SPEED_EASE = 3.2; // gentle: the wall brakes and pulls away, never snaps
 // The wall only holds while the visitor is actively pointing. A resting mouse
 // lets it run again, otherwise it would stall whenever the cursor sits on the page.
-const HOLD_MS = 1800;
+const HOLD_MS = 9000; // a film you rest on stays lifted; the wall only runs on after a long pause
 // Pointing at a format word reshapes the wall in a wave that starts under the word.
 const WAVE = { stagger: 0.075, out: 0.3 };
 const ARRIVAL = { length: 2.6, peak: 2.4 };
@@ -111,7 +111,7 @@ const tilesPerLane = (vw: number, vh: number, lanes: number, gap: number) =>
 // Hover feel: how far the film turns toward the pointer (deg), how far it comes
 // forward, and how quickly it eases there (per second). Only a film you wait on
 // for INTENT_MS starts loading its video.
-const TILT = { x: 5, y: 7, scale: 1.07, ease: 6 };
+const TILT = { x: 4, y: 6, scale: 1.12, ease: 7 };
 // while a film is hovered it never sits still: it sways in a slow orbit (deg),
 // on top of turning toward the pointer, so it reads like a print turned in the hand
 // In a format, pointing toward either end turns the wall to show that side in full:
@@ -285,9 +285,12 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
         </span>
         {/* pointed at: a thin paper frame draws in round the film, and its
             title and the way in come up at the foot */}
+        <span className={styles.tileSweep} aria-hidden="true" />
         <span className={styles.tileFrame} aria-hidden="true" />
         <span className={styles.tileCaption} aria-hidden="true">
-          <span className={styles.tcName}>{clip.title}</span>
+          <span className={styles.tcMask}>
+            <span className={styles.tcName}>{clip.title}</span>
+          </span>
           <span className={styles.tcGo}>
             {clip.duration}
             <svg viewBox="0 0 24 24">
@@ -1429,6 +1432,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
       {/* the cinema: black falling in from the left and the right */}
       <div className={styles.wings} aria-hidden="true" />
+      {/* the landing preview's frame: paper round a rounded window */}
+      <div className={styles.bezel} aria-hidden="true" />
       {/* one layer for the whole grade */}
       <div className={styles.grade} aria-hidden="true" />
       {/* the lamp: the wall rests in shadow and a soft pool of light follows the
