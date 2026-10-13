@@ -1,5 +1,6 @@
-/* OPENING — who we are: three frames open over the line, then the studio in
-   its own words, read in as you scroll. One pinned screen on paper. */
+/* OPENING — who we are: one frame opens over the line and the words carry on
+   beyond it; then the studio in its own words, read in as you scroll. One
+   pinned screen on paper. */
 
 .opening {
   position: relative;
@@ -36,7 +37,7 @@
 /* ================= the first screen ================= */
 
 /* everything below the info row; what rises past its hairline goes under it.
-   The line and the windows are laid out in one unit (--u) from the middle of
+   The line and its frame are laid out in one unit (--u) from the middle of
    this space, so they keep their places together on any screen. */
 .hero {
   --u: min(1vw, 1.55svh);
@@ -59,7 +60,6 @@
   text-transform: uppercase;
   white-space: nowrap;
   text-align: center;
-  will-change: transform, opacity;
 }
 
 .headLine {
@@ -98,59 +98,41 @@
   white-space: nowrap;
 }
 
-/* ---------------- the windows ---------------- */
+/* ---------------- the line and its frame ---------------- */
 
-.win {
+/* the first screen's line and the frame over it, moving as one; a container,
+   so the paper line inside the frame can be exactly this size (100cq*) */
+.title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 2;
+  height: var(--screen);
+  display: grid;
+  place-items: center;
+  container-type: size;
+  will-change: transform, opacity;
+}
+
+/* the frame: 16:9 over the middle of the line (9:16 on a phone) */
+.window {
+  --fw: 31;
+  --fh: 17.44;
   position: absolute;
   z-index: 3;
-  margin: 0;
-  left: calc(50% + var(--x) * var(--u));
-  top: calc(var(--screen) / 2 + var(--y) * var(--u));
-  width: calc(var(--w) * var(--u));
+  left: calc(50% - var(--fw) * var(--u) / 2);
+  top: calc(50% - var(--fh) * var(--u) / 2);
+  width: calc(var(--fw) * var(--u));
+  height: calc(var(--fh) * var(--u));
   will-change: transform;
 }
 
-/* behind the line, which crosses its sky */
-.wide {
-  --x: 4;
-  --y: -4.6;
-  --w: 31;
-  z-index: 1;
-}
-
-.tall {
-  --x: -39.6;
-  --y: -26.2;
-  --w: 13.2;
-}
-
-.arch {
-  --x: -23.6;
-  --y: 4.4;
-  --w: 13;
-}
-
-.lean {
-  position: relative;
-}
-
 .shutter {
-  position: relative;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   background: var(--ink);
-}
-
-.wide .shutter {
-  aspect-ratio: 16 / 9;
-}
-
-.tall .shutter {
-  aspect-ratio: 9 / 16;
-}
-
-.arch .shutter {
-  aspect-ratio: 3 / 4;
-  border-radius: 999px 999px 0 0;
 }
 
 .pic {
@@ -158,33 +140,45 @@
   inset: 0;
 }
 
-/* taller than its frame, so the picture can move inside it */
+/* bigger than its frame, so the picture can settle and shift inside it */
 .picIn {
   position: absolute;
-  inset: -9% 0;
+  inset: -9% -5%;
 }
 
-.picIn img,
 .picIn video {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 1.4s var(--ease);
 }
 
-/* point at a window and its picture leans in */
-@media (hover: hover) {
-  .win:hover .picIn img,
-  .win:hover .picIn video {
-    transform: scale(1.06);
-  }
+/* a touch of dark over the film, so the paper letters read on it */
+.shade {
+  position: absolute;
+  inset: 0;
+  background: rgb(10 10 10 / 0.22);
+}
+
+/* the paper line: the size of the first screen, centred on the frame (whose
+   middle is the screen's), so it lies exactly over the ink one */
+.lit {
+  position: absolute;
+  left: calc(50% - 50cqw);
+  top: calc(50% - 50cqh);
+  width: 100cqw;
+  height: 100cqh;
+  display: grid;
+  place-items: center;
+  will-change: transform;
+}
+
+.headLit {
+  color: var(--paper);
 }
 
 .caption {
   position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
   line-height: 1;
   font-size: 10.5px;
   letter-spacing: 0.22em;
@@ -192,15 +186,14 @@
   white-space: nowrap;
 }
 
-.tall .caption {
-  top: 2px;
-  left: calc(100% + 14px);
+.captionTop {
+  bottom: calc(100% + 10px);
+  left: 0;
 }
 
-.arch .caption {
-  top: auto;
-  bottom: 2px;
-  left: calc(100% + 14px);
+.captionFoot {
+  top: calc(100% + 10px);
+  right: 0;
 }
 
 /* ---------------- the cue ---------------- */
@@ -356,29 +349,9 @@
     margin-left: 0;
   }
 
-  .wide {
-    --x: -11.5;
-    --y: -12;
-    --w: 57;
-  }
-  .tall {
-    --x: 20.4;
-    --y: -78.6;
-    --w: 25;
-  }
-  .arch {
-    --x: -45.4;
-    --y: 36;
-    --w: 26;
-  }
-  .tall .caption {
-    left: auto;
-    right: calc(100% + 12px);
-  }
-  .wide .caption {
-    top: 4px;
-    left: auto;
-    right: calc(100% + 12px);
+  .window {
+    --fw: 44;
+    --fh: 78.2;
   }
 
   .line {
@@ -421,6 +394,7 @@
 }
 
 .still .say {
+  grid-row: 2;
   position: relative;
   inset: auto;
   padding-top: 10vh;
@@ -430,83 +404,5 @@
 @media (prefers-reduced-motion: reduce) {
   .cueArrow {
     animation: none;
-  }
-}
-
-/* ================= the reel: one 16:9 frame set into the line ================= */
-.reel {
-  position: relative;
-  display: inline-block;
-  height: 0.7em;
-  aspect-ratio: 16 / 9;
-  margin: 0 0.16em 0 0.2em;
-  vertical-align: 0.02em;
-  transform-origin: 50% 50%;
-  will-change: transform;
-}
-
-.reelLean {
-  position: absolute;
-  inset: 0;
-  display: block;
-}
-
-.reelShutter {
-  position: absolute;
-  inset: 0;
-  display: block;
-  overflow: hidden;
-  background: var(--ink);
-}
-
-.reelPic {
-  position: absolute;
-  inset: 0;
-  display: block;
-}
-
-/* taller than its frame, so the picture can settle inside it */
-.reelIn {
-  position: absolute;
-  inset: -9% 0;
-  display: block;
-}
-
-.reelIn video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.reelCaption {
-  position: absolute;
-  top: calc(100% + 0.08em);
-  left: 0;
-  display: block;
-  font-size: max(10px, 0.075em);
-  font-weight: 400;
-  letter-spacing: 0.22em;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-/* phones: the line stacks (WHO, WE, ARE), the frame takes its own row between WE and ARE */
-@media (max-width: 760px), (max-aspect-ratio: 4/5) {
-  .reel {
-    justify-self: center;
-    height: 0.62em;
-    margin: 0.08em 0;
-  }
-}
-
-/* with the frame in it the line is longer: a size that keeps it on the screen */
-.head {
-  font-size: calc(10.4 * var(--u));
-}
-
-@media (max-width: 760px), (max-aspect-ratio: 4/5) {
-  .head {
-    font-size: calc(33 * var(--u));
   }
 }

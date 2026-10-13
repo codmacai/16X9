@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import {
   animate,
   motion,
@@ -17,13 +17,15 @@ import { EASE, EASE_CINE, Info } from "../work/_shared/chrome";
 import s from "./opening.module.css";
 
 // ===========================================================================
-// OPENING — who we are. The frames open:
+// OPENING — who we are, beyond the frame:
 //   · on arrival WHO WE ARE rises letter by letter out of its mask, so big it
-//     nearly fills the screen, and one 16:9 frame set into the line between
-//     WE and ARE opens like a shutter on a film;
-//   · the screen holds while you scroll: the letters part from the middle,
-//     round the frame, which grows into the room they leave, its picture
-//     settling inside it; then the line lifts away;
+//     nearly fills the screen, and one frame opens over the middle of it like
+//     a shutter on a film (16:9; 9:16 on a phone). The line is bigger than the
+//     frame: inside it the letters are paper over the film, outside it they
+//     are ink on paper — the words carry on beyond the frame;
+//   · the screen holds while you scroll: the letters part from the middle and
+//     the frame grows after them, the picture settling inside; then the line
+//     and its frame lift away together;
 //   · underneath, the studio's own words come up and are read in, word by
 //     word, and three small films open inside the line as it names them;
 //   · as the next section rises over it, the whole screen sinks back.
@@ -32,7 +34,7 @@ import s from "./opening.module.css";
 // ===========================================================================
 
 const SMOOTH = { stiffness: 120, damping: 34, mass: 1, restDelta: 0.0005 }; // over-damped: follows the scroll, never overshoots
-const HOVER = { stiffness: 60, damping: 22, mass: 1 }; // how the windows answer the pointer
+const HOVER = { stiffness: 60, damping: 22, mass: 1 }; // how the picture answers the pointer
 const STILL_QUERY = "(prefers-reduced-motion: reduce)";
 
 const HEAD = ["WHO", "WE", "ARE"];
@@ -111,7 +113,7 @@ export default function Opening() {
   const sinkScale = useTransform(out, [0, 1], [1, 0.92]);
   const sinkFade = useTransform(out, [0, 1], [1, 0.3]);
 
-  // the pointer: the windows lean towards it, the nearer ones more
+  // the pointer: the picture in the frame shifts against it, as through a window
   const px = useMotionValue(0);
   const py = useMotionValue(0);
   const lean = { x: useSpring(px, HOVER), y: useSpring(py, HOVER) };
@@ -126,20 +128,23 @@ export default function Opening() {
   }, [still, px, py]);
 
   // how far each letter stands from the middle of the screen (-1 … 1), measured
-  // where it is laid out (so it holds for the stacked phone line too)
-  const headRef = useRef<HTMLHeadingElement>(null);
+  // where it is laid out (so it holds for the stacked phone line too); the
+  // paper line in the frame is laid out the same, so it measures the same
+  const titleRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const h = headRef.current;
-    if (!h) return;
+    const title = titleRef.current;
+    if (!title) return;
     const place = () => {
-      const half = h.offsetWidth / 2;
-      h.querySelectorAll<HTMLElement>("[data-slot]").forEach((el) => {
+      title.querySelectorAll<HTMLElement>("[data-slot]").forEach((el) => {
+        const head = el.closest<HTMLElement>("[data-head]");
+        if (!head) return;
+        const half = head.offsetWidth / 2;
         el.style.setProperty("--d", ((el.offsetLeft + el.offsetWidth / 2 - half) / half).toFixed(3));
       });
     };
     place();
     const ro = new ResizeObserver(place);
-    ro.observe(h);
+    ro.observe(title);
     return () => ro.disconnect();
   }, []);
 
@@ -182,42 +187,22 @@ export default function Opening() {
 
           {/* ================= the first screen ================= */}
           <div className={s.hero}>
-            <motion.h1
-              ref={headRef}
-              id="about-title"
-              className={s.head}
+            {/* the line and its frame, moving as one */}
+            <motion.div
+              ref={titleRef}
+              className={s.title}
               style={{ y: headY, scale: headScale, opacity: headFade, "--spread": spread } as MotionStyle}
             >
-              <span className={s.sr}>Who we are</span>
-              <span className={s.headLine} aria-hidden="true">
-                {HEAD.map((word, w) => (
-                  <Fragment key={word}>
-                  {w === 2 && <Reel p={p} lean={lean} reduce={reduce} held={still} />}
-                  <span className={s.headWord}>
-                    {word.split("").map((ch, i) => {
-                      const flat = HEAD.slice(0, w).join(" ").length + (w ? 1 : 0) + i; // place in "WHO WE ARE"
-                      const all = HEAD.join(" ").length - 1;
-                      const d = (flat - all / 2) / (all / 2); // until it is measured: its place in the line
-                      return (
-                        <span key={i} className={s.slot} data-slot="" style={{ "--d": d.toFixed(3) } as CSSProperties}>
-                          <motion.span
-                            className={s.glyph}
-                            initial={{ y: "112%" }}
-                            animate={{
-                              y: 0,
-                              transition: reduce ? { duration: 0 } : { delay: 0.45 + flat * 0.055, duration: 1.3, ease: EASE },
-                            }}
-                          >
-                            {ch}
-                          </motion.span>
-                        </span>
-                      );
-                    })}
-                  </span>
-                  </Fragment>
-                ))}
-              </span>
-            </motion.h1>
+              <h1 id="about-title" className={s.head} data-head="">
+                <span className={s.sr}>Who we are</span>
+                <Line reduce={reduce} />
+              </h1>
+              <Window p={p} lean={lean} reduce={reduce} held={still}>
+                <div className={`${s.head} ${s.headLit}`} data-head="" aria-hidden="true">
+                  <Line reduce={reduce} />
+                </div>
+              </Window>
+            </motion.div>
 
             {/* the cue, at the foot of the first screen */}
             <motion.div className={s.cue} style={{ opacity: cueFade }}>
@@ -273,30 +258,69 @@ export default function Opening() {
 }
 
 // ---------------------------------------------------------------------------
-// REEL — one 16:9 frame set into the line, between WE and ARE, the height of
-// the capitals, a film playing in it. It opens like a shutter as the letters
-// rise; with the scroll the letters part round it and it grows into the room
-// they leave, the picture settling inside; it leans a little to the pointer.
+// LINE — WHO WE ARE, each letter rising out of its word's mask, and parting
+// from the middle by --spread (set on the title by the scroll)
 // ---------------------------------------------------------------------------
-function Reel({
+function Line({ reduce }: { reduce: boolean }) {
+  const all = HEAD.join(" ").length - 1;
+  return (
+    <span className={s.headLine} aria-hidden="true">
+      {HEAD.map((word, w) => (
+        <span key={word} className={s.headWord}>
+          {word.split("").map((ch, i) => {
+            const flat = HEAD.slice(0, w).join(" ").length + (w ? 1 : 0) + i; // place in "WHO WE ARE"
+            const d = (flat - all / 2) / (all / 2); // until it is measured: its place in the line
+            return (
+              <span key={i} className={s.slot} data-slot="" style={{ "--d": d.toFixed(3) } as CSSProperties}>
+                <motion.span
+                  className={s.glyph}
+                  initial={{ y: "112%" }}
+                  animate={{
+                    y: 0,
+                    transition: reduce ? { duration: 0 } : { delay: 0.45 + flat * 0.055, duration: 1.3, ease: EASE },
+                  }}
+                >
+                  {ch}
+                </motion.span>
+              </span>
+            );
+          })}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// WINDOW — one frame over the middle of the line, a film playing in it. It
+// opens like a shutter as the letters rise; inside it the same line is set
+// again in paper, in register, so the words turn light where they cross the
+// film and stay ink beyond it. With the scroll it grows after the parting
+// letters (the paper line inside counter-scales, so it never slips), the
+// picture settling; the picture shifts a little against the pointer.
+// ---------------------------------------------------------------------------
+function Window({
   p,
   lean,
   reduce,
   held,
+  children,
 }: {
   p: MotionValue<number>;
   lean: { x: MotionValue<number>; y: MotionValue<number> };
   reduce: boolean;
   /** reduced motion: everything rests */
   held: boolean;
+  /** the line again, in paper */
+  children: ReactNode;
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const grow = (v: number) => Math.pow(share(v, T.part), 1.7);
-  const scale = useTransform(p, (v) => 1 + 1.15 * grow(v));
-  const picY = useTransform(p, (v) => `${7 * grow(v)}%`);
+  const scale = useTransform(p, (v) => 1 + 1.25 * grow(v));
+  const counter = useTransform(scale, (v) => 1 / v);
+  const picX = useTransform(() => `${-3 * lean.x.get()}%`);
+  const picY = useTransform(() => `${6 * grow(p.get()) - 3 * lean.y.get()}%`);
   const captionFade = useTransform(p, [T.cue[0], T.cue[1] + 0.03], [1, 0]);
-  const leanX = useTransform(lean.x, (v) => v * 14);
-  const leanY = useTransform(lean.y, (v) => v * 8);
 
   // the film rests once the line has gone (or held still), and plays when it's back
   const sync = (v: number) => {
@@ -310,33 +334,44 @@ function Reel({
   useEffect(() => sync(p.get()));
 
   return (
-    <motion.span className={s.reel} style={{ scale }} aria-hidden="true">
-      <motion.span className={s.reelLean} style={{ x: leanX, y: leanY }}>
-        <motion.span
-          className={s.reelShutter}
-          initial={{ clipPath: "inset(50% 0% 50% 0%)" }}
-          animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: reduce ? { duration: 0 } : { delay: 0.6, duration: 1.45, ease: EASE_CINE } }}
+    <motion.div className={s.window} style={{ scale }} aria-hidden="true">
+      <motion.div
+        className={s.shutter}
+        initial={{ clipPath: "inset(50% 0% 50% 0%)" }}
+        animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: reduce ? { duration: 0 } : { delay: 0.6, duration: 1.45, ease: EASE_CINE } }}
+      >
+        <motion.div
+          className={s.pic}
+          initial={{ scale: 1.32 }}
+          animate={{ scale: 1, transition: reduce ? { duration: 0 } : { delay: 0.6, duration: 2.2, ease: EASE } }}
         >
-          <motion.span
-            className={s.reelPic}
-            initial={{ scale: 1.32 }}
-            animate={{ scale: 1, transition: reduce ? { duration: 0 } : { delay: 0.6, duration: 2.2, ease: EASE } }}
-          >
-            <motion.span className={s.reelIn} style={{ y: picY }}>
-              <video ref={video} src="/clips/clip-06.mp4" poster="/clips/stills/clip-06.webp" muted loop playsInline autoPlay preload="metadata" />
-            </motion.span>
-          </motion.span>
-        </motion.span>
-        <motion.span className={s.reelCaption} style={{ opacity: captionFade }}>
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.6, transition: reduce ? { duration: 0 } : { delay: 1.7, duration: 1, ease: EASE } }}
-          >
-            16 × 9
-          </motion.span>
+          <motion.div className={s.picIn} style={{ x: picX, y: picY }}>
+            <video ref={video} src="/clips/clip-06.mp4" poster="/clips/stills/clip-06.webp" muted loop playsInline autoPlay preload="metadata" />
+          </motion.div>
+        </motion.div>
+        <span className={s.shade} />
+        {/* the line again, in paper, held in register while the frame grows */}
+        <motion.div className={s.lit} style={{ scale: counter }}>
+          {children}
+        </motion.div>
+      </motion.div>
+      <motion.span className={`${s.caption} ${s.captionTop}`} style={{ opacity: captionFade }}>
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.6, transition: reduce ? { duration: 0 } : { delay: 1.7, duration: 1, ease: EASE } }}
+        >
+          16 × 9
         </motion.span>
       </motion.span>
-    </motion.span>
+      <motion.span className={`${s.caption} ${s.captionFoot}`} style={{ opacity: captionFade }}>
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.6, transition: reduce ? { duration: 0 } : { delay: 1.85, duration: 1, ease: EASE } }}
+        >
+          &amp; Beyond
+        </motion.span>
+      </motion.span>
+    </motion.div>
   );
 }
 

@@ -1,4 +1,4 @@
-/* CLIENTS — a dark room: one lamp over the middle, a torch in your hand */
+/* CLIENTS — a dark room: one light at the top, its beam turning after the pointer */
 
 .room {
   position: relative;
@@ -10,31 +10,61 @@
   color: var(--paper);
 }
 
-/* ---- the lamp and its cone: static, drawn once ---- */
+/* ---- the light: it hangs at the top in the middle; its beam turns ---- */
+
 .light {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-.lamp {
+/* the beam in the air: a soft wedge of light, fading into the dark with
+   distance (the fade is the room's own black laid over it). Its box is just
+   big enough to hold the wedge, hung from the light by its top middle. */
+.beam {
   position: absolute;
-  top: 0;
   left: 50%;
-  width: clamp(90px, 10vw, 160px);
-  height: 3px;
+  top: var(--band);
+  height: 125%;
+  aspect-ratio: 0.95;
   translate: -50% 0;
-  border-radius: 0 0 3px 3px;
-  background: var(--paper);
-  box-shadow: 0 0 24px 6px rgb(247 242 238 / 0.5);
+  transform-origin: 50% 0%;
+  will-change: transform;
+  background:
+    linear-gradient(to bottom, rgb(0 0 0 / 0) 18%, rgb(0 0 0 / 0.4) 60%, #000 98%),
+    conic-gradient(
+      from 156deg at 50% 0%,
+      rgb(247 242 238 / 0) 0deg,
+      rgb(247 242 238 / 0.08) 12deg,
+      rgb(247 242 238 / 0.17) 24deg,
+      rgb(247 242 238 / 0.08) 36deg,
+      rgb(247 242 238 / 0) 48deg
+    );
 }
 
-.cone {
+/* where the light hangs: its lens and a soft glow, which stay as the beam turns */
+.glow {
   position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 34% 60% at 50% 0%, rgb(247 242 238 / 0.16), rgb(247 242 238 / 0.05) 55%, rgb(247 242 238 / 0) 100%),
-    radial-gradient(ellipse 22% 26% at 50% 62%, rgb(247 242 238 / 0.06), rgb(247 242 238 / 0) 100%);
+  left: 50%;
+  top: var(--band);
+  width: 380px;
+  height: 230px;
+  translate: -50% -50%;
+  background: radial-gradient(closest-side, rgb(247 242 238 / 0.2), rgb(247 242 238 / 0.05) 55%, transparent);
+}
+
+.lamp {
+  position: absolute;
+  left: 50%;
+  top: var(--band);
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow:
+    0 0 10px 3px rgb(247 242 238 / 0.7),
+    0 0 40px 12px rgb(247 242 238 / 0.18);
 }
 
 /* ---- the words ---- */
@@ -70,12 +100,11 @@
   display: block;
 }
 
-/* ---- the wall of names, in three layers ---- */
+/* ---- the wall of names ---- */
 .wall {
   position: relative;
   max-width: 1280px;
   margin: 0 auto;
-  container-type: inline-size; /* so the torch's lit copy can be exactly as wide (100cqw) */
 }
 
 .names {
@@ -101,41 +130,18 @@
   object-fit: contain;
 }
 
-/* in the dark */
-.dim .name img {
-  opacity: 0.22;
+/* each name in the dark, and its lit copy over it (lit as the beam falls on it) */
+.name img {
+  grid-area: 1 / 1;
 }
 
-/* lit where the lamp falls: a fixed soft pool round the middle */
-.lampLit {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  -webkit-mask-image: radial-gradient(ellipse 34% 62% at 50% 0%, #000 30%, rgb(0 0 0 / 0.45) 62%, transparent 100%);
-  mask-image: radial-gradient(ellipse 34% 62% at 50% 0%, #000 30%, rgb(0 0 0 / 0.45) 62%, transparent 100%);
+.dark {
+  opacity: 0.2;
 }
 
-/* the torch: a soft round window that slides with the pointer; the lit copy
-   inside is as wide as the wall and slides back to stay in register */
-.torch {
-  position: absolute;
-  left: 0;
-  top: 0;
-  overflow: hidden;
-  pointer-events: none;
-  border-radius: 50%;
-  -webkit-mask-image: radial-gradient(closest-side, #000 25%, rgb(0 0 0 / 0.5) 62%, transparent 100%);
-  mask-image: radial-gradient(closest-side, #000 25%, rgb(0 0 0 / 0.5) 62%, transparent 100%);
-  background: radial-gradient(closest-side, rgb(247 242 238 / 0.09), rgb(247 242 238 / 0) 100%);
-  will-change: transform, opacity;
-}
-
-.torchIn {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100cqw;
-  will-change: transform;
+.lit {
+  opacity: 0;
+  will-change: opacity;
 }
 
 /* fine film grain over the room */
@@ -159,14 +165,5 @@
 
   .name img {
     max-height: 30px;
-  }
-
-  .lampLit {
-    -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, #000 35%, transparent 100%);
-    mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, #000 35%, transparent 100%);
-  }
-
-  .torch {
-    display: none;
   }
 }

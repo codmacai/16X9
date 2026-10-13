@@ -100,8 +100,9 @@ export default function Detail({
   const calmPull = useTransform(speed, (v) => (reduce ? 0 : 34 * Math.tanh(Math.max(0, v) / 1600)));
   const calmDrag = useSpring(calmPull, { stiffness: 70, damping: 24, mass: 1, restDelta: 0.01 });
 
-  // the page above each rising section sinks back as it's covered
-  const { scrollYProgress: creditsIn } = useScroll({ container: scrollRef, target: creditsRef, offset: ["start end", "start start"] });
+  // the page above each rising section sinks back as it's covered (the screen
+  // only once the credits are well on their way, so it stays whole to watch)
+  const { scrollYProgress: creditsIn } = useScroll({ container: scrollRef, target: creditsRef, offset: ["start 0.6", "start start"] });
   const paperScale = useTransform(creditsIn, [0, 1], [1, 0.9]);
   const paperY = useTransform(creditsIn, [0, 1], ["0%", "14%"]);
   const paperFade = useTransform(creditsIn, [0, 1], [1, 0.35]);
@@ -455,6 +456,7 @@ export default function Detail({
           drag={calmDrag}
           recede={creditsRecede}
           reduce={reduce}
+          hold={bts}
         />
 
         {/* ================= the next film ================= */}

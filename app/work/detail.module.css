@@ -295,7 +295,7 @@
 .screenWrap {
   display: flex;
   justify-content: center;
-  padding: clamp(50px, 10vh, 120px) var(--ui) clamp(80px, 16vh, 180px);
+  padding: clamp(50px, 10vh, 120px) var(--ui) clamp(110px, 22vh, 240px);
 }
 
 .screen {

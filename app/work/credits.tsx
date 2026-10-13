@@ -23,16 +23,19 @@ import d from "./detail.module.css";
 //     pace — the film's title first, then each role over its names — and
 //     only the line passing the middle is lit; the rest wait in the dark.
 //     It ends on the 16X9 mark, settling in the middle, and holds there.
-//   · It's one screen tall, and it takes the screen: the first scroll that
-//     brings it in carries it the rest of the way up until it fills the
-//     view, and the credits roll there, fast. The next scroll carries on to
-//     the next section, finished or not (the roll pauses while it's off
-//     screen, and plays again from the top if you come back after it ends).
+//   · It's one screen tall, and it takes the screen: once you have scrolled
+//     it well up into view (past the screen above, so it never pulls you
+//     away from the film there), it carries on up by itself until it fills
+//     the view, and the credits roll there, fast. Not while the film above
+//     is playing: then it just scrolls. The next scroll carries on to the
+//     next section, finished or not (the roll pauses while it's off screen,
+//     and plays again from the top if you come back after it ends).
 // ===========================================================================
 
 const SPEED = 420; // px a second: a quick roll
 const SNAP_S = 1.1; // how long it takes to come up and fill the screen
 const HOLD_MS = 650; // after it lands, the rest of that scroll gesture is spent
+const TAKE = 0.6; // it takes the screen once its top has come up past this share of the view
 const LOGO_SRC = "/logo.png";
 const FOCUS = 0.34; // how far from the middle (a share of the screen's height) a line still catches light
 
@@ -44,6 +47,7 @@ export default function Credits({
   drag,
   recede,
   reduce,
+  hold = false,
 }: {
   film: Project;
   label: string;
@@ -54,6 +58,8 @@ export default function Credits({
   /** how it steps back as the next section rises over it */
   recede: { scale: MotionValue<number>; y: MotionValue<string>; opacity: MotionValue<number> };
   reduce: boolean;
+  /** a film is playing above: don't take the screen, just scroll */
+  hold?: boolean;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const colRef = useRef<HTMLDivElement>(null);
@@ -63,7 +69,7 @@ export default function Credits({
   const y = useMotionValue(4000); // below the screen until it's measured
   const inView = useInView(sectionRef, { root: container, amount: 0.55 });
 
-  useSnap(container, sectionRef, reduce);
+  useSnap(container, sectionRef, reduce || hold);
 
   // light the line passing the middle; the rest wait in the dark
   const light = useCallback((at: number) => {
@@ -182,8 +188,9 @@ export default function Credits({
 }
 
 /**
- * The first scroll down into the section carries it up to fill the screen and
- * holds it there; the scroll that comes after that goes on as normal.
+ * Scrolled down well into view, the section carries on up to fill the screen
+ * and holds it there; the scroll that comes after that goes on as normal.
+ * Only a scroll down takes it (not a scroll back up, nor the page settling).
  */
 function useSnap(
   container: RefObject<HTMLDivElement | null>,
@@ -198,6 +205,7 @@ function useSnap(
     let busy = false; // carrying it up, or spending the rest of that gesture
     let lastWheel = 0;
     let holdUntil = 0;
+    let last = box.scrollTop;
     let run: AnimationPlaybackControls | null = null;
     const top = () => el.getBoundingClientRect().top - box.getBoundingClientRect().top;
 
@@ -218,9 +226,11 @@ function useSnap(
     };
 
     const onScroll = () => {
+      const down = box.scrollTop > last;
+      last = box.scrollTop;
       const t = top();
       if (t >= box.clientHeight) armed = true; // back above it: it can take the screen again
-      if (armed && !busy && t > 2 && t < box.clientHeight * 0.92) snap();
+      if (armed && !busy && down && t > 2 && t < box.clientHeight * TAKE) snap();
     };
     // the wheel: while it's coming up, and for the tail of the same gesture, no scrolling
     const onWheel = (e: WheelEvent) => {
