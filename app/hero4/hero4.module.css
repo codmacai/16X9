@@ -1986,3 +1986,161 @@
 .page:has(.lane[data-format]) .plane {
   background: #000;
 }
+
+/* ===========================================================================
+   THE TILE AS A PLAYER — pointed at, the brand goes, the film plays, and a
+   small interface comes up over it: title with a live dot, a play disc that
+   lands and breathes, the running time and a line filling as it plays.
+   =========================================================================== */
+.lane[data-format] .tileOn .tileGo,
+.lane[data-format] .tileOn .tileTitle,
+.lane[data-format] .tileOn .tilePrint {
+  opacity: 0 !important;
+}
+
+.tilePlayer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: max(8px, 4cqw);
+  color: var(--paper);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(to top, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0) 42%), linear-gradient(to bottom, rgb(0 0 0 / 0.4), rgb(0 0 0 / 0) 30%);
+}
+
+.tileOn .tilePlayer {
+  opacity: 1;
+}
+
+.tpTop {
+  display: flex;
+  align-items: center;
+  gap: max(5px, 1.6cqw);
+  font-size: max(9px, 3.2cqw);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  translate: 0 -6px;
+  transition: translate 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tpLive {
+  flex: none;
+  width: max(5px, 1.4cqw);
+  height: max(5px, 1.4cqw);
+  border-radius: 50%;
+  background: #e1142b;
+  animation: tpBlink 1.4s ease-in-out infinite;
+}
+
+@keyframes tpBlink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* the play disc lands from a little larger, then breathes */
+.tpPlay {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: max(34px, 16cqw);
+  height: max(34px, 16cqw);
+  border-radius: 50%;
+  background: rgb(247 242 238 / 0.94);
+  color: var(--ink);
+  scale: 1.6;
+  opacity: 0;
+  transition:
+    scale 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tpPlay::after {
+  content: "";
+  position: absolute;
+  width: inherit;
+  height: inherit;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(247 242 238 / 0.8);
+  animation: tpRing 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes tpRing {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+.tpPlay svg {
+  width: 30%;
+  height: 34%;
+  margin-left: 8%;
+  fill: currentColor;
+}
+
+.tileOn .tpPlay {
+  scale: 1;
+  opacity: 1;
+  transition-delay: 0.08s;
+}
+
+.tileOn .tpTop {
+  translate: 0 0;
+}
+
+.tpFoot {
+  display: flex;
+  align-items: center;
+  gap: max(6px, 2cqw);
+  font-size: max(8px, 2.6cqw);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tpTime {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.tpBar {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: rgb(247 242 238 / 0.3);
+  overflow: hidden;
+}
+
+.tpFill {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  transform-origin: 0 50%;
+  transform: scaleX(var(--played, 0));
+}
+
+.tpOpen {
+  flex: none;
+  opacity: 0.85;
+}
+
+/* pointed at, the brand goes entirely (beats .lane[data-format] .tileBrand) */
+.lane[data-format] .tileOn .tileBrand {
+  opacity: 0;
+  transform: scale(1.18);
+  letter-spacing: 0.12em;
+}

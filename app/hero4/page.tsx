@@ -118,6 +118,8 @@ const TILT = { x: 14, y: 18, scale: 1.08, ease: 7 };
 // past `from` (of the half-width) it eases in, turning, sliding and lifting the wall.
 const EDGE = { from: 0.45, turn: 26, shift: 22, lift: 10, ease: 3 };
 const SWAY = { x: 3.2, y: 4.5, z: 1.4, speed: 1.35 };
+// the camera pan at the ends of the screen: how far the wall travels (vw)
+const PAN = { vw: 46 };
 // the curve at the ends: how wide the plane is in screens, where the bend starts
 // (share of the half-width), how much more the side you move toward bends, how
 // far a lane sinks (vh), how far it shrinks, the cap
@@ -243,6 +245,14 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
             preload="auto"
             disablePictureInPicture
             onPlaying={() => setPlaying(true)}
+            onTimeUpdate={(e) => {
+              const v = e.currentTarget;
+              const t = tileRef.current;
+              if (!t || !v.duration) return;
+              t.style.setProperty("--played", (v.currentTime / v.duration).toFixed(4));
+              const clock = t.querySelector<HTMLElement>("[data-clock]");
+              if (clock) clock.textContent = `${Math.floor(v.currentTime / 60)}:${String(Math.floor(v.currentTime % 60)).padStart(2, "0")}`;
+            }}
           />
         )}
         {/* at rest the tile is a black card with the mark at its centre; the film
@@ -280,6 +290,28 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
           <svg viewBox="0 0 24 24">
             <path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.6" />
           </svg>
+        </span>
+        {/* pointed at, the tile becomes a small player: the title at the top, a
+            play disc at the centre, and the film's time running along the foot */}
+        <span className={styles.tilePlayer} aria-hidden="true">
+          <span className={styles.tpTop}>
+            <i className={styles.tpLive} />
+            <span>{clip.title}</span>
+          </span>
+          <span className={styles.tpPlay}>
+            <svg viewBox="0 0 12 14">
+              <path d="M1 0l11 7-11 7z" />
+            </svg>
+          </span>
+          <span className={styles.tpFoot}>
+            <span className={styles.tpTime}>
+              <span data-clock>0:00</span> / {clip.duration}
+            </span>
+            <span className={styles.tpBar}>
+              <span className={styles.tpFill} />
+            </span>
+            <span className={styles.tpOpen}>Open film</span>
+          </span>
         </span>
       </span>
     </div>
@@ -1280,8 +1312,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         const ax = Math.abs(lean.x);
         const edge = roomRef.current ? Math.sign(lean.x) * Math.min(1, Math.max(0, (ax - EDGE.from) / (1 - EDGE.from))) ** 2 : 0;
         side += (edge - side) * (1 - Math.exp(-dt * EDGE.ease));
-        // the wall itself holds still: only its ends move (below)
-        const css = `rotateX(52deg)`;
+        // the camera pans: toward either end of the screen the wall slides the
+        // other way, easing in, so you travel along it; nothing tilts
+        const css = `translateX(${(-side * PAN.vw).toFixed(3)}vw) rotateX(52deg)`;
         if (css !== leanCss) {
           plane.style.transform = css;
           leanCss = css;
