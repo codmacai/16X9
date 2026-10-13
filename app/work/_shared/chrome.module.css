@@ -56,6 +56,53 @@
   text-transform: uppercase;
 }
 
+.bandStart {
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2vw, 28px);
+}
+
+/* Back: a hairline arrow and the word, the arrow stepping back on hover */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 10px 0;
+  margin: -10px 0;
+  border: 0;
+  border-right: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.3s;
+}
+
+.back svg {
+  width: 20px;
+  height: 12px;
+  transition: transform 0.5s var(--ease);
+}
+
+.back:hover,
+.back:focus-visible {
+  opacity: 1;
+}
+
+.back:hover svg,
+.back:focus-visible svg {
+  transform: translateX(-4px);
+}
+
+@media (max-width: 640px) {
+  .back span {
+    display: none;
+  }
+}
+
 .logo img {
   display: block;
   height: clamp(36px, 3.6vw, 54px);

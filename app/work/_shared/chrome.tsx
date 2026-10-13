@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import { Archivo } from "next/font/google";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ProjectView, { type OpenProject } from "../../hero7/project-view";
 import Drawer from "../../hero11/drawer";
 import type { Project } from "./data";
@@ -33,6 +34,7 @@ export function Band({
   section = "Work",
   center,
   workHref,
+  onBack,
 }: {
   crumb: string;
   /** the page the crumb belongs to */
@@ -41,7 +43,20 @@ export function Band({
   center?: ReactNode;
   /** where the menu's Work leads */
   workHref?: string;
+  /** what Back does here first (a page with something open closes it); otherwise it goes back a page */
+  onBack?: () => void;
 }) {
+  const router = useRouter();
+  // back the way you came if you came from this site; else to the start
+  const back = useCallback(() => {
+    if (onBack) return onBack();
+    let inSite = false;
+    try {
+      inSite = !!document.referrer && new URL(document.referrer).origin === location.origin;
+    } catch {}
+    if (inSite && history.length > 1) router.back();
+    else router.push("/");
+  }, [onBack, router]);
   const reduce = !!useReducedMotion();
   const [menu, setMenu] = useState(false);
   // come from the menu's Work folder: its band was already here, so this one doesn't slide in
@@ -80,10 +95,18 @@ export function Band({
         initial={arrived ? false : { y: "-100%" }} /* same first frame on server and client; reduced motion just makes it instant */
         animate={{ y: 0, transition: reduce ? { duration: 0 } : { duration: 1.1, ease: EASE_CINE } }}
       >
-        <Link href="/" className={styles.logo} aria-label="16x9 home">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_SRC} alt="16x9" />
-        </Link>
+        <div className={styles.bandStart}>
+          <button type="button" className={styles.back} onClick={back} aria-label="Go back">
+            <svg viewBox="0 0 20 12" aria-hidden="true">
+              <path d="M20 6H2M7 1L2 6l5 5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+            </svg>
+            <span>Back</span>
+          </button>
+          <Link href="/" className={styles.logo} aria-label="16x9 home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={LOGO_SRC} alt="16x9" />
+          </Link>
+        </div>
         {center ? (
           <span className={`${styles.crumb} ${styles.crumbSlot}`}>{center}</span>
         ) : (

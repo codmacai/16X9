@@ -193,6 +193,8 @@ function WorkCabinet({ fmt }: { fmt: FormatKey | null }) {
       <Band
         crumb="Index"
         workHref={fmt ? `/work?format=${fmt}` : undefined}
+        /* a folder open: Back puts it away (and a film's page first), as Esc does */
+        onBack={open ? () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })) : undefined}
         center={
           fmt ? (
             <RoomSwitch
