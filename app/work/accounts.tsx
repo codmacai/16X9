@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero3/room-switch";
 import { Band, EASE, rootClass } from "./_shared/chrome";
 import { ACCOUNTS, instagramOf } from "./_shared/data";
 import Reels from "./reels";
+import Profile from "./profile";
 import styles from "./accounts.module.css";
 
 // ===========================================================================
@@ -22,6 +23,9 @@ export default function Accounts() {
   const reduce = !!useReducedMotion();
   const router = useRouter();
   const [on, setOn] = useState<string | null>(null);
+  // clicked: the account opens as its Instagram page, a grid of its reels
+  const [open, setOpen] = useState<string | null>(null);
+  const openAcc = ACCOUNTS.find((a) => a.handle === open);
   return (
     <main className={`${rootClass} ${styles.page}`}>
       <Band
@@ -48,7 +52,7 @@ export default function Accounts() {
                 className={`${styles.item} ${on === a.handle ? styles.itemOn : ""}`}
                 onPointerEnter={(e) => e.pointerType === "mouse" && setOn(a.handle)}
                 onPointerLeave={(e) => e.pointerType === "mouse" && setOn(null)}
-                onClick={() => setOn(a.handle)}
+                onClick={() => setOpen(a.handle)}
               >
                 <span className={styles.frame}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -58,7 +62,7 @@ export default function Accounts() {
                   </span>
                   {a.reels?.length ? <Reels reels={a.reels} logo={a.logo} handle={a.handle} on={on === a.handle} /> : null}
                 </span>
-                <a className={styles.name} href={instagramOf(a)} target="_blank" rel="noopener noreferrer" aria-label={`${a.name} on Instagram (@${a.handle})`}>
+                <a className={styles.name} onClick={(e) => e.stopPropagation()} href={instagramOf(a)} target="_blank" rel="noopener noreferrer" aria-label={`${a.name} on Instagram (@${a.handle})`}>
                   {a.name}
                 </a>
                 <span className={styles.handle}>
@@ -69,6 +73,7 @@ export default function Accounts() {
           ))}
         </ul>
       </section>
+      <AnimatePresence>{openAcc && <Profile key={openAcc.handle} account={openAcc} onClose={() => setOpen(null)} />}</AnimatePresence>
     </main>
   );
 }

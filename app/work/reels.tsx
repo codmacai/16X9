@@ -68,7 +68,7 @@ export default function Reels({ reels, logo, handle, on }: { reels: string[]; lo
           <i key={i} className={i === at ? styles.dotOn : ""} />
         ))}
       </span>
-      <span className={styles.reelsHint}>Scroll</span>
+      <span className={styles.reelsHint}>Click to view all reels</span>
     </div>
   );
 }
