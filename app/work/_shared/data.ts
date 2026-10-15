@@ -245,13 +245,18 @@ export type Account = {
   posts: number;
   /** the brand's logo (its Instagram picture; cut from a screenshot for now, swap in the real file) */
   logo: string;
+  /** its reels, played in its frame when pointed at. Stand-ins for now: drop the account's real
+   *  reel files (vertical MP4s) in /public/work/reels/<handle>/ and list them here. */
+  reels?: string[];
 };
 
+const standIn = (...n: number[]) => n.map((x) => `/clips/clip-${String(x).padStart(2, "0")}.mp4`);
+
 export const ACCOUNTS: Account[] = [
-  { name: "DED Cafe", handle: "ded_cafe", followers: "23K", posts: 670, logo: "/work/accounts/ded_cafe.webp" },
-  { name: "Amer Lounge", handle: "amerlounge", followers: "10K", posts: 148, logo: "/work/accounts/amerlounge.webp" },
-  { name: "Business Lounge", handle: "businesslounge.ae", followers: "8,508", posts: 309, logo: "/work/accounts/businesslounge.webp" },
-  { name: "Business Avenue", handle: "businessavenue.ae", followers: "7,309", posts: 99, logo: "/work/accounts/businessavenue.webp" },
+  { name: "DED Cafe", handle: "ded_cafe", followers: "23K", posts: 670, logo: "/work/accounts/ded_cafe.webp", reels: standIn(3, 7, 11, 2) },
+  { name: "Amer Lounge", handle: "amerlounge", followers: "10K", posts: 148, logo: "/work/accounts/amerlounge.webp", reels: standIn(5, 9, 14, 1) },
+  { name: "Business Lounge", handle: "businesslounge.ae", followers: "8,508", posts: 309, logo: "/work/accounts/businesslounge.webp", reels: standIn(8, 12, 4, 15) },
+  { name: "Business Avenue", handle: "businessavenue.ae", followers: "7,309", posts: 99, logo: "/work/accounts/businessavenue.webp", reels: standIn(6, 10, 13, 2) },
 ];
 
 export const instagramOf = (a: Account) => `https://www.instagram.com/${a.handle}/`;

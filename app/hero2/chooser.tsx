@@ -242,6 +242,7 @@ export default function Chooser({
   active,
   onHover,
   onOpen,
+  pool,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -257,6 +258,8 @@ export default function Chooser({
   active: FormatKey | null;
   onHover: (k: FormatKey | null) => void;
   onOpen: (k: FormatKey) => void;
+  /** films to draw from: each time a word opens, its window shows the next one (hero 5) */
+  pool?: string[];
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
   const base = reduce ? 0 : first ? INTRO.names : 0.1;
@@ -265,6 +268,7 @@ export default function Chooser({
   const filmRefs = useRef<Partial<Record<FormatKey, HTMLDivElement | null>>>({});
   const boxRefs = useRef<Partial<Record<FormatKey, HTMLDivElement | null>>>({});
   const videoRefs = useRef<Partial<Record<FormatKey, HTMLVideoElement | null>>>({});
+  const poolAt = useRef(-1);
 
   // the mark leaves the page once its entrance has played
   const [intro, setIntro] = useState(!reduce);
@@ -280,6 +284,12 @@ export default function Chooser({
   // its film plays; the others stop once they've folded away
   useEffect(() => {
     const v = up ? videoRefs.current[up] : null;
+    // a fresh film every time a word opens, never the one just seen
+    if (v && pool?.length && !open) {
+      poolAt.current = (poolAt.current + 1 + Math.floor(Math.random() * Math.max(1, pool.length - 2))) % pool.length;
+      v.src = pool[poolAt.current];
+      v.poster = "";
+    }
     if (v) {
       v.muted = true;
       v.setAttribute("muted", "");
@@ -291,7 +301,7 @@ export default function Chooser({
       });
     }, 1000);
     return () => window.clearTimeout(t);
-  }, [up]);
+  }, [up]); // eslint-disable-line react-hooks/exhaustive-deps -- a new film only when the word changes
 
   // the windows: each film opens out of its word to its frame (or to the edges), and folds back
   useEffect(() => {
