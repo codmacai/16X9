@@ -7,7 +7,7 @@ import RoomSwitch from "../hero3/room-switch";
 import { Band, EASE, rootClass } from "./_shared/chrome";
 import { ACCOUNTS, instagramOf } from "./_shared/data";
 import Reels from "./reels";
-import Profile from "./profile";
+import Profile, { Player } from "./profile";
 import styles from "./accounts.module.css";
 
 // ===========================================================================
@@ -26,6 +26,9 @@ export default function Accounts() {
   // clicked: the account opens as its Instagram page, a grid of its reels
   const [open, setOpen] = useState<string | null>(null);
   const openAcc = ACCOUNTS.find((a) => a.handle === open);
+  // a reel clicked in a frame's grid plays on its own
+  const [reel, setReel] = useState<{ handle: string; i: number } | null>(null);
+  const reelAcc = reel ? ACCOUNTS.find((a) => a.handle === reel.handle) : undefined;
   return (
     <main className={`${rootClass} ${styles.page}`}>
       <Band
@@ -60,7 +63,7 @@ export default function Accounts() {
                   <span className={styles.stats}>
                     {a.followers} followers · {a.posts} posts
                   </span>
-                  {a.reels?.length ? <Reels reels={a.reels} logo={a.logo} handle={a.handle} on={on === a.handle} /> : null}
+                  {a.reels?.length ? <Reels reels={a.reels} logo={a.logo} handle={a.handle} on={on === a.handle} onPick={(i) => setReel({ handle: a.handle, i })} /> : null}
                 </span>
                 <a className={styles.name} onClick={(e) => e.stopPropagation()} href={instagramOf(a)} target="_blank" rel="noopener noreferrer" aria-label={`${a.name} on Instagram (@${a.handle})`}>
                   {a.name}
@@ -73,6 +76,11 @@ export default function Accounts() {
           ))}
         </ul>
       </section>
+      <AnimatePresence>
+        {reelAcc && reel && (
+          <Player key="reel" reels={reelAcc.reels ?? []} start={reel.i} handle={reelAcc.handle} logo={reelAcc.logo} onClose={() => setReel(null)} />
+        )}
+      </AnimatePresence>
       <AnimatePresence>{openAcc && <Profile key={openAcc.handle} account={openAcc} onClose={() => setOpen(null)} />}</AnimatePresence>
     </main>
   );

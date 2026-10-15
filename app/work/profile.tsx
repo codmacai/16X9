@@ -121,7 +121,7 @@ function GridReel({ src }: { src: string }) {
 }
 
 // the reel, full height in the middle like the app; scroll (or the arrows) for the next
-function Player({ reels, start, handle, logo, onClose }: { reels: string[]; start: number; handle: string; logo: string; onClose: () => void }) {
+export function Player({ reels, start, handle, logo, onClose }: { reels: string[]; start: number; handle: string; logo: string; onClose: () => void }) {
   const feedRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const [at, setAt] = useState(start);
