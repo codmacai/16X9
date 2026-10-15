@@ -25,6 +25,12 @@ export type Project = Clip & {
   format?: "16x9" | "9x16" | "beyond";
   /** one line under the title */
   line: string;
+  /** the full film (a direct video URL: an .mp4 from Vimeo, Mux, Cloudflare Stream or similar),
+   * played in the film page's cover. Without it the cover plays the stand-in clip (src). */
+  film?: string;
+  /** the behind-the-scenes film (a direct video URL), played in the film page's curved screen.
+   * Without it the screen plays the stand-in clip (src). */
+  bts?: string;
   /** a few sentences for the film's own page */
   synopsis: string;
   /** the case, told on the film's page under the screen: who the client is, what was asked, the idea.
@@ -108,45 +114,28 @@ export const PROJECTS: Project[] = [
       "Two talismans, one evening in Kyiv: the Spirit of Ecstasy on the bonnet, and an Oberig piece at the throat. A film about the things we carry close, made for Rolls-Royce Kyiv with Oberig Jewelry."),
     credits: TALISMAN_CREDITS,
   },
-  P(4, "Night run", "Norrland", "tvc", 2026, "0:36", "A city after dark, one runner", "#e1142b",
-    "One runner, one city, one night. We followed the light from the waterfront to the empty highway and let the streets set the pace."),
-  P(9, "First light", "Tessera", "tvc", 2025, "0:45", "The Meridian, launch film", "#f2c14e",
-    "A launch film for the Meridian, built around the first minutes of the morning: the face before the watch, the watch before the day."),
-  P(13, "Care", "Oko Health", "tvc", 2024, "1:12", "The people behind the ward", "#3cc8ff",
-    "Inside the ward, with the people who run it. Shot over four nights, without a script, so the work could speak for itself."),
-  P(6, "City of tomorrow", "Kaji", "brand", 2026, "1:05", "Dubai, from the edge of the frame", "#ff7ab8",
-    "Dubai at dusk, seen from its edges. A brand film about looking out, shot from rooftops, overpasses and the last of the light."),
-  P(2, "The long road", "Maison Vert", "brand", 2025, "0:58", "Brand film, shot across the Empty Quarter", "#ffb27a",
-    "Three days across the Empty Quarter with a crew of six. A brand film about distance, and the patience it takes to cover it."),
-  P(10, "Coastline", "Aster", "brand", 2024, "1:20", "From the shore, a brand story", "#4fe3c1",
-    "A brand story told from the shore: the tide, the people who work it and the colour the water takes at six in the evening."),
-  P(5, "Threads", "Aster", "brand", 2026, "0:48", "SS26, in white", "#ff5a3c",
-    "The SS26 collection, in white. Hands, fabric and movement, cut to the rhythm of the loom it was made on."),
-  P(12, "Court culture", "Maison Vert", "brand", 2025, "0:30", "Winter, on the court", "#7be06a",
-    "A winter collection taken out of the studio and onto a painted court, where the city plays after dark."),
-  P(1, "Arcade", "Oko Audio", "music", 2026, "0:25", "Neon, sound and a launch", "#ff9f1c",
-    "Neon, noise and a launch. A social-first film for a new speaker, cut to be watched loud and shared fast."),
-  P(8, "Weekend league", "Kaji", "music", 2025, "0:42", "Friday night, in the air", "#9fd8ff",
-    "Friday night, in the air. A series for social shot in one evening with a crew small enough to keep up."),
-  P(14, "Beat", "Oko Audio", "music", 2024, "0:20", "A drop, on the street", "#e1142b",
-    "A drop, on the street. Twenty seconds built for the scroll: one idea, one move, one cut."),
-  P(3, "Heritage", "Tessera", "documentary", 2026, "1:12", "What the desert remembers", "#f2c14e",
-    "What the desert remembers. A documentary portrait of the people who still read the dunes the old way."),
-  P(7, "Majlis", "Kaji", "documentary", 2025, "0:52", "Stories told sitting down", "#ffb27a",
-    "Stories told sitting down. We set up in a majlis for a week and let the conversation come to the camera."),
-  P(15, "Sand & time", "Norrland", "documentary", 2024, "1:05", "Dunes, wind and patience", "#c9a4ff",
-    "Dunes, wind and patience. A slow documentary about a landscape that rebuilds itself every night."),
 ];
 
 // ---------------------------------------------------------------------------
 // 16x9 — the studio's real films, as filed in the Drive (WEBSITE ASSETS 16X9 →
 // 16X9 → a folder per category). Titles and clients come from the file names;
-// years and runtimes are left blank until confirmed. Until each film is hosted
-// (see the video setup) it plays a stand-in clip.
+// years and runtimes are left blank until confirmed.
+//
+// The full films live in the Cloudflare R2 bucket "my-website-videos", a
+// folder per category (brandfilms/, music/, TVC_s/); each film below names its
+// file there, exactly as it's spelled in the bucket. They play from the
+// bucket's public address, NEXT_PUBLIC_VIDEO_BASE (its r2.dev link or a custom
+// domain, without the trailing slash). Until that's set, or for a film with no
+// file yet, the film plays its stand-in clip.
 // ---------------------------------------------------------------------------
+const VIDEO_BASE = (process.env.NEXT_PUBLIC_VIDEO_BASE || "https://pub-9d250cf0ea9541beac9a7e373fe10d2f.r2.dev").replace(/\/+$/, "");
+/** A file in the bucket -> its public URL (each part of the path escaped: the names have spaces, brackets, apostrophes). */
+const hosted = (key?: string) =>
+  key && VIDEO_BASE ? `${VIDEO_BASE}/${key.split("/").map(encodeURIComponent).join("/")}` : undefined;
+
 const KIND: Record<CategoryId, string> = { brand: "Brand film", documentary: "Documentary", music: "Music video", tvc: "TVC" };
 let realNo = 17;
-const R = (title: string, client: string, category: CategoryId): Project => {
+const R = (title: string, client: string, category: CategoryId, file?: string): Project => {
   const no = String(realNo++);
   const line = client ? `${KIND[category]} for ${client}` : KIND[category];
   return {
@@ -160,22 +149,18 @@ const R = (title: string, client: string, category: CategoryId): Project => {
     accent: "#cfc8bd",
     synopsis: `${line}.`,
     src: `/clips/clip-${String(((realNo - 18) % 15) + 1).padStart(2, "0")}.mp4`,
+    film: hosted(file),
   };
 };
 
 PROJECTS.push(
-  // Brand Films
-  R("Inspiring Peaks", "Aldar", "brand"),
-  R("The Promise", "Aldar", "brand"),
-  R("NYC FC", "Etihad Airways", "brand"),
-  R("Ramadan Fridge", "Etihad Airways", "brand"),
-  R("Class Of", "Masdar Institute", "brand"),
-  R("Prime Minister's Office", "Prime Minister's Office", "brand"),
-  R("1001: One Tank Challenge", "Toyota Prius", "brand"),
-  R("Hybrid Adventurer", "Toyota Prius", "brand"),
-  R("Hybrid Falcon", "Toyota Prius", "brand"),
-  R("Hybrid Graffiti", "Toyota Prius", "brand"),
-  R("Riyadh Marathon 2025", "Riyadh Marathon", "brand"),
+  // Brand Films (brandfilms/)
+  R("Ramadan Fridge", "Etihad Airways", "brand", "brandfilms/etihad_ramadan_fridge_introduction.mp4_v1 (720p).mp4"),
+  R("Class of 2015", "Masdar Institute", "brand", "brandfilms/masdar_institute_class_of__2015_.mp4_v1 (720p).mp4"),
+  R("Dr Ahmed's Story", "Prime Minister's Office", "brand", "brandfilms/Prime Minister's Office - Dr_Ahmed_uae_inspiring_story_v1 (720p).mp4"),
+  R("1001: One Tank Challenge", "Toyota Prius", "brand", "brandfilms/prius_1001_one_tank_challenge_v1 (720p) (1).mp4"),
+  R("Hybrid Falcon", "Toyota Prius", "brand", "brandfilms/prius_hybrid_falcon.mp4_v1 (1080p).mp4"),
+  R("Riyadh Marathon 2025", "Riyadh Marathon", "brand", "brandfilms/riyadh_marathon_2025_fanzone_casestudy_v1 (1080p).mp4"),
   // Documentaries
   R("Digital Divide", "GMIS", "documentary"),
   R("General Corporation", "GMIS", "documentary"),
@@ -183,21 +168,28 @@ PROJECTS.push(
   R("Sustainable Cities", "GMIS", "documentary"),
   R("Sustainable Energy", "GMIS", "documentary"),
   R("UAE Pioneers", "", "documentary"),
-  // Music Videos
-  R("I Love Kuwait", "", "music"),
-  R("RELM", "", "music"),
-  // TVC's
-  R("Cleveland Clinic", "Cleveland Clinic", "tvc"),
-  R("A True Story of Recovery", "Cleveland Clinic", "tvc"),
-  R("EHS", "EHS", "tvc"),
-  R("National", "Etisalat", "tvc"),
-  R("DMI Promo", "Expo", "tvc"),
-  R("Fast Government", "UAE Government", "tvc"),
-  R("Toyota", "Filmmaster MEA", "tvc"),
-  R("Shahid", "MBC", "tvc"),
-  R("Museum of the Future", "Museum of the Future", "tvc"),
-  R("National Day — 50", "", "tvc"),
-  R("Saadiyat", "Rotana", "tvc"),
+  // Music Videos (music/)
+  R("I Love Kuwait", "", "music", "music/I Love Kuwait - FINAL.MP4"),
+  R("RELM", "", "music", "music/RELM 2 min final 16x9.mp4"),
+  // TVC's (TVC_s/)
+  R("Cleveland Clinic", "Cleveland Clinic", "tvc", "TVC_s/cleveland_clinic_1.mp4_v1 (1080p).mp4"),
+  R("A True Story of Recovery", "Cleveland Clinic", "tvc", "TVC_s/cleveland_clinic_2.mp4_v1 (1080p).mp4"),
+  R("EHS", "EHS", "tvc", "TVC_s/EHS.MP4"),
+  R("National Campaign", "Etisalat", "tvc", "TVC_s/ETISALAT - NATIONAL CAMPAIGN.MP4"),
+  R("DMI Promo", "Expo", "tvc", "TVC_s/Expo DMI Promo.mov"),
+  R("Fast Government", "UAE Government", "tvc", "TVC_s/fast_government_uae.mp4_v1 (1080p).mp4"),
+  R("Toyota Corolla", "Filmmaster MEA", "tvc", "TVC_s/filmmaster_mea_toyota_-_corolla(1)_v1 (1080p).mp4"),
+  R("Shahid", "MBC", "tvc", "TVC_s/mbc_shahid_tvc_v1 (1080p).mp4"),
+  R("Museum of the Future", "Museum of the Future", "tvc", "TVC_s/museum_of__the_future_schools.mp4_v1 (1080p).mp4"),
+  R("National Day — 50 Years", "", "tvc", "TVC_s/National Day - 50 Years.MP4"),
+  R("Saadiyat", "Rotana", "tvc", "TVC_s/rotana_saddiyat_v1 (1080p).mp4"),
+  R("Water Projection", "Toyota", "tvc", "TVC_s/Copy of toyota_water_projection_tvc_v1 (1080p).mp4"),
+  R("Brand Film 2019", "Toyota", "tvc", "TVC_s/toyota_brand_film_2019_v1 (1080p).mp4"),
+  R("Saudi National Day", "", "tvc", "TVC_s/saudi_national_day_v1 (1080p).mp4"),
+  R("Special Olympics", "Special Olympics", "tvc", "TVC_s/special_olympics_v1 (1080p).mp4"),
+  R("Ministry of Education", "UAE Ministry of Education", "tvc", "TVC_s/uae_ministry_of_education_tvc_v1 (1080p).mp4"),
+  R("UAE National Anthem", "", "tvc", "TVC_s/uae_national_anthem_.mp4_v1 (720p).mp4"),
+  R("what3words", "what3words", "tvc", "TVC_s/what_3_words_tvc.mp4_v1 (1080p).mp4"),
 );
 
 // ---------------------------------------------------------------------------

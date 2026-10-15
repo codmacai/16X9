@@ -29,8 +29,9 @@ import { resolveVariant, type Clip, type HeroVariant } from "@/components/Hero-c
 import ProjectView, { type OpenProject } from "../hero7/project-view";
 import { liveBudget, posterFor, WallPlayback } from "../hero7/wall-playback";
 import Drawer from "../hero11/drawer";
-import PosterWall from "../hero2/poster-wall";
+import LensRoom from "../hero3/lens-room";
 import RoomSwitch from "./room-switch";
+import WorkTile from "./work-tile";
 import FormatHero, { FORMATS, Ratio, type FormatKey, type Rect } from "../hero3/format-hero";
 import styles from "./hero4.module.css";
 
@@ -93,7 +94,7 @@ const HOVER_SPEED = 0; // the wall stops under a film you're pointing at, so it 
 const SPEED_EASE = 3.2; // gentle: the wall brakes and pulls away, never snaps
 // The wall only holds while the visitor is actively pointing. A resting mouse
 // lets it run again, otherwise it would stall whenever the cursor sits on the page.
-const HOLD_MS = 1800;
+const HOLD_MS = 9000; // a film you rest on stays lifted; the wall only runs on after a long pause
 // Pointing at a format word reshapes the wall in a wave that starts under the word.
 const WAVE = { stagger: 0.075, out: 0.3 };
 const ARRIVAL = { length: 2.6, peak: 2.4 };
@@ -101,7 +102,7 @@ const ARRIVAL = { length: 2.6, peak: 2.4 };
 const LANES_DESKTOP = 8;
 const LANES_MOBILE = 4;
 const PLANE = { width: 2.4, height: 2.5 }; // the tilted plane, in viewport widths / heights (see .plane)
-const GAP = { desktop: 14, mobile: 9 }; // must match --gap
+const GAP = { desktop: 4, mobile: 3 }; // must match --gap
 
 /** Just enough tiles per lane for one copy to cover the plane's height (the loop needs that),
  *  counted at the flattest tile a format can ask for, so a lane of scope films still covers it. */
@@ -111,16 +112,35 @@ const tilesPerLane = (vw: number, vh: number, lanes: number, gap: number) =>
 // Hover feel: how far the film turns toward the pointer (deg), how far it comes
 // forward, and how quickly it eases there (per second). Only a film you wait on
 // for INTENT_MS starts loading its video.
-const TILT = { x: 14, y: 18, scale: 1.08, ease: 7 };
+// the lift: how far it follows the pointer (deg), how far it comes forward, how
+// far its top tips toward you off the leaning wall (deg), how quickly it eases
+const TILT = { x: 4, y: 7, scale: 1.14, stand: 12, ease: 7 };
 // while a film is hovered it never sits still: it sways in a slow orbit (deg),
 // on top of turning toward the pointer, so it reads like a print turned in the hand
 // In a format, pointing toward either end turns the wall to show that side in full:
 // past `from` (of the half-width) it eases in, turning, sliding and lifting the wall.
 const EDGE = { from: 0.45, turn: 26, shift: 22, lift: 10, ease: 3 };
-const SWAY = { x: 3.2, y: 4.5, z: 1.4, speed: 1.35 };
+const SWAY = { x: 0, y: 0, z: 0, speed: 0 }; // no idle sway: a lifted tile holds still
+// the camera pan at the ends of the screen: how far the wall travels (vw)
+const PAN = { vw: 9 }; // a small drift: just enough to bring the end cards into view
+// the curve at the ends: how wide the plane is in screens, where the bend starts
+// (share of the half-width), how much more the side you move toward bends, how
+// far a lane sinks (vh), how far it shrinks, the cap
+const CURVE = { span: 2.4, from: 0.45, lean: 0.8, drop: 5, shrink: 0, max: 3 };
 const INTENT_MS = 160;
 const LAMP_RES = 8; // the lamp is drawn at 1/8 of the screen and stretched
-const pad2 = (n: number) => String(n).padStart(2, "0");
+/** The baked black-and-white still: /clips/clip-01.mp4 -> /clips/posters-gray/clip-01.webp */
+const grayPosterFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/posters-gray/$1.webp");
+
+/** The brand a film was made for: the client whose name the title starts with
+ *  (set in that client's own style), else the film's title. Stands in for the
+ *  brand's logo until real logo files are added. */
+type Brand = { name: string; style: "a" | "b" | "c" | "d" };
+const brandOf = (clip: Clip, clients: { name: string; style: Brand["style"] }[]): Brand => {
+  const t = clip.title.toLowerCase();
+  const c = clients.find((x) => t.startsWith(x.name.toLowerCase()));
+  return c ? { name: c.name, style: c.style } : { name: clip.title, style: "a" };
+};
 
 const RATIOS = ["3 / 4", "16 / 10", "4 / 5", "1 / 1", "2 / 3", "16 / 9", "5 / 6"];
 
@@ -161,6 +181,7 @@ const arrivalAt = (t: number) => {
 // animation loop), so a tile has no hover handlers of its own.
 // ===========================================================================
 type TileProps = {
+  brand: Brand;
   id: string;
   clip: Clip;
   index: number;
@@ -169,13 +190,14 @@ type TileProps = {
   onOpen: (index: number, el: HTMLElement, time: number) => void;
 };
 
-const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: TileProps) {
+const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpen }: TileProps) {
   const tileRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [live, setLive] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [poster, setPoster] = useState(true);
 
+  // only the film you rest on is live (see WallPlayback, hoverOnly)
   useEffect(() => {
     const el = tileRef.current;
     if (!el) return;
@@ -203,53 +225,62 @@ const Tile = memo(function Tile({ id, clip, index, ratio, playback, onOpen }: Ti
       data-index={index}
       onClick={(e) => onOpen(index, e.currentTarget, videoRef.current?.currentTime ?? 0)}
     >
-      {/* the film, in a white border: black and white until you point at it */}
-      <span className={styles.tileWindow}>
+      {/* At rest: the film's still in black and white under a dark wash, and
+          the brand it was made for at the centre. Pointed at: colour blooms out
+          from the pointer, the film plays, a paper frame closes round it and its
+          title rises. The hover layer only exists while it's pointed at (it's
+          display: none otherwise), so a resting tile is six elements. */}
+      <span className={styles.cWin}>
         {poster && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            className={styles.tilePoster}
-            src={posterFor(clip.src)}
+            className={styles.cStill}
+            src={grayPosterFor(clip.src)}
             alt=""
             decoding="async"
             draggable={false}
             onError={() => setPoster(false)}
           />
         )}
-        {live && (
-          <video
-            ref={videoRef}
-            className={`${styles.tileVideo} ${playing ? styles.tileVideoOn : ""}`}
-            src={clip.src}
-            muted
-            loop
-            playsInline
-            autoPlay
-            preload="auto"
-            disablePictureInPicture
-            onPlaying={() => setPlaying(true)}
-          />
-        )}
-        <span className={styles.tileGlare} aria-hidden="true" />
-        <span className={styles.tileScrim} aria-hidden="true" />
-        <span className={styles.tileVeil} aria-hidden="true" />
-        {/* a poster's small print: number above, runtime and studio below; the title at its centre */}
-        <span className={`${styles.tilePrint} ${styles.tilePrintTop}`} aria-hidden="true">
-          <i>{pad2(index + 1)}</i>
-          <i>Film</i>
+        <span className={styles.cWash} />
+        <span
+          className={styles.cBrand}
+          data-style={brand.style}
+          style={{ "--len": Math.max(5, brand.name.length) } as CSSProperties}
+          aria-hidden="true"
+        >
+          {brand.name}
         </span>
-        <span className={styles.tileTitle} aria-hidden="true">
-          {clip.title}
-        </span>
-        <span className={`${styles.tilePrint} ${styles.tilePrintFoot}`} aria-hidden="true">
-          <i>{clip.duration}</i>
-          <i>16x9 &amp; Beyond</i>
-        </span>
-        {/* the button: a white disc with an arrow, at the centre */}
-        <span className={styles.tileGo} aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.6" />
-          </svg>
+        {/* pointed at: the film becomes a print — colour blooms in, the picture
+            draws back inside a paper mat, and its title is printed in ink on
+            the deeper margin at the foot */}
+        <span className={styles.cHover} aria-hidden="true">
+          <span className={styles.cMat} />
+          <span className={styles.cPic}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className={styles.cColour} src={posterFor(clip.src)} alt="" decoding="async" draggable={false} />
+            {live && (
+              <video
+                ref={videoRef}
+                className={`${styles.cVideo} ${playing ? styles.cVideoOn : ""}`}
+                src={clip.src}
+                muted
+                loop
+                playsInline
+                autoPlay
+                preload="auto"
+                disablePictureInPicture
+                onPlaying={() => setPlaying(true)}
+              />
+            )}
+          </span>
+          <span className={styles.cCap}>
+            <span className={styles.cCapName}>{clip.title}</span>
+            <span className={styles.cCapMeta}>
+              <i className={styles.cDot} />
+              {clip.duration}
+            </span>
+          </span>
         </span>
       </span>
     </div>
@@ -617,7 +648,8 @@ function Formats({
 // The variant depends on the URL and today's date, so it's read on the client only
 // (the server renders an empty section), without a setState-in-effect round trip.
 const noopSubscribe = () => () => {};
-export default function HeroFour({ variantId }: { variantId?: string }) {
+/** `workTile`: in a room, the way to all its work is the wall's middle tile (/hero4b) */
+export default function HeroFour({ variantId, workTile = false }: { variantId?: string; workTile?: boolean }) {
   const isClient = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const variant = useMemo<HeroVariant | null>(
     () =>
@@ -628,10 +660,19 @@ export default function HeroFour({ variantId }: { variantId?: string }) {
   );
 
   if (!variant) return <section className={`${styles.page} ${interTight.variable} ${archivo.variable}`} aria-hidden="true" />;
-  return <DepthInner key={variant.id} variant={variant} />;
+  return <DepthInner key={variant.id} variant={variant} workTile={workTile} />;
 }
 
-function DepthInner({ variant }: { variant: HeroVariant }) {
+// phones: four lanes, so the work tile (two middle lanes wide) gives way to the button
+const NARROW = "(max-width: 760px)";
+const onNarrow = (cb: () => void) => {
+  const m = window.matchMedia(NARROW);
+  m.addEventListener("change", cb);
+  return () => m.removeEventListener("change", cb);
+};
+
+function DepthInner({ variant, workTile }: { variant: HeroVariant; workTile: boolean }) {
+  const narrow = useSyncExternalStore(onNarrow, () => window.matchMedia(NARROW).matches, () => false);
   const clips = variant.clips;
   const mark = variant.wordmark ?? "16X9";
   const reduce = !!useReducedMotion();
@@ -655,6 +696,13 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   const [room, setRoom] = useState<FormatKey | null>(null);
   // The wall takes the frame of the word pointed at; once a word is clicked it keeps that frame.
   const wallFormat = room ?? fmtHover ?? fmtAuto;
+  // at rest the landing is only paper and the choice: the wall behind it is
+  // hidden, so it stops moving and its films stop decoding until it's called up
+  const resting = !wallFormat;
+  const restingRef = useRef(resting);
+  useEffect(() => {
+    restingRef.current = resting;
+  }, [resting]);
   const [hero, setHero] = useState<{ key: FormatKey; from: Rect } | null>(null);
   const [lifted, setLifted] = useState<FormatKey | null>(null);
   const [heroCovered, setHeroCovered] = useState(false);
@@ -788,7 +836,8 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   // Live video budget for this device; nothing plays while a film is open or the tab is hidden.
   const pausedRef = useRef(true);
   useEffect(() => {
-    playback.start(liveBudget());
+    // the wall rests in black and white: only the film you rest on plays
+    playback.start(liveBudget(), { hoverOnly: true });
     playback.setPaused(true);
     const onVis = () => playback.setPaused(document.hidden || pausedRef.current);
     document.addEventListener("visibilitychange", onVis);
@@ -800,9 +849,9 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
   // Videos wait for the entrance to finish (decoding them mid-entrance is what
   // stutters), and stop under an open film or the menu.
   useEffect(() => {
-    pausedRef.current = !ready || project !== null || hero !== null || wallHidden;
+    pausedRef.current = !ready || project !== null || hero !== null || wallHidden || resting;
     playback.setPaused(pausedRef.current || document.hidden);
-  }, [ready, project, hero, wallHidden, playback, room]);
+  }, [ready, project, hero, wallHidden, resting, playback, room]);
 
   const lanes = useMemo(
     () =>
@@ -860,7 +909,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       const holding = hoverRef.current && now - lastMoveRef.current < HOLD_MS;
       // while dragged, the wall goes only where the pointer takes it
       const target =
-        projectRef.current || heroRef.current || wallHiddenRef.current || draggingRef.current
+        projectRef.current || heroRef.current || wallHiddenRef.current || restingRef.current || draggingRef.current
           ? 0
           : holding
             ? HOVER_SPEED
@@ -1093,6 +1142,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       trx: number; try: number; tgx: number; tgy: number; // target
     };
     const tilts = new Map<HTMLElement, Tilt>();
+    let bloomEl: HTMLElement | null = null; // the tile whose bloom origin is set
     let hovered: HTMLElement | null = null;
     let intent = 0;
     let lastMove = -Infinity;
@@ -1142,20 +1192,28 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       if (el === hovered) return;
       if (hovered) {
         hovered.classList.remove(styles.tileOn);
+        hovered.previousElementSibling?.classList.remove(styles.tileAbove);
+        hovered.nextElementSibling?.classList.remove(styles.tileBelow);
+        hovered.closest(`.${styles.lane}`)?.classList.remove(styles.laneOn);
         const t = tilts.get(hovered);
         if (t) t.on = false;
       }
       hovered = el;
       window.clearTimeout(intent);
       // the rest of the wall goes down while one film is pointed at
-      sceneRef.current?.classList.toggle(styles.scenePointing, el !== null);
+      // (no class on the whole wall: restyling every tile on each hover was a stutter)
       if (!el) {
         hoverRef.current = false;
-        playback.setHovered(null);
         if (!word) labelRef.current?.show(null);
+        playback.setHovered(null);
         return;
       }
       el.classList.add(styles.tileOn);
+      // the films either side of it in its lane ease away to give it room
+      el.previousElementSibling?.classList.add(styles.tileAbove);
+      el.nextElementSibling?.classList.add(styles.tileBelow);
+      // its lane comes above the lanes beside it, so the lifted film isn't cut off
+      el.closest(`.${styles.lane}`)?.classList.add(styles.laneOn);
       const t = tilts.get(el);
       if (t) t.on = true;
       else {
@@ -1174,6 +1232,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       hoverRef.current = true;
       // the film's own white button shows the way in; the cursor label is for the words
       labelRef.current?.show(null);
+      // rest on it a moment and its film starts
       const id = el.dataset.tile ?? null;
       intent = window.setTimeout(() => playback.setHovered(id), INTENT_MS);
     };
@@ -1203,11 +1262,19 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       const el = target?.closest?.<HTMLElement>("[data-tile]") ?? null;
       setHover(el);
       setWord(target?.closest?.<HTMLElement>("[data-fmt]") ?? null);
+      if (!el) bloomEl = null;
       const t = el && tilts.get(el);
       if (!el || !t) return;
-      const r = el.getBoundingClientRect();
-      const nx = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-      const ny = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+      // where the pointer is on the film, in the tile's own (tilted) space: the
+      // event carries it, so nothing is measured on the move
+      const nx = e.target === el ? Math.min(1, Math.max(0, e.offsetX / el.offsetWidth)) : 0.5;
+      const ny = e.target === el ? Math.min(1, Math.max(0, e.offsetY / el.offsetHeight)) : 0.5;
+      // the colour blooms out from where the pointer came in
+      if (bloomEl !== el) {
+        bloomEl = el;
+        el.style.setProperty("--mx", `${(nx * 100).toFixed(1)}%`);
+        el.style.setProperty("--my", `${(ny * 100).toFixed(1)}%`);
+      }
       t.trx = (0.5 - ny) * TILT.x;
       t.try = (nx - 0.5) * TILT.y;
       t.tgx = nx;
@@ -1216,6 +1283,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
     const onLeave = () => {
       setHover(null);
       setWord(null);
+      bloomEl = null;
     };
     window.addEventListener("pointermove", onMove, { passive: true });
     document.documentElement.addEventListener("pointerleave", onLeave);
@@ -1250,10 +1318,27 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         const ax = Math.abs(lean.x);
         const edge = roomRef.current ? Math.sign(lean.x) * Math.min(1, Math.max(0, (ax - EDGE.from) / (1 - EDGE.from))) ** 2 : 0;
         side += (edge - side) * (1 - Math.exp(-dt * EDGE.ease));
-        const css = `translateX(${(-lean.x * 2.5 - side * EDGE.shift).toFixed(3)}vw) rotateY(${(-side * EDGE.turn).toFixed(3)}deg) rotateX(${(52 + lean.y * 2 - Math.abs(side) * EDGE.lift).toFixed(3)}deg)`;
+        // the camera pans: toward either end of the screen the wall slides the
+        // other way, easing in, so you travel along it; nothing tilts
+        const css = `translateX(${(-side * PAN.vw).toFixed(3)}vw) rotateX(52deg)`;
         if (css !== leanCss) {
           plane.style.transform = css;
           leanCss = css;
+        }
+        // only the ends of the wall move, like the wings of a curved cinema
+        // screen: the middle holds still, the lanes toward either edge bow
+        // back and sink away, and the side you move toward bows the most
+        const lanesEls = laneRefs.current;
+        const n = lanesEls.length;
+        for (let l = 0; l < n; l++) {
+          const el = lanesEls[l];
+          if (!el) continue;
+          const x = (((l + 0.5) / n) * 2 - 1) * CURVE.span; // across the screen: -1..1 is what you see
+          const out = Math.max(0, Math.abs(x) - CURVE.from) / (1 - CURVE.from); // 0 in the middle
+          const toward = Math.max(0, Math.sign(x) * lean.x); // the pointer on this side
+          const bow = Math.min(CURVE.max, out * out * (1 + CURVE.lean * toward));
+          const t = `0 ${(bow * CURVE.drop).toFixed(2)}vh`;
+          if (el.style.translate !== t) el.style.translate = t;
         }
       }
 
@@ -1267,7 +1352,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         const sx = on ? Math.sin(t.ph * 1.3) * SWAY.x : 0;
         const sy = on ? Math.cos(t.ph) * SWAY.y : 0;
         const sz = on ? Math.sin(t.ph * 0.8) * SWAY.z : 0;
-        t.rx += ((on ? t.trx + sx : 0) - t.rx) * k;
+        t.rx += ((on ? t.trx + sx - TILT.stand : 0) - t.rx) * k;
         t.ry += ((on ? t.try + sy : 0) - t.ry) * k;
         t.rz += (sz - t.rz) * k;
         t.s += ((on ? TILT.scale : 1) - t.s) * k;
@@ -1307,14 +1392,18 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
       : { initial: from, animate: { ...to, transition: { delay, duration, ease: EASE } } };
 
   return (
-    <section className={`${styles.page} ${interTight.variable} ${archivo.variable}`} aria-label={mark} style={menuOpen ? { touchAction: "none" } : undefined}>
+    <section
+      className={`${styles.page} ${interTight.variable} ${archivo.variable} ${wallFormat ? styles.wallOn : ""} ${room ? styles.roomOn : ""}`}
+      aria-label={mark}
+      style={menuOpen ? { touchAction: "none" } : undefined}
+    >
       {/* ================= The depth gallery: rushing behind the letterbox ================= */}
 
       <motion.div
         ref={sceneRef}
         className={`${styles.scene} ${wallHidden ? styles.sceneHidden : ""} ${room === "beyond" ? styles.sceneAway : ""} ${room ? styles.sceneRoom : ""}`}
         // the moving wall is only to watch: no hover, no click, no drag (the words are the way in)
-        style={{ pointerEvents: room && room !== "beyond" ? undefined : "none", touchAction: room ? "pan-y" : "none" }}
+        style={{ pointerEvents: room === "beyond" ? "none" : undefined, touchAction: room ? "pan-y" : "none" }}
         aria-hidden="true"
         {...enter(T.wall, { scale: 1.12 }, { scale: 1 }, 2.6)}
       >
@@ -1340,6 +1429,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
                       key={`${copy}-${t}`}
                       id={`${l}-${copy}-${t}`}
                       clip={clips[it.index]}
+                      brand={brandOf(clips[it.index], variant.clients)}
                       index={it.index}
                       ratio={it.ratio}
                       playback={playback}
@@ -1350,10 +1440,19 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
               </div>
             </div>
           ))}
+          <AnimatePresence>
+            {workTile && (room === "16x9" || room === "9x16") && (
+              <WorkTile key={room} room={room} />
+            )}
+          </AnimatePresence>
         </div>
         </div>
       </motion.div>
 
+      {/* the cinema: black falling in from the left and the right */}
+      <div className={styles.wings} aria-hidden="true" />
+      {/* the landing preview's frame: paper round a rounded window */}
+      <div className={styles.bezel} aria-hidden="true" />
       {/* one layer for the whole grade */}
       <div className={styles.grade} aria-hidden="true" />
       {/* the lamp: the wall rests in shadow and a soft pool of light follows the
@@ -1367,32 +1466,24 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         <canvas ref={lampRef} className={styles.lampLight} />
       </motion.div>
 
-      {/* ================= Beyond: the sphere of films ================= */}
+      {/* ================= Beyond: hero 3's lens wall, in scope ================= */}
       <AnimatePresence>
         {room === "beyond" && (
           <motion.div
-            key="sphere"
-            className={`${styles.sphere} ${styles.sphereOpen}`}
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1, transition: { duration: 0.9, ease: EASE } }}
-            exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.5, ease: EASE } }}
+            key="lens"
+            className={styles.room}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.6, ease: EASE } }}
+            exit={{ opacity: 0, transition: { duration: 0.5, ease: EASE } }}
           >
-            <PosterWall
-              fmt="beyond"
-              clips={clips}
-              paused={project !== null || menuOpen}
-              reduce={reduce}
-              delay={0.2}
-              tone="mono"
-              onOpen={openFromSphere}
-            />
+            <LensRoom fmt="beyond" clips={clips} paused={project !== null || menuOpen} reduce={reduce} onOpen={openFromSphere} />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ================= In a room: the way to all of its work, at the foot on the right ================= */}
+      {/* ================= In a room: the way to all of its work, at the foot in the middle ================= */}
       <AnimatePresence>
-        {room && !menuOpen && (
+        {room && !menuOpen && !(workTile && room !== "beyond" && !narrow) && (
           <motion.div
             key={`all-${room}`}
             className={`${styles.viewAll} ${room === "beyond" ? styles.viewAllHigh : ""}`}
@@ -1400,11 +1491,24 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
             animate={{ opacity: 1, y: 0, transition: { delay: 0.6, duration: 0.7, ease: EASE } }}
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
           >
-            <Link href={`/work?format=${room}`}>
-              <span>
-                View all <Ratio text={FORMATS.find((f) => f.key === room)?.label ?? ""} className={styles.viewAllX} /> work
+            <Link href={`/work?format=${room}`} className={styles.cta}>
+              {/* a viewfinder round it: its corners hunt for focus, and lock on when you point at it */}
+              <span className={styles.ctaFocus} aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
               </span>
-              <i aria-hidden="true">→</i>
+              <span className={styles.ctaRec} aria-hidden="true" />
+              <span className={styles.ctaWords}>Explore full work</span>
+              <span className={styles.ctaRatio}>
+                <Ratio text={FORMATS.find((f) => f.key === room)?.label ?? ""} className={styles.viewAllX} />
+              </span>
+              <span className={styles.ctaArrow} aria-hidden="true">
+                <svg viewBox="0 0 28 14">
+                  <path d="M0 7h26M20 1l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.4" />
+                </svg>
+              </span>
             </Link>
           </motion.div>
         )}
@@ -1429,6 +1533,27 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
         />
         <Mark mark={mark} reduce={reduce} gone={gone} menuOpen={menuOpen} menuKey={menuKey} />
       </div>
+
+      {/* ================= At rest: the mark, with a film playing in its frame ================= */}
+      <AnimatePresence>
+        {gone && !menuOpen && !room && !wallFormat && (
+          <motion.div
+            key="reel-mark"
+            className={styles.reelMark}
+            aria-hidden="true"
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1, transition: { duration: 0.9, ease: EASE } }}
+            exit={{ opacity: 0, scale: 1.06, transition: { duration: 0.45, ease: EASE } }}
+          >
+            <span className={styles.reelFrame}>
+              <video src="/clips/clip-10.mp4" poster="/clips/stills/clip-10.webp" muted loop playsInline autoPlay preload="metadata" />
+            </span>
+            <span className={styles.reelNum}>
+              16<i />9
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ================= Menu (no boxes: a veil over the wall and the links) ================= */}
       {/* in a room, Work leads to that format's work */}
@@ -1455,10 +1580,12 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
           </Link>
         </div>
 
-        {/* in a room, at the top in the middle: which one, and a small sheet to switch (or go back to the index) */}
+        {/* in a room, at the top in the middle: which one, and a pill to switch (the logo goes back to the index) */}
         <div className={styles.barMid}>
           <AnimatePresence>
-            {room && !menuOpen && <RoomSwitch key="switch" room={room} onSwitch={setRoom} onIndex={() => setRoom(null)} />}
+            {room && !menuOpen && (
+              <RoomSwitch key="switch" room={room} onSwitch={setRoom} tone="light" />
+            )}
           </AnimatePresence>
         </div>
 

@@ -1,0 +1,144 @@
+/* MANIFESTO — black ground, paper type; the films orbit the line */
+
+.section {
+  position: relative;
+  height: 360vh;
+  height: 360svh;
+  background: #000;
+  color: var(--paper);
+}
+
+/* the screen it holds while you scroll through it */
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+/* ================= the lens of films ================= */
+
+/* the ring's centre: the middle of the screen below the band */
+.ring {
+  --u: min(10vw, 16svh); /* a film's size unit: manifesto.tsx sets it to fit the lens */
+  position: absolute;
+  left: 50%;
+  top: calc(50% + var(--band) / 2);
+  width: 0;
+  height: 0;
+}
+
+.frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--ink);
+  will-change: transform, opacity;
+}
+
+/* a poster, upright */
+.tall {
+  width: calc(var(--u) * 0.78);
+  height: calc(var(--u) * 1.04);
+  margin: calc(var(--u) * -0.52) 0 0 calc(var(--u) * -0.39);
+}
+
+/* a film, in scope (2.4:1 — it also crops the letterbox away) */
+.wide {
+  width: calc(var(--u) * 1.34);
+  height: calc(var(--u) * 0.5583);
+  margin: calc(var(--u) * -0.2792) 0 0 calc(var(--u) * -0.67);
+}
+
+/* the picture inside settles as the frame arrives */
+.picture {
+  position: absolute;
+  inset: 0;
+}
+
+.grey,
+.colour {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* the grey never animates; only the colour over it fades */
+.grey {
+  filter: grayscale(1) contrast(1.06) brightness(0.86);
+}
+
+.colour {
+  will-change: opacity;
+}
+
+/* ================= the line ================= */
+
+.statement {
+  position: absolute;
+  inset: var(--band) 0 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.label {
+  margin: 0 0 clamp(14px, 2.6vh, 28px);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.line {
+  margin: 0;
+  font-size: min(9.6vw, 12.6svh);
+  font-weight: 300;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+/* each word rises out of its own slot */
+.mask {
+  display: block;
+  overflow: hidden;
+  padding: 0.03em 0.08em 0.05em;
+  margin-bottom: -0.08em;
+}
+
+.word {
+  display: block;
+}
+
+/* ================= a phone ================= */
+
+@media (max-width: 719px) {
+  .spare {
+    display: none;
+  }
+  .line {
+    font-size: 13vw;
+  }
+}
+
+/* ================= reduced motion: one still, complete ================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .section {
+    height: auto;
+  }
+  .stage {
+    position: relative;
+  }
+}

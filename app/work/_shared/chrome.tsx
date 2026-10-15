@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import { Archivo } from "next/font/google";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ProjectView, { type OpenProject } from "../../hero7/project-view";
 import Drawer from "../../hero11/drawer";
 import type { Project } from "./data";
@@ -30,15 +31,39 @@ export const rootClass = `${styles.root} ${wide.variable}`;
 // ---------------------------------------------------------------------------
 export function Band({
   crumb,
+  section = "Work",
   center,
   workHref,
+  onBack,
 }: {
   crumb: string;
+  /** the page the crumb belongs to */
+  section?: string;
   /** in the middle in place of the crumb (a format's work page puts the room switch there) */
   center?: ReactNode;
   /** where the menu's Work leads */
   workHref?: string;
+  /** what Back does here first (a page with something open closes it); otherwise it goes back a page */
+  onBack?: () => void;
 }) {
+  const router = useRouter();
+  // came here from this site: Back takes its place over the logo
+  const [cameIn, setCameIn] = useState(false);
+  useEffect(() => {
+    try {
+      // the Navigation API only lists this site's own entries; without it, the referrer
+      const nav = (window as { navigation?: { currentEntry?: { index: number } } }).navigation;
+      const index = nav?.currentEntry?.index;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- only known in the browser, after hydration
+      setCameIn(index !== undefined ? index > 0 : !!document.referrer && new URL(document.referrer).origin === location.origin);
+    } catch {}
+  }, []);
+  const canBack = !!onBack || cameIn;
+  const back = useCallback(() => {
+    if (onBack) return onBack();
+    if (cameIn) router.back();
+    else router.push("/");
+  }, [onBack, cameIn, router]);
   const reduce = !!useReducedMotion();
   const [menu, setMenu] = useState(false);
   // come from the menu's Work folder: its band was already here, so this one doesn't slide in
@@ -77,15 +102,46 @@ export function Band({
         initial={arrived ? false : { y: "-100%" }} /* same first frame on server and client; reduced motion just makes it instant */
         animate={{ y: 0, transition: reduce ? { duration: 0 } : { duration: 1.1, ease: EASE_CINE } }}
       >
-        <Link href="/" className={styles.logo} aria-label="16x9 home">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_SRC} alt="16x9" />
-        </Link>
+        {/* the logo, or Back in its place when there's somewhere to go back to: one rolls out as the other rolls in */}
+        <div className={styles.bandStart}>
+          <AnimatePresence initial={false} mode="popLayout">
+            {canBack ? (
+              <motion.button
+                key="back"
+                type="button"
+                className={styles.back}
+                onClick={back}
+                aria-label="Go back"
+                initial={reduce ? false : { y: "110%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1, transition: { duration: 0.7, ease: EASE } }}
+                exit={reduce ? { opacity: 0 } : { y: "-110%", opacity: 0, transition: { duration: 0.45, ease: EASE_CINE } }}
+              >
+                <svg viewBox="0 0 20 12" aria-hidden="true">
+                  <path d="M20 6H2M7 1L2 6l5 5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+                </svg>
+                <span>Back</span>
+              </motion.button>
+            ) : (
+              <motion.span
+                key="logo"
+                className={styles.logoWrap}
+                initial={reduce ? false : { y: "-110%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1, transition: { duration: 0.7, ease: EASE } }}
+                exit={reduce ? { opacity: 0 } : { y: "110%", opacity: 0, transition: { duration: 0.45, ease: EASE_CINE } }}
+              >
+                <Link href="/" className={styles.logo} aria-label="16x9 home">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={LOGO_SRC} alt="16x9" />
+                </Link>
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </div>
         {center ? (
           <span className={`${styles.crumb} ${styles.crumbSlot}`}>{center}</span>
         ) : (
           <span className={styles.crumb}>
-            <span>Work</span>
+            <span>{section}</span>
             <i aria-hidden="true">/</i>
             <span>{crumb}</span>
           </span>

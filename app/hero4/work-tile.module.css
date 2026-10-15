@@ -1,0 +1,127 @@
+/* THE WORK TILE (work-tile.tsx): one tile of the wall's grid — a lane wide, a
+   film's height, in the lane just right of the middle — in paper with ink type.
+   Sizes inside are in cqw (the tile's width). */
+
+/* A lane is (240vw − 7 gaps) / 8 wide (see .plane and LANES_DESKTOP); the
+   middle of the plane is the gap between lanes 4 and 5, so lane 5 starts half
+   a gap right of it. Pinned: it rides the wall's tilt and pan, not its run. */
+.pin {
+  --paper: #f7f2ee;
+  --ink: #0a0a0a;
+  position: absolute;
+  z-index: 8;
+  left: calc(50% + var(--gap) / 2);
+  top: var(--work-top, 69%);
+  width: calc((240vw - 7 * var(--gap)) / 8);
+  aspect-ratio: 16 / 9; /* a film's tile in 16x9 */
+  translate: 0 -50%;
+  outline: var(--gap) solid #000; /* the wall's gap, all the way round */
+  container-type: inline-size;
+}
+
+.tall {
+  aspect-ratio: 9 / 16; /* ...and in 9x16 */
+}
+
+/* phones: the button at the foot stays instead */
+@media (max-width: 760px) {
+  .pin {
+    display: none;
+  }
+}
+
+.card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 6cqw 7cqw;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+  text-transform: uppercase;
+  overflow: hidden;
+}
+
+.card:focus-visible {
+  outline: none;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 3.4cqw;
+  letter-spacing: 0.24em;
+  opacity: 0.65;
+}
+
+.index {
+  display: inline-flex;
+  align-items: center;
+  gap: 2cqw;
+}
+
+.glyph {
+  height: 0.8em;
+  width: auto;
+}
+
+.mid {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 4cqw;
+}
+
+/* the format already reads at the top */
+.kicker {
+  display: none;
+}
+
+.x {
+  font-weight: 400;
+}
+
+.title {
+  font-size: 9cqw;
+  font-weight: 300;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  transition: letter-spacing 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tall .title {
+  font-size: 11cqw;
+}
+
+.go {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 14cqw;
+  height: 14cqw;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.go svg {
+  width: 42%;
+  height: 42%;
+}
+
+.card:hover .title,
+.card:focus-visible .title {
+  letter-spacing: 0.02em;
+}
+
+.card:hover .go,
+.card:focus-visible .go {
+  transform: rotate(-45deg);
+}

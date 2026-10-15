@@ -1,0 +1,6 @@
+/* WHO WE ARE — the page: paper underneath, each section brings its own ground */
+.page {
+  background: var(--noise), var(--paper);
+  color: var(--ink);
+  overflow-x: clip; /* wide type and drifting films never widen the page */
+}

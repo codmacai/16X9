@@ -1,107 +1,139 @@
-/* THE CASE (story.tsx): ink on the film page's paper */
+/* THE CASE (story.tsx): ink on the film page's paper, nothing else */
 
 .story {
-  position: relative;
-  padding: 0 var(--ui) clamp(90px, 16vh, 180px);
-  color: var(--ink);
-}
-
-/* a small line over it: what this is, the client and the year */
-.kicker {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  max-width: 1320px;
-  margin: 0 auto clamp(30px, 6vh, 60px);
-  font-size: 10.5px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-}
-
-.kicker i {
-  flex: 1;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.2;
-}
-
-.kicker span:last-child {
-  opacity: 0.55;
-}
-
-/* a part of the case: its name on the left, its words on the right */
-.row {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: clamp(24px, 6vw, 120px);
   max-width: 1320px;
   margin: 0 auto;
-  padding: clamp(34px, 6vh, 64px) 0 clamp(40px, 8vh, 80px);
+  padding: clamp(60px, 12vh, 140px) var(--ui) clamp(40px, 8vh, 100px);
+  color: var(--ink);
 }
 
-.rule {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.22;
-  transform-origin: 0 50%;
+/* ---- the word that stays ---- */
+.sticky {
+  position: sticky;
+  top: 34%;
 }
 
-.name {
-  display: flex;
-  align-items: flex-start;
-  gap: clamp(14px, 1.6vw, 26px);
-  margin: 0;
-  font-weight: 300;
-}
-
-.no {
-  padding-top: 0.9em;
-  font-style: normal;
+.kicker {
+  margin: 0 0 clamp(14px, 2.4vh, 22px);
   font-size: 10.5px;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
   opacity: 0.5;
 }
 
-.mask {
-  display: block;
+.wordMask {
+  height: 1.05em;
   overflow: hidden;
-  padding-bottom: 0.06em;
-}
-
-/* the name: the headings' wide light capitals */
-.word {
-  display: block;
-  font-size: clamp(40px, 5.8vw, 104px);
-  line-height: 0.92;
-  letter-spacing: -0.035em;
+  font-size: clamp(44px, 7.4vw, 128px);
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
   text-transform: uppercase;
 }
 
+.reel {
+  display: flex;
+  flex-direction: column;
+}
+
+.reel span {
+  display: block;
+  height: 1.05em;
+  white-space: nowrap;
+}
+
+.count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: clamp(12px, 2vh, 18px) 0 0;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  font-variant-numeric: tabular-nums;
+}
+
+.count i {
+  font-style: normal;
+  opacity: 0.35;
+}
+
+.countMask {
+  display: inline-block;
+  height: 1.3em;
+  line-height: 1.3em;
+  overflow: hidden;
+}
+
+.countReel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- the parts, passing by ---- */
+.parts {
+  display: flex;
+  flex-direction: column;
+}
+
+.part {
+  min-height: 62vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  will-change: transform, opacity;
+}
+
+/* the name is said by the word on the left; kept for reading without it */
+.partName {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .text {
-  max-width: 46ch;
   margin: 0;
-  padding-top: 0.5em;
-  font-size: clamp(15px, 1.15vw, 19px);
-  line-height: 1.62;
-  letter-spacing: 0.005em;
+  max-width: 30ch;
+  font-size: clamp(20px, 2vw, 32px);
+  font-weight: 300;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
 }
 
-/* the first line of the words a touch larger, like a lede */
-.text::first-line {
-  font-weight: 500;
-}
-
+/* phones: the word sits at the top while the parts pass under it */
 @media (max-width: 760px) {
-  .row {
-    grid-template-columns: 1fr;
-    gap: 18px;
+  .story {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
-  .word {
-    font-size: 13vw;
+
+  .side {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 18px 0 10px;
+    background: var(--noise), var(--paper);
+  }
+
+  .sticky {
+    position: static;
+  }
+
+  .wordMask {
+    font-size: 12vw;
+  }
+
+  .part {
+    min-height: 54vh;
+  }
+
+  .text {
+    font-size: 19px;
   }
 }

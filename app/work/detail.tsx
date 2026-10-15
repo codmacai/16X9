@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useInView, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
 import { EASE } from "./_shared/chrome";
 import { posterFor, type Project } from "./_shared/data";
 import Credits from "./credits";
 import Story from "./story";
 import Edge from "./edge";
+import Theatre, { type Rect } from "./theatre";
+import ScreenBar from "./screen-bar";
 import { useHeavyScroll } from "./heavy";
 import d from "./detail.module.css";
 
@@ -23,7 +25,7 @@ import d from "./detail.module.css";
 //   · the screen: the film in an old television's curved glass, growing into
 //     place as you reach it while the picture settles inside, and "Watch
 //     behind the scenes" to open it in the player;
-//   · the case under it (story.tsx): client, challenge, idea;
+//   · the case above it (story.tsx): client, task, solution;
 //   · the sign-off: black rises over the page by a dragged edge (edge.tsx) —
 //     the middle leads, the sides trail, stretching with the scroll's speed —
 //     while the page above sinks back; then the end credits roll by
@@ -62,7 +64,6 @@ export default function Detail({
   reduce,
   onClose,
   onNext,
-  onPlay,
 }: {
   films: Project[];
   k: number;
@@ -77,7 +78,8 @@ export default function Detail({
   reduce: boolean;
   onClose: () => void;
   onNext: () => void;
-  onPlay: (film: Project, el: HTMLElement) => void;
+  /** (no longer used: behind the scenes plays in the screen itself) */
+  onPlay?: (film: Project, el: HTMLElement) => void;
 }) {
   const film = films[k];
   const next = films[(k + 1) % films.length];
@@ -98,8 +100,9 @@ export default function Detail({
   const calmPull = useTransform(speed, (v) => (reduce ? 0 : 34 * Math.tanh(Math.max(0, v) / 1600)));
   const calmDrag = useSpring(calmPull, { stiffness: 70, damping: 24, mass: 1, restDelta: 0.01 });
 
-  // the page above each rising section sinks back as it's covered
-  const { scrollYProgress: creditsIn } = useScroll({ container: scrollRef, target: creditsRef, offset: ["start end", "start start"] });
+  // the page above each rising section sinks back as it's covered (the screen
+  // only once the credits are well on their way, so it stays whole to watch)
+  const { scrollYProgress: creditsIn } = useScroll({ container: scrollRef, target: creditsRef, offset: ["start 0.6", "start start"] });
   const paperScale = useTransform(creditsIn, [0, 1], [1, 0.9]);
   const paperY = useTransform(creditsIn, [0, 1], ["0%", "14%"]);
   const paperFade = useTransform(creditsIn, [0, 1], [1, 0.35]);
@@ -134,6 +137,31 @@ export default function Detail({
     ? { left: box.left, top: box.top - band, width: box.width, height: box.height, marginLeft: 0 }
     : undefined;
 
+  // the film, played in its own cover: the card grows into a screen across the hero
+  const coverRef = useRef<HTMLDivElement>(null);
+  const [theatre, setTheatre] = useState<{ from: Rect; to: Rect; closing: boolean } | null>(null);
+  const openFilm = () => {
+    const heroEl = heroRef.current;
+    const card = coverRef.current;
+    const box = scrollRef.current;
+    if (!heroEl || !card || theatre) return;
+    box?.scrollTo({ top: 0, behavior: "smooth" });
+    const h = heroEl.getBoundingClientRect();
+    const c = card.getBoundingClientRect();
+    const W = heroEl.clientWidth;
+    const H = heroEl.clientHeight;
+    const width = Math.min(W * (W < 700 ? 0.94 : 0.84), H * 0.72 * (16 / 9));
+    const height = width * (9 / 16);
+    setTheatre({
+      from: { left: c.left - h.left, top: c.top - h.top, width: c.width, height: c.height },
+      to: { left: (W - width) / 2, top: Math.max(16, (H - height - 60) / 2), width, height },
+      closing: false,
+    });
+  };
+  const closeFilm = useCallback(() => setTheatre((th) => (th && !th.closing ? { ...th, closing: true } : th)), []);
+  // scrolling on down the page closes the film
+  useEffect(() => heroRaw.on("change", (v) => v > 0.3 && closeFilm()), [heroRaw, closeFilm]);
+
   // the page has weight: the wheel sets where it's going, it glides there
   useHeavyScroll(scrollRef, reduce);
 
@@ -141,6 +169,21 @@ export default function Detail({
   useEffect(() => {
     scrollRef.current?.focus({ preventScroll: true });
   }, []);
+
+  // behind the scenes plays in the curved screen itself, in its own shape
+  const btsVideo = useRef<HTMLVideoElement>(null);
+  const [bts, setBts] = useState(false);
+  const screenInView = useInView(screenRef, { root: scrollRef, amount: 0.2 });
+  useEffect(() => {
+    if (!screenInView) btsVideo.current?.pause();
+  }, [screenInView]);
+  const pressScreen = () => {
+    if (!bts) return setBts(true);
+    const v = btsVideo.current;
+    if (!v) return;
+    if (v.paused) v.play().catch(() => {});
+    else v.pause();
+  };
 
   const toScreen = () => {
     const box = scrollRef.current;
@@ -238,9 +281,23 @@ export default function Detail({
           </motion.button>
 
           {/* the card, across the two */}
-          <motion.div className={d.coverWrap} style={reduce ? coverBox : { ...coverBox, y: cardY }}>
+          <motion.div
+            ref={coverRef}
+            className={d.coverWrap}
+            style={{ ...(reduce ? coverBox : { ...coverBox, y: cardY }), visibility: theatre ? "hidden" : "visible" }}
+          >
             <motion.div
               className={d.cover}
+              onClick={openFilm}
+              role="button"
+              tabIndex={0}
+              aria-label={`Play ${film.title}`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openFilm();
+                }
+              }}
               initial={reduce || anchored ? false : { y: 90, opacity: 0, rotate: -1.5 }}
               animate={{ y: 0, opacity: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 60, damping: 15, delay: 0.25 }}
@@ -274,9 +331,36 @@ export default function Detail({
                     </span>
                   ))}
                 </h2>
+                <motion.span
+                  className={d.playFilm}
+                  initial={anchored || reduce ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.9, ease: EASE, delay: reduce ? 0 : 1.1 }}
+                  aria-hidden="true"
+                >
+                  <i>
+                    <svg viewBox="0 0 12 14">
+                      <path d="M1 0l11 7-11 7z" />
+                    </svg>
+                  </i>
+                  Play film
+                </motion.span>
               </span>
             </motion.div>
           </motion.div>
+
+          {theatre && (
+            <Theatre
+              src={film.film ?? film.src}
+              poster={still}
+              title={film.title}
+              from={theatre.from}
+              to={theatre.to}
+              closing={theatre.closing}
+              onClose={closeFilm}
+              onClosed={() => setTheatre(null)}
+            />
+          )}
 
           <motion.button
             type="button"
@@ -296,25 +380,58 @@ export default function Detail({
 
         {/* ================= the screen ================= */}
         <motion.div className={d.paper} style={reduce ? undefined : { scale: paperScale, y: paperY, opacity: paperFade }}>
+          {/* ================= the case: client, task, solution ================= */}
+          <Story film={film} root={scrollRef} reduce={reduce} />
+
           <div ref={screenRef} className={d.screenWrap}>
             <motion.button
               type="button"
               className={d.screen}
               style={reduce ? undefined : { scale: screenScale, y: screenY }}
-              onClick={(e) => onPlay(film, e.currentTarget)}
-              aria-label={`Watch behind the scenes: ${film.title}`}
+              onClick={pressScreen}
+              aria-label={bts ? `Pause or play: ${film.title}, behind the scenes` : `Watch behind the scenes: ${film.title}`}
             >
               <span className={d.glass}>
                 <motion.span className={d.picture} style={reduce ? undefined : { scale: pictureScale }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={still} alt="" draggable={false} />
                 </motion.span>
+                {/* the film itself, in the glass */}
+                <AnimatePresence>
+                  {bts && (
+                    <motion.video
+                      key="bts"
+                      ref={btsVideo}
+                      className={d.btsVideo}
+                      src={film.bts ?? film.src}
+                      poster={still}
+                      autoPlay
+                      playsInline
+                      preload="auto"
+                      onCanPlay={(e) => {
+                        const v = e.currentTarget;
+                        if (v.paused) v.play().catch(() => {
+                          v.muted = true;
+                          v.play().catch(() => {});
+                        });
+                      }}
+                      onEnded={() => setBts(false)}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1, transition: { duration: 0.8, ease: EASE } }}
+                      exit={{ opacity: 0, transition: { duration: 0.5, ease: EASE } }}
+                    />
+                  )}
+                </AnimatePresence>
                 <span className={d.vignette} aria-hidden="true" />
                 <span className={d.sheen} aria-hidden="true" />
               </span>
               {/* in the brand's own colours: a paper disc, an ink play mark, paper type,
                   and the live dot from the band's clock */}
-              <motion.span className={d.watch} style={reduce ? undefined : { opacity: watchFade, scale: watchScale }} aria-hidden="true">
+              <motion.span
+                className={`${d.watch} ${bts ? d.watchAway : ""}`}
+                style={reduce ? undefined : { opacity: watchFade, scale: watchScale }}
+                aria-hidden="true"
+              >
                 <span className={d.playDisc}>
                   <svg className={d.play} viewBox="0 0 24 28">
                     <path d="M3 2.2 Q3 0.6 4.4 1.4 L22 12.4 Q23.4 14 22 15.6 L4.4 26.6 Q3 27.4 3 25.8 Z" />
@@ -326,9 +443,8 @@ export default function Detail({
                 <span className={d.watchLabel}>Watch behind the scenes</span>
               </motion.span>
             </motion.button>
+            <ScreenBar video={btsVideo} open={bts} onClose={() => setBts(false)} />
           </div>
-          {/* ================= the case: client, challenge, idea ================= */}
-          <Story film={film} root={scrollRef} reduce={reduce} />
         </motion.div>
 
         {/* ================= the end credits ================= */}
@@ -340,6 +456,7 @@ export default function Detail({
           drag={calmDrag}
           recede={creditsRecede}
           reduce={reduce}
+          hold={bts}
         />
 
         {/* ================= the next film ================= */}

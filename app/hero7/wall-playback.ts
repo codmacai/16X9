@@ -39,9 +39,13 @@ export class WallPlayback {
   private budget = 0;
   private hovered: string | null = null;
   private paused = false;
+  private hoverOnly = false;
 
-  start(budget: number) {
+  /** `hoverOnly`: only the film pointed at plays (no ambient films, no ranking
+   *  pass) — for walls that rest as stills and come alive under the pointer. */
+  start(budget: number, { hoverOnly = false }: { hoverOnly?: boolean } = {}) {
     this.budget = budget;
+    this.hoverOnly = hoverOnly;
     this.io = new IntersectionObserver((entries) => {
       for (const e of entries) {
         const id = (e.target as HTMLElement).dataset.tile;
@@ -52,7 +56,7 @@ export class WallPlayback {
       this.queue();
     });
     this.tiles.forEach(({ el }) => this.io!.observe(el));
-    this.timer = window.setInterval(() => this.rank(), RANK_EVERY_MS);
+    if (!hoverOnly) this.timer = window.setInterval(() => this.rank(), RANK_EVERY_MS);
   }
 
   stop() {
@@ -105,7 +109,9 @@ export class WallPlayback {
 
     if (!this.paused && this.budget > 0 && !document.hidden) {
       if (this.hovered && this.visible.has(this.hovered)) want.add(this.hovered);
+    }
 
+    if (!this.hoverOnly && !this.paused && this.budget > 0 && !document.hidden) {
       const cx = window.innerWidth / 2;
       const cy = window.innerHeight * 0.45;
       const ranked: { id: string; score: number }[] = [];
