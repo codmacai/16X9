@@ -266,6 +266,33 @@ function CountUp({ to, run, delay }: { to: number; run: boolean; delay: number }
   return <span ref={ref}>0</span>;
 }
 
+// Beyond's mosaic: the window fills with small tiles of different projects, lighting up one
+// after another like time passing. Stills everywhere; a few tiles play their film.
+const MOSAIC = { cols: 7, rows: 4, live: [2, 9, 11, 17, 24] };
+const stillOf = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.webp");
+
+function BeyondMosaic({ on, pool }: { on: boolean; pool: string[] }) {
+  const n = MOSAIC.cols * MOSAIC.rows;
+  return (
+    <div className={`${styles.mosaic} ${on ? styles.mosaicOn : ""}`} style={{ gridTemplateColumns: `repeat(${MOSAIC.cols}, 1fr)` }} aria-hidden="true">
+      {Array.from({ length: n }, (_, i) => {
+        const src = pool[(i * 7) % pool.length];
+        // the light sweeps from the left: column by column, a little shuffle within each
+        const col = i % MOSAIC.cols;
+        const row = Math.floor(i / MOSAIC.cols);
+        const d = col * 0.12 + ((row * 3 + col) % 3) * 0.04;
+        return (
+          <span key={i} className={styles.tileM} style={{ transitionDelay: on ? `${d}s` : "0s" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={stillOf(src)} alt="" draggable={false} />
+            {on && MOSAIC.live.includes(i) && <video src={src} muted loop playsInline autoPlay preload="auto" />}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function BeyondStats({ on }: { on: boolean }) {
   return (
     <div className={`${styles.stats} ${on ? styles.statsOn : ""}`} aria-hidden="true">
@@ -460,6 +487,7 @@ export default function Chooser({
               disablePictureInPicture
             />
           </div>
+          {f.key === "beyond" && pool?.length ? <BeyondMosaic on={up === "beyond" && !open} pool={pool} /> : null}
           {f.key === "beyond" && <BeyondStats on={up === "beyond" && !open} />}
           <div className={styles.namesWrap}>
             <Names ink={false} show={show} base={base} reduce={reduce} ready={ready} active={shown} />
