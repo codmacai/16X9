@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { instagramOf, stillFor, type Account } from "./_shared/data";
+import { instagramOf, reelEmbed, reelLink, stillFor, type Account, type Reel } from "./_shared/data";
+import ReelMedia from "./reel-media";
 import styles from "./profile.module.css";
 
 // An account opened like its Instagram page, in white: the logo, name and
@@ -11,10 +12,19 @@ import styles from "./profile.module.css";
 // Views are stand-ins until the real numbers are added.
 
 const EASE = [0.16, 1, 0.3, 1] as const;
-const viewsOf = (i: number, handle: string) => {
-  const n = ((handle.length * 977 + i * 613) % 3100) + 380;
-  return n.toLocaleString("en-US");
-};
+// the eye and the count, as on Instagram (left out until the real count is in)
+export function Views({ n, small = false }: { n: string; small?: boolean }) {
+  if (!n || n === "—") return null;
+  return (
+    <span className={`${styles.views} ${small ? styles.viewsSmall : ""}`}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" strokeWidth="2" />
+        <circle cx="12" cy="12" r="3" fill="currentColor" />
+      </svg>
+      {n}
+    </span>
+  );
+}
 
 export default function Profile({ account, onClose }: { account: Account; onClose: () => void }) {
   const reels = account.reels ?? [];
@@ -76,22 +86,13 @@ export default function Profile({ account, onClose }: { account: Account; onClos
         </div>
 
         <ul className={styles.grid}>
-          {reels.map((src, i) => (
+          {reels.map((r, i) => (
             <motion.li
-              key={src + i}
+              key={i}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0, transition: { delay: 0.15 + i * 0.04, duration: 0.6, ease: EASE } }}
             >
-              <button type="button" className={styles.tile} onClick={() => setPlay(i)}>
-                <GridReel src={src} />
-                <span className={styles.views}>
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" strokeWidth="2" />
-                    <circle cx="12" cy="12" r="3" fill="currentColor" />
-                  </svg>
-                  {viewsOf(i, account.handle)}
-                </span>
-              </button>
+              <GridReel reel={r} onClick={() => setPlay(i)} />
             </motion.li>
           ))}
         </ul>
@@ -104,24 +105,19 @@ export default function Profile({ account, onClose }: { account: Account; onClos
   );
 }
 
-// a grid tile: the still, and the reel itself plays while pointed at
-function GridReel({ src }: { src: string }) {
-  const ref = useRef<HTMLVideoElement>(null);
+// a grid tile: the reel's picture, its views, and (for a video we host) the reel itself while pointed at
+function GridReel({ reel, onClick }: { reel: Reel; onClick: () => void }) {
+  const [on, setOn] = useState(false);
   return (
-    <span
-      className={styles.media}
-      onPointerEnter={() => ref.current?.play().catch(() => {})}
-      onPointerLeave={() => ref.current?.pause()}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={stillFor(src)} alt="" draggable={false} />
-      <video ref={ref} src={src} muted loop playsInline preload="none" />
-    </span>
+    <button type="button" className={styles.tile} onClick={onClick} onPointerEnter={() => setOn(true)} onPointerLeave={() => setOn(false)}>
+      <ReelMedia reel={reel} live play={on} />
+      <Views n={reel.views} />
+    </button>
   );
 }
 
 // the reel, full height in the middle like the app; scroll (or the arrows) for the next
-export function Player({ reels, start, handle, logo, onClose }: { reels: string[]; start: number; handle: string; logo: string; onClose: () => void }) {
+export function Player({ reels, start, handle, logo, onClose }: { reels: Reel[]; start: number; handle: string; logo: string; onClose: () => void }) {
   const feedRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const [at, setAt] = useState(start);
@@ -154,19 +150,24 @@ export function Player({ reels, start, handle, logo, onClose }: { reels: string[
     >
       <div className={styles.phone}>
         <div ref={feedRef} className={styles.feed} onScroll={(e) => setAt(Math.round(e.currentTarget.scrollTop / e.currentTarget.clientHeight))}>
-          {reels.map((src, i) => (
-            <div key={src + i} className={styles.reel}>
-              <video
-                ref={(el) => {
-                  videoRefs.current[i] = el;
-                }}
-                src={Math.abs(i - at) <= 1 ? src : undefined}
-                poster={stillFor(src)}
-                muted
-                loop
-                playsInline
-                onClick={(e) => (e.currentTarget.paused ? e.currentTarget.play() : e.currentTarget.pause())}
-              />
+          {reels.map((r, i) => (
+            <div key={i} className={styles.reel}>
+              {r.ig ? (
+                // Instagram's own player: press play in it (Instagram doesn't let embeds start on their own)
+                Math.abs(i - at) <= 1 && <iframe className={styles.igFull} src={reelEmbed(r.ig)} title={`Reel ${i + 1}`} allow="autoplay; encrypted-media" />
+              ) : (
+                <video
+                  ref={(el) => {
+                    videoRefs.current[i] = el;
+                  }}
+                  src={Math.abs(i - at) <= 1 ? r.src : undefined}
+                  poster={stillFor(r.src ?? "")}
+                  muted
+                  loop
+                  playsInline
+                  onClick={(e) => (e.currentTarget.paused ? e.currentTarget.play() : e.currentTarget.pause())}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -174,7 +175,13 @@ export function Player({ reels, start, handle, logo, onClose }: { reels: string[
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logo} alt="" />
           {handle}
+          <Views n={reels[at]?.views ?? ""} />
         </span>
+        {reels[at]?.ig && (
+          <a className={styles.openIg} href={reelLink(reels[at].ig!)} target="_blank" rel="noopener noreferrer">
+            Open on Instagram ↗
+          </a>
+        )}
       </div>
       <div className={styles.arrows}>
         <button type="button" onClick={() => go(-1)} disabled={at === 0} aria-label="Previous reel">

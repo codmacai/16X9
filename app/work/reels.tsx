@@ -1,6 +1,8 @@
 "use client";
 
-import { stillFor } from "./_shared/data";
+import type { Reel } from "./_shared/data";
+import ReelMedia from "./reel-media";
+import { Views } from "./profile";
 import styles from "./accounts.module.css";
 
 // An account's reels inside its 9:16 frame while it's pointed at: a small
@@ -13,7 +15,7 @@ export default function Reels({
   on,
   onPick,
 }: {
-  reels: string[];
+  reels: Reel[];
   logo: string;
   handle: string;
   on: boolean;
@@ -26,9 +28,9 @@ export default function Reels({
         <img src={logo} alt="" draggable={false} />@{handle}
       </span>
       <div className={styles.grid}>
-        {reels.map((src, i) => (
+        {reels.map((r, i) => (
           <button
-            key={src + i}
+            key={i}
             type="button"
             className={styles.cell}
             tabIndex={on ? 0 : -1}
@@ -38,9 +40,8 @@ export default function Reels({
               onPick(i);
             }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={stillFor(src)} alt="" draggable={false} loading="lazy" />
-            <i aria-hidden="true">▶</i>
+            {on && <ReelMedia reel={r} />}
+            <Views n={r.views} small />
           </button>
         ))}
       </div>

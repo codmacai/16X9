@@ -1,0 +1,34 @@
+.box {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #111;
+}
+
+.ig {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+  background: #111;
+}
+
+.still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: cover;
+}
+
+.on {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.off {
+  opacity: 0;
+}
