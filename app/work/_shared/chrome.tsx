@@ -21,7 +21,7 @@ export const wide = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--f
 
 export const EASE = [0.16, 1, 0.3, 1] as const;
 export const EASE_CINE = [0.76, 0, 0.24, 1] as const;
-const LOGO_SRC = "/logo.png";
+const LOGO_SRC = "/logo-16x9.svg";
 
 /** The root class every work page carries: the tokens, the face, the paper. */
 export const rootClass = `${styles.root} ${wide.variable}`;
@@ -161,7 +161,7 @@ export function Band({
           </span>
         )}
         <div className={styles.bandEnd}>
-          <a href="#contact" className={styles.talk}>
+          <a href="/about#contact" className={styles.talk}>
             <span className={styles.talkRoll}>
               <span>Let&apos;s talk</span>
               <span aria-hidden="true">Let&apos;s talk</span>

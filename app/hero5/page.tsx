@@ -1,17 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Archivo } from "next/font/google";
-import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
-import ProjectView, { type OpenProject } from "../hero7/project-view";
-import Drawer from "../hero11/drawer";
 import { HOME_KEY } from "../work/_shared/chrome";
 import { type FormatKey } from "../hero13/formats";
-import Chooser, { EASE_CINE, INTRO } from "../hero2/chooser";
+import Chooser, { INTRO } from "../hero2/chooser";
 import styles from "../hero2/hero2.module.css";
+import own from "./hero5.module.css";
 
 // ===========================================================================
 // HERO 5 — 16x9 & BEYOND: hero 2's white start, and each word leads straight to its work.
@@ -23,8 +20,6 @@ import styles from "../hero2/hero2.module.css";
 //    straight on to that format's work (/work?format=…), by its categories.
 // ===========================================================================
 
-const archivo = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wide", display: "swap" });
-const LOGO_SRC = "/logo.png";
 const HEADLINE = "Stories beyond the frame";
 // from here the page answers
 const SETTLE_S = INTRO.names + 0.9;
@@ -42,7 +37,7 @@ export default function HeroFive() {
     () => (isClient ? resolveVariant(new Date(), new URLSearchParams(window.location.search).get("hero")) : null),
     [isClient]
   );
-  if (!variant) return <section className={`${styles.page} ${archivo.variable}`} aria-hidden="true" />;
+  if (!variant) return <section className={`${styles.page} ${own.brand}`} aria-hidden="true" />;
   return <Home key={variant.id} variant={variant} />;
 }
 
@@ -67,20 +62,17 @@ function Home({ variant }: { variant: HeroVariant }) {
   const [room, setRoom] = useState<FormatKey | null>(null);
   const [launch, setLaunch] = useState<FormatKey | null>(null);
   const indexFmt = room ? null : (fmtHover ?? fmtAuto);
-  const [project, setProject] = useState<OpenProject | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuKey, setMenuKey] = useState(0);
 
   // touch screens: the formats take turns on the index
   useEffect(() => {
-    if (!touch || !ready || reduce || room || menuOpen) return;
+    if (!touch || !ready || reduce || room) return;
     let i = AUTO_SEQ.indexOf(null);
     const id = window.setInterval(() => {
       i = (i + 1) % AUTO_SEQ.length;
       setFmtAuto(AUTO_SEQ[i]);
     }, AUTO_MS);
     return () => window.clearInterval(id);
-  }, [touch, ready, reduce, room, menuOpen]);
+  }, [touch, ready, reduce, room]);
 
   const hover = useCallback((k: FormatKey | null) => setFmtHover(k), []);
   const router = useRouter();
@@ -100,31 +92,10 @@ function Home({ variant }: { variant: HeroVariant }) {
     },
     [ready, reduce, room, router]
   );
-  const toIndex = useCallback(() => {
-    setProject(null);
-    setRoom(null);
-  }, []);
-  const closeFilm = useCallback(() => setProject(null), []);
-  const closeMenu = useCallback(() => setMenuOpen(false), []);
-
-  // Esc: the menu closes, then the room goes back to the index (a film closes itself)
-  useEffect(() => {
-    if (project) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (menuOpen) setMenuOpen(false);
-      else if (room) toIndex();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [project, menuOpen, room, toIndex]);
-
-  const enter = (delay: number) =>
-    reduce ? { initial: false as const } : { initial: { opacity: 0 }, animate: { opacity: 1, transition: { delay, duration: 0.8 } } };
 
   return (
     <section
-      className={`${styles.page} ${archivo.variable}`}
+      className={`${styles.page} ${own.brand}`}
       aria-label="16x9 & Beyond"
       data-room={room ? "" : undefined}
       data-dark={room || indexFmt === "beyond" ? "" : undefined}
@@ -135,95 +106,34 @@ function Home({ variant }: { variant: HeroVariant }) {
       <Chooser
         open={room !== null}
         launch={launch}
-        show={room === null && !menuOpen}
-        first={menuKey === 0}
+        show={room === null}
+        first
         reduce={reduce}
         ready={ready}
         active={indexFmt}
         onHover={hover}
         onOpen={openRoom}
         pool={pool}
+        logo
       />
 
-      {/* ================= the top bar: the logo, the rooms, the menu ================= */}
-      <motion.header className={styles.topbar} {...enter(INTRO.names - 0.1)}>
-        <Link
-          href="/hero5"
-          className={styles.logo}
-          aria-label="Home"
-          onClick={(e) => {
-            if (!room) return;
-            e.preventDefault();
-            toIndex();
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_SRC} alt="16x9" className={styles.logoImg} />
-        </Link>
-
-        <button
-          type="button"
-          className={`${styles.burger} ${menuOpen ? styles.burgerOpen : ""}`}
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen}
-          aria-controls="hero5-menu"
-          disabled={!ready}
-          onClick={() => {
-            if (!menuOpen) setMenuKey((k) => k + 1);
-            setMenuOpen(!menuOpen);
-          }}
-        >
-          <span />
-          <span />
-        </button>
-      </motion.header>
-
-      {/* ================= the index's foot: quiet links in the corners ================= */}
+      {/* ================= the foot: no menu on the landing — the line, and how to begin =================
+          (the brand bible's selling line on the left; on the right, the one thing to do here) */}
       <motion.footer
-        className={styles.foot}
+        className={own.foot}
         initial={reduce ? false : { opacity: 0 }}
-        animate={{
-          opacity: room === null && !menuOpen ? 1 : 0,
-          transition: { delay: menuKey === 0 && room === null ? INTRO.names + 0.3 : 0, duration: 0.6 },
-        }}
-        style={{ pointerEvents: room === null ? "auto" : "none" }}
+        animate={{ opacity: room === null ? 1 : 0, transition: { delay: room === null && !reduce ? INTRO.names + 0.3 : 0, duration: 0.7 } }}
       >
-        <nav className={styles.footSide} aria-label="Studio">
-          <Link href="/work">Work</Link>
-          <a href="#about">About</a>
-          <a href="#contact">Contact</a>
-        </nav>
-        <span className={styles.footLine}>{HEADLINE}</span>
-        <nav className={styles.footSide} aria-label="Elsewhere">
-          <a href="https://9x16.studio">9x16.studio</a>
-          <a href="#instagram">Instagram</a>
-          <a href="#linkedin">LinkedIn</a>
-        </nav>
+        <p className={own.line}>
+          We find the story, shape the idea
+          <br />
+          and bring it to life.
+        </p>
+        <p className={own.hint}>
+          <span className={own.hintDot} aria-hidden="true" />
+          {touch ? "Tap a frame to begin" : "Choose a frame to begin"}
+        </p>
       </motion.footer>
-
-      {/* ================= the menu ================= */}
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            key="menu"
-            id="hero5-menu"
-            className={styles.menuSheet}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Menu"
-            initial={reduce ? { opacity: 0 } : { clipPath: "inset(0% 0% 100% 0%)" }}
-            animate={reduce ? { opacity: 1 } : { clipPath: "inset(0% 0% 0% 0%)", transition: { duration: 0.9, ease: EASE_CINE } }}
-            exit={reduce ? { opacity: 0 } : { clipPath: "inset(0% 0% 100% 0%)", transition: { duration: 0.75, ease: EASE_CINE } }}
-          >
-            <Drawer onClose={closeMenu} workHref={room ? `/work?format=${room}` : "/work"} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ================= a film, full screen ================= */}
-      <AnimatePresence>
-        {project && <ProjectView key="project" clips={clips} open={project} onClose={closeFilm} />}
-      </AnimatePresence>
     </section>
   );
 }

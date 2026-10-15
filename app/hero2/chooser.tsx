@@ -19,6 +19,77 @@ export const INTRO = { draw: 0.2, letters: 0.95, leave: 2.5, names: 3.1 };
 const MARK_CHARS = ["1", "6", "X", "9"];
 const EDGES = ["top", "right", "bottom", "left"] as const;
 
+// The Open Frame logo (brand bible): the frame draws itself from where the name
+// crosses it, round and up, stopping short; 16X9 rises across its open corner,
+// & BEYOND settles in under it. It holds, then the frame unwinds and the name lifts away.
+const LOGO = { w: 1244, h: 600, frame: "M 735 492 H 8 V 8 H 1040 V 292", len: 727 + 484 + 1032 + 284 };
+
+function IntroLogo() {
+  const [out, setOut] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setOut(true), INTRO.leave * 1000);
+    return () => window.clearTimeout(t);
+  }, []);
+  return (
+    <div className={styles.introLogo} aria-hidden="true">
+      <svg viewBox={`0 0 ${LOGO.w} ${LOGO.h}`} overflow="visible">
+        <defs>
+          <clipPath id="introNameClip">
+            <rect x="700" y="300" width="600" height="212" />
+          </clipPath>
+          <clipPath id="introSubClip">
+            <rect x="740" y="512" width="520" height="80" />
+          </clipPath>
+        </defs>
+        <motion.path
+          d={LOGO.frame}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="16"
+          strokeDasharray={LOGO.len}
+          initial={{ strokeDashoffset: LOGO.len }}
+          animate={{ strokeDashoffset: out ? -LOGO.len : 0 }}
+          transition={out ? { duration: 0.7, ease: EASE_CINE } : { delay: INTRO.draw, duration: 1.15, ease: EASE_CINE }}
+        />
+        <g clipPath="url(#introNameClip)">
+          <motion.text
+            x="732"
+            y="500"
+            fontFamily="Arial, Helvetica, sans-serif"
+            fontWeight="700"
+            fontSize="232"
+            textLength="503"
+            lengthAdjust="spacingAndGlyphs"
+            fill="currentColor"
+            initial={{ y: 220 }}
+            animate={{ y: out ? -220 : 0 }}
+            transition={out ? { delay: 0.1, duration: 0.6, ease: EASE_CINE } : { delay: INTRO.letters, duration: 0.85, ease: EASE }}
+          >
+            16X9
+          </motion.text>
+        </g>
+        <g clipPath="url(#introSubClip)">
+          <motion.text
+            x="758"
+            y="572"
+            fontFamily="Arial, Helvetica, sans-serif"
+            fontWeight="700"
+            fontSize="70"
+            textLength="472"
+            lengthAdjust="spacing"
+            fill="currentColor"
+            initial={{ y: 80 }}
+            animate={{ y: out ? -80 : 0 }}
+            transition={out ? { delay: 0.2, duration: 0.5, ease: EASE_CINE } : { delay: INTRO.letters + 0.35, duration: 0.8, ease: EASE }}
+          >
+            &amp; BEYOND
+          </motion.text>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
 function IntroMark() {
   const [out, setOut] = useState(false);
   useEffect(() => {
@@ -320,6 +391,7 @@ export default function Chooser({
   onHover,
   onOpen,
   pool,
+  logo = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -337,6 +409,8 @@ export default function Chooser({
   onOpen: (k: FormatKey) => void;
   /** films to draw from: each time a word opens, its window shows the next one (hero 5) */
   pool?: string[];
+  /** the intro draws the Open Frame logo (brand bible) in place of the outline mark */
+  logo?: boolean;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
   const base = reduce ? 0 : first ? INTRO.names : 0.1;
@@ -495,7 +569,7 @@ export default function Chooser({
         </div>
       ))}
 
-      {intro && <IntroMark />}
+      {intro && (logo ? <IntroLogo /> : <IntroMark />)}
     </motion.div>
   );
 }

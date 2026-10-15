@@ -15,10 +15,10 @@ export type Format = {
 };
 
 export const FORMATS: Format[] = [
-  { key: "16x9", no: "01", label: "16x9", line: "Films for the big screen", tile: "16 / 9" },
-  { key: "9x16", no: "02", label: "9x16", line: "Stories made for the scroll", tile: "9 / 16" },
+  { key: "16x9", no: "01", label: "16x9", line: "Film campaigns, commercials & documentaries", tile: "16 / 9" },
+  { key: "9x16", no: "02", label: "9x16", line: "Social content, strategy & accounts", tile: "9 / 16" },
   // scope: wider than the big screen, and the frames are gone
-  { key: "beyond", no: "03", label: "Beyond", line: "Stories you step into", tile: "2.39 / 1" },
+  { key: "beyond", no: "03", label: "Beyond", line: "Activations, immersive, AR & VR", tile: "2.39 / 1" },
 ];
 
 /** 16x9 set as type: the numbers, and a light lowercase x between them. */

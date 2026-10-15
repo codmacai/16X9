@@ -614,7 +614,7 @@
 }
 
 .logo img {
-  filter: invert(1);
+  filter: none; /* the Open Frame logo is drawn in ink already */
 }
 
 .talk {

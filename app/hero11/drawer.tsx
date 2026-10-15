@@ -20,18 +20,18 @@ import styles from "./hero11.module.css";
 
 const wide = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wide", display: "swap" });
 
-const LOGO_SRC = "/logo.png";
+const LOGO_SRC = "/logo-16x9.svg";
 const FOLDERS = [
-  { no: "01", label: "Work", line: "Films · Campaigns · Content", href: "/work", poster: "/hero11/work.webp", tab: 0.45 },
-  { no: "02", label: "About", line: "The studio · The people", href: "/about", poster: "/hero11/about.webp", tab: 0.68 },
-  { no: "03", label: "Services", line: "Production · Post · Strategy", href: "#services", poster: "/hero11/services.webp", tab: 0.91 },
+  { no: "01", label: "Work", line: "16x9 · 9x16 · Beyond", href: "/work", poster: "/hero11/work.webp", tab: 0.45 },
+  { no: "02", label: "About", line: "Who we are · How we work", href: "/about", poster: "/hero11/about.webp", tab: 0.68 },
+  { no: "03", label: "Contact", line: "Let's tell your story", href: "/about#contact", poster: "/hero11/services.webp", tab: 0.91 },
 ] as const;
 
 const HERO = {
-  studio: "16X9 — Video production studio",
+  studio: "16x9 & Beyond — Concept, strategy, production",
   place: "Dubai, United Arab Emirates",
   headline: ["Stories beyond", "the frame"],
-  line: "Films, campaigns and content for brands that want to be seen — and remembered.",
+  line: "We find the story, shape the idea and bring it to life. Across formats, platforms and experiences.",
   reel: "/clips/clip-10.mp4", // the film playing inside the headline
 };
 
@@ -85,7 +85,7 @@ export default function Drawer({ onClose, workHref }: { onClose?: () => void; /*
           <img src={LOGO_SRC} alt="16x9" />
         </Link>
         <div className={styles.bandEnd}>
-          <a href="#contact" className={styles.talk}>
+          <a href="/about#contact" className={styles.talk}>
             <span className={styles.talkRoll}>
               <span>Let&apos;s talk</span>
               <span aria-hidden="true">Let&apos;s talk</span>

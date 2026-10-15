@@ -1253,3 +1253,27 @@
   z-index: -1;
   background: radial-gradient(ellipse at center, rgb(0 0 0 / 0.75), transparent 70%);
 }
+
+/* ===== the Open Frame logo's entrance (hero 5) ===== */
+.introLogo {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 50%;
+  width: min(46vw, 620px);
+  translate: -50% -50%;
+  color: #090909;
+  pointer-events: none;
+}
+
+.introLogo svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 760px) {
+  .introLogo {
+    width: 78vw;
+  }
+}
