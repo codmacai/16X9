@@ -232,6 +232,56 @@ function Names({
   );
 }
 
+// ---------------------------------------------------------------------------
+// BEYOND: the long-term work. Pointing at it dims its film and counts up what
+// those partnerships add up to. Change the numbers here.
+// ---------------------------------------------------------------------------
+export const BEYOND_STATS = [
+  { n: 4, suffix: "", label: "Years" },
+  { n: 120, suffix: "+", label: "Films" },
+  { n: 3, suffix: "", label: "Partners" },
+];
+
+function CountUp({ to, run, delay }: { to: number; run: boolean; delay: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (!run) {
+      el.textContent = "0";
+      return;
+    }
+    let raf = 0;
+    const t0 = performance.now() + delay * 1000;
+    const dur = 1400;
+    const tick = (now: number) => {
+      const p = Math.min(1, Math.max(0, (now - t0) / dur));
+      const e = 1 - Math.pow(1 - p, 4);
+      el.textContent = String(Math.round(to * e));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to, run, delay]);
+  return <span ref={ref}>0</span>;
+}
+
+function BeyondStats({ on }: { on: boolean }) {
+  return (
+    <div className={`${styles.stats} ${on ? styles.statsOn : ""}`} aria-hidden="true">
+      {BEYOND_STATS.map((s, i) => (
+        <div key={s.label} className={styles.stat} style={{ transitionDelay: on ? `${0.35 + i * 0.1}s` : "0s" }}>
+          <b>
+            <CountUp to={s.n} run={on} delay={0.35 + i * 0.1} />
+            {s.suffix}
+          </b>
+          <i>{s.label}</i>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Chooser({
   open,
   launch,
@@ -410,6 +460,7 @@ export default function Chooser({
               disablePictureInPicture
             />
           </div>
+          {f.key === "beyond" && <BeyondStats on={up === "beyond" && !open} />}
           <div className={styles.namesWrap}>
             <Names ink={false} show={show} base={base} reduce={reduce} ready={ready} active={shown} />
           </div>

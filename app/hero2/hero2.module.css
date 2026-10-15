@@ -1122,3 +1122,69 @@
 .wallMono.wallPointing .slot:not(.slotOn) .posterName {
   opacity: 0.35;
 }
+
+/* ===== Beyond: the film dims and the long-term numbers count up over it ===== */
+.film_beyond .filmBox::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 60% at 50% 55%, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.78));
+}
+
+.stats {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(70px, 16vh, 170px);
+  z-index: 2;
+  display: flex;
+  gap: clamp(28px, 7vw, 110px);
+  translate: -50% 0;
+  color: #f6f4f0;
+  pointer-events: none;
+}
+
+.stat {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.6s ease, transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.statsOn .stat {
+  opacity: 1;
+  transform: none;
+}
+
+.stat b {
+  font-family: var(--font-wide), sans-serif;
+  font-size: clamp(36px, 5.4vw, 84px);
+  font-weight: 300;
+  font-stretch: 125%;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat i {
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.stat + .stat {
+  position: relative;
+}
+
+.stat + .stat::before {
+  content: "";
+  position: absolute;
+  left: calc(clamp(28px, 7vw, 110px) / -2);
+  top: 10%;
+  height: 60%;
+  width: 1px;
+  background: rgb(246 244 240 / 0.25);
+}
