@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { instagramOf, reelEmbed, reelLink, stillFor, type Account, type Reel } from "./_shared/data";
+import { instagramOf, reelLink, stillFor, type Account, type Reel } from "./_shared/data";
 import ReelMedia from "./reel-media";
 import styles from "./profile.module.css";
 
@@ -153,8 +153,12 @@ export function Player({ reels, start, handle, logo, onClose }: { reels: Reel[];
           {reels.map((r, i) => (
             <div key={i} className={styles.reel}>
               {r.ig ? (
-                // Instagram's own player: press play in it (Instagram doesn't let embeds start on their own)
-                Math.abs(i - at) <= 1 && <iframe className={styles.igFull} src={reelEmbed(r.ig)} title={`Reel ${i + 1}`} allow="autoplay; encrypted-media" />
+                // Instagram's own player, cropped to the film: click it to play (Instagram doesn't let embeds start on their own)
+                Math.abs(i - at) <= 1 && (
+                  <div className={styles.igFull}>
+                    <ReelMedia reel={r} interactive />
+                  </div>
+                )
               ) : (
                 <video
                   ref={(el) => {

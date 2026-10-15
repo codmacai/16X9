@@ -244,12 +244,12 @@ export type Account = {
 
 /** One reel: either a video file we host (`src`) or a reel on Instagram (`ig`, its id from the link
  *  instagram.com/reel/<id>/, played through Instagram's own embed). `views` as shown on Instagram. */
-export type Reel = { src?: string; ig?: string; views: string };
+export type Reel = { src?: string; ig?: string; views: string; /** an Instagram reel's shape in the embed, height / width (default 1.25) */ ar?: number };
 
 const standIn = (...n: number[]): Reel[] =>
   n.map((x, i) => ({ src: `/clips/clip-${String(x).padStart(2, "0")}.mp4`, views: (((x * 977 + i * 613) % 3100) + 380).toLocaleString("en-US") }));
 /** Instagram reels: [id, views]. Update the views from the account's Reels tab. */
-const ig = (...r: [string, string][]): Reel[] => r.map(([id, views]) => ({ ig: id, views }));
+const ig = (...r: ([string, string] | [string, string, number])[]): Reel[] => r.map(([id, views, ar]) => ({ ig: id, views, ar }));
 export const reelEmbed = (id: string) => `https://www.instagram.com/reel/${id}/embed/`;
 export const reelLink = (id: string) => `https://www.instagram.com/reel/${id}/`;
 
@@ -257,7 +257,7 @@ export const ACCOUNTS: Account[] = [
   { name: "DED Cafe", handle: "ded_cafe", followers: "23K", posts: 670, logo: "/work/accounts/ded_cafe.webp", reels: ig(
       ["DePRhCZMJfb", "—"],
       ["DeH2TX_MMtl", "—"],
-      ["Dc6GULOsuPf", "—"],
+      ["Dc6GULOsuPf", "—", 0.75],
       ["Dc4QpK3MStl", "—"],
       ["DcWWeeJsGTH", "—"],
       ["Dbx9SG4sO6-", "—"]
