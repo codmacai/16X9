@@ -1277,3 +1277,19 @@
     width: 78vw;
   }
 }
+
+/* the idle line under the words (hero 5): quieter than a format's caption */
+.capIdle {
+  opacity: 0.45;
+  font-size: 10px;
+}
+
+/* the docked logo turns to paper over Beyond's dark */
+[data-dark] .introLogo {
+  color: #f6f4f0;
+}
+
+.introLogo {
+  transition: color 0.5s ease;
+  will-change: transform;
+}

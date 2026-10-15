@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
 import { HOME_KEY } from "../work/_shared/chrome";
 import { type FormatKey } from "../hero13/formats";
-import Chooser, { INTRO } from "../hero2/chooser";
+import Chooser, { LOGO_T } from "../hero2/chooser";
 import styles from "../hero2/hero2.module.css";
 import own from "./hero5.module.css";
 
@@ -22,7 +22,7 @@ import own from "./hero5.module.css";
 
 const HEADLINE = "Stories beyond the frame";
 // from here the page answers
-const SETTLE_S = INTRO.names + 0.9;
+const SETTLE_S = LOGO_T.names + 0.9;
 // touch screens have no hover: on the index the formats take turns
 const AUTO_MS = 3400;
 const AUTO_SEQ: (FormatKey | null)[] = ["16x9", "9x16", "beyond", null];
@@ -115,23 +115,20 @@ function Home({ variant }: { variant: HeroVariant }) {
         onOpen={openRoom}
         pool={pool}
         logo
+        idle={touch ? "Tap a frame" : "Choose a frame"}
       />
 
       {/* ================= the foot: no menu on the landing — the line, and how to begin =================
-          (the brand bible's selling line on the left; on the right, the one thing to do here) */}
+          (the brand bible's selling line; what to do here sits quietly under the words) */}
       <motion.footer
         className={own.foot}
         initial={reduce ? false : { opacity: 0 }}
-        animate={{ opacity: room === null ? 1 : 0, transition: { delay: room === null && !reduce ? INTRO.names + 0.3 : 0, duration: 0.7 } }}
+        animate={{ opacity: room === null ? 1 : 0, transition: { delay: room === null && !reduce ? LOGO_T.names + 0.5 : 0, duration: 0.9 } }}
       >
         <p className={own.line}>
           We find the story, shape the idea
           <br />
           and bring it to life.
-        </p>
-        <p className={own.hint}>
-          <span className={own.hintDot} aria-hidden="true" />
-          {touch ? "Tap a frame to begin" : "Choose a frame to begin"}
         </p>
       </motion.footer>
     </section>

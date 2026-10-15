@@ -10,6 +10,9 @@ export const EASE_CINE = [0.76, 0, 0.24, 1] as const;
 // The entrance, in seconds: the outline frame traces round, the mark rises
 // into it, lifts out as the frame un-traces; the names rise.
 export const INTRO = { draw: 0.2, letters: 0.95, leave: 2.5, names: 3.1 };
+// The Open Frame intro (hero 5) never leaves: once drawn it glides to the top-left corner and
+// stays as the page's mark, and the words rise while it's still moving — one continuous move.
+export const LOGO_T = { dock: 2.25, glide: 1.25, names: 2.55 };
 
 // ===========================================================================
 // INTRO — the mark, on the white, in outline. A hairline frame traces itself
@@ -25,13 +28,39 @@ const EDGES = ["top", "right", "bottom", "left"] as const;
 const LOGO = { w: 1244, h: 600, frame: "M 735 492 H 8 V 8 H 1040 V 292", len: 727 + 484 + 1032 + 284 };
 
 function IntroLogo() {
-  const [out, setOut] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [docked, setDocked] = useState(false);
+  const [dock, setDock] = useState({ x: 0, y: 0, scale: 1 });
   useEffect(() => {
-    const t = window.setTimeout(() => setOut(true), INTRO.leave * 1000);
+    const t = window.setTimeout(() => setDocked(true), LOGO_T.dock * 1000);
     return () => window.clearTimeout(t);
   }, []);
+  // where it comes to rest: the top-left corner, at the size of a page's logo
+  useEffect(() => {
+    const measure = () => {
+      const el = boxRef.current;
+      const stage = el?.parentElement?.getBoundingClientRect();
+      if (!el || !stage) return;
+      const w = el.offsetWidth;
+      const vw = stage.width;
+      const d = Math.min(132, Math.max(92, vw * 0.08));
+      const pad = Math.min(48, Math.max(20, vw * 0.034));
+      const dh = (d * LOGO.h) / LOGO.w;
+      setDock({ x: pad + d / 2 - vw / 2, y: pad + dh / 2 - stage.height / 2, scale: d / w });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
   return (
-    <div className={styles.introLogo} aria-hidden="true">
+    <motion.div
+      ref={boxRef}
+      className={styles.introLogo}
+      aria-hidden="true"
+      initial={false}
+      animate={docked ? dock : { x: 0, y: 0, scale: 1 }}
+      transition={{ duration: LOGO_T.glide, ease: [0.65, 0, 0.2, 1] }}
+    >
       <svg viewBox={`0 0 ${LOGO.w} ${LOGO.h}`} overflow="visible">
         <defs>
           <clipPath id="introNameClip">
@@ -48,8 +77,8 @@ function IntroLogo() {
           strokeWidth="16"
           strokeDasharray={LOGO.len}
           initial={{ strokeDashoffset: LOGO.len }}
-          animate={{ strokeDashoffset: out ? -LOGO.len : 0 }}
-          transition={out ? { duration: 0.7, ease: EASE_CINE } : { delay: INTRO.draw, duration: 1.15, ease: EASE_CINE }}
+          animate={{ strokeDashoffset: 0 }}
+          transition={{ delay: INTRO.draw, duration: 1.3, ease: [0.45, 0, 0.2, 1] }}
         />
         <g clipPath="url(#introNameClip)">
           <motion.text
@@ -62,8 +91,8 @@ function IntroLogo() {
             lengthAdjust="spacingAndGlyphs"
             fill="currentColor"
             initial={{ y: 220 }}
-            animate={{ y: out ? -220 : 0 }}
-            transition={out ? { delay: 0.1, duration: 0.6, ease: EASE_CINE } : { delay: INTRO.letters, duration: 0.85, ease: EASE }}
+            animate={{ y: 0 }}
+            transition={{ delay: INTRO.letters - 0.1, duration: 0.95, ease: EASE }}
           >
             16X9
           </motion.text>
@@ -79,14 +108,14 @@ function IntroLogo() {
             lengthAdjust="spacing"
             fill="currentColor"
             initial={{ y: 80 }}
-            animate={{ y: out ? -80 : 0 }}
-            transition={out ? { delay: 0.2, duration: 0.5, ease: EASE_CINE } : { delay: INTRO.letters + 0.35, duration: 0.8, ease: EASE }}
+            animate={{ y: 0 }}
+            transition={{ delay: INTRO.letters + 0.2, duration: 0.9, ease: EASE }}
           >
             &amp; BEYOND
           </motion.text>
         </g>
       </svg>
-    </div>
+    </motion.div>
   );
 }
 
@@ -198,6 +227,7 @@ function Names({
   wordRefs,
   onHover,
   onOpen,
+  idle,
 }: {
   ink: boolean;
   show: boolean;
@@ -208,6 +238,8 @@ function Names({
   wordRefs?: RefObject<Partial<Record<FormatKey, HTMLElement | null>>>;
   onHover?: (k: FormatKey) => void;
   onOpen?: (k: FormatKey) => void;
+  /** under the line while nothing is pointed at: what to do here */
+  idle?: string;
 }) {
   const rise = (delay: number) => (show ? { y: "0%", transition: { duration: 0.9, ease: EASE, delay } } : undefined);
   const f = active ? FORMATS.find((x) => x.key === active) : null;
@@ -295,6 +327,17 @@ function Names({
               <i>{f.no}</i>
               <span className={styles.capRule} />
               {f.line}
+            </motion.span>
+          )}
+          {!f && idle && show && ready && (
+            <motion.span
+              key="idle"
+              className={`${styles.capIn} ${styles.capIdle}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE, delay: 0.15 } }}
+              exit={{ opacity: 0, y: -6, transition: { duration: 0.18 } }}
+            >
+              {idle}
             </motion.span>
           )}
         </AnimatePresence>
@@ -392,6 +435,7 @@ export default function Chooser({
   onOpen,
   pool,
   logo = false,
+  idle,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -411,9 +455,11 @@ export default function Chooser({
   pool?: string[];
   /** the intro draws the Open Frame logo (brand bible) in place of the outline mark */
   logo?: boolean;
+  /** under the line while nothing is pointed at */
+  idle?: string;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
-  const base = reduce ? 0 : first ? INTRO.names : 0.1;
+  const base = reduce ? 0 : first ? (logo ? LOGO_T.names : INTRO.names) : 0.1;
   const stageRef = useRef<HTMLDivElement>(null);
   const wordRefs = useRef<Partial<Record<FormatKey, HTMLElement | null>>>({});
   const filmRefs = useRef<Partial<Record<FormatKey, HTMLDivElement | null>>>({});
@@ -424,10 +470,10 @@ export default function Chooser({
   // the mark leaves the page once its entrance has played
   const [intro, setIntro] = useState(!reduce);
   useEffect(() => {
-    if (reduce) return;
+    if (reduce || logo) return;
     const t = window.setTimeout(() => setIntro(false), (INTRO.names + 0.3) * 1000);
     return () => window.clearTimeout(t);
-  }, [reduce]);
+  }, [reduce, logo]);
 
   // the film that's up: the launched one while a room is open, else the word pointed at
   const up: FormatKey | null = open ? launch : active;
@@ -529,6 +575,7 @@ export default function Chooser({
           wordRefs={wordRefs}
           onHover={(k) => point(k)}
           onOpen={onOpen}
+          idle={idle}
         />
       </div>
 
@@ -569,7 +616,7 @@ export default function Chooser({
         </div>
       ))}
 
-      {intro && (logo ? <IntroLogo /> : <IntroMark />)}
+      {logo && !reduce ? <IntroLogo /> : intro && <IntroMark />}
     </motion.div>
   );
 }
