@@ -7,7 +7,7 @@ import { Band, EASE, EASE_CINE, EnterCursor, Info, rootClass, Still, usePlayer }
 import { CATEGORIES, PROJECTS, posterFor } from "./_shared/data";
 import FileView, { type Drawer } from "./file-view";
 import Accounts from "./accounts";
-import RoomSwitch from "../hero3/room-switch";
+import RoomSwitch from "../hero4/room-switch";
 import type { FormatKey } from "../hero3/format-hero";
 import styles from "./cabinet.module.css";
 
@@ -199,8 +199,7 @@ function WorkCabinet({ fmt }: { fmt: FormatKey | null }) {
           fmt ? (
             <RoomSwitch
               room={fmt}
-              onSwitch={(k) => router.push(`/work?format=${k}`, { scroll: false })}
-              onIndex={() => router.push("/hero3")}
+              onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })}
               tone="light"
             />
           ) : undefined

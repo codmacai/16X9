@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import RoomSwitch from "../hero3/room-switch";
+import RoomSwitch from "../hero4/room-switch";
 import { Band, EASE, rootClass } from "./_shared/chrome";
 import { ACCOUNTS, instagramOf } from "./_shared/data";
 import Reels from "./reels";
@@ -34,7 +34,9 @@ export default function Accounts() {
       <Band
         crumb="Index"
         workHref="/work?format=9x16"
-        center={<RoomSwitch room="9x16" onSwitch={(k) => router.push(`/work?format=${k}`, { scroll: false })} onIndex={() => router.push("/hero3")} tone="light" />}
+        /* a reel or an account's page open: Back closes it first */
+        onBack={reel ? () => setReel(null) : open ? () => setOpen(null) : undefined}
+        center={<RoomSwitch room="9x16" onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })} tone="light" />}
       />
       <section className={styles.sheet} aria-label="9x16 work — the Instagram accounts we run">
         <motion.p

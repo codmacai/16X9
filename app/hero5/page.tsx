@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
 import ProjectView, { type OpenProject } from "../hero7/project-view";
 import Drawer from "../hero11/drawer";
+import { HOME_KEY } from "../work/_shared/chrome";
 import { type FormatKey } from "../hero13/formats";
 import Chooser, { EASE_CINE, INTRO } from "../hero2/chooser";
 import styles from "../hero2/hero2.module.css";
@@ -92,6 +93,9 @@ function Home({ variant }: { variant: HeroVariant }) {
       setFmtHover(null);
       setFmtAuto(null);
       router.prefetch(`/work?format=${k}`);
+      try {
+        sessionStorage.setItem(HOME_KEY, "/hero5");
+      } catch {}
       window.setTimeout(() => router.push(`/work?format=${k}`), reduce ? 0 : GO_MS);
     },
     [ready, reduce, room, router]

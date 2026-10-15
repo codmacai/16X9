@@ -27,6 +27,17 @@ const LOGO_SRC = "/logo.png";
 export const rootClass = `${styles.root} ${wide.variable}`;
 
 // ---------------------------------------------------------------------------
+// The hero a visitor came in from (a hero sets it as it leads to the work), so the logo and Back
+// return there rather than to the site's default home.
+export const HOME_KEY = "16x9:home";
+export const homeHref = () => {
+  try {
+    return sessionStorage.getItem(HOME_KEY) || "/";
+  } catch {
+    return "/";
+  }
+};
+
 // BAND — logo, where you are, "Let's talk", the burger
 // ---------------------------------------------------------------------------
 export function Band({
@@ -59,10 +70,13 @@ export function Band({
     } catch {}
   }, []);
   const canBack = !!onBack || cameIn;
+  const [home, setHome] = useState("/");
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage is only read in the browser
+  useEffect(() => setHome(homeHref()), []);
   const back = useCallback(() => {
     if (onBack) return onBack();
     if (cameIn) router.back();
-    else router.push("/");
+    else router.push(homeHref());
   }, [onBack, cameIn, router]);
   const reduce = !!useReducedMotion();
   const [menu, setMenu] = useState(false);
@@ -129,7 +143,7 @@ export function Band({
                 animate={{ y: 0, opacity: 1, transition: { duration: 0.7, ease: EASE } }}
                 exit={reduce ? { opacity: 0 } : { y: "110%", opacity: 0, transition: { duration: 0.45, ease: EASE_CINE } }}
               >
-                <Link href="/" className={styles.logo} aria-label="16x9 home">
+                <Link href={home} className={styles.logo} aria-label="16x9 home">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={LOGO_SRC} alt="16x9" />
                 </Link>
