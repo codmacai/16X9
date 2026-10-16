@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { Fragment, memo, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FORMATS, Ratio, type FormatKey } from "../hero13/formats";
 import type { Preview } from "../work/_shared/data";
@@ -430,7 +430,7 @@ function usePreloadStills(pool: string[] | undefined) {
   }, [pool]);
 }
 
-function FormatGrid({ kind, on, pool, turn, big = false }: { kind: "16x9" | "9x16"; on: boolean; pool: string[]; turn: number; big?: boolean }) {
+const FormatGrid = memo(function FormatGrid({ kind, on, pool, turn, big = false }: { kind: "16x9" | "9x16"; on: boolean; pool: string[]; turn: number; big?: boolean }) {
   // hero 6: 9x16's cards larger — five across, tall enough that two rows fill the screen
   // hero 6: larger tiles — 16x9 three across, 9x16 five across — enough rows to cover the screen
   const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : { cols: 3, rows: 4 }) : GRID[kind];
@@ -454,7 +454,7 @@ function FormatGrid({ kind, on, pool, turn, big = false }: { kind: "16x9" | "9x1
       })}
     </div>
   );
-}
+});
 
 // hero 6: a brand at the centre of every tile — the brands' logos (a mask, drawn in paper) or
 // their names; 9x16's tiles carry the accounts the studio runs
@@ -522,7 +522,7 @@ const COLUMNS: Card[][] = [
   [BRANDS[3], { t: "film", shape: "s" }, { t: "stat", n: "3", label: "Partners" }, { t: "film", shape: "w" }],
 ];
 
-function BeyondBento({ on, pool, turn, refined = false }: { on: boolean; pool: string[]; turn: number; refined?: boolean }) {
+const BeyondBento = memo(function BeyondBento({ on, pool, turn, refined = false }: { on: boolean; pool: string[]; turn: number; refined?: boolean }) {
   let f = turn * 3;
   let film = 0; // the films counted in order, so they can come on one by one
   const live = useLiveCount(on && refined, 40);
@@ -583,11 +583,12 @@ function BeyondBento({ on, pool, turn, refined = false }: { on: boolean; pool: s
       ))}
     </div>
   );
-}
+});
 
 
-function BeyondMosaic({ on, pool }: { on: boolean; pool: string[] }) {
+const BeyondMosaic = memo(function BeyondMosaic({ on, pool }: { on: boolean; pool: string[] }) {
   const n = MOSAIC.cols * MOSAIC.rows;
+  const live = useLiveCount(on, MOSAIC.live.length);
   return (
     <div className={`${styles.mosaic} ${on ? styles.mosaicOn : ""}`} style={{ gridTemplateColumns: `repeat(${MOSAIC.cols}, 1fr)` }} aria-hidden="true">
       {Array.from({ length: n }, (_, i) => {
@@ -600,13 +601,13 @@ function BeyondMosaic({ on, pool }: { on: boolean; pool: string[] }) {
           <span key={i} className={styles.tileM} style={{ transitionDelay: on ? `${d}s` : "0s" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={stillOf(src)} alt="" draggable={false} />
-            {on && MOSAIC.live.includes(i) && <video src={src} muted loop playsInline autoPlay preload="auto" />}
+            {MOSAIC.live.includes(i) && MOSAIC.live.indexOf(i) < live && <video src={src} muted loop playsInline autoPlay preload="auto" />}
           </span>
         );
       })}
     </div>
   );
-}
+});
 
 function BeyondStats({ on }: { on: boolean }) {
   return (
@@ -701,6 +702,7 @@ export default function Chooser({
   const boxRefs = useRef<Partial<Record<FormatKey, HTMLDivElement | null>>>({});
   const videoRefs = useRef<Partial<Record<FormatKey, HTMLVideoElement | null>>>({});
   const poolAt = useRef(-1);
+  const prevUp = useRef<FormatKey | null>(null);
   usePreloadStills(grid ? pool : undefined);
   // the real film each window is showing, and where each format is in its list
   const [shownFilm, setShownFilm] = useState<Partial<Record<FormatKey, Preview>>>({});
@@ -737,11 +739,20 @@ export default function Chooser({
       v.poster = "";
       setShownFilm((m) => ({ ...m, [up]: film }));
     }
-    // a fresh film every time a word opens, never the one just seen
-    else if (v && pool?.length && !open) {
-      poolAt.current = (poolAt.current + 1 + Math.floor(Math.random() * Math.max(1, pool.length - 2))) % pool.length;
-      v.src = pool[poolAt.current];
-      v.poster = "";
+    // a fresh film every time a word opens: the window that just closed loads its next clip
+    // while it's out of sight (see below), so opening only ever plays a clip that's ready
+    const prev = prevUp.current;
+    prevUp.current = up;
+    if (prev && prev !== up && pool?.length && !grid) {
+      const pv = videoRefs.current[prev];
+      window.setTimeout(() => {
+        if (!pv || prevUp.current === prev) return;
+        poolAt.current = (poolAt.current + 1 + Math.floor(Math.random() * Math.max(1, pool.length - 2))) % pool.length;
+        pv.preload = "auto";
+        pv.poster = "";
+        pv.src = pool[poolAt.current];
+        pv.load();
+      }, 750);
     }
     if (v) {
       v.muted = true;
@@ -773,6 +784,34 @@ export default function Chooser({
         const clipFor = (s: WindowState) =>
           s === "full" ? "inset(0px 0px 0px 0px)" : s === "frame" ? inset(box.getBoundingClientRect()) : inset(word.getBoundingClientRect(), PAD);
         el.style.zIndex = to === "off" ? "2" : "3";
+        // Grid mode (hero 6): every window is the whole screen, so it doesn't clip open out of its
+        // word — it crossfades in with a slight settle, on opacity and transform only, which the
+        // compositor runs without repainting a single tile. Sweeping fast across the words is then
+        // just layers fading over each other.
+        if (grid) {
+          const on = to !== "off";
+          el.style.clipPath = "none";
+          el.style.willChange = "opacity, transform";
+          // (a closed window stays painted, only transparent: opening it again never has to
+          // repaint its tiles)
+          el.style.transition =
+            !animate || reduce
+              ? reduce
+                ? "opacity 0.3s linear"
+                : "none"
+              : on
+                ? "opacity 0.42s cubic-bezier(0.2, 0.7, 0.2, 1), transform 1.1s cubic-bezier(0.16, 1, 0.3, 1)"
+                : up
+                  ? // another window is coming in over it: it stays as it is under that one and goes
+                    // once it's covered, so only one layer is ever fading
+                    "opacity 0s linear 0.44s, transform 0s linear 0.44s"
+                  : "opacity 0.5s ease 0.06s, transform 0.7s ease";
+          el.style.opacity = on ? "1" : "0";
+          el.style.transform = on ? "none" : "scale(1.035)";
+          el.style.visibility = "visible";
+          el.dataset.state = to;
+          continue;
+        }
         if (!animate || reduce) {
           el.style.transition = reduce ? "opacity 0.3s linear" : "none";
           el.style.clipPath = clipFor(to);
@@ -798,7 +837,7 @@ export default function Chooser({
     const onResize = () => place(false);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [up, open, reduce]);
+  }, [up, open, reduce, grid]);
 
   // the pointer leaving the line (not just a word) lets the film go
   const leave = useRef(0);

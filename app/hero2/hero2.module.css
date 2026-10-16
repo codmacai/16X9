@@ -1891,3 +1891,10 @@
   line-height: 1.1;
   text-shadow: 0 1px 12px rgb(0 0 0 / 0.6);
 }
+
+/* Each window's picture on its own layer: as a window clips open (hero 2, hero 5) only the clip
+   changes from frame to frame — the film and the tiles under it are never repainted. */
+.film .filmBox,
+.film .mosaic {
+  will-change: transform;
+}
