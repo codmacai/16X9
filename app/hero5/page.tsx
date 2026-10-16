@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
 import { HOME_KEY } from "../work/_shared/chrome";
+import { PREVIEWS_16X9 } from "../work/_shared/data";
 import { type FormatKey } from "../hero13/formats";
 import Chooser, { LOGO_T } from "../hero2/chooser";
 import styles from "../hero2/hero2.module.css";
@@ -28,6 +29,8 @@ const AUTO_MS = 3400;
 const AUTO_SEQ: (FormatKey | null)[] = ["16x9", "9x16", "beyond", null];
 // ms from the click to the work page: the film has opened to the edges by then
 const GO_MS = 1050;
+// 16x9's window shows the studio's real films, each with its brand's logo
+const PREVIEWS = { "16x9": PREVIEWS_16X9 };
 
 // The variant depends on the URL and today's date, so it's read on the client only.
 const noopSubscribe = () => () => {};
@@ -115,6 +118,7 @@ function Home({ variant }: { variant: HeroVariant }) {
         onOpen={openRoom}
         pool={pool}
         logo
+        previews={PREVIEWS}
         idle={touch ? "Tap a frame" : "Choose a frame"}
       />
 

@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FORMATS, Ratio, type FormatKey } from "../hero13/formats";
+import type { Preview } from "../work/_shared/data";
 import styles from "./hero2.module.css";
 
 export const EASE = [0.16, 1, 0.3, 1] as const;
@@ -423,6 +424,31 @@ function BeyondStats({ on }: { on: boolean }) {
   );
 }
 
+// seconds into a real film its preview starts: past the opening slate and black
+const PREVIEW_START_S = 8;
+
+// the brand on a real film's window: its logo (or its name), and the film's title
+function BrandTag({ film }: { film: Preview }) {
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={film.src}
+        className={styles.brandTag}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0, transition: { delay: 0.45, duration: 0.6, ease: EASE } }}
+        exit={{ opacity: 0, transition: { duration: 0.2 } }}
+      >
+        {film.logo ? (
+          <span className={styles.brandLogo} style={{ maskImage: `url(${film.logo})`, WebkitMaskImage: `url(${film.logo})` }} role="img" aria-label={film.brand} />
+        ) : film.brand ? (
+          <span className={styles.brandWord}>{film.brand}</span>
+        ) : null}
+        <span className={styles.brandTitle}>{film.title}</span>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 export default function Chooser({
   open,
   launch,
@@ -436,6 +462,7 @@ export default function Chooser({
   pool,
   logo = false,
   idle,
+  previews,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -457,6 +484,8 @@ export default function Chooser({
   logo?: boolean;
   /** under the line while nothing is pointed at */
   idle?: string;
+  /** real films for a format's window, each with its brand: a different one each time it opens */
+  previews?: Partial<Record<FormatKey, Preview[]>>;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
   const base = reduce ? 0 : first ? (logo ? LOGO_T.names : INTRO.names) : 0.1;
@@ -466,6 +495,9 @@ export default function Chooser({
   const boxRefs = useRef<Partial<Record<FormatKey, HTMLDivElement | null>>>({});
   const videoRefs = useRef<Partial<Record<FormatKey, HTMLVideoElement | null>>>({});
   const poolAt = useRef(-1);
+  // the real film each window is showing, and where each format is in its list
+  const [shownFilm, setShownFilm] = useState<Partial<Record<FormatKey, Preview>>>({});
+  const previewAt = useRef<Partial<Record<FormatKey, number>>>({});
 
   // the mark leaves the page once its entrance has played
   const [intro, setIntro] = useState(!reduce);
@@ -481,8 +513,19 @@ export default function Chooser({
   // its film plays; the others stop once they've folded away
   useEffect(() => {
     const v = up ? videoRefs.current[up] : null;
+    // a format with real films: the next one, from a few seconds in (past the slate), with its brand
+    const list = up ? previews?.[up] : undefined;
+    if (v && up && list?.length && !open) {
+      const n = previewAt.current[up] ?? Math.floor(Math.random() * list.length) - 1;
+      const at = (n + 1) % list.length;
+      previewAt.current[up] = at;
+      const film = list[at];
+      v.src = `${film.src}#t=${PREVIEW_START_S}`;
+      v.poster = "";
+      setShownFilm((m) => ({ ...m, [up]: film }));
+    }
     // a fresh film every time a word opens, never the one just seen
-    if (v && pool?.length && !open) {
+    else if (v && pool?.length && !open) {
       poolAt.current = (poolAt.current + 1 + Math.floor(Math.random() * Math.max(1, pool.length - 2))) % pool.length;
       v.src = pool[poolAt.current];
       v.poster = "";
@@ -607,6 +650,7 @@ export default function Chooser({
               preload={ready ? "auto" : "metadata"}
               disablePictureInPicture
             />
+            {shownFilm[f.key] && <BrandTag film={shownFilm[f.key]!} />}
           </div>
           {f.key === "beyond" && pool?.length ? <BeyondMosaic on={up === "beyond" && !open} pool={pool} /> : null}
           {f.key === "beyond" && <BeyondStats on={up === "beyond" && !open} />}

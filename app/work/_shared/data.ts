@@ -268,3 +268,31 @@ export const ACCOUNTS: Account[] = [
 ];
 
 export const instagramOf = (a: Account) => `https://www.instagram.com/${a.handle}/`;
+
+// ---------------------------------------------------------------------------
+// The brands' logos, by client (single-colour SVGs, drawn in paper over the
+// film). From the simple-icons set (CC0); add a brand by dropping its SVG in
+// /public/brands and naming it here. A client without one shows its name.
+// ---------------------------------------------------------------------------
+export const BRAND_LOGOS: Record<string, string> = {
+  Toyota: "/brands/toyota.svg",
+  "Toyota Prius": "/brands/toyota.svg",
+  "Filmmaster MEA": "/brands/toyota.svg", // Toyota Corolla
+  BMW: "/brands/bmw.svg",
+  "Etihad Airways": "/brands/etihad-airways.svg",
+  what3words: "/brands/what3words.svg",
+};
+
+/** The brand shown for a film: Filmmaster MEA made Toyota's Corolla film, so it reads as Toyota. */
+const BRAND_NAME: Record<string, string> = { "Filmmaster MEA": "Toyota", "Toyota Prius": "Toyota" };
+
+export type Preview = { src: string; title: string; brand: string; logo?: string };
+
+/** The real 16x9 films with their full film in the bucket (MP4 only, so every browser plays them),
+ *  for the start screen's 16x9 window: a different one, with its brand, each time it opens. */
+export const PREVIEWS_16X9: Preview[] = PROJECTS.filter((p) => p.format === "16x9" && p.film && /\.mp4$/i.test(p.film)).map((p) => ({
+  src: p.film!,
+  title: p.title,
+  brand: BRAND_NAME[p.client] ?? p.client,
+  logo: BRAND_LOGOS[p.client],
+}));

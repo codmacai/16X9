@@ -1293,3 +1293,56 @@
   transition: color 0.5s ease;
   will-change: transform;
 }
+
+/* ===== a real film's brand on its window (hero 5): the logo in paper, the title under it ===== */
+.brandTag {
+  position: absolute;
+  z-index: 3;
+  left: clamp(16px, 2.4vw, 32px);
+  bottom: clamp(14px, 2.2vw, 28px);
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  color: #f6f4f0;
+  pointer-events: none;
+}
+
+.brandLogo {
+  display: block;
+  width: clamp(36px, 3.6vw, 54px);
+  aspect-ratio: 1;
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: left center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: left center;
+  filter: drop-shadow(0 1px 10px rgb(0 0 0 / 0.4));
+}
+
+.brandWord {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(15px, 1.5vw, 22px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 0.5);
+}
+
+.brandTitle {
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 0.6);
+}
+
+/* a soft shade at the window's foot so the brand reads on any film */
+.film_16by9 .filmBox::after {
+  content: "";
+  position: absolute;
+  inset: 55% 0 0;
+  z-index: 2;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.55), transparent);
+  pointer-events: none;
+}
