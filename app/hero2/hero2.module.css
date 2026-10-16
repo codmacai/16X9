@@ -1456,3 +1456,192 @@
     grid-template-columns: repeat(4, 1fr) !important;
   }
 }
+
+/* ===== Beyond's board (hero 5): columns of cards drifting past each other ===== */
+.bento {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  padding: 0 10px;
+  overflow: hidden;
+  background: #070707;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.bentoOn {
+  opacity: 1;
+}
+
+.bCol {
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s ease, transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bentoOn .bCol {
+  opacity: 1;
+  transform: none;
+}
+
+.bTrack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: bUp 40s linear infinite;
+  will-change: transform;
+}
+
+.bDown {
+  animation-name: bDown;
+}
+
+@keyframes bUp {
+  from { transform: translateY(0); }
+  to { transform: translateY(calc(-50% - 5px)); }
+}
+
+@keyframes bDown {
+  from { transform: translateY(calc(-50% - 5px)); }
+  to { transform: translateY(0); }
+}
+
+.bento:not(.bentoOn) .bTrack {
+  animation-play-state: paused;
+}
+
+.bCard {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  border-radius: 14px;
+  contain: layout paint;
+}
+
+.bFilm img,
+.bFilm video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: cover;
+  transform: scale(1.35);
+}
+
+.bShape_w { aspect-ratio: 16 / 10; }
+.bShape_t { aspect-ratio: 9 / 16; }
+.bShape_s { aspect-ratio: 1; }
+
+.bLogoCard {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  background: #f6f4f0;
+  color: #090909;
+}
+
+.bMask {
+  width: 48%;
+  aspect-ratio: 1;
+  background: #090909;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+.bRound {
+  width: 56%;
+  height: auto !important;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.bLogoCard i,
+.bWord i,
+.bStat i {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  font-size: 8.5px;
+  font-style: normal;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.bWord {
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid rgb(246 244 240 / 0.22);
+  color: #f6f4f0;
+}
+
+.bWord b {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(14px, 1.4vw, 22px);
+  line-height: 1.05;
+  font-weight: 700;
+}
+
+.bStat {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  background: #f6f4f0;
+  color: #090909;
+}
+
+.bStat b {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(34px, 4vw, 64px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.bLine {
+  aspect-ratio: 3 / 4;
+  display: flex;
+  align-items: flex-end;
+  padding: 14px;
+  background: linear-gradient(160deg, #1d1d1d, #0b0b0b);
+  color: #f6f4f0;
+}
+
+.bLine b {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(18px, 1.9vw, 30px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* the words read over the board */
+.bento::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 48% 26% at 50% 50%, rgb(0 0 0 / 0.78), transparent 100%);
+  pointer-events: none;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .bento {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .bCol:nth-child(n + 4) {
+    display: none;
+  }
+}

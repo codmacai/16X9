@@ -411,10 +411,103 @@ function FormatGrid({ kind, on, pool, turn }: { kind: "16x9" | "9x16"; on: boole
           <span key={i} className={styles.fcell} style={{ transitionDelay: on ? `${0.15 + col * 0.07 + row * 0.04}s` : "0s" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={stillOf(src)} alt="" draggable={false} />
-            {on && (g.live as readonly number[]).includes(i) && <video src={src} muted loop playsInline autoPlay preload="auto" />}
+            {on && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
           </span>
         );
       })}
+    </div>
+  );
+}
+
+// Beyond: a moving board — columns of cards drifting up and down past each other: films in
+// every shape, the brands we've worked with, the numbers, and what Beyond covers. Each column
+// is one CSS animation on its own layer (nothing re-lays out), and the cards repeat once so the
+// loop never shows a seam.
+type Card =
+  | { t: "film"; shape: "w" | "t" | "s" }
+  | { t: "logo"; src: string; name: string; round?: boolean }
+  | { t: "word"; name: string }
+  | { t: "stat"; n: string; label: string }
+  | { t: "line"; text: string };
+const BRANDS: Card[] = [
+  { t: "logo", src: "/brands/toyota.svg", name: "Toyota" },
+  { t: "logo", src: "/brands/etihad-airways.svg", name: "Etihad" },
+  { t: "logo", src: "/brands/bmw.svg", name: "BMW" },
+  { t: "logo", src: "/brands/what3words.svg", name: "what3words" },
+  { t: "word", name: "Cleveland Clinic" },
+  { t: "word", name: "Museum of the Future" },
+  { t: "word", name: "Etisalat" },
+  { t: "word", name: "MBC" },
+  { t: "logo", src: "/work/accounts/ded_cafe.webp", name: "DED Cafe", round: true },
+  { t: "logo", src: "/work/accounts/businessavenue.webp", name: "Business Avenue", round: true },
+];
+const LINES = ["Projection mapping", "Brand activations", "AR & VR", "Immersive rooms", "Experiential"];
+const COLUMNS: Card[][] = [
+  [{ t: "film", shape: "t" }, BRANDS[0], { t: "line", text: LINES[0] }, { t: "film", shape: "s" }],
+  [{ t: "stat", n: "120+", label: "Films" }, { t: "film", shape: "w" }, BRANDS[4], { t: "film", shape: "t" }],
+  [{ t: "film", shape: "s" }, BRANDS[8], { t: "film", shape: "w" }, { t: "line", text: LINES[1] }],
+  [BRANDS[1], { t: "film", shape: "t" }, { t: "stat", n: "4", label: "Years" }, BRANDS[5]],
+  [{ t: "line", text: LINES[2] }, { t: "film", shape: "w" }, BRANDS[2], { t: "film", shape: "s" }],
+  [{ t: "film", shape: "t" }, BRANDS[6], { t: "line", text: LINES[3] }, BRANDS[9]],
+  [BRANDS[3], { t: "film", shape: "s" }, { t: "stat", n: "3", label: "Partners" }, { t: "film", shape: "w" }],
+];
+
+function BeyondBento({ on, pool, turn }: { on: boolean; pool: string[]; turn: number }) {
+  let f = turn * 3;
+  return (
+    <div className={`${styles.bento} ${on ? styles.bentoOn : ""}`} aria-hidden="true">
+      {COLUMNS.map((col, c) => (
+        <div key={c} className={styles.bCol} style={{ transitionDelay: on ? `${0.05 + c * 0.07}s` : "0s" }}>
+          <div className={`${styles.bTrack} ${c % 2 ? styles.bDown : ""}`} style={{ animationDuration: `${38 + (c % 3) * 9}s` }}>
+            {[0, 1].map((copy) =>
+              col.map((card, i) => {
+                const key = `${copy}-${i}`;
+                if (card.t === "film") {
+                  const src = pool[f++ % pool.length];
+                  return (
+                    <span key={key} className={`${styles.bCard} ${styles.bFilm} ${styles[`bShape_${card.shape}`]}`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={stillOf(src)} alt="" draggable={false} />
+                      {on && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
+                    </span>
+                  );
+                }
+                if (card.t === "logo")
+                  return (
+                    <span key={key} className={`${styles.bCard} ${styles.bLogoCard}`}>
+                      {card.round ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img className={styles.bRound} src={card.src} alt={card.name} draggable={false} />
+                      ) : (
+                        <span className={styles.bMask} style={{ maskImage: `url(${card.src})`, WebkitMaskImage: `url(${card.src})` }} />
+                      )}
+                      <i>{card.name}</i>
+                    </span>
+                  );
+                if (card.t === "word")
+                  return (
+                    <span key={key} className={`${styles.bCard} ${styles.bWord}`}>
+                      <b>{card.name}</b>
+                      <i>Client</i>
+                    </span>
+                  );
+                if (card.t === "stat")
+                  return (
+                    <span key={key} className={`${styles.bCard} ${styles.bStat}`}>
+                      <b>{card.n}</b>
+                      <i>{card.label}</i>
+                    </span>
+                  );
+                return (
+                  <span key={key} className={`${styles.bCard} ${styles.bLine}`}>
+                    <b>{card.text}</b>
+                  </span>
+                );
+              })
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -716,9 +809,9 @@ export default function Chooser({
             {shownFilm[f.key] && <BrandTag film={shownFilm[f.key]!} />}
           </div>
           {f.key === "beyond" && pool?.length ? (
-            grid ? <MixMosaic on={up === "beyond" && !open} pool={pool} turn={turn} /> : <BeyondMosaic on={up === "beyond" && !open} pool={pool} />
+            grid ? <BeyondBento on={up === "beyond" && !open} pool={pool} turn={turn} /> : <BeyondMosaic on={up === "beyond" && !open} pool={pool} />
           ) : null}
-          {f.key === "beyond" && <BeyondStats on={up === "beyond" && !open} />}
+          {f.key === "beyond" && !grid && <BeyondStats on={up === "beyond" && !open} />}
           <div className={styles.namesWrap}>
             <Names ink={false} show={show} base={base} reduce={reduce} ready={ready} active={shown} />
           </div>
