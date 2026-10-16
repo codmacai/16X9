@@ -1519,7 +1519,6 @@
   position: relative;
   flex: none;
   overflow: hidden;
-  border-radius: 14px;
   contain: layout paint;
 }
 
