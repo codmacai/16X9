@@ -397,8 +397,9 @@ const GRID = {
 // Beyond's mix: wide (2×1), tall (1×2) and square (1×1) cells, packed densely
 const MIX = { cols: 9, rows: 4, shapes: ["w", "t", "s", "w", "s", "t", "s", "w", "s", "s", "t", "w", "s", "s", "w", "t", "s", "w", "s", "s", "t", "s", "w"], live: [0, 6, 13] };
 
-function FormatGrid({ kind, on, pool, turn }: { kind: "16x9" | "9x16"; on: boolean; pool: string[]; turn: number }) {
-  const g = GRID[kind];
+function FormatGrid({ kind, on, pool, turn, big = false }: { kind: "16x9" | "9x16"; on: boolean; pool: string[]; turn: number; big?: boolean }) {
+  // hero 6: 9x16's cards larger — five across, tall enough that two rows fill the screen
+  const g = big && kind === "9x16" ? { cols: 5, rows: 2 } : GRID[kind];
   const n = g.cols * g.rows;
   return (
     <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}
@@ -452,10 +453,10 @@ const COLUMNS: Card[][] = [
   [BRANDS[3], { t: "film", shape: "s" }, { t: "stat", n: "3", label: "Partners" }, { t: "film", shape: "w" }],
 ];
 
-function BeyondBento({ on, pool, turn }: { on: boolean; pool: string[]; turn: number }) {
+function BeyondBento({ on, pool, turn, refined = false }: { on: boolean; pool: string[]; turn: number; refined?: boolean }) {
   let f = turn * 3;
   return (
-    <div className={`${styles.bento} ${on ? styles.bentoOn : ""}`} aria-hidden="true">
+    <div className={`${styles.bento} ${on ? styles.bentoOn : ""} ${refined ? styles.bentoRefined : ""}`} aria-hidden="true">
       {COLUMNS.map((col, c) => (
         <div key={c} className={styles.bCol} style={{ transitionDelay: on ? `${0.05 + c * 0.07}s` : "0s" }}>
           <div className={`${styles.bTrack} ${c % 2 ? styles.bDown : ""}`} style={{ animationDuration: `${38 + (c % 3) * 9}s` }}>
@@ -500,6 +501,7 @@ function BeyondBento({ on, pool, turn }: { on: boolean; pool: string[]; turn: nu
                   );
                 return (
                   <span key={key} className={`${styles.bCard} ${styles.bLine}`}>
+                    {refined && <i>{String(LINES.indexOf(card.text) + 1).padStart(2, "0")} — Beyond</i>}
                     <b>{card.text}</b>
                   </span>
                 );
@@ -607,6 +609,7 @@ export default function Chooser({
   idle,
   previews,
   grid = false,
+  refined = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -632,6 +635,8 @@ export default function Chooser({
   previews?: Partial<Record<FormatKey, Preview[]>>;
   /** hero 5: each window opens on a grid of films in its frame (Beyond: a mix of every shape) */
   grid?: boolean;
+  /** hero 6: 9x16's cards larger, and Beyond's board in its refined, tilted cut */
+  refined?: boolean;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
   const base = reduce ? 0 : first ? (logo ? LOGO_T.names : INTRO.names) : 0.1;
@@ -791,7 +796,7 @@ export default function Chooser({
             className={styles.filmBox}
           >
             {grid && pool?.length && f.key !== "beyond" ? (
-              <FormatGrid kind={f.key as "16x9" | "9x16"} on={up === f.key && !open} pool={pool} turn={turn} />
+              <FormatGrid kind={f.key as "16x9" | "9x16"} on={up === f.key && !open} pool={pool} turn={turn} big={refined} />
             ) : (
             <video
               ref={(el) => {
@@ -809,7 +814,7 @@ export default function Chooser({
             {shownFilm[f.key] && <BrandTag film={shownFilm[f.key]!} />}
           </div>
           {f.key === "beyond" && pool?.length ? (
-            grid ? <BeyondBento on={up === "beyond" && !open} pool={pool} turn={turn} /> : <BeyondMosaic on={up === "beyond" && !open} pool={pool} />
+            grid ? <BeyondBento on={up === "beyond" && !open} pool={pool} turn={turn} refined={refined} /> : <BeyondMosaic on={up === "beyond" && !open} pool={pool} />
           ) : null}
           {f.key === "beyond" && !grid && <BeyondStats on={up === "beyond" && !open} />}
           <div className={styles.namesWrap}>
