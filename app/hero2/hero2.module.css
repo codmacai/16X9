@@ -1814,3 +1814,80 @@
     radial-gradient(ellipse 85% 75% at 50% 50%, transparent 45%, rgb(0 0 0 / 0.7)),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
+
+/* ===== hero 6: no dark between — the grid is there, whole, the moment its window opens (the
+   window's own reveal is the transition); tiles never fade up from black ===== */
+.cine .fcell,
+.fgridOn.cine .fcell {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+.bentoRefined,
+.bentoRefined .bCol,
+.bentoRefined.bentoOn .bCol {
+  opacity: 1;
+  transition: none;
+}
+
+.bentoRefined .bCol {
+  transform: none;
+}
+
+/* every 16x9 tile exactly 16:9, the grid laid out so whole tiles fill the width */
+.cine[data-kind="16x9"] .fcell {
+  aspect-ratio: 16 / 9;
+  height: auto;
+}
+
+/* the brand at the centre of each tile */
+.tlMask,
+.tlRound,
+.tlWord {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  translate: -50% -50%;
+  pointer-events: none;
+}
+
+.tlMask {
+  width: 22%;
+  aspect-ratio: 1;
+  background: #f6f4f0;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  filter: drop-shadow(0 1px 8px rgb(0 0 0 / 0.5));
+}
+
+.fcell .tlRound {
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: 34%;
+  height: auto !important;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+  transform: none;
+  box-shadow: 0 0 0 2px rgb(246 244 240 / 0.9), 0 6px 24px rgb(0 0 0 / 0.5);
+}
+
+.tlWord {
+  width: 80%;
+  color: #f6f4f0;
+  text-align: center;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(11px, 1.15vw, 18px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 0.6);
+}

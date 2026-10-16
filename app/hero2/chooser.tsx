@@ -413,11 +413,43 @@ function FormatGrid({ kind, on, pool, turn, big = false }: { kind: "16x9" | "9x1
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={stillOf(src)} alt="" draggable={false} />
             {on && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
+            {big && <TileLogo mark={(kind === "9x16" ? ACCOUNT_MARKS : BRAND_MARKS)[(i * 3 + turn) % (kind === "9x16" ? ACCOUNT_MARKS : BRAND_MARKS).length]} />}
           </span>
         );
       })}
     </div>
   );
+}
+
+// hero 6: a brand at the centre of every tile — the brands' logos (a mask, drawn in paper) or
+// their names; 9x16's tiles carry the accounts the studio runs
+type Mark = { name: string; src?: string; round?: boolean };
+const BRAND_MARKS: Mark[] = [
+  { name: "Toyota", src: "/brands/toyota.svg" },
+  { name: "Cleveland Clinic" },
+  { name: "Etihad", src: "/brands/etihad-airways.svg" },
+  { name: "Museum of the Future" },
+  { name: "BMW", src: "/brands/bmw.svg" },
+  { name: "Etisalat" },
+  { name: "what3words", src: "/brands/what3words.svg" },
+  { name: "MBC" },
+  { name: "Masdar" },
+  { name: "Rotana" },
+  { name: "Special Olympics" },
+];
+const ACCOUNT_MARKS: Mark[] = [
+  { name: "DED Cafe", src: "/work/accounts/ded_cafe.webp", round: true },
+  { name: "Amer Lounge", src: "/work/accounts/amerlounge.webp", round: true },
+  { name: "Business Lounge", src: "/work/accounts/businesslounge.webp", round: true },
+  { name: "Business Avenue", src: "/work/accounts/businessavenue.webp", round: true },
+];
+
+function TileLogo({ mark }: { mark: Mark }) {
+  if (mark.round && mark.src)
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img className={styles.tlRound} src={mark.src} alt="" draggable={false} />;
+  if (mark.src) return <span className={styles.tlMask} style={{ maskImage: `url(${mark.src})`, WebkitMaskImage: `url(${mark.src})` }} />;
+  return <span className={styles.tlWord}>{mark.name}</span>;
 }
 
 // Beyond: a moving board — columns of cards drifting up and down past each other: films in
