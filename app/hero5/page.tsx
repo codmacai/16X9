@@ -98,7 +98,7 @@ function Home({ variant }: { variant: HeroVariant }) {
       className={`${styles.page} ${own.brand}`}
       aria-label="16x9 & Beyond"
       data-room={room ? "" : undefined}
-      data-dark={room || indexFmt ? "" : undefined}
+      data-dark={room || indexFmt === "beyond" ? "" : undefined}
     >
       <h1 className={styles.sr}>16x9 &amp; Beyond. {HEADLINE}.</h1>
 
@@ -115,7 +115,6 @@ function Home({ variant }: { variant: HeroVariant }) {
         onOpen={openRoom}
         pool={pool}
         logo
-        grid
         idle={touch ? "Tap a frame" : "Choose a frame"}
       />
 
