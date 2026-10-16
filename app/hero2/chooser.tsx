@@ -402,7 +402,7 @@ function FormatGrid({ kind, on, pool, turn, big = false }: { kind: "16x9" | "9x1
   const g = big && kind === "9x16" ? { cols: 5, rows: 2 } : GRID[kind];
   const n = g.cols * g.rows;
   return (
-    <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}
+    <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""} ${big ? styles.cine : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}
       data-kind={kind} aria-hidden="true">
       {Array.from({ length: n }, (_, i) => {
         const src = pool[(i * 5 + turn * 3) % pool.length];
@@ -456,7 +456,7 @@ const COLUMNS: Card[][] = [
 function BeyondBento({ on, pool, turn, refined = false }: { on: boolean; pool: string[]; turn: number; refined?: boolean }) {
   let f = turn * 3;
   return (
-    <div className={`${styles.bento} ${on ? styles.bentoOn : ""} ${refined ? styles.bentoRefined : ""}`} aria-hidden="true">
+    <div className={`${styles.bento} ${on ? styles.bentoOn : ""} ${refined ? `${styles.bentoRefined} ${styles.cine}` : ""}`} aria-hidden="true">
       {COLUMNS.map((col, c) => (
         <div key={c} className={styles.bCol} style={{ transitionDelay: on ? `${0.05 + c * 0.07}s` : "0s" }}>
           <div className={`${styles.bTrack} ${c % 2 ? styles.bDown : ""}`} style={{ animationDuration: `${38 + (c % 3) * 9}s` }}>

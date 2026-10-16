@@ -1651,8 +1651,6 @@
   gap: 2px;
   padding: 0;
   background: #000;
-  transform: perspective(1600px) rotateX(16deg) rotateZ(-7deg) scale(1.42);
-  transform-origin: 50% 45%;
 }
 
 .bentoRefined .bTrack {
@@ -1686,10 +1684,7 @@
   transform: none;
 }
 
-.bentoRefined .bFilm img,
-.bentoRefined .bFilm video {
-  filter: grayscale(1) contrast(1.08) brightness(0.82);
-}
+
 
 .bentoRefined .bLogoCard {
   background: #0b0b0b;
@@ -1704,7 +1699,6 @@
 
 .bentoRefined .bRound {
   width: 46%;
-  filter: grayscale(1);
 }
 
 .bentoRefined .bWord {
@@ -1766,4 +1760,68 @@
   background:
     radial-gradient(ellipse 40% 22% at 50% 52%, rgb(0 0 0 / 0.85), transparent 100%),
     radial-gradient(ellipse 80% 70% at 50% 50%, transparent 55%, rgb(0 0 0 / 0.7));
+}
+
+/* hero 6: the board holds still, straight on — a composed spread, its columns set at staggered
+   heights like a printed contact sheet; only the films inside it move */
+.bentoRefined .bTrack,
+.bentoRefined .bDown {
+  animation: none;
+}
+
+.bentoRefined .bCol:nth-child(odd) .bTrack {
+  transform: translateY(-18%);
+}
+
+.bentoRefined .bCol:nth-child(3n) .bTrack {
+  transform: translateY(-34%);
+}
+
+.bentoRefined .bCol:nth-child(4n) .bTrack {
+  transform: translateY(-8%);
+}
+
+/* hero 6, held still: the outlined lines sized to their cards, and the words given a clear pool */
+.bentoRefined .bLine b {
+  font-size: clamp(15px, 1.55vw, 26px);
+  overflow-wrap: anywhere;
+}
+
+.bentoRefined::after {
+  background:
+    radial-gradient(ellipse 46% 20% at 50% 52%, rgb(0 0 0 / 0.92), rgb(0 0 0 / 0.5) 60%, transparent 100%),
+    radial-gradient(ellipse 85% 75% at 50% 50%, transparent 50%, rgb(0 0 0 / 0.65));
+}
+
+.bentoRefined::after {
+  z-index: 2;
+}
+
+/* ===== hero 6: a cinematic grade over every grid — colour kept, contrast and warmth like a
+   graded film, letterbox bars, a vignette and a fine grain (one overlay per grid, not per tile) ===== */
+.cine .fcell img,
+.cine .fcell video,
+.cine .bFilm img,
+.cine .bFilm video {
+  filter: contrast(1.12) saturate(0.88) sepia(0.12) brightness(0.9);
+}
+
+.cine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  /* letterbox: the screen as a 2.39:1 frame */
+  background:
+    linear-gradient(#000, #000) top / 100% max(0px, calc((100vh - 100vw / 2.39) / 2)) no-repeat,
+    linear-gradient(#000, #000) bottom / 100% max(0px, calc((100vh - 100vw / 2.39) / 2)) no-repeat;
+}
+
+.cine::after {
+  z-index: 2;
+  background:
+    radial-gradient(ellipse 44% 20% at 50% 52%, rgb(0 0 0 / 0.72), transparent 100%),
+    radial-gradient(ellipse 85% 75% at 50% 50%, transparent 45%, rgb(0 0 0 / 0.7)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
