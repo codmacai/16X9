@@ -456,3 +456,10 @@
     display: inline-flex;
   }
 }
+
+/* The brand bible's type: Arial throughout (bold for the name), over the wide grotesk these
+   pages were drawn in. ([class] lifts it over the font loader's own variables on the same element.) */
+.root[class] {
+  --font-wide: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --font-sans: Arial, "Helvetica Neue", Helvetica, sans-serif;
+}

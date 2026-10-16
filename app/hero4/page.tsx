@@ -139,9 +139,9 @@ const grayPosterFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/posters
 type Brand = { name: string; style: "a" | "b" | "c" | "d"; logo?: string };
 /** A film on the wall: a stand-in clip, or one of the studio's real films (from the bucket, with its
  *  brand and the brand's logo; it has no still, so its tile rests on the logo alone). */
-type WallClip = Clip & { real?: boolean; brand?: string; logo?: string };
+type WallClip = Clip & { real?: boolean; brand?: string; logo?: string; shot?: string };
 // 16x9's wall (in the landing preview and in its room) is the studio's real films
-const REAL_16X9: WallClip[] = PREVIEWS_16X9.map((p) => ({ title: p.title, duration: p.brand, src: p.src, accent: "#cfc8bd", real: true, brand: p.brand, logo: p.logo }));
+const REAL_16X9: WallClip[] = PREVIEWS_16X9.map((p) => ({ title: p.title, duration: p.brand, src: p.src, accent: "#cfc8bd", real: true, brand: p.brand, logo: p.logo, shot: p.shot }));
 // seconds into a real film its tile starts playing: past the slate and black
 const REAL_START_S = 8;
 const brandOf = (clip: WallClip, clients: { name: string; style: Brand["style"] }[]): Brand => {
@@ -263,7 +263,12 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
       <span className={styles.cWin}>
         {/* a real film has no still: the tile shows the film itself, a frame of it once the tile is in
             view, and the film playing when it's one of the few live ones */}
-        {clip.real && near && (
+        {/* its shot, picked from the film at build time, under the moving film */}
+        {clip.real && clip.shot && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className={styles.cStill} src={clip.shot} alt="" decoding="async" draggable={false} />
+        )}
+        {clip.real && near && (live || !clip.shot) && (
           <video
             ref={restRef}
             className={styles.cStill}

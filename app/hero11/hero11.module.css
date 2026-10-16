@@ -667,3 +667,9 @@
 .leaving .cursor {
   display: none;
 }
+
+/* the menu in the brand bible's type: Arial */
+.root[class] {
+  --font-wide: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --font-sans: Arial, "Helvetica Neue", Helvetica, sans-serif;
+}

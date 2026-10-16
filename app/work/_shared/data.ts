@@ -1,3 +1,4 @@
+import { SHOTS } from "./shots";
 import type { Clip } from "@/components/Hero-config";
 
 // ===========================================================================
@@ -222,8 +223,12 @@ export const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/still
 
 // placeholder posters until each film has its own: four, dealt round the films
 const POSTERS = [1, 2, 3, 4].map((n) => `/work/posters/poster-${n}.webp`);
-/** A film's poster (cards, the cover, the screen, the folders). */
-export const posterFor = (p: Project) => POSTERS[PROJECTS.indexOf(p) % POSTERS.length] ?? stillFor(p.src);
+/** The real film's own shot (scripts/make-shots.mjs picks a sharp frame from it at build time), by film URL. */
+const SHOT_BY_FILM = new Map(Object.entries(SHOTS).map(([key, shot]) => [hosted(key), shot]));
+export const shotFor = (film?: string) => (film ? SHOT_BY_FILM.get(film) : undefined);
+/** A film's poster (cards, the cover, the screen, the folders): a shot from the film itself when
+ *  there is one, else a placeholder. */
+export const posterFor = (p: Project) => shotFor(p.film) ?? POSTERS[PROJECTS.indexOf(p) % POSTERS.length] ?? stillFor(p.src);
 
 // ---------------------------------------------------------------------------
 // 9x16 — the Instagram accounts the studio runs. The 9x16 work page shows
@@ -286,7 +291,7 @@ export const BRAND_LOGOS: Record<string, string> = {
 /** The brand shown for a film: Filmmaster MEA made Toyota's Corolla film, so it reads as Toyota. */
 const BRAND_NAME: Record<string, string> = { "Filmmaster MEA": "Toyota", "Toyota Prius": "Toyota" };
 
-export type Preview = { src: string; title: string; brand: string; logo?: string };
+export type Preview = { src: string; title: string; brand: string; logo?: string; shot?: string };
 
 /** The real 16x9 films with their full film in the bucket (MP4 only, so every browser plays them),
  *  for the start screen's 16x9 window: a different one, with its brand, each time it opens. */
@@ -295,4 +300,5 @@ export const PREVIEWS_16X9: Preview[] = PROJECTS.filter((p) => p.format === "16x
   title: p.title,
   brand: BRAND_NAME[p.client] ?? p.client,
   logo: BRAND_LOGOS[p.client],
+  shot: shotFor(p.film),
 }));
