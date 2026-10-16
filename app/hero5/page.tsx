@@ -115,6 +115,7 @@ function Home({ variant }: { variant: HeroVariant }) {
         onOpen={openRoom}
         pool={pool}
         logo
+        grid
         idle={touch ? "Tap a frame" : "Choose a frame"}
       />
 

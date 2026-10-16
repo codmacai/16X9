@@ -386,6 +386,55 @@ function CountUp({ to, run, delay }: { to: number; run: boolean; delay: number }
 const MOSAIC = { cols: 7, rows: 4, live: [2, 9, 11, 17, 24] };
 const stillOf = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.webp");
 
+// Hero 5: each window fills with a grid of films in its own frame — 16:9 tiles in 16x9's
+// window, 9:16 in 9x16's — and Beyond's screen with a mix of every shape. Stills everywhere,
+// only a few tiles play (decoding is what costs), and they light up in a sweep from the left.
+// Each time a window opens it deals a different set of films.
+const GRID = {
+  "16x9": { cols: 4, rows: 4, live: [5, 10] },
+  "9x16": { cols: 3, rows: 3, live: [1, 7] },
+} as const;
+// Beyond's mix: wide (2×1), tall (1×2) and square (1×1) cells, packed densely
+const MIX = { cols: 9, rows: 4, shapes: ["w", "t", "s", "w", "s", "t", "s", "w", "s", "s", "t", "w", "s", "s", "w", "t", "s", "w", "s", "s", "t", "s", "w"], live: [0, 6, 13] };
+
+function FormatGrid({ kind, on, pool, turn }: { kind: "16x9" | "9x16"; on: boolean; pool: string[]; turn: number }) {
+  const g = GRID[kind];
+  const n = g.cols * g.rows;
+  return (
+    <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)`, gridTemplateRows: `repeat(${g.rows}, 1fr)` }} aria-hidden="true">
+      {Array.from({ length: n }, (_, i) => {
+        const src = pool[(i * 5 + turn * 3) % pool.length];
+        const col = i % g.cols;
+        const row = Math.floor(i / g.cols);
+        return (
+          <span key={i} className={styles.fcell} style={{ transitionDelay: on ? `${0.15 + col * 0.07 + row * 0.04}s` : "0s" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={stillOf(src)} alt="" draggable={false} />
+            {on && (g.live as readonly number[]).includes(i) && <video src={src} muted loop playsInline autoPlay preload="auto" />}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function MixMosaic({ on, pool, turn }: { on: boolean; pool: string[]; turn: number }) {
+  return (
+    <div className={`${styles.mix} ${on ? styles.mixOn : ""}`} style={{ gridTemplateColumns: `repeat(${MIX.cols}, 1fr)` }} aria-hidden="true">
+      {MIX.shapes.map((shape, i) => {
+        const src = pool[(i * 7 + turn * 2) % pool.length];
+        return (
+          <span key={i} className={`${styles.fcell} ${styles[`mix_${shape}`]}`} style={{ transitionDelay: on ? `${(i % MIX.cols) * 0.06 + 0.1}s` : "0s" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={stillOf(src)} alt="" draggable={false} />
+            {on && MIX.live.includes(i) && <video src={src} muted loop playsInline autoPlay preload="auto" />}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function BeyondMosaic({ on, pool }: { on: boolean; pool: string[] }) {
   const n = MOSAIC.cols * MOSAIC.rows;
   return (
@@ -463,6 +512,7 @@ export default function Chooser({
   logo = false,
   idle,
   previews,
+  grid = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -486,6 +536,8 @@ export default function Chooser({
   idle?: string;
   /** real films for a format's window, each with its brand: a different one each time it opens */
   previews?: Partial<Record<FormatKey, Preview[]>>;
+  /** hero 5: each window opens on a grid of films in its frame (Beyond: a mix of every shape) */
+  grid?: boolean;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
   const base = reduce ? 0 : first ? (logo ? LOGO_T.names : INTRO.names) : 0.1;
@@ -509,6 +561,12 @@ export default function Chooser({
 
   // the film that's up: the launched one while a room is open, else the word pointed at
   const up: FormatKey | null = open ? launch : active;
+  // how many times a window has opened: each grid deals a different set of films
+  const [turn, setTurn] = useState(0);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a new deal each time a word opens
+    if (up && grid) setTurn((t) => t + 1);
+  }, [up, grid]);
 
   // its film plays; the others stop once they've folded away
   useEffect(() => {
@@ -638,6 +696,9 @@ export default function Chooser({
             }}
             className={styles.filmBox}
           >
+            {grid && pool?.length && f.key !== "beyond" ? (
+              <FormatGrid kind={f.key as "16x9" | "9x16"} on={up === f.key && !open} pool={pool} turn={turn} />
+            ) : (
             <video
               ref={(el) => {
                 videoRefs.current[f.key] = el;
@@ -650,9 +711,12 @@ export default function Chooser({
               preload={ready ? "auto" : "metadata"}
               disablePictureInPicture
             />
+            )}
             {shownFilm[f.key] && <BrandTag film={shownFilm[f.key]!} />}
           </div>
-          {f.key === "beyond" && pool?.length ? <BeyondMosaic on={up === "beyond" && !open} pool={pool} /> : null}
+          {f.key === "beyond" && pool?.length ? (
+            grid ? <MixMosaic on={up === "beyond" && !open} pool={pool} turn={turn} /> : <BeyondMosaic on={up === "beyond" && !open} pool={pool} />
+          ) : null}
           {f.key === "beyond" && <BeyondStats on={up === "beyond" && !open} />}
           <div className={styles.namesWrap}>
             <Names ink={false} show={show} base={base} reduce={reduce} ready={ready} active={shown} />
