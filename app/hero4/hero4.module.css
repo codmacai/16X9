@@ -2782,3 +2782,34 @@
 .wallOn:not(.roomOn) .cLogo {
   background: rgb(247 242 238 / 0.55);
 }
+
+/* a real film's tile: the film itself under the wash (a frame at rest, playing when live); pointed
+   at, the wash lifts and the logo steps back so the film reads, and its title shows at the foot */
+.tile[data-real] .cStill {
+  filter: grayscale(1) contrast(1.05);
+  transition: filter 0.6s ease;
+}
+
+.tile[data-real] .cMat,
+.tile[data-real] .cPic {
+  display: none;
+}
+
+.tileOn[data-real] .cStill {
+  filter: none;
+}
+
+.tileOn[data-real] .cWash {
+  background: rgb(0 0 0 / 0.12);
+}
+
+.tile[data-real] .cLogo,
+.tile[data-real] .cBrand {
+  transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tileOn[data-real] .cLogo,
+.tileOn[data-real] .cBrand {
+  opacity: 0.25;
+  transform: scale(0.9);
+}

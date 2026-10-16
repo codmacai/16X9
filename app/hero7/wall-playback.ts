@@ -59,6 +59,16 @@ export class WallPlayback {
     if (!hoverOnly) this.timer = window.setInterval(() => this.rank(), RANK_EVERY_MS);
   }
 
+  /** Switch between hover-only and ambient play (the nearest few tiles play) without restarting. */
+  setHoverOnly(hoverOnly: boolean) {
+    if (this.hoverOnly === hoverOnly || !this.io) return;
+    this.hoverOnly = hoverOnly;
+    window.clearInterval(this.timer);
+    this.timer = 0;
+    if (!hoverOnly) this.timer = window.setInterval(() => this.rank(), RANK_EVERY_MS);
+    this.queue();
+  }
+
   stop() {
     this.io?.disconnect();
     this.io = null;

@@ -206,6 +206,26 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
   const [playing, setPlaying] = useState(false);
   const [poster, setPoster] = useState(true);
 
+  // a real film's tile mounts its film only near the screen (a frame of it; it plays when live)
+  const restRef = useRef<HTMLVideoElement>(null);
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const el = tileRef.current;
+    if (!clip.real || !el) return;
+    const io = new IntersectionObserver(([e]) => setNear(e.isIntersecting), { rootMargin: "25%" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [clip.real]);
+  useEffect(() => {
+    const v = restRef.current;
+    if (!v) return;
+    if (live) {
+      v.muted = true;
+      v.setAttribute("muted", "");
+      v.play().catch(() => {});
+    } else v.pause();
+  }, [live, near]);
+
   // only the film you rest on is live (see WallPlayback, hoverOnly)
   useEffect(() => {
     const el = tileRef.current;
@@ -232,7 +252,8 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
       // its own shape; a format word pointed at overrides it for the whole lane (see .lane[data-format])
       style={{ "--r": ratio } as CSSProperties}
       data-index={index}
-      onClick={(e) => onOpen(index, e.currentTarget, videoRef.current?.currentTime ?? 0)}
+      data-real={clip.real ? "" : undefined}
+      onClick={(e) => onOpen(index, e.currentTarget, (clip.real ? restRef.current : videoRef.current)?.currentTime ?? 0)}
     >
       {/* At rest: the film's still in black and white under a dark wash, and
           the brand it was made for at the centre. Pointed at: colour blooms out
@@ -240,6 +261,20 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
           title rises. The hover layer only exists while it's pointed at (it's
           display: none otherwise), so a resting tile is six elements. */}
       <span className={styles.cWin}>
+        {/* a real film has no still: the tile shows the film itself, a frame of it once the tile is in
+            view, and the film playing when it's one of the few live ones */}
+        {clip.real && near && (
+          <video
+            ref={restRef}
+            className={styles.cStill}
+            src={`${clip.src}#t=${REAL_START_S}`}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            disablePictureInPicture
+          />
+        )}
         {poster && !clip.real && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -279,7 +314,7 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
               // eslint-disable-next-line @next/next/no-img-element
               <img className={styles.cColour} src={posterFor(clip.src)} alt="" decoding="async" draggable={false} />
             )}
-            {live && (
+            {live && !clip.real && (
               <video
                 ref={videoRef}
                 className={`${styles.cVideo} ${playing ? styles.cVideoOn : ""}`}
@@ -727,6 +762,8 @@ function DepthInner({ variant, workTile }: { variant: HeroVariant; workTile: boo
     return () => window.clearTimeout(t);
   }, [wallFormat, reduce]);
   const wallClips: WallClip[] = real16 ? REAL_16X9 : clips;
+  // on the real wall the films nearest the centre play by themselves; elsewhere only the one pointed at
+  useEffect(() => playback.setHoverOnly(!real16), [real16, playback]);
   const restingRef = useRef(resting);
   useEffect(() => {
     restingRef.current = resting;
