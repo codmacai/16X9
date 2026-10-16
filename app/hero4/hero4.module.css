@@ -2761,3 +2761,24 @@
     animation: none;
   }
 }
+
+/* a real film's tile: the brand's own logo at the centre, in paper (a mask, so any one-colour logo works) */
+.cLogo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background: var(--paper);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+.wallOn:not(.roomOn) .cLogo {
+  background: rgb(247 242 238 / 0.55);
+}

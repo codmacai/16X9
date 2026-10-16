@@ -33,6 +33,7 @@ import LensRoom from "../hero3/lens-room";
 import RoomSwitch from "./room-switch";
 import WorkTile from "./work-tile";
 import FormatHero, { FORMATS, Ratio, type FormatKey, type Rect } from "../hero3/format-hero";
+import { PREVIEWS_16X9 } from "../work/_shared/data";
 import styles from "./hero4.module.css";
 
 
@@ -135,8 +136,16 @@ const grayPosterFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/posters
 /** The brand a film was made for: the client whose name the title starts with
  *  (set in that client's own style), else the film's title. Stands in for the
  *  brand's logo until real logo files are added. */
-type Brand = { name: string; style: "a" | "b" | "c" | "d" };
-const brandOf = (clip: Clip, clients: { name: string; style: Brand["style"] }[]): Brand => {
+type Brand = { name: string; style: "a" | "b" | "c" | "d"; logo?: string };
+/** A film on the wall: a stand-in clip, or one of the studio's real films (from the bucket, with its
+ *  brand and the brand's logo; it has no still, so its tile rests on the logo alone). */
+type WallClip = Clip & { real?: boolean; brand?: string; logo?: string };
+// 16x9's wall (in the landing preview and in its room) is the studio's real films
+const REAL_16X9: WallClip[] = PREVIEWS_16X9.map((p) => ({ title: p.title, duration: p.brand, src: p.src, accent: "#cfc8bd", real: true, brand: p.brand, logo: p.logo }));
+// seconds into a real film its tile starts playing: past the slate and black
+const REAL_START_S = 8;
+const brandOf = (clip: WallClip, clients: { name: string; style: Brand["style"] }[]): Brand => {
+  if (clip.real) return { name: clip.brand || clip.title, style: "a", logo: clip.logo };
   const t = clip.title.toLowerCase();
   const c = clients.find((x) => t.startsWith(x.name.toLowerCase()));
   return c ? { name: c.name, style: c.style } : { name: clip.title, style: "a" };
@@ -183,7 +192,7 @@ const arrivalAt = (t: number) => {
 type TileProps = {
   brand: Brand;
   id: string;
-  clip: Clip;
+  clip: WallClip;
   index: number;
   ratio: string;
   playback: WallPlayback;
@@ -231,7 +240,7 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
           title rises. The hover layer only exists while it's pointed at (it's
           display: none otherwise), so a resting tile is six elements. */}
       <span className={styles.cWin}>
-        {poster && (
+        {poster && !clip.real && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             className={styles.cStill}
@@ -243,27 +252,38 @@ const Tile = memo(function Tile({ brand, id, clip, index, ratio, playback, onOpe
           />
         )}
         <span className={styles.cWash} />
-        <span
-          className={styles.cBrand}
-          data-style={brand.style}
-          style={{ "--len": Math.max(5, brand.name.length) } as CSSProperties}
-          aria-hidden="true"
-        >
-          {brand.name}
-        </span>
+        {brand.logo ? (
+          // the brand's own logo, in paper
+          <span
+            className={styles.cLogo}
+            style={{ maskImage: `url(${brand.logo})`, WebkitMaskImage: `url(${brand.logo})` }}
+            aria-hidden="true"
+          />
+        ) : (
+          <span
+            className={styles.cBrand}
+            data-style={brand.style}
+            style={{ "--len": Math.max(5, brand.name.length) } as CSSProperties}
+            aria-hidden="true"
+          >
+            {brand.name}
+          </span>
+        )}
         {/* pointed at: the film becomes a print — colour blooms in, the picture
             draws back inside a paper mat, and its title is printed in ink on
             the deeper margin at the foot */}
         <span className={styles.cHover} aria-hidden="true">
           <span className={styles.cMat} />
           <span className={styles.cPic}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className={styles.cColour} src={posterFor(clip.src)} alt="" decoding="async" draggable={false} />
+            {!clip.real && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className={styles.cColour} src={posterFor(clip.src)} alt="" decoding="async" draggable={false} />
+            )}
             {live && (
               <video
                 ref={videoRef}
                 className={`${styles.cVideo} ${playing ? styles.cVideoOn : ""}`}
-                src={clip.src}
+                src={clip.real ? `${clip.src}#t=${REAL_START_S}` : clip.src}
                 muted
                 loop
                 playsInline
@@ -699,6 +719,14 @@ function DepthInner({ variant, workTile }: { variant: HeroVariant; workTile: boo
   // at rest the landing is only paper and the choice: the wall behind it is
   // hidden, so it stops moving and its films stop decoding until it's called up
   const resting = !wallFormat;
+  // the films on the wall: 16x9's are the studio's real ones; the set changes while the lanes are dark
+  const [real16, setReal16] = useState(false);
+  useEffect(() => {
+    const want = wallFormat === "16x9" && REAL_16X9.length > 0;
+    const t = window.setTimeout(() => setReal16(want), reduce ? 0 : WAVE.out * 1000);
+    return () => window.clearTimeout(t);
+  }, [wallFormat, reduce]);
+  const wallClips: WallClip[] = real16 ? REAL_16X9 : clips;
   const restingRef = useRef(resting);
   useEffect(() => {
     restingRef.current = resting;
@@ -1428,9 +1456,9 @@ function DepthInner({ variant, workTile }: { variant: HeroVariant; workTile: boo
                     <Tile
                       key={`${copy}-${t}`}
                       id={`${l}-${copy}-${t}`}
-                      clip={clips[it.index]}
-                      brand={brandOf(clips[it.index], variant.clients)}
-                      index={it.index}
+                      clip={wallClips[it.index % wallClips.length]}
+                      brand={brandOf(wallClips[it.index % wallClips.length], variant.clients)}
+                      index={it.index % wallClips.length}
                       ratio={it.ratio}
                       playback={playback}
                       onOpen={onOpen}
@@ -1616,7 +1644,7 @@ function DepthInner({ variant, workTile }: { variant: HeroVariant; workTile: boo
       {/* ================= Hover label and the full-screen project ================= */}
       <CursorLabel ref={labelRef} />
       <AnimatePresence>
-        {project && <ProjectView key="project" clips={clips} open={project} onClose={closeProject} />}
+        {project && <ProjectView key="project" clips={wallClips} open={project} onClose={closeProject} />}
       </AnimatePresence>
 
       {/* ================= A format's hero, opened from its word ================= */}
