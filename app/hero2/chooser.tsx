@@ -391,8 +391,8 @@ const stillOf = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.web
 // only a few tiles play (decoding is what costs), and they light up in a sweep from the left.
 // Each time a window opens it deals a different set of films.
 const GRID = {
-  "16x9": { cols: 4, rows: 4, live: [5, 10] },
-  "9x16": { cols: 3, rows: 3, live: [1, 7] },
+  "16x9": { cols: 5, rows: 6, live: [12, 7, 17] },
+  "9x16": { cols: 9, rows: 4, live: [13, 4, 22] },
 } as const;
 // Beyond's mix: wide (2×1), tall (1×2) and square (1×1) cells, packed densely
 const MIX = { cols: 9, rows: 4, shapes: ["w", "t", "s", "w", "s", "t", "s", "w", "s", "s", "t", "w", "s", "s", "w", "t", "s", "w", "s", "s", "t", "s", "w"], live: [0, 6, 13] };
@@ -401,7 +401,8 @@ function FormatGrid({ kind, on, pool, turn }: { kind: "16x9" | "9x16"; on: boole
   const g = GRID[kind];
   const n = g.cols * g.rows;
   return (
-    <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)`, gridTemplateRows: `repeat(${g.rows}, 1fr)` }} aria-hidden="true">
+    <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}
+      data-kind={kind} aria-hidden="true">
       {Array.from({ length: n }, (_, i) => {
         const src = pool[(i * 5 + turn * 3) % pool.length];
         const col = i % g.cols;
@@ -687,7 +688,7 @@ export default function Chooser({
           ref={(el) => {
             filmRefs.current[f.key] = el;
           }}
-          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]}`}
+          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""}`}
           aria-hidden="true"
         >
           <div

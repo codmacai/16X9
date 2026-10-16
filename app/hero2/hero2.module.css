@@ -1424,3 +1424,35 @@
   background: radial-gradient(ellipse 70% 40% at 50% 50%, rgb(0 0 0 / 0.6), rgb(0 0 0 / 0.15) 80%);
   pointer-events: none;
 }
+
+/* hero 5: every window opens to the whole screen, its grid of films covering it */
+.filmGrid .filmBox {
+  inset: 0;
+  width: auto;
+  height: auto;
+  aspect-ratio: auto;
+  translate: none;
+}
+
+.fgrid {
+  align-content: center;
+  overflow: hidden;
+}
+
+.fgrid[data-kind="16x9"] .fcell {
+  aspect-ratio: 16 / 9;
+}
+
+.fgrid[data-kind="9x16"] .fcell {
+  aspect-ratio: 9 / 16;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .fgrid[data-kind="16x9"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .fgrid[data-kind="9x16"] {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
