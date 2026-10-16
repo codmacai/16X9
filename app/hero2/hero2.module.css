@@ -1798,7 +1798,7 @@
 }
 
 /* ===== hero 6: a cinematic grade over every grid — colour kept, contrast and warmth like a
-   graded film, letterbox bars, a vignette and a fine grain (one overlay per grid, not per tile) ===== */
+   graded film, edge to edge, a vignette and a fine grain (one overlay per grid, not per tile) ===== */
 .cine .fcell img,
 .cine .fcell video,
 .cine .bFilm img,
@@ -1806,17 +1806,6 @@
   filter: contrast(1.12) saturate(0.88) sepia(0.12) brightness(0.9);
 }
 
-.cine::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  /* letterbox: the screen as a 2.39:1 frame */
-  background:
-    linear-gradient(#000, #000) top / 100% max(0px, calc((100vh - 100vw / 2.39) / 2)) no-repeat,
-    linear-gradient(#000, #000) bottom / 100% max(0px, calc((100vh - 100vw / 2.39) / 2)) no-repeat;
-}
 
 .cine::after {
   z-index: 2;
