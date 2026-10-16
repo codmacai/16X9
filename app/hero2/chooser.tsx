@@ -394,13 +394,48 @@ const GRID = {
   "16x9": { cols: 5, rows: 6, live: [12, 7, 17] },
   "9x16": { cols: 9, rows: 4, live: [13, 4, 22] },
 } as const;
-// Beyond's mix: wide (2×1), tall (1×2) and square (1×1) cells, packed densely
-const MIX = { cols: 9, rows: 4, shapes: ["w", "t", "s", "w", "s", "t", "s", "w", "s", "s", "t", "w", "s", "s", "w", "t", "s", "w", "s", "s", "t", "s", "w"], live: [0, 6, 13] };
+
+// How many of a grid's tiles may have their film running: none while the window is still
+// opening or the pointer is only passing over the word (switching fast stays light), then they
+// come on one by one so no frame has to spin up several decoders at once.
+const LIVE = { after: 520, every: 45 };
+function useLiveCount(on: boolean, total: number) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!on) return;
+    let k = 0;
+    let id = 0;
+    const t = window.setTimeout(() => {
+      id = window.setInterval(() => {
+        k += 1;
+        setN(k);
+        if (k >= total) window.clearInterval(id);
+      }, LIVE.every);
+    }, LIVE.after);
+    return () => {
+      window.clearTimeout(t);
+      window.clearInterval(id);
+      setN(0);
+    };
+  }, [on, total]);
+  return on ? n : 0;
+}
+
+// every still the grids can show, fetched once up front so a window never opens on an empty tile
+function usePreloadStills(pool: string[] | undefined) {
+  useEffect(() => {
+    if (!pool?.length) return;
+    const t = window.setTimeout(() => pool.forEach((src) => (new Image().src = stillOf(src))), 1200);
+    return () => window.clearTimeout(t);
+  }, [pool]);
+}
 
 function FormatGrid({ kind, on, pool, turn, big = false }: { kind: "16x9" | "9x16"; on: boolean; pool: string[]; turn: number; big?: boolean }) {
   // hero 6: 9x16's cards larger — five across, tall enough that two rows fill the screen
-  const g = big && kind === "9x16" ? { cols: 5, rows: 2 } : GRID[kind];
+  // hero 6: larger tiles — 16x9 three across, 9x16 five across — enough rows to cover the screen
+  const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : { cols: 3, rows: 4 }) : GRID[kind];
   const n = g.cols * g.rows;
+  const live = useLiveCount(on && big, n);
   return (
     <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""} ${big ? styles.cine : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}
       data-kind={kind} aria-hidden="true">
@@ -412,8 +447,8 @@ function FormatGrid({ kind, on, pool, turn, big = false }: { kind: "16x9" | "9x1
           <span key={i} className={styles.fcell} style={{ transitionDelay: on ? `${0.15 + col * 0.07 + row * 0.04}s` : "0s" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={stillOf(src)} alt="" draggable={false} />
-            {on && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
-            {big && <TileLogo mark={(kind === "9x16" ? ACCOUNT_MARKS : BRAND_MARKS)[(i * 3 + turn) % (kind === "9x16" ? ACCOUNT_MARKS : BRAND_MARKS).length]} />}
+            {(big ? i < live : on) && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
+            {big && <TileLogo mark={(kind === "9x16" ? ACCOUNT_MARKS : BRAND_MARKS)[(i * 5 + turn) % (kind === "9x16" ? ACCOUNT_MARKS : BRAND_MARKS).length]} />}
           </span>
         );
       })}
@@ -426,6 +461,7 @@ function FormatGrid({ kind, on, pool, turn, big = false }: { kind: "16x9" | "9x1
 type Mark = { name: string; src?: string; round?: boolean };
 const BRAND_MARKS: Mark[] = [
   { name: "Toyota", src: "/brands/toyota.svg" },
+  { name: "Nike", src: "/brands/nike.svg" },
   { name: "Cleveland Clinic" },
   { name: "Etihad", src: "/brands/etihad-airways.svg" },
   { name: "Museum of the Future" },
@@ -467,6 +503,7 @@ const BRANDS: Card[] = [
   { t: "logo", src: "/brands/etihad-airways.svg", name: "Etihad" },
   { t: "logo", src: "/brands/bmw.svg", name: "BMW" },
   { t: "logo", src: "/brands/what3words.svg", name: "what3words" },
+  { t: "logo", src: "/brands/nike.svg", name: "Nike" },
   { t: "word", name: "Cleveland Clinic" },
   { t: "word", name: "Museum of the Future" },
   { t: "word", name: "Etisalat" },
@@ -487,6 +524,8 @@ const COLUMNS: Card[][] = [
 
 function BeyondBento({ on, pool, turn, refined = false }: { on: boolean; pool: string[]; turn: number; refined?: boolean }) {
   let f = turn * 3;
+  let film = 0; // the films counted in order, so they can come on one by one
+  const live = useLiveCount(on && refined, 40);
   return (
     <div className={`${styles.bento} ${on ? styles.bentoOn : ""} ${refined ? `${styles.bentoRefined} ${styles.cine}` : ""}`} aria-hidden="true">
       {COLUMNS.map((col, c) => (
@@ -501,7 +540,7 @@ function BeyondBento({ on, pool, turn, refined = false }: { on: boolean; pool: s
                     <span key={key} className={`${styles.bCard} ${styles.bFilm} ${styles[`bShape_${card.shape}`]}`}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={stillOf(src)} alt="" draggable={false} />
-                      {on && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
+                      {(refined ? film++ < live : on) && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
                     </span>
                   );
                 }
@@ -546,22 +585,6 @@ function BeyondBento({ on, pool, turn, refined = false }: { on: boolean; pool: s
   );
 }
 
-function MixMosaic({ on, pool, turn }: { on: boolean; pool: string[]; turn: number }) {
-  return (
-    <div className={`${styles.mix} ${on ? styles.mixOn : ""}`} style={{ gridTemplateColumns: `repeat(${MIX.cols}, 1fr)` }} aria-hidden="true">
-      {MIX.shapes.map((shape, i) => {
-        const src = pool[(i * 7 + turn * 2) % pool.length];
-        return (
-          <span key={i} className={`${styles.fcell} ${styles[`mix_${shape}`]}`} style={{ transitionDelay: on ? `${(i % MIX.cols) * 0.06 + 0.1}s` : "0s" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={stillOf(src)} alt="" draggable={false} />
-            {on && MIX.live.includes(i) && <video src={src} muted loop playsInline autoPlay preload="auto" />}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
 
 function BeyondMosaic({ on, pool }: { on: boolean; pool: string[] }) {
   const n = MOSAIC.cols * MOSAIC.rows;
@@ -678,6 +701,7 @@ export default function Chooser({
   const boxRefs = useRef<Partial<Record<FormatKey, HTMLDivElement | null>>>({});
   const videoRefs = useRef<Partial<Record<FormatKey, HTMLVideoElement | null>>>({});
   const poolAt = useRef(-1);
+  usePreloadStills(grid ? pool : undefined);
   // the real film each window is showing, and where each format is in its list
   const [shownFilm, setShownFilm] = useState<Partial<Record<FormatKey, Preview>>>({});
   const previewAt = useRef<Partial<Record<FormatKey, number>>>({});
@@ -696,8 +720,8 @@ export default function Chooser({
   const [turn, setTurn] = useState(0);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- a new deal each time a word opens
-    if (up && grid) setTurn((t) => t + 1);
-  }, [up, grid]);
+    if (up && grid && !refined) setTurn((t) => t + 1);
+  }, [up, grid, refined]);
 
   // its film plays; the others stop once they've folded away
   useEffect(() => {
