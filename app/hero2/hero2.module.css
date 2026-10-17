@@ -2156,3 +2156,200 @@
 .cine.fgrid[data-kind="16x9"] {
   align-content: center;
 }
+
+/* ===== hero 6's Beyond: the open frame ===== */
+.stage6 {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  background: #000;
+  color: #f6f4f0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.stage6::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.s6Film {
+  position: absolute;
+  inset: 0;
+  will-change: opacity, transform;
+  animation: s6Push 7s cubic-bezier(0.2, 0.6, 0.2, 1) both;
+}
+
+/* each scene pushes in, slowly, as a camera does */
+@keyframes s6Push {
+  from { transform: scale(1.08); }
+  to { transform: scale(1); }
+}
+
+.stage6:not(.stage6On) .s6Film {
+  animation-play-state: paused;
+}
+
+.s6Film img,
+.s6Film video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: cover;
+  transform: scale(1.35); /* the stand-in clips carry black bands */
+  filter: contrast(1.12) saturate(0.92) sepia(0.1) brightness(0.95);
+}
+
+/* the window: full light inside, shadow everywhere outside it (one shadow, nothing repaints) */
+.s6Window {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  width: min(64vw, 1100px);
+  aspect-ratio: 16 / 9;
+  translate: -50% -50%;
+  box-shadow: 0 0 0 200vmax rgb(0 0 0 / 0.68);
+  background: radial-gradient(ellipse 62% 30% at 50% 50%, rgb(0 0 0 / 0.42), transparent 78%);
+}
+
+.s6Edge {
+  position: absolute;
+  background: #f6f4f0;
+  transition: transform 0.35s ease;
+}
+
+.s6EdgeB { left: 0; bottom: 0; width: 66%; height: 1.5px; transform: scaleX(0); transform-origin: right; }
+.s6EdgeL { left: 0; top: 0; width: 1.5px; height: 100%; transform: scaleY(0); transform-origin: bottom; }
+.s6EdgeT { left: 0; top: 0; width: 100%; height: 1.5px; transform: scaleX(0); transform-origin: left; }
+.s6EdgeR { right: 0; top: 0; width: 1.5px; height: 58%; transform: scaleY(0); transform-origin: top; }
+
+.stage6On .s6EdgeB { transform: none; transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1) 0.2s; }
+.stage6On .s6EdgeL { transform: none; transition: transform 0.35s cubic-bezier(0.65, 0, 0.35, 1) 0.62s; }
+.stage6On .s6EdgeT { transform: none; transition: transform 0.55s cubic-bezier(0.65, 0, 0.35, 1) 0.94s; }
+.stage6On .s6EdgeR { transform: none; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) 1.46s; }
+
+/* the name of the scene, at the frame's open corner and crossing its edge, as in the logo */
+.s6Name {
+  position: absolute;
+  left: 66.5%;
+  bottom: -0.32em;
+  font-size: clamp(26px, 3.7vw, 64px);
+  line-height: 0.92;
+  white-space: nowrap;
+  overflow: hidden;
+  padding: 0.1em 0.2em 0.12em 0;
+}
+
+.s6Name b {
+  display: block;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.s6Name b + b {
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.s6Count,
+.s6Kicker,
+.s6Facts {
+  position: absolute;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgb(246 244 240 / 0.62);
+  white-space: nowrap;
+}
+
+.s6Count {
+  top: -26px;
+  left: 0;
+}
+
+.s6Count i {
+  font-style: normal;
+  color: #f6f4f0;
+}
+
+.s6Kicker {
+  top: -26px;
+  right: 0;
+}
+
+.s6Facts {
+  z-index: 3;
+  top: clamp(30px, 4.6vh, 44px);
+  right: clamp(20px, 3.4vw, 48px);
+}
+
+/* the brands, passing along the foot */
+.s6Brands {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: clamp(22px, 4vh, 40px);
+  height: 22px;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent);
+}
+
+.s6BrandsTrack {
+  display: flex;
+  gap: 72px;
+  width: max-content;
+  animation: s6Brands 32s linear infinite;
+  will-change: transform;
+}
+
+.stage6:not(.stage6On) .s6BrandsTrack {
+  animation-play-state: paused;
+}
+
+@keyframes s6Brands {
+  to { transform: translateX(calc(-50% - 36px)); }
+}
+
+.s6Brand {
+  flex: none;
+  width: 64px;
+  height: 22px;
+  background: rgb(246 244 240 / 0.55);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .s6Window {
+    width: 84vw;
+    aspect-ratio: 3 / 4;
+  }
+
+  .s6Name {
+    left: 46%;
+    font-size: 8vw;
+  }
+
+  .s6Facts {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s6Film,
+  .s6BrandsTrack {
+    animation: none !important;
+  }
+}
