@@ -480,49 +480,56 @@ const ACCOUNT_MARKS: Mark[] = [
   { name: "Business Avenue", src: "/work/accounts/businessavenue.webp", round: true },
 ];
 
-// hero 6's 9x16: a strip of reels — whole 9:16 cards, the height of most of the screen, set in a
-// line that drifts slowly sideways like a feed, each carrying the account it was made for at its
-// top (avatar and handle, as in the app). One transform runs the drift; the films come on one by
-// one once the window has opened.
+// hero 6's 9x16: made for the scroll, so it scrolls — columns of whole 9:16 reels, each column a
+// feed being swiped: a reel holds, then the next one swipes up into its place, the columns out of
+// step with each other. Each column is one CSS animation (transform only); each card carries its
+// account at the top, as in the app. The films come on one by one once the window has opened.
 const REEL_ACCOUNTS = [
   { handle: "ded_cafe", logo: "/work/accounts/ded_cafe.webp" },
   { handle: "amerlounge", logo: "/work/accounts/amerlounge.webp" },
   { handle: "businesslounge.ae", logo: "/work/accounts/businesslounge.webp" },
   { handle: "businessavenue.ae", logo: "/work/accounts/businessavenue.webp" },
 ];
-const REELS = 8;
+const FEEDS = 5; // columns
+const PER_FEED = 4; // reels in a column (shown twice, so the swipe loops without a seam)
 
 const ReelStrip = memo(function ReelStrip({ on, pool, turn }: { on: boolean; pool: string[]; turn: number }) {
-  const live = useLiveCount(on, REELS * 2);
+  const live = useLiveCount(on, FEEDS * PER_FEED * 2);
+  let n = 0;
   return (
     <div className={`${styles.reelStrip} ${styles.cine} ${on ? styles.reelOn : ""}`} aria-hidden="true">
-      <div className={styles.reelTrack}>
-        {[0, 1].map((copy) =>
-          Array.from({ length: REELS }, (_, i) => {
-            const src = pool[(i * 7 + 2 + turn) % pool.length];
-            const a = REEL_ACCOUNTS[i % REEL_ACCOUNTS.length];
-            const n = copy * REELS + i;
-            return (
-              <span key={n} className={styles.reelCard}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={stillOf(src)} alt="" draggable={false} />
-                {n < live && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
-                <span className={styles.reelHead}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={a.logo} alt="" draggable={false} />
-                  {a.handle}
-                </span>
-                <span className={styles.reelFoot}>
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M8 5v14l11-7z" fill="currentColor" />
-                  </svg>
-                  Reel
-                </span>
-              </span>
-            );
-          })
-        )}
-      </div>
+      {Array.from({ length: FEEDS }, (_, c) => (
+        <div key={c} className={styles.feed}>
+          <div className={styles.feedTrack} style={{ animationDelay: `${-c * 1.7 - (c % 2) * 0.9}s` }}>
+            {[0, 1].map((copy) =>
+              Array.from({ length: PER_FEED }, (_, i) => {
+                const k = c * PER_FEED + i;
+                const src = pool[(k * 7 + 2 + turn) % pool.length];
+                const a = REEL_ACCOUNTS[(c + i) % REEL_ACCOUNTS.length];
+                const idx = n++;
+                return (
+                  <span key={`${copy}-${i}`} className={styles.reelCard}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={stillOf(src)} alt="" draggable={false} />
+                    {idx < live && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
+                    <span className={styles.reelHead}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={a.logo} alt="" draggable={false} />
+                      {a.handle}
+                    </span>
+                    <span className={styles.reelFoot}>
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 5v14l11-7z" fill="currentColor" />
+                      </svg>
+                      Reel
+                    </span>
+                  </span>
+                );
+              })
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 });

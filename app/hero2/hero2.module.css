@@ -1899,54 +1899,68 @@
   will-change: transform;
 }
 
-/* ===== hero 6's 9x16: a strip of reels drifting sideways like a feed ===== */
+/* ===== hero 6's 9x16: columns of reels, each a feed being swiped ===== */
 .reelStrip {
+  --card: min(52vh, 520px); /* a reel's height; its width follows at 9:16 */
+  --gap: 18px;
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  justify-content: center;
+  gap: var(--gap);
   overflow: hidden;
   background: #070707;
 }
 
-.reelTrack {
+.feed {
+  position: relative;
+  flex: none;
+  width: calc(var(--card) * 9 / 16);
+  overflow: hidden;
+  /* the column's top and foot fade into the dark, as a feed runs on past the screen */
+  mask-image: linear-gradient(to bottom, transparent, #000 9%, #000 91%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 9%, #000 91%, transparent);
+}
+
+/* every other column sits half a reel lower, so the reels never line up in rows */
+.feed:nth-child(even) .feedTrack {
+  margin-top: calc((var(--card) + var(--gap)) / -2);
+}
+
+.feedTrack {
   display: flex;
-  align-items: center;
-  gap: 18px;
-  padding-left: 18px;
-  animation: reelDrift 70s linear infinite;
+  flex-direction: column;
+  gap: var(--gap);
+  padding-top: calc((100vh - var(--card)) / 2);
+  animation: feedSwipe 13.6s cubic-bezier(0.7, 0, 0.2, 1) infinite;
   will-change: transform;
 }
 
-/* still while its window is closed (nothing moves out of sight) */
-.reelStrip:not(.reelOn) .reelTrack {
+/* still while its window is closed */
+.reelStrip:not(.reelOn) .feedTrack {
   animation-play-state: paused;
 }
 
-@keyframes reelDrift {
-  to {
-    transform: translateX(calc(-50% - 9px));
-  }
+/* four reels: each holds, then the next swipes up into its place; after the fourth the column is
+   back where it started (its second copy), so the loop has no seam */
+@keyframes feedSwipe {
+  0%, 19% { transform: translateY(0); }
+  25%, 44% { transform: translateY(calc((var(--card) + var(--gap)) * -1)); }
+  50%, 69% { transform: translateY(calc((var(--card) + var(--gap)) * -2)); }
+  75%, 94% { transform: translateY(calc((var(--card) + var(--gap)) * -3)); }
+  100% { transform: translateY(calc((var(--card) + var(--gap)) * -4)); }
 }
 
 .reelCard {
   position: relative;
   flex: none;
-  height: min(52vh, 520px);
+  height: var(--card);
   aspect-ratio: 9 / 16;
   overflow: hidden;
   background: #111;
   contain: layout paint;
 }
 
-/* a gentle rise and fall along the line, like a feed caught mid-scroll */
-.reelCard:nth-child(odd) {
-  translate: 0 -3.2vh;
-}
-
-.reelCard:nth-child(even) {
-  translate: 0 3.2vh;
-}
 
 .reelCard > img,
 .reelCard > video {
@@ -2014,8 +2028,8 @@
 }
 
 @media (max-aspect-ratio: 1/1) {
-  .reelCard {
-    height: 52vh;
+  .reelStrip {
+    --card: 46vh;
   }
 }
 
