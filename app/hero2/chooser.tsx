@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, memo, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, animate as fmAnimate, motion } from "framer-motion";
 import { FORMATS, Ratio, type FormatKey } from "../hero13/formats";
 import type { Preview } from "../work/_shared/data";
 import styles from "./hero2.module.css";
@@ -229,6 +229,7 @@ function Names({
   onHover,
   onOpen,
   idle,
+  springy = false,
 }: {
   ink: boolean;
   show: boolean;
@@ -241,8 +242,14 @@ function Names({
   onOpen?: (k: FormatKey) => void;
   /** under the line while nothing is pointed at: what to do here */
   idle?: string;
+  /** hero 6: the words, their corners and the caption move on springs */
+  springy?: boolean;
 }) {
-  const rise = (delay: number) => (show ? { y: "0%", transition: { duration: 0.9, ease: EASE, delay } } : undefined);
+  // hero 6 moves on springs: the corners snap in with a little give, the words settle
+  const SPRING = { type: "spring", visualDuration: 0.5, bounce: 0.28 } as const;
+  const SOFT = { type: "spring", visualDuration: 0.45, bounce: 0 } as const;
+  const rise = (delay: number) =>
+    show ? { y: "0%", transition: springy ? { type: "spring" as const, visualDuration: 0.9, bounce: 0.18, delay } : { duration: 0.9, ease: EASE, delay } } : undefined;
   const f = active ? FORMATS.find((x) => x.key === active) : null;
   return (
     <div className={`${styles.names} ${ink ? "" : styles.namesPaper}`} aria-hidden={ink ? undefined : true}>
@@ -267,7 +274,7 @@ function Names({
             aria-hidden="true"
             initial={false}
             animate={{ opacity: on ? 1 : 0, x: on ? 0 : c.includes("l") ? -6 : 6, y: on ? 0 : c.includes("t") ? -6 : 6 }}
-            transition={{ duration: 0.45, ease: EASE }}
+            transition={springy ? SPRING : { duration: 0.45, ease: EASE }}
           />
         ));
         return (
@@ -296,7 +303,7 @@ function Names({
                 style={{ pointerEvents: show ? "auto" : "none" }}
                 initial={false}
                 animate={fade}
-                transition={{ duration: 0.45, ease: EASE }}
+                transition={springy ? SOFT : { duration: 0.45, ease: EASE }}
                 onPointerEnter={(e) => e.pointerType === "mouse" && onHover?.(fm.key)}
                 onFocus={(e) => e.currentTarget.matches(":focus-visible") && onHover?.(fm.key)}
                 onClick={() => onOpen?.(fm.key)}
@@ -305,7 +312,7 @@ function Names({
                 {corners}
               </motion.button>
             ) : (
-              <motion.span className={styles.name} initial={false} animate={fade} transition={{ duration: 0.45, ease: EASE }}>
+              <motion.span className={styles.name} initial={false} animate={fade} transition={springy ? SOFT : { duration: 0.45, ease: EASE }}>
                 {word}
                 {corners}
               </motion.span>
@@ -322,7 +329,7 @@ function Names({
               key={f.key}
               className={styles.capIn}
               initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE, delay: 0.12 } }}
+              animate={{ opacity: 1, y: 0, transition: springy ? { ...SPRING, delay: 0.08 } : { duration: 0.5, ease: EASE, delay: 0.12 } }}
               exit={{ opacity: 0, y: -6, transition: { duration: 0.18 } }}
             >
               <i>{f.no}</i>
@@ -399,10 +406,56 @@ const GRID = {
 // opening or the pointer is only passing over the word (switching fast stays light), then they
 // come on one by one so no frame has to spin up several decoders at once.
 const LIVE = { after: 520, every: 45 };
-function useLiveCount(on: boolean, total: number) {
+
+// What this device can carry: how many films a window may play at once, and whether 16x9's cuts
+// can keep a second film running under each tile. Phones and low-end machines get fewer films (the
+// rest of the tiles stay as stills); reduced motion or data saving, none.
+type Device = { budget: number; rich: boolean };
+const DESKTOP: Device = { budget: 40, rich: true };
+function readDevice(): Device {
+  const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || nav.connection?.saveData) return { budget: 0, rich: false };
+  const small = window.matchMedia("(max-width: 760px), (max-aspect-ratio: 1/1)").matches;
+  const lowEnd = (nav.hardwareConcurrency ?? 8) <= 4 || (nav.deviceMemory ?? 8) <= 4;
+  if (small) return { budget: lowEnd ? 4 : 8, rich: false };
+  return lowEnd ? { budget: 12, rich: false } : DESKTOP;
+}
+const noopSub = () => () => {};
+let deviceCache: Device | null = null;
+function useDevice(): Device {
+  return useSyncExternalStore(noopSub, () => (deviceCache ??= readDevice()), () => DESKTOP);
+}
+
+/** A grid's film: muted and inline as iOS needs to autoplay it (the attribute, not just the
+ *  property), started as soon as it's in the page. */
+function Clip({ src, className }: { src: string; className?: string }) {
+  return (
+    <video
+      ref={(v) => {
+        if (!v) return;
+        v.muted = true;
+        v.setAttribute("muted", "");
+        v.setAttribute("playsinline", "");
+        v.play().catch(() => {});
+      }}
+      className={className}
+      src={src}
+      muted
+      loop
+      playsInline
+      autoPlay
+      preload="auto"
+      disablePictureInPicture
+    />
+  );
+}
+
+function useLiveCount(on: boolean, wanted: number) {
+  const { budget } = useDevice();
+  const total = Math.min(wanted, budget);
   const [n, setN] = useState(0);
   useEffect(() => {
-    if (!on) return;
+    if (!on || total === 0) return;
     let k = 0;
     let id = 0;
     const t = window.setTimeout(() => {
@@ -444,14 +497,42 @@ function useBeat(on: boolean) {
   return beat;
 }
 
+// the viewport, kept current, so a grid can count the rows it needs to cover the screen
+const subscribeResize = (cb: () => void) => {
+  window.addEventListener("resize", cb);
+  return () => window.removeEventListener("resize", cb);
+};
+let viewCache = { w: 1440, h: 900 };
+function useViewport() {
+  return useSyncExternalStore(
+    subscribeResize,
+    () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      if (w !== viewCache.w || h !== viewCache.h) viewCache = { w, h };
+      return viewCache;
+    },
+    () => viewCache
+  );
+}
+/** 16x9's wall: three across (two on a portrait screen), and as many rows of exact 16:9 tiles as
+ *  it takes to cover the screen's height. */
+function coverGrid({ w, h }: { w: number; h: number }) {
+  const cols = w / h < 1 ? 2 : 3;
+  const rows = Math.max(2, Math.ceil(h / ((w / cols) * (9 / 16))));
+  return { cols, rows };
+}
+
 const FormatGrid = memo(function FormatGrid({ kind, on, pool, turn, big = false }: { kind: "16x9" | "9x16"; on: boolean; pool: string[]; turn: number; big?: boolean }) {
   // hero 6: larger tiles — 16x9 three across, 9x16 five across — enough rows to cover the screen
-  const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : { cols: 3, rows: 4 }) : GRID[kind];
+  const view = useViewport();
+  const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : coverGrid(view)) : GRID[kind];
   const n = g.cols * g.rows;
   const live = useLiveCount(on && big, n);
-  const cuts = big && kind === "16x9";
+  const { budget, rich } = useDevice();
+  const cuts = big && kind === "16x9" && budget > 0;
   // the beat only runs once the films are on (not while the window is opening)
-  const beat = useBeat(on && cuts && live >= n);
+  const beat = useBeat(on && cuts && live > 0 && live >= Math.min(n, budget));
   const marks = kind === "9x16" ? ACCOUNT_MARKS : BRAND_MARKS;
   return (
     <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""} ${big ? styles.cine : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}
@@ -466,26 +547,16 @@ const FormatGrid = memo(function FormatGrid({ kind, on, pool, turn, big = false 
           <span key={i} className={styles.fcell} style={{ transitionDelay: on ? `${0.15 + col * 0.07 + row * 0.04}s` : "0s" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={stillOf(src)} alt="" draggable={false} />
-            {cuts ? (
+            {cuts && rich ? (
               // two films per tile: the one showing, and the next already loaded and running out of
               // sight, so a cut is instant and lands on a playing film (keyed by file, the next one
               // becomes the shown one without reloading)
               i < live &&
               [src, pool[(i * 5 + turn * 3 + (v + 1) * 7) % pool.length]].map((f, j) => (
-                <video
-                  key={f}
-                  className={j === 0 ? styles.cutOn : styles.cutNext}
-                  src={f}
-                  muted
-                  loop
-                  playsInline
-                  autoPlay
-                  preload="auto"
-                  disablePictureInPicture
-                />
+                <Clip key={f} className={j === 0 ? styles.cutOn : styles.cutNext} src={f} />
               ))
             ) : (
-              (big ? i < live : on) && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />
+              (big ? i < live : on) && <Clip src={src} />
             )}
             {big && <TileLogo mark={marks[(i * 5 + turn + v * 5) % marks.length]} />}
           </span>
@@ -552,7 +623,7 @@ const ReelStrip = memo(function ReelStrip({ on, pool, turn }: { on: boolean; poo
                   <span key={`${copy}-${i}`} className={styles.reelCard}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={stillOf(src)} alt="" draggable={false} />
-                    {idx < live && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
+                    {idx < live && <Clip src={src} />}
                     <span className={styles.reelHead}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={a.logo} alt="" draggable={false} />
@@ -631,7 +702,7 @@ const BeyondBento = memo(function BeyondBento({ on, pool, turn, refined = false 
                     <span key={key} className={`${styles.bCard} ${styles.bFilm} ${styles[`bShape_${card.shape}`]}`}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={stillOf(src)} alt="" draggable={false} />
-                      {(refined ? film++ < live : on) && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
+                      {(refined ? film++ < live : on) && <Clip src={src} />}
                     </span>
                   );
                 }
@@ -692,7 +763,7 @@ const BeyondMosaic = memo(function BeyondMosaic({ on, pool }: { on: boolean; poo
           <span key={i} className={styles.tileM} style={{ transitionDelay: on ? `${d}s` : "0s" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={stillOf(src)} alt="" draggable={false} />
-            {MOSAIC.live.includes(i) && MOSAIC.live.indexOf(i) < live && <video src={src} muted loop playsInline autoPlay preload="auto" />}
+            {MOSAIC.live.includes(i) && MOSAIC.live.indexOf(i) < live && <Clip src={src} />}
           </span>
         );
       })}
@@ -884,22 +955,32 @@ export default function Chooser({
           el.style.clipPath = "none";
           el.style.willChange = "opacity, transform";
           // (a closed window stays painted, only transparent: opening it again never has to
-          // repaint its tiles)
-          el.style.transition =
-            !animate || reduce
-              ? reduce
-                ? "opacity 0.3s linear"
-                : "none"
-              : on
-                ? "opacity 0.42s cubic-bezier(0.2, 0.7, 0.2, 1), transform 1.1s cubic-bezier(0.16, 1, 0.3, 1)"
-                : up
-                  ? // another window is coming in over it: it stays as it is under that one and goes
-                    // once it's covered, so only one layer is ever fading
-                    "opacity 0s linear 0.44s, transform 0s linear 0.44s"
-                  : "opacity 0.5s ease 0.06s, transform 0.7s ease";
-          el.style.opacity = on ? "1" : "0";
-          el.style.transform = on ? "none" : "scale(1.035)";
+          // repaint its tiles.) Driven by framer-motion on opacity and transform only — both run
+          // on the compositor; the settle is a spring.
+          el.style.transition = "none";
           el.style.visibility = "visible";
+          if (!animate) {
+            el.style.opacity = on ? "1" : "0";
+            el.style.transform = on ? "none" : "scale(1.04)";
+          } else if (reduce) {
+            fmAnimate(el, { opacity: on ? 1 : 0, transform: "none" }, { duration: 0.3, ease: "linear" });
+          } else if (on) {
+            fmAnimate(
+              el,
+              { opacity: 1, transform: "scale(1)" },
+              { opacity: { duration: 0.4, ease: [0.2, 0.7, 0.2, 1] }, transform: { type: "spring", visualDuration: 0.85, bounce: 0.12 } }
+            );
+          } else if (up) {
+            // another window is coming in over it: it stays as it is under that one and goes once
+            // it's covered, so only one layer is ever fading
+            fmAnimate(el, { opacity: 0, transform: "scale(1.04)" }, { duration: 0, delay: 0.42 });
+          } else {
+            fmAnimate(
+              el,
+              { opacity: 0, transform: "scale(1.04)" },
+              { opacity: { duration: 0.45, ease: "easeOut", delay: 0.05 }, transform: { type: "spring", visualDuration: 0.6, bounce: 0 } }
+            );
+          }
           el.dataset.state = to;
           continue;
         }
@@ -962,6 +1043,7 @@ export default function Chooser({
           onHover={(k) => point(k)}
           onOpen={onOpen}
           idle={idle}
+          springy={refined}
         />
       </div>
 
@@ -1008,7 +1090,7 @@ export default function Chooser({
           ) : null}
           {f.key === "beyond" && !grid && <BeyondStats on={up === "beyond" && !open} />}
           <div className={styles.namesWrap}>
-            <Names ink={false} show={show} base={base} reduce={reduce} ready={ready} active={shown} />
+            <Names ink={false} show={show} base={base} reduce={reduce} ready={ready} active={shown} springy={refined} />
           </div>
         </div>
       ))}

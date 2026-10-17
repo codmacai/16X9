@@ -1448,7 +1448,7 @@
 }
 
 @media (max-aspect-ratio: 1/1) {
-  .fgrid[data-kind="16x9"] {
+  .fgrid[data-kind="16x9"]:not(.cine) {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
@@ -2140,4 +2140,19 @@
   .reelStrip {
     --cols: 3;
   }
+}
+
+/* reduced motion: nothing drifts or swipes; the grids rest as stills */
+@media (prefers-reduced-motion: reduce) {
+  .feedTrack,
+  .bTrack,
+  .reelBar::before {
+    animation: none !important;
+  }
+}
+
+/* the 16x9 wall covers any screen: its rows are counted from the viewport (chooser.tsx), so the
+   phone layout no longer forces its own column count */
+.cine.fgrid[data-kind="16x9"] {
+  align-content: center;
 }
