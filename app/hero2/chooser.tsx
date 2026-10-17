@@ -430,25 +430,44 @@ function usePreloadStills(pool: string[] | undefined) {
   }, [pool]);
 }
 
+// hero 6's 16x9: once the wall is up, its tiles cut — every beat a few of them switch, instantly,
+// to another film and another brand, like a gallery of monitors being cut live. Each tile keeps
+// its own rhythm (a cycle of 4 to 7 beats, offset), so the cuts fall across the wall, never all at once.
+const CUT = { beat: 800, cycles: [4, 6, 5, 7, 4, 6, 5, 7, 6, 4, 7, 5] };
+function useBeat(on: boolean) {
+  const [beat, setBeat] = useState(0);
+  useEffect(() => {
+    if (!on) return;
+    const id = window.setInterval(() => setBeat((b) => b + 1), CUT.beat);
+    return () => window.clearInterval(id);
+  }, [on]);
+  return beat;
+}
+
 const FormatGrid = memo(function FormatGrid({ kind, on, pool, turn, big = false }: { kind: "16x9" | "9x16"; on: boolean; pool: string[]; turn: number; big?: boolean }) {
-  // hero 6: 9x16's cards larger — five across, tall enough that two rows fill the screen
   // hero 6: larger tiles — 16x9 three across, 9x16 five across — enough rows to cover the screen
   const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : { cols: 3, rows: 4 }) : GRID[kind];
   const n = g.cols * g.rows;
   const live = useLiveCount(on && big, n);
+  const cuts = big && kind === "16x9";
+  // the beat only runs once the films are on (not while the window is opening)
+  const beat = useBeat(on && cuts && live >= n);
+  const marks = kind === "9x16" ? ACCOUNT_MARKS : BRAND_MARKS;
   return (
     <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""} ${big ? styles.cine : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}
       data-kind={kind} aria-hidden="true">
       {Array.from({ length: n }, (_, i) => {
-        const src = pool[(i * 5 + turn * 3) % pool.length];
+        const cycle = CUT.cycles[i % CUT.cycles.length];
+        const v = cuts ? Math.floor((beat + (i * 2) % cycle) / cycle) : 0; // how many times this tile has cut
+        const src = pool[(i * 5 + turn * 3 + v * 7) % pool.length];
         const col = i % g.cols;
         const row = Math.floor(i / g.cols);
         return (
           <span key={i} className={styles.fcell} style={{ transitionDelay: on ? `${0.15 + col * 0.07 + row * 0.04}s` : "0s" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={stillOf(src)} alt="" draggable={false} />
-            {(big ? i < live : on) && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
-            {big && <TileLogo mark={(kind === "9x16" ? ACCOUNT_MARKS : BRAND_MARKS)[(i * 5 + turn) % (kind === "9x16" ? ACCOUNT_MARKS : BRAND_MARKS).length]} />}
+            {(big ? i < live : on) && <video key={src} src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
+            {big && <TileLogo mark={marks[(i * 5 + turn + v * 5) % marks.length]} />}
           </span>
         );
       })}
@@ -491,6 +510,8 @@ const REEL_ACCOUNTS = [
   { handle: "businessavenue.ae", logo: "/work/accounts/businessavenue.webp" },
 ];
 const FEEDS = 5; // columns
+// each column's place in its swipe cycle, so the columns swipe out of step
+const feedDelay = (c: number) => -c * 1.7 - (c % 2) * 0.9;
 const PER_FEED = 4; // reels in a column (shown twice, so the swipe loops without a seam)
 
 const ReelStrip = memo(function ReelStrip({ on, pool, turn }: { on: boolean; pool: string[]; turn: number }) {
@@ -500,7 +521,7 @@ const ReelStrip = memo(function ReelStrip({ on, pool, turn }: { on: boolean; poo
     <div className={`${styles.reelStrip} ${styles.cine} ${on ? styles.reelOn : ""}`} aria-hidden="true">
       {Array.from({ length: FEEDS }, (_, c) => (
         <div key={c} className={styles.feed}>
-          <div className={styles.feedTrack} style={{ animationDelay: `${-c * 1.7 - (c % 2) * 0.9}s` }}>
+          <div className={styles.feedTrack} style={{ animationDelay: `${feedDelay(c)}s` }}>
             {[0, 1].map((copy) =>
               Array.from({ length: PER_FEED }, (_, i) => {
                 const k = c * PER_FEED + i;
@@ -517,12 +538,8 @@ const ReelStrip = memo(function ReelStrip({ on, pool, turn }: { on: boolean; poo
                       <img src={a.logo} alt="" draggable={false} />
                       {a.handle}
                     </span>
-                    <span className={styles.reelFoot}>
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M8 5v14l11-7z" fill="currentColor" />
-                      </svg>
-                      Reel
-                    </span>
+                    {/* the reel's time, as in the app: a hairline that fills while it holds */}
+                    <span className={styles.reelBar} style={{ animationDelay: `${feedDelay(c)}s` }} />
                   </span>
                 );
               })
