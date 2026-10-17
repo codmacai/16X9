@@ -670,101 +670,6 @@ const ReelStrip = memo(function ReelStrip({ on, pool, turn }: { on: boolean; poo
   );
 });
 
-// ===========================================================================
-// BEYOND (hero 6) — the open frame. The studio's logo is a frame the name
-// crosses; Beyond is the work that runs past the frame. So: one film fills the
-// screen, and an open hairline frame draws itself over the middle of it. Inside
-// the frame the film is in full light; outside it falls into shadow — the
-// picture carries on beyond the frame. What Beyond is (projection mapping,
-// activations, immersive, AR & VR…) is set large at the frame's open corner,
-// crossing its edge as the name crosses the logo's. The scenes change every
-// few seconds (a crossfade and a slow push-in), a counter keeps the place, and
-// the brands we've worked with pass along the foot.
-// Two films at most are ever decoding (the scene and the one fading out).
-// ===========================================================================
-const SCENES = [
-  ["Projection", "mapping"],
-  ["Brand", "activations"],
-  ["Immersive", "experiences"],
-  ["AR", "& VR"],
-  ["Experiential", "events"],
-] as const;
-const SCENE_MS = 4200;
-const MARQUEE: Mark[] = BRAND_MARKS.filter((m) => m.src);
-
-const BeyondStage = memo(function BeyondStage({ on, pool }: { on: boolean; pool: string[] }) {
-  const { budget } = useDevice();
-  const [scene, setScene] = useState(0);
-  useEffect(() => {
-    if (!on) return;
-    const id = window.setInterval(() => setScene((n) => (n + 1) % SCENES.length), SCENE_MS);
-    return () => window.clearInterval(id);
-  }, [on]);
-  const live = useLiveCount(on, 1);
-  const src = pool[(scene * 5 + 3) % pool.length];
-  const words = SCENES[scene];
-  return (
-    <div className={`${styles.stage6} ${styles.cine} ${on ? styles.stage6On : ""}`} aria-hidden="true">
-      {/* the film, edge to edge: each scene crossfades in and pushes in slowly */}
-      <AnimatePresence initial={false}>
-        <motion.div
-          key={scene}
-          className={styles.s6Film}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { duration: 1.1, ease: [0.2, 0.7, 0.2, 1] } }}
-          exit={{ opacity: 0, transition: { duration: 1.1, ease: "easeInOut" } }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={stillOf(src)} alt="" draggable={false} />
-          {live > 0 && budget > 0 && <Clip src={src} />}
-        </motion.div>
-      </AnimatePresence>
-
-      {/* the frame: a window of light in the shadow, its hairline drawing itself open */}
-      <div className={styles.s6Window}>
-        {/* drawn as the logo's frame is: from the open corner, left along the foot, up, across the
-            top and partway down the right side, where it stops short */}
-        <span className={`${styles.s6Edge} ${styles.s6EdgeB}`} />
-        <span className={`${styles.s6Edge} ${styles.s6EdgeL}`} />
-        <span className={`${styles.s6Edge} ${styles.s6EdgeT}`} />
-        <span className={`${styles.s6Edge} ${styles.s6EdgeR}`} />
-        {/* what Beyond is, crossing the frame's open corner as the name crosses the logo's */}
-        <div className={styles.s6Name}>
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={scene}
-              initial={{ y: "60%", opacity: 0 }}
-              animate={{ y: "0%", opacity: 1, transition: { type: "spring", visualDuration: 0.7, bounce: 0.18 } }}
-              exit={{ y: "-40%", opacity: 0, transition: { duration: 0.3, ease: "easeIn" } }}
-            >
-              <b>{words[0]}</b>
-              <b>{words[1]}</b>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-        <span className={styles.s6Count}>
-          <i>{String(scene + 1).padStart(2, "0")}</i> / {String(SCENES.length).padStart(2, "0")}
-        </span>
-        <span className={styles.s6Kicker}>Beyond the frame</span>
-      </div>
-
-      {/* the long view, small, top right */}
-      <span className={styles.s6Facts}>4 years · 120+ films · 3 partners</span>
-
-      {/* the brands, passing along the foot */}
-      <div className={styles.s6Brands}>
-        <div className={styles.s6BrandsTrack}>
-          {[0, 1].map((copy) =>
-            MARQUEE.map((m) => (
-              <span key={`${copy}-${m.name}`} className={styles.s6Brand} style={{ maskImage: `url(${m.src})`, WebkitMaskImage: `url(${m.src})` }} />
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-});
-
 function TileLogo({ mark }: { mark: Mark }) {
   if (mark.round && mark.src)
     // eslint-disable-next-line @next/next/no-img-element
@@ -782,7 +687,7 @@ type Card =
   | { t: "logo"; src: string; name: string; round?: boolean }
   | { t: "word"; name: string }
   | { t: "stat"; n: string; label: string }
-  | { t: "line"; text: string };
+  | { t: "line"; text: string; no?: string };
 const BRANDS: Card[] = [
   { t: "logo", src: "/brands/toyota.svg", name: "Toyota" },
   { t: "logo", src: "/brands/etihad-airways.svg", name: "Etihad" },
@@ -807,13 +712,26 @@ const COLUMNS: Card[][] = [
   [BRANDS[3], { t: "film", shape: "s" }, { t: "stat", n: "3", label: "Partners" }, { t: "film", shape: "w" }],
 ];
 
+// hero 6's refined board: mostly films; the brands as their logos only, in paper on black; the
+// numbers and what Beyond covers in plain type — one palette (black, paper, the films' own colour)
+const logoCard = (name: string, src: string): Card => ({ t: "logo", src, name });
+const REFINED_COLUMNS: Card[][] = [
+  [{ t: "film", shape: "t" }, logoCard("Toyota", "/brands/toyota.svg"), { t: "film", shape: "s" }, { t: "line", no: "01", text: "Projection mapping" }],
+  [{ t: "line", no: "02", text: "Brand activations" }, { t: "film", shape: "w" }, { t: "stat", n: "120+", label: "Films" }, { t: "film", shape: "t" }],
+  [{ t: "film", shape: "s" }, logoCard("Etihad", "/brands/etihad-airways.svg"), { t: "film", shape: "t" }, logoCard("Nike", "/brands/nike.svg")],
+  [{ t: "line", no: "03", text: "Immersive experiences" }, { t: "film", shape: "w" }, { t: "film", shape: "s" }, { t: "stat", n: "4", label: "Years" }],
+  [logoCard("BMW", "/brands/bmw.svg"), { t: "film", shape: "t" }, { t: "film", shape: "w" }, { t: "line", no: "04", text: "AR & VR" }],
+  [{ t: "film", shape: "w" }, { t: "line", no: "05", text: "Experiential events" }, logoCard("what3words", "/brands/what3words.svg"), { t: "film", shape: "t" }],
+  [{ t: "film", shape: "s" }, { t: "stat", n: "3", label: "Partners" }, { t: "film", shape: "t" }, logoCard("Toyota", "/brands/toyota.svg")],
+];
+
 const BeyondBento = memo(function BeyondBento({ on, pool, turn, refined = false }: { on: boolean; pool: string[]; turn: number; refined?: boolean }) {
   let f = turn * 3;
   let film = 0; // the films counted in order, so they can come on one by one
   const live = useLiveCount(on && refined, 40);
   return (
     <div className={`${styles.bento} ${on ? styles.bentoOn : ""} ${refined ? `${styles.bentoRefined} ${styles.cine}` : ""}`} aria-hidden="true">
-      {COLUMNS.map((col, c) => (
+      {(refined ? REFINED_COLUMNS : COLUMNS).map((col, c) => (
         <div key={c} className={styles.bCol} style={{ transitionDelay: on ? `${0.05 + c * 0.07}s` : "0s" }}>
           <div className={`${styles.bTrack} ${c % 2 ? styles.bDown : ""}`} style={{ animationDuration: `${38 + (c % 3) * 9}s` }}>
             {[0, 1].map((copy) =>
@@ -857,7 +775,7 @@ const BeyondBento = memo(function BeyondBento({ on, pool, turn, refined = false 
                   );
                 return (
                   <span key={key} className={`${styles.bCard} ${styles.bLine}`}>
-                    {refined && <i>{String(LINES.indexOf(card.text) + 1).padStart(2, "0")} — Beyond</i>}
+                    {refined && <i>{card.no ?? String(LINES.indexOf(card.text) + 1).padStart(2, "0")} — Beyond</i>}
                     <b>{card.text}</b>
                   </span>
                 );
@@ -1213,11 +1131,7 @@ export default function Chooser({
           </div>
           {f.key === "beyond" && pool?.length ? (
             grid ? (
-              refined ? (
-                <BeyondStage on={up === "beyond" && !open} pool={pool} />
-              ) : (
-                <BeyondBento on={up === "beyond" && !open} pool={pool} turn={turn} refined={refined} />
-              )
+              <BeyondBento on={up === "beyond" && !open} pool={pool} turn={turn} refined={refined} />
             ) : (
               <BeyondMosaic on={up === "beyond" && !open} pool={pool} />
             )

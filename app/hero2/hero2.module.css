@@ -2353,3 +2353,106 @@
     animation: none !important;
   }
 }
+
+/* ===== hero 6's board, refined: one palette (black, paper, the films' own colour), hairline
+   seams, every card edged in a hairline, the brands as logos only, type set plainly ===== */
+.bentoRefined {
+  gap: 3px;
+  padding: 0 3px;
+  background: #000;
+}
+
+.bentoRefined .bTrack {
+  gap: 3px;
+}
+
+.bentoRefined .bCard {
+  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.07);
+}
+
+.bentoRefined .bLogoCard,
+.bentoRefined .bStat,
+.bentoRefined .bLine {
+  background: #0a0a0a;
+  color: #f6f4f0;
+}
+
+.bentoRefined .bLogoCard {
+  aspect-ratio: 1;
+}
+
+.bentoRefined .bMask {
+  width: 34%;
+  background: rgb(246 244 240 / 0.92);
+}
+
+.bentoRefined .bLogoCard i {
+  top: auto;
+  bottom: 12px;
+  left: 14px;
+  opacity: 0.4;
+}
+
+/* the numbers: large, plain, in paper */
+.bentoRefined .bStat {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 14px;
+}
+
+.bentoRefined .bStat b {
+  font-size: clamp(40px, 4.4vw, 76px);
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+.bentoRefined .bStat i {
+  position: static;
+  margin-top: 10px;
+  opacity: 0.5;
+}
+
+/* what Beyond covers: an index at the top, a hairline, the name set solid at the foot */
+.bentoRefined .bLine {
+  aspect-ratio: 3 / 4;
+  padding: 14px;
+  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.07);
+}
+
+.bentoRefined .bLine i {
+  opacity: 0.45;
+}
+
+.bentoRefined .bLine b {
+  position: relative;
+  padding-top: 12px;
+  color: #f6f4f0;
+  -webkit-text-stroke: 0;
+  font-size: clamp(14px, 1.3vw, 21px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.bentoRefined .bLine b::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 1px;
+  background: rgb(246 244 240 / 0.5);
+}
+
+/* the words read clearly over the board: a deeper pool under them, the edges falling away */
+.bentoRefined.cine::after {
+  z-index: 2;
+  background:
+    radial-gradient(ellipse 42% 17% at 50% 53%, rgb(0 0 0 / 0.9), rgb(0 0 0 / 0.55) 55%, transparent 100%),
+    radial-gradient(ellipse 85% 75% at 50% 50%, transparent 50%, rgb(0 0 0 / 0.6));
+}
