@@ -12,8 +12,9 @@ import styles from "../hero2/hero2.module.css";
 import own from "./hero7.module.css";
 
 // ===========================================================================
-// HERO 7 — hero 6 with a band: the middle of the screen stays paper, holding the words, and the
-// preview opens above and below it (the paper drawing back like a curtain, up and down).
+// HERO 7 — hero 6 in white smoke: pointing at a format turns the page to smoke, which clears from
+// the edges inward onto that format's preview and stays as a soft white cloud drifting behind the
+// words (still in ink) — the preview everywhere round it, no edge anywhere.
 // (From hero 6: hero 5 with tall 9x16 cards and a refined Beyond board.)
 // (From hero 5:) 16x9 & BEYOND: hero 2's white start, and each word leads straight to its work.
 //
