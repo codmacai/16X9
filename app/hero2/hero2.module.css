@@ -1898,3 +1898,130 @@
 .film .mosaic {
   will-change: transform;
 }
+
+/* ===== hero 6's 9x16: a strip of reels drifting sideways like a feed ===== */
+.reelStrip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: #070707;
+}
+
+.reelTrack {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-left: 18px;
+  animation: reelDrift 70s linear infinite;
+  will-change: transform;
+}
+
+/* still while its window is closed (nothing moves out of sight) */
+.reelStrip:not(.reelOn) .reelTrack {
+  animation-play-state: paused;
+}
+
+@keyframes reelDrift {
+  to {
+    transform: translateX(calc(-50% - 9px));
+  }
+}
+
+.reelCard {
+  position: relative;
+  flex: none;
+  height: min(52vh, 520px);
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  background: #111;
+  contain: layout paint;
+}
+
+/* a gentle rise and fall along the line, like a feed caught mid-scroll */
+.reelCard:nth-child(odd) {
+  translate: 0 -3.2vh;
+}
+
+.reelCard:nth-child(even) {
+  translate: 0 3.2vh;
+}
+
+.reelCard > img,
+.reelCard > video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: cover;
+  transform: scale(1.35); /* the stand-in clips carry black bands */
+}
+
+.cine .reelCard > img,
+.cine .reelCard > video {
+  filter: contrast(1.12) saturate(0.88) sepia(0.12) brightness(0.9);
+}
+
+/* the app's own shading: dark at the top and the foot so the account and the label read */
+.reelCard::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgb(0 0 0 / 0.5), transparent 22%, transparent 74%, rgb(0 0 0 / 0.55));
+  pointer-events: none;
+}
+
+.reelHead,
+.reelFoot {
+  position: absolute;
+  z-index: 1;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #f6f4f0;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.reelHead {
+  top: 14px;
+}
+
+.reelHead img {
+  width: 26px;
+  height: 26px !important;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 1.5px #f6f4f0;
+}
+
+.reelFoot {
+  bottom: 14px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.reelFoot svg {
+  width: 12px;
+  height: 12px;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .reelCard {
+    height: 52vh;
+  }
+}
+
+.reelStrip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
