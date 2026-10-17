@@ -2105,3 +2105,39 @@
 .reelStrip:not(.reelOn) .reelBar::before {
   animation-play-state: paused;
 }
+
+/* 16x9's cuts: the next film waits, running, under the one showing */
+.fcell video.cutNext {
+  opacity: 0;
+}
+
+.fcell video.cutOn {
+  opacity: 1;
+  z-index: 0;
+}
+
+/* ===== hero 6's 9x16 across the whole screen: the columns share the width edge to edge, each reel
+   as wide as its column and 9:16 tall from that ===== */
+.reelStrip {
+  --cols: 5;
+  --cw: calc((100vw - (var(--cols) + 1) * var(--gap)) / var(--cols));
+  --card: calc(var(--cw) * 16 / 9);
+  justify-content: stretch;
+  padding: 0 var(--gap);
+}
+
+.feed {
+  flex: 1 1 0;
+  width: auto;
+}
+
+.reelCard {
+  width: 100%;
+  height: var(--card);
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .reelStrip {
+    --cols: 3;
+  }
+}

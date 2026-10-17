@@ -466,7 +466,27 @@ const FormatGrid = memo(function FormatGrid({ kind, on, pool, turn, big = false 
           <span key={i} className={styles.fcell} style={{ transitionDelay: on ? `${0.15 + col * 0.07 + row * 0.04}s` : "0s" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={stillOf(src)} alt="" draggable={false} />
-            {(big ? i < live : on) && <video key={src} src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />}
+            {cuts ? (
+              // two films per tile: the one showing, and the next already loaded and running out of
+              // sight, so a cut is instant and lands on a playing film (keyed by file, the next one
+              // becomes the shown one without reloading)
+              i < live &&
+              [src, pool[(i * 5 + turn * 3 + (v + 1) * 7) % pool.length]].map((f, j) => (
+                <video
+                  key={f}
+                  className={j === 0 ? styles.cutOn : styles.cutNext}
+                  src={f}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                  preload="auto"
+                  disablePictureInPicture
+                />
+              ))
+            ) : (
+              (big ? i < live : on) && <video src={src} muted loop playsInline autoPlay preload="auto" disablePictureInPicture />
+            )}
             {big && <TileLogo mark={marks[(i * 5 + turn + v * 5) % marks.length]} />}
           </span>
         );
