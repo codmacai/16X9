@@ -9,6 +9,12 @@
 // edges show the most detail. They're written to public/work/shots/<name>.jpg and
 // listed in app/work/_shared/shots.ts, which the site reads.
 //
+// From the same moment it also cuts a short preview clip — 5 seconds, 1280 wide,
+// letterbox removed, no sound, H.264 with the index up front so it starts at
+// once — to public/work/previews/<name>.mp4 (listed as PREVIEW_CLIPS). These
+// are the brand-matched films on hero 6's 16x9 wall. Replace any one by
+// dropping a hand-cut clip of the same name in public/work/previews.
+//
 // A film whose shot is already in public/work/shots is skipped, so shots can
 // be committed (or swapped by hand for a chosen frame). If the bucket can't be
 // reached, nothing is changed and the build carries on with what's there.
@@ -26,6 +32,8 @@ const ROOT = new URL("..", import.meta.url).pathname;
 const DATA = join(ROOT, "app/work/_shared/data.ts");
 const OUT_DIR = join(ROOT, "public/work/shots");
 const MAP = join(ROOT, "app/work/_shared/shots.ts");
+const CLIP_DIR = join(ROOT, "public/work/previews");
+const CLIP_S = 5;
 const BASE = (process.env.NEXT_PUBLIC_VIDEO_BASE || "https://pub-9d250cf0ea9541beac9a7e373fe10d2f.r2.dev").replace(/\/+$/, "");
 const MOMENTS = [12, 20, 30, 42, 58, 75]; // seconds in
 const TIMEOUT_MS = 45_000;
@@ -59,8 +67,9 @@ function run(args) {
   });
 }
 
-/** The best frame of a film (a URL or a path) written to `out`; false if none could be read. */
-async function bestShot(src, out) {
+/** The best moment of a film (a URL or a path): its frame written to `shotOut` (if given), and a
+ *  short clip cut from there to `clipOut` (if given). False if the film couldn't be read. */
+async function bestShot(src, shotOut, clipOut) {
   const tmp = join(tmpdir(), `shot-${process.pid}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(tmp, { recursive: true });
   let best = null;
@@ -76,18 +85,30 @@ async function bestShot(src, out) {
     const e = join(tmp, `${t}-edge.jpg`);
     await run(["-hide_banner", "-loglevel", "error", "-i", f, "-vf", "scale=320:-2,edgedetect=low=0.08:high=0.25", "-q:v", "4", "-y", e]);
     const size = existsSync(e) ? statSync(e).size : 0;
-    if (!best || size > best.size) best = { f, size };
+    if (!best || size > best.size) best = { f, size, t };
   }
   if (best) {
     // cut away any letterbox bars baked into the film, so the shot fills its frame
     // (only top and bottom: a dark side of the picture is picture, not a bar)
     const probe = await run(["-hide_banner", "-loop", "1", "-t", "0.2", "-i", best.f, "-vf", "cropdetect=limit=24:round=2:reset=0", "-f", "null", "-"]);
     const crop = [...probe.err.matchAll(/crop=(\d+):(\d+):(\d+):(\d+)/g)].pop();
-    const cut = join(tmp, "cut.jpg");
-    if (crop && Number(crop[2]) > 100) {
-      await run(["-hide_banner", "-loglevel", "error", "-i", best.f, "-vf", `crop=iw:${crop[2]}:0:${crop[4]}`, "-q:v", "3", "-y", cut]);
+    const bars = crop && Number(crop[2]) > 100 ? `,crop=iw:${crop[2]}:0:${crop[4]}` : "";
+    if (shotOut) {
+      const cut = join(tmp, "cut.jpg");
+      if (bars) await run(["-hide_banner", "-loglevel", "error", "-i", best.f, "-vf", `crop=iw:${crop[2]}:0:${crop[4]}`, "-q:v", "3", "-y", cut]);
+      writeFileSync(shotOut, readFileSync(existsSync(cut) ? cut : best.f));
     }
-    writeFileSync(out, readFileSync(existsSync(cut) ? cut : best.f));
+    if (clipOut) {
+      // the clip: from the chosen moment, 5 seconds, small and quick to start
+      const c = join(tmp, "clip.mp4");
+      await run([
+        "-hide_banner", "-loglevel", "error", "-ss", String(best.t), "-i", src, "-t", String(CLIP_S), "-an",
+        "-vf", `scale=1280:-2${bars},scale=trunc(iw/2)*2:trunc(ih/2)*2`,
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "27", "-maxrate", "1800k", "-bufsize", "3600k",
+        "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-y", c,
+      ]);
+      if (existsSync(c) && statSync(c).size > 10_000) writeFileSync(clipOut, readFileSync(c));
+    }
   }
   rmSync(tmp, { recursive: true, force: true });
   return !!best;
@@ -97,20 +118,27 @@ async function main() {
   const test = process.argv.indexOf("--test");
   if (test > -1) {
     const out = join(tmpdir(), "shot-test.jpg");
-    console.log((await bestShot(process.argv[test + 1], out)) ? `shot: ${out}` : "no shot");
+    const clip = join(tmpdir(), "clip-test.mp4");
+    console.log((await bestShot(process.argv[test + 1], out, clip)) ? `shot: ${out}  clip: ${clip}` : "no shot");
     return;
   }
 
   const src = readFileSync(DATA, "utf8");
   const keys = [...src.matchAll(/R\("[^"]*",\s*"[^"]*",\s*"\w+",\s*"([^"]+)"\)/g)].map((m) => m[1]);
   mkdirSync(OUT_DIR, { recursive: true });
+  mkdirSync(CLIP_DIR, { recursive: true });
 
   const shots = {};
+  const clips = {};
   const todo = [];
   for (const key of keys) {
     const name = `${slug(key)}.jpg`;
-    if (existsSync(join(OUT_DIR, name))) shots[key] = `/work/shots/${name}`;
-    else todo.push({ key, name });
+    const clip = `${slug(key)}.mp4`;
+    const hasShot = existsSync(join(OUT_DIR, name));
+    const hasClip = existsSync(join(CLIP_DIR, clip));
+    if (hasShot) shots[key] = `/work/shots/${name}`;
+    if (hasClip) clips[key] = `/work/previews/${clip}`;
+    if (!hasShot || !hasClip) todo.push({ key, name, clip, hasShot, hasClip });
   }
 
   let reached = todo.length === 0;
@@ -119,11 +147,12 @@ async function main() {
   const worker = async () => {
     while (queue.length) {
       if (!reached && misses >= 3) return; // the bucket isn't reachable from here: stop trying
-      const { key, name } = queue.shift();
-      const ok = await bestShot(urlOf(key), join(OUT_DIR, name));
+      const { key, name, clip, hasShot, hasClip } = queue.shift();
+      const ok = await bestShot(urlOf(key), hasShot ? null : join(OUT_DIR, name), hasClip ? null : join(CLIP_DIR, clip));
       if (ok) {
         reached = true;
-        shots[key] = `/work/shots/${name}`;
+        if (existsSync(join(OUT_DIR, name))) shots[key] = `/work/shots/${name}`;
+        if (existsSync(join(CLIP_DIR, clip))) clips[key] = `/work/previews/${clip}`;
         console.log(`shot  ${key}`);
       } else {
         misses++;
@@ -133,15 +162,16 @@ async function main() {
   };
   await Promise.all(Array.from({ length: PARALLEL }, worker));
 
-  const body = Object.entries(shots)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)},`)
-    .join("\n");
+  const list = (o) =>
+    Object.entries(o)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)},`)
+      .join("\n");
   writeFileSync(
     MAP,
-    `// Written by scripts/make-shots.mjs (before each build): a real frame from each film, by its file\n// in the bucket. Edit by replacing the image in public/work/shots, not this list.\nexport const SHOTS: Record<string, string> = {\n${body}\n};\n`
+    `// Written by scripts/make-shots.mjs (before each build), by each film's file in the bucket: a real\n// frame from it, and a 5-second preview clip cut from the same moment. Edit by replacing the files in\n// public/work/shots and public/work/previews, not these lists.\nexport const SHOTS: Record<string, string> = {\n${list(shots)}\n};\n\nexport const PREVIEW_CLIPS: Record<string, string> = {\n${list(clips)}\n};\n`
   );
-  console.log(`shots: ${Object.keys(shots).length} of ${keys.length} films`);
+  console.log(`shots: ${Object.keys(shots).length}, clips: ${Object.keys(clips).length} of ${keys.length} films`);
 }
 
 main().catch((e) => {

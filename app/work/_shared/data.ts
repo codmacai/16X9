@@ -1,4 +1,4 @@
-import { SHOTS } from "./shots";
+import { PREVIEW_CLIPS, SHOTS } from "./shots";
 import type { Clip } from "@/components/Hero-config";
 
 // ===========================================================================
@@ -301,4 +301,16 @@ export const PREVIEWS_16X9: Preview[] = PROJECTS.filter((p) => p.format === "16x
   brand: BRAND_NAME[p.client] ?? p.client,
   logo: BRAND_LOGOS[p.client],
   shot: shotFor(p.film),
+}));
+
+/** A film on hero 6's 16x9 wall: its 5-second preview clip (cut by scripts/make-shots.mjs), its
+ *  shot as the still under it, and its brand — the logo when there is one, else the name. */
+export type WallFilm = { clip: string; shot?: string; brand: string; logo?: string; title: string };
+const CLIP_BY_FILM = new Map(Object.entries(PREVIEW_CLIPS).map(([key, clip]) => [hosted(key), clip]));
+export const WALL_16X9: WallFilm[] = PROJECTS.filter((p) => p.format === "16x9" && p.film && CLIP_BY_FILM.has(p.film)).map((p) => ({
+  clip: CLIP_BY_FILM.get(p.film!)!,
+  shot: shotFor(p.film),
+  brand: BRAND_NAME[p.client] ?? p.client,
+  logo: BRAND_LOGOS[p.client],
+  title: p.title,
 }));

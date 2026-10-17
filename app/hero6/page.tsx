@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
 import { HOME_KEY } from "../work/_shared/chrome";
+import { WALL_16X9 } from "../work/_shared/data";
 import { type FormatKey } from "../hero13/formats";
 import Chooser, { LOGO_T } from "../hero2/chooser";
 import styles from "../hero2/hero2.module.css";
@@ -118,6 +119,7 @@ function Home({ variant }: { variant: HeroVariant }) {
         logo
         grid
         refined
+        wall={WALL_16X9}
         idle={touch ? "Tap a frame" : "Choose a frame"}
       />
 

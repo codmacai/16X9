@@ -3,7 +3,7 @@
 import { Fragment, memo, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { AnimatePresence, animate as fmAnimate, motion } from "framer-motion";
 import { FORMATS, Ratio, type FormatKey } from "../hero13/formats";
-import type { Preview } from "../work/_shared/data";
+import type { Preview, WallFilm } from "../work/_shared/data";
 import styles from "./hero2.module.css";
 
 export const EASE = [0.16, 1, 0.3, 1] as const;
@@ -523,7 +523,25 @@ function coverGrid({ w, h }: { w: number; h: number }) {
   return { cols, rows };
 }
 
-const FormatGrid = memo(function FormatGrid({ kind, on, pool, turn, big = false }: { kind: "16x9" | "9x16"; on: boolean; pool: string[]; turn: number; big?: boolean }) {
+// the wall's films are the brands' own once there are enough of them cut (else stand-ins, with logos dealt round)
+const WALL_MIN = 6;
+
+const FormatGrid = memo(function FormatGrid({
+  kind,
+  on,
+  pool,
+  turn,
+  big = false,
+  wall,
+}: {
+  kind: "16x9" | "9x16";
+  on: boolean;
+  pool: string[];
+  turn: number;
+  big?: boolean;
+  /** hero 6's 16x9: the real films, each with its own brand */
+  wall?: WallFilm[];
+}) {
   // hero 6: larger tiles — 16x9 three across, 9x16 five across — enough rows to cover the screen
   const view = useViewport();
   const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : coverGrid(view)) : GRID[kind];
@@ -534,31 +552,41 @@ const FormatGrid = memo(function FormatGrid({ kind, on, pool, turn, big = false 
   // the beat only runs once the films are on (not while the window is opening)
   const beat = useBeat(on && cuts && live > 0 && live >= Math.min(n, budget));
   const marks = kind === "9x16" ? ACCOUNT_MARKS : BRAND_MARKS;
+  const films = big && kind === "16x9" && wall && wall.length >= WALL_MIN ? wall : null;
   return (
     <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""} ${big ? styles.cine : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}
       data-kind={kind} aria-hidden="true">
       {Array.from({ length: n }, (_, i) => {
         const cycle = CUT.cycles[i % CUT.cycles.length];
         const v = cuts ? Math.floor((beat + (i * 2) % cycle) / cycle) : 0; // how many times this tile has cut
-        const src = pool[(i * 5 + turn * 3 + v * 7) % pool.length];
+        const pick = (k: number) => (i * 5 + turn * 3 + k * 7) % (films ? films.length : pool.length);
+        const film = films ? films[pick(v)] : null;
+        const src = film ? film.clip : pool[pick(v)];
+        const nextSrc = films ? films[pick(v + 1)].clip : pool[pick(v + 1)];
+        const still = film ? film.shot : stillOf(src);
+        const mark: Mark | null = film
+          ? { name: film.brand || film.title, src: film.logo }
+          : big
+            ? marks[(i * 5 + turn + v * 5) % marks.length]
+            : null;
         const col = i % g.cols;
         const row = Math.floor(i / g.cols);
         return (
           <span key={i} className={styles.fcell} style={{ transitionDelay: on ? `${0.15 + col * 0.07 + row * 0.04}s` : "0s" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={stillOf(src)} alt="" draggable={false} />
+            {still && <img src={still} alt="" draggable={false} />}
             {cuts && rich ? (
               // two films per tile: the one showing, and the next already loaded and running out of
               // sight, so a cut is instant and lands on a playing film (keyed by file, the next one
               // becomes the shown one without reloading)
               i < live &&
-              [src, pool[(i * 5 + turn * 3 + (v + 1) * 7) % pool.length]].map((f, j) => (
+              (nextSrc === src ? [src] : [src, nextSrc]).map((f, j) => (
                 <Clip key={f} className={j === 0 ? styles.cutOn : styles.cutNext} src={f} />
               ))
             ) : (
               (big ? i < live : on) && <Clip src={src} />
             )}
-            {big && <TileLogo mark={marks[(i * 5 + turn + v * 5) % marks.length]} />}
+            {mark && <TileLogo mark={mark} />}
           </span>
         );
       })}
@@ -828,6 +856,7 @@ export default function Chooser({
   previews,
   grid = false,
   refined = false,
+  wall,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -855,6 +884,8 @@ export default function Chooser({
   grid?: boolean;
   /** hero 6: 9x16's cards larger, and Beyond's board in its refined, tilted cut */
   refined?: boolean;
+  /** hero 6: the real 16x9 films for the 16x9 wall, each with its brand */
+  wall?: WallFilm[];
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
   const base = reduce ? 0 : first ? (logo ? LOGO_T.names : INTRO.names) : 0.1;
@@ -1067,7 +1098,7 @@ export default function Chooser({
               refined && f.key === "9x16" ? (
                 <ReelStrip on={up === f.key && !open} pool={pool} turn={turn} />
               ) : (
-                <FormatGrid kind={f.key as "16x9" | "9x16"} on={up === f.key && !open} pool={pool} turn={turn} big={refined} />
+                <FormatGrid kind={f.key as "16x9" | "9x16"} on={up === f.key && !open} pool={pool} turn={turn} big={refined} wall={wall} />
               )
             ) : (
             <video
