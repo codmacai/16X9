@@ -2456,3 +2456,146 @@
     radial-gradient(ellipse 42% 17% at 50% 53%, rgb(0 0 0 / 0.9), rgb(0 0 0 / 0.55) 55%, transparent 100%),
     radial-gradient(ellipse 85% 75% at 50% 50%, transparent 50%, rgb(0 0 0 / 0.6));
 }
+
+/* ===== hero 7: the band. The page stays paper through the middle, holding the words; above and
+   below it the paper draws back — up and down, like a curtain — onto the preview. On a click
+   the band itself parts and the film is the whole screen. Transforms only. ===== */
+.stageBand > .namesWrap {
+  z-index: 6;
+}
+
+.stageBand .film .namesWrap {
+  display: none;
+}
+
+.stageBand .introLogo {
+  z-index: 7;
+}
+
+.band7 {
+  --bh: clamp(150px, 25vh, 240px);
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.band7Top,
+.band7Bot,
+.band7Mid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--paper, #f4f2ee);
+  will-change: transform;
+}
+
+.band7Top {
+  top: 0;
+  height: calc(50% - var(--bh) / 2 + 1px);
+  transition: transform 0.75s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.band7Bot {
+  bottom: 0;
+  height: calc(50% - var(--bh) / 2 + 1px);
+  transition: transform 0.75s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.band7Mid {
+  top: calc(50% - var(--bh) / 2);
+  height: var(--bh);
+  transition: transform 0.8s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+.band7Open .band7Top {
+  transform: translateY(-100%);
+  transition: transform 1s cubic-bezier(0.7, 0, 0.12, 1);
+}
+
+.band7Open .band7Bot {
+  transform: translateY(100%);
+  transition: transform 1s cubic-bezier(0.7, 0, 0.12, 1);
+}
+
+/* a click: the band parts too, from its middle line out */
+.band7Launch .band7Mid {
+  transform: scaleY(0);
+  transition: transform 0.9s cubic-bezier(0.76, 0, 0.24, 1) 0.05s;
+}
+
+/* the band's edges: hairlines, there once the paper has drawn back from them */
+.band7Mid::before,
+.band7Mid::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgb(9 9 9 / 0.16);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.band7Mid::before {
+  top: 0;
+}
+
+.band7Mid::after {
+  bottom: 0;
+}
+
+.band7Open .band7Mid::before,
+.band7Open .band7Mid::after {
+  opacity: 1;
+  transition: opacity 0.6s ease 0.35s;
+}
+
+/* the band's corners: where you are, and the line */
+.band7Meta {
+  position: absolute;
+  top: 16px;
+  left: clamp(20px, 3.4vw, 48px);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgb(9 9 9 / 0.42);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.band7Meta i {
+  font-style: normal;
+  color: #090909;
+}
+
+.band7MetaR {
+  left: auto;
+  right: clamp(20px, 3.4vw, 48px);
+}
+
+.band7Open .band7Meta {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.5s ease 0.3s, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.3s;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .band7 {
+    --bh: clamp(150px, 22vh, 200px);
+  }
+
+  .band7MetaR {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .band7Top,
+  .band7Bot,
+  .band7Mid {
+    transition-duration: 0.01s !important;
+  }
+}

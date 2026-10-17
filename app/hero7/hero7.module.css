@@ -1,0 +1,51 @@
+/* HERO 5 — the landing, in the brand bible's type and colour:
+   Arial throughout (bold for the name), ink #090909, greys #626262 / #AEAEAE, white. */
+
+.brand {
+  --font-wide: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --font-sans: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --ink: #090909;
+  --grey: #626262;
+  --grey-light: #aeaeae;
+  font-family: var(--font-sans);
+}
+
+.foot {
+  position: absolute;
+  z-index: 5;
+  left: clamp(20px, 3.4vw, 48px);
+  right: clamp(20px, 3.4vw, 48px);
+  bottom: clamp(20px, 4vh, 40px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+/* on Beyond's dark the foot turns to paper */
+[data-dark] .foot {
+  color: #fff;
+}
+
+.line {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--grey);
+  transition: color 0.5s ease;
+}
+
+[data-dark] .line {
+  color: var(--grey-light);
+}
+
+@media (max-width: 760px) {
+  .foot {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 14px;
+  }
+}

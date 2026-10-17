@@ -870,6 +870,7 @@ export default function Chooser({
   grid = false,
   refined = false,
   wall,
+  band = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -899,6 +900,9 @@ export default function Chooser({
   refined?: boolean;
   /** hero 6: the real 16x9 films for the 16x9 wall, each with its brand */
   wall?: WallFilm[];
+  /** hero 7: the middle of the screen stays paper — a band holding the words — and the preview
+   *  opens above and below it, the paper parting like a curtain drawn up and down */
+  band?: boolean;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
   const base = reduce ? 0 : first ? (logo ? LOGO_T.names : INTRO.names) : 0.1;
@@ -1068,7 +1072,7 @@ export default function Chooser({
   return (
     <motion.div
       ref={stageRef}
-      className={styles.stage}
+      className={`${styles.stage} ${band ? styles.stageBand : ""}`}
       initial={false}
       animate={{ opacity: open ? 0 : 1 }}
       transition={reduce ? { duration: 0 } : open ? { delay: 0.95, duration: 0.6, ease: EASE } : { duration: 0.5, ease: EASE }}
@@ -1142,6 +1146,21 @@ export default function Chooser({
           </div>
         </div>
       ))}
+
+      {/* hero 7: the paper parts above and below a band that keeps the words; on a click the band
+          parts too and the film is the whole screen */}
+      {band && (
+        <div className={`${styles.band7} ${up ? styles.band7Open : ""} ${open ? styles.band7Launch : ""}`} aria-hidden="true">
+          <div className={styles.band7Top} />
+          <div className={styles.band7Mid}>
+            <span className={styles.band7Meta}>
+              <i>{up ? String(FORMATS.findIndex((x) => x.key === up) + 1).padStart(2, "0") : "00"}</i> / {String(FORMATS.length).padStart(2, "0")}
+            </span>
+            <span className={`${styles.band7Meta} ${styles.band7MetaR}`}>Stories beyond the frame</span>
+          </div>
+          <div className={styles.band7Bot} />
+        </div>
+      )}
 
       {logo && !reduce ? <IntroLogo /> : intro && <IntroMark />}
     </motion.div>
