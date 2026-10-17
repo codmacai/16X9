@@ -2478,9 +2478,57 @@
   position: absolute;
   inset: 0;
   z-index: 5;
-  width: 100%;
-  height: 100%;
+  overflow: hidden;
   pointer-events: none;
+  opacity: 0;
+}
+
+.smoke7On {
+  opacity: 1;
+}
+
+.smoke7A,
+.smoke7B {
+  position: absolute;
+  left: -6%;
+  top: -6%;
+  width: 112% !important;
+  height: 112% !important;
+  max-width: none !important;
+  will-change: transform;
+}
+
+/* the two layers drift slowly past each other: the cloud seems to move within itself */
+.smoke7A {
+  opacity: 0.9;
+  animation: smokeA 24s ease-in-out infinite alternate;
+}
+
+.smoke7B {
+  opacity: 0.55;
+  animation: smokeB 31s ease-in-out infinite alternate;
+}
+
+@keyframes smokeA {
+  from { transform: translate3d(-1.6%, 0.4%, 0) scale(1); }
+  to { transform: translate3d(1.8%, -0.6%, 0) scale(1.05); }
+}
+
+@keyframes smokeB {
+  from { transform: translate3d(2%, -0.5%, 0) scale(1.06) scaleX(-1); }
+  to { transform: translate3d(-2.2%, 0.7%, 0) scale(1) scaleX(-1); }
+}
+
+/* nothing moves while it's hidden */
+.smoke7:not(.smoke7On) img {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .smoke7A,
+  .smoke7B {
+    animation: none;
+  }
 }
 
 /* under white smoke the grids lose their dark centre pool (the smoke is the ground for the words);

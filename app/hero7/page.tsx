@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
 import { HOME_KEY } from "../work/_shared/chrome";
@@ -12,9 +12,9 @@ import styles from "../hero2/hero2.module.css";
 import own from "./hero7.module.css";
 
 // ===========================================================================
-// HERO 7 — hero 6 in white smoke: pointing at a format turns the page to smoke, which clears from
-// the edges inward onto that format's preview and stays as a soft white cloud drifting behind the
-// words (still in ink) — the preview everywhere round it, no edge anywhere.
+// HERO 7 — hero 6 in white smoke: pointing at a format brings up its preview with a soft white
+// cloud drifting in the middle behind the words (still in ink), at once — no edge anywhere. No
+// line at the foot and no prompt under the words: the three words alone.
 // (From hero 6: hero 5 with tall 9x16 cards and a refined Beyond board.)
 // (From hero 5:) 16x9 & BEYOND: hero 2's white start, and each word leads straight to its work.
 //
@@ -124,22 +124,8 @@ function Home({ variant }: { variant: HeroVariant }) {
         refined
         wall={WALL_16X9}
         band
-        idle={touch ? "Tap a frame" : "Choose a frame"}
       />
 
-      {/* ================= the foot: no menu on the landing — the line, and how to begin =================
-          (the brand bible's selling line; what to do here sits quietly under the words) */}
-      <motion.footer
-        className={own.foot}
-        initial={reduce ? false : { opacity: 0 }}
-        animate={{ opacity: room === null ? 1 : 0, transition: { delay: room === null && !reduce ? LOGO_T.names + 0.5 : 0, duration: 0.9 } }}
-      >
-        <p className={own.line}>
-          We find the story, shape the idea
-          <br />
-          and bring it to life.
-        </p>
-      </motion.footer>
     </section>
   );
 }
