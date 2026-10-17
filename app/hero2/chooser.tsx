@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, memo, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
-import { AnimatePresence, animate as fmAnimate, motion } from "framer-motion";
+import { AnimatePresence, animate as fmAnimate, motion, useMotionValue } from "framer-motion";
 import { FORMATS, Ratio, type FormatKey } from "../hero13/formats";
 import type { Preview, WallFilm } from "../work/_shared/data";
 import styles from "./hero2.module.css";
@@ -694,14 +694,20 @@ float noise(vec2 p) {
 float fbm(vec2 p) {
   float v = 0.0, a = 0.5;
   mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
-  for (int i = 0; i < 5; i++) { v += a * noise(p); p = m * p; a *= 0.5; }
+  for (int i = 0; i < 4; i++) { v += a * noise(p); p = m * p; a *= 0.5; }
+  return v;
+}
+float fbm3(vec2 p) {
+  float v = 0.0, a = 0.5;
+  mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
+  for (int i = 0; i < 3; i++) { v += a * noise(p); p = m * p; a *= 0.5; }
   return v;
 }
 void main() {
   vec2 uv = gl_FragCoord.xy / uRes;
   vec2 p = vec2(uv.x * uRes.x / uRes.y, uv.y) * 3.1;
   float t = uTime * 0.055;
-  vec2 q = vec2(fbm(p + vec2(t, 0.0)), fbm(p + vec2(-t * 0.7, t * 0.3) + 4.2));
+  vec2 q = vec2(fbm3(p + vec2(t, 0.0)), fbm3(p + vec2(-t * 0.7, t * 0.3) + 4.2));
   float n = fbm(p + 2.6 * q + vec2(t * 1.5, -t * 0.25));
   // a cloud round the middle of the screen (where the words are): wider than it is tall, dense at
   // its heart, thinning into wisps outward; it breathes a little as it drifts. While it opens it
@@ -711,7 +717,7 @@ void main() {
   float rad = 1.3 + uSpread * 3.4;
   float body = smoothstep(rad, rad * 0.27, r + 0.35 * (n - 0.5));
   float edge = smoothstep(rad * 0.27, rad, r);
-  float fine = fbm(p * 2.3 + 1.7 * q - vec2(t * 2.2, 0.0));
+  float fine = fbm3(p * 2.3 + 1.7 * q - vec2(t * 2.2, 0.0));
   float wisps = smoothstep(0.36, 0.8, n);
   float a = body * mix(0.9 + 0.1 * n, wisps * 1.2, edge);
   a = clamp(max(a, uSpread * uSpread), 0.0, 0.97) * uAlpha;
@@ -723,15 +729,30 @@ void main() {
 
 function Smoke({ on }: { on: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const onRef = useRef(on);
+  const { budget, rich } = useDevice();
+  // the smoke's two motions are springs (framer-motion): how much of it there is, and how far it
+  // has cleared; the shader just reads them each frame
+  const alpha = useMotionValue(0);
+  const spread = useMotionValue(1);
   const kick = useRef<() => void>(() => {});
   useEffect(() => {
-    onRef.current = on;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const soft = { type: "spring", stiffness: 60, damping: 20, mass: 1, restDelta: 0.001 } as const;
+    const settle = { type: "spring", stiffness: 38, damping: 16, mass: 1, restDelta: 0.001 } as const;
+    // opening: it rises to the paper's whole screen and clears outward to its cloud;
+    // closing: it spreads back over the screen as it fades into the paper
+    // From rest the smoke at full spread is indistinguishable from the paper it rises from, so it
+    // starts there at once and only the clearing is seen; caught mid-fade, it springs back up instead.
+    if (on && alpha.get() < 0.02 && spread.get() > 0.97) alpha.set(1);
+    const runs = on
+      ? [fmAnimate(alpha, 1, still ? { duration: 0 } : soft), fmAnimate(spread, 0, still ? { duration: 0 } : settle)]
+      : [fmAnimate(alpha, 0, still ? { duration: 0 } : { ...soft, stiffness: 80 }), fmAnimate(spread, 1, still ? { duration: 0 } : { ...soft, stiffness: 70 })];
     kick.current();
-  }, [on]);
+    return () => runs.forEach((r) => r.stop());
+  }, [on, alpha, spread]);
   useEffect(() => {
     const canvas = ref.current;
-    const gl = canvas?.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: false });
+    const gl = canvas?.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: false, powerPreference: "low-power" });
     if (!canvas || !gl) return;
     const sh = (type: number, src: string) => {
       const x = gl.createShader(type)!;
@@ -757,7 +778,8 @@ function Smoke({ on }: { on: boolean }) {
     const uAlpha = gl.getUniformLocation(prog, "uAlpha");
     const uSpread = gl.getUniformLocation(prog, "uSpread");
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const SCALE = 0.5; // half resolution: smoke is soft, nobody can tell
+    // smoke is soft: it's drawn small and stretched — less on machines that need the headroom
+    const SCALE = rich ? 0.5 : budget > 6 ? 0.4 : 0.3;
     const size = () => {
       const w = Math.max(2, Math.round(canvas.clientWidth * SCALE));
       const h = Math.max(2, Math.round(canvas.clientHeight * SCALE));
@@ -772,44 +794,44 @@ function Smoke({ on }: { on: boolean }) {
     const ro = new ResizeObserver(size);
     ro.observe(canvas);
     let raf = 0;
-    let alpha = 0;
-    let spread = 1;
     let last = performance.now();
     let time = Math.random() * 100;
+    let odd = false;
+    const draw = () => {
+      gl.uniform1f(uTime, time);
+      gl.uniform1f(uAlpha, alpha.get());
+      gl.uniform1f(uSpread, spread.get());
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    };
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       if (!still) time += dt;
-      // opening: the smoke is the paper at once (full, everywhere) and clears outward to its cloud;
-      // closing: it spreads back over the screen as it fades, into the paper underneath
-      if (onRef.current) {
-        alpha = 1;
-        spread += (0 - spread) * (1 - Math.exp(-dt * (still ? 20 : 2.1)));
-      } else {
-        spread += (1 - spread) * (1 - Math.exp(-dt * 4));
-        alpha += (0 - alpha) * (1 - Math.exp(-dt * 2.6));
+      const moving = alpha.isAnimating() || spread.isAnimating();
+      // while it opens or closes, every frame; once settled, the drift is slow enough to draw every
+      // other frame (half the work, no visible difference)
+      odd = !odd;
+      if (moving || odd) draw();
+      const showing = alpha.get() > 0.003;
+      raf = showing || moving ? requestAnimationFrame(frame) : 0;
+      if (!raf) {
+        gl.clear(gl.COLOR_BUFFER_BIT);
       }
-      gl.uniform1f(uTime, time);
-      gl.uniform1f(uAlpha, alpha);
-      gl.uniform1f(uSpread, spread);
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      // runs only while the smoke shows: once it has faded out it stops until the band opens again
-      raf = onRef.current || alpha > 0.004 ? requestAnimationFrame(frame) : 0;
     };
     kick.current = () => {
       if (raf) return;
       last = performance.now();
       raf = requestAnimationFrame(frame);
     };
-    if (onRef.current) kick.current();
+    kick.current();
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
       kick.current = () => {};
     };
-  }, []);
+  }, [alpha, spread, budget, rich]);
   return <canvas ref={ref} className={styles.smoke7} aria-hidden="true" />;
 }
 
