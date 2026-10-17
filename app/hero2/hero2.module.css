@@ -118,7 +118,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.62em;
+  gap: 0.3em;
   font-size: clamp(34px, 5.2vw, 100px);
   color: var(--ink);
 }
@@ -158,6 +158,27 @@
   padding: 0.1em 0.02em 0.06em;
 }
 
+/* optical spacing: the 9 and the B stand a little off their left edge, so they are drawn in by
+   that much, leaving the same visible space either side of each slash */
+/* …and the 1 of 16x9 stands further off its edge than the D of Beyond, so the line is drawn in
+   on the left to sit on the true centre */
+.name[data-fmt="16x9"] {
+  margin-left: -0.036em;
+}
+
+.name[data-fmt="9x16"] {
+  margin-left: -0.025em;
+}
+
+.name[data-fmt="beyond"] {
+  margin-left: -0.06em;
+}
+
+/* the slash keeps no side room of its own: the line's gap is the only space either side of it */
+.slashMask {
+  padding-inline: 0;
+}
+
 /* a plain, tight grotesk at its normal width: the words carry no decoration */
 .nameWord,
 .slash {
@@ -192,25 +213,25 @@
 }
 
 .finder_tl {
-  left: -0.22em;
+  left: -0.16em;
   top: -0.04em;
   border-width: 1.5px 0 0 1.5px;
 }
 
 .finder_tr {
-  right: -0.22em;
+  right: -0.16em;
   top: -0.04em;
   border-width: 1.5px 1.5px 0 0;
 }
 
 .finder_bl {
-  left: -0.22em;
+  left: -0.16em;
   bottom: -0.1em;
   border-width: 0 0 1.5px 1.5px;
 }
 
 .finder_br {
-  right: -0.22em;
+  right: -0.16em;
   bottom: -0.1em;
   border-width: 0 1.5px 1.5px 0;
 }
@@ -971,7 +992,7 @@
   }
   .names {
     font-size: 7.6vw;
-    gap: 0.4em;
+    gap: 0.26em;
   }
   .cap {
     font-size: 9px;

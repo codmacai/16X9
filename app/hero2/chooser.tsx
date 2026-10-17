@@ -298,6 +298,7 @@ function Names({
                 }}
                 type="button"
                 className={styles.name}
+                data-fmt={fm.key}
                 aria-label={`${fm.label}: ${fm.line}`}
                 disabled={!ready || !show}
                 style={{ pointerEvents: show ? "auto" : "none" }}
@@ -312,7 +313,7 @@ function Names({
                 {corners}
               </motion.button>
             ) : (
-              <motion.span className={styles.name} initial={false} animate={fade} transition={springy ? SOFT : { duration: 0.45, ease: EASE }}>
+              <motion.span className={styles.name} data-fmt={fm.key} initial={false} animate={fade} transition={springy ? SOFT : { duration: 0.45, ease: EASE }}>
                 {word}
                 {corners}
               </motion.span>
