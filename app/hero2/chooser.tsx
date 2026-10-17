@@ -551,7 +551,7 @@ const FormatGrid = memo(function FormatGrid({
   const cuts = big && kind === "16x9" && budget > 0;
   // the beat only runs once the films are on (not while the window is opening)
   const beat = useBeat(on && cuts && live > 0 && live >= Math.min(n, budget));
-  const marks = kind === "9x16" ? ACCOUNT_MARKS : BRAND_MARKS;
+  const marks = kind === "9x16" ? ACCOUNT_MARKS : LOGO_MARKS;
   const films = big && kind === "16x9" && wall && wall.length >= WALL_MIN ? wall : null;
   return (
     <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""} ${big ? styles.cine : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}
@@ -564,10 +564,11 @@ const FormatGrid = memo(function FormatGrid({
         const src = film ? film.clip : pool[pick(v)];
         const nextSrc = films ? films[pick(v + 1)].clip : pool[pick(v + 1)];
         const still = film ? film.shot : stillOf(src);
+        // logos only — a film whose brand has no logo file yet carries none (never its name in type)
         const mark: Mark | null = film
-          ? { name: film.brand || film.title, src: film.logo }
+          ? film.logo ? { name: film.brand || film.title, src: film.logo } : null
           : big
-            ? marks[(i * 5 + turn + v * 5) % marks.length]
+            ? marks[(i * 2 + turn + v) % marks.length]
             : null;
         const col = i % g.cols;
         const row = Math.floor(i / g.cols);
@@ -611,6 +612,8 @@ const BRAND_MARKS: Mark[] = [
   { name: "Rotana" },
   { name: "Special Olympics" },
 ];
+// the tiles carry logos only: the brands we have a logo file for
+const LOGO_MARKS = BRAND_MARKS.filter((m) => m.src);
 const ACCOUNT_MARKS: Mark[] = [
   { name: "DED Cafe", src: "/work/accounts/ded_cafe.webp", round: true },
   { name: "Amer Lounge", src: "/work/accounts/amerlounge.webp", round: true },
@@ -694,7 +697,7 @@ function TileLogo({ mark }: { mark: Mark }) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img className={styles.tlRound} src={mark.src} alt="" draggable={false} />;
   if (mark.src) return <span className={styles.tlMask} style={{ maskImage: `url(${mark.src})`, WebkitMaskImage: `url(${mark.src})` }} />;
-  return <span className={styles.tlWord}>{mark.name}</span>;
+  return null;
 }
 
 // Beyond: a moving board — columns of cards drifting up and down past each other: films in

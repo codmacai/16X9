@@ -307,8 +307,12 @@ export const PREVIEWS_16X9: Preview[] = PROJECTS.filter((p) => p.format === "16x
  *  shot as the still under it, and its brand — the logo when there is one, else the name. */
 export type WallFilm = { clip: string; shot?: string; brand: string; logo?: string; title: string };
 const CLIP_BY_FILM = new Map(Object.entries(PREVIEW_CLIPS).map(([key, clip]) => [hosted(key), clip]));
-export const WALL_16X9: WallFilm[] = PROJECTS.filter((p) => p.format === "16x9" && p.film && CLIP_BY_FILM.has(p.film)).map((p) => ({
-  clip: CLIP_BY_FILM.get(p.film!)!,
+// every film with its preview cut, and every film carrying a brand's logo even before its preview
+// is cut (it plays from the film itself, 20s in) — so a logo only ever sits on that brand's own film
+const onWall = (p: Project) =>
+  p.format === "16x9" && !!p.film && (CLIP_BY_FILM.has(p.film) || (!!BRAND_LOGOS[p.client] && /\.mp4$/i.test(p.film)));
+export const WALL_16X9: WallFilm[] = PROJECTS.filter(onWall).map((p) => ({
+  clip: CLIP_BY_FILM.get(p.film!) ?? `${p.film}#t=20`,
   shot: shotFor(p.film),
   brand: BRAND_NAME[p.client] ?? p.client,
   logo: BRAND_LOGOS[p.client],
