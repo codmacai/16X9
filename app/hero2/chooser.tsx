@@ -1072,7 +1072,7 @@ export default function Chooser({
   return (
     <motion.div
       ref={stageRef}
-      className={`${styles.stage} ${band ? styles.stageBand : ""}`}
+      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""}`}
       initial={false}
       animate={{ opacity: open ? 0 : 1 }}
       transition={reduce ? { duration: 0 } : open ? { delay: 0.95, duration: 0.6, ease: EASE } : { duration: 0.5, ease: EASE }}
