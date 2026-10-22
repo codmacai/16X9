@@ -1,17 +1,19 @@
-/* WORK, 9x16 — the opening (intro-916.tsx): the vertical frame in the middle of the dark, "Made for"
-   on its left and "the scroll" on its right, one line under it. Motion is transform and opacity only. */
+/* WORK, 9x16 — the opening (intro-916.tsx), on the paper: the vertical frame alone in the middle, reels
+   swiping up through it; a line and what's playing at the foot. Motion is transform and opacity, and a
+   clip as the frame opens. */
 
 .intro {
+  --ink: #0b0b0b;
+  --frame-h: min(64svh, 680px);
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(26px, 4.5vh, 44px);
+  display: grid;
+  place-items: center;
   min-height: 100svh;
-  padding: calc(var(--band) + clamp(28px, 5vh, 56px)) var(--ui) clamp(84px, 13vh, 130px);
+  padding: calc(var(--band) + clamp(24px, 4vh, 48px)) var(--ui) clamp(110px, 16vh, 150px);
   box-sizing: border-box;
   overflow: hidden;
+  background: #f4f2ee;
+  color: var(--ink);
 }
 
 .sr {
@@ -23,62 +25,37 @@
   white-space: nowrap;
 }
 
-/* the words either side of the frame */
 .stage {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(28px, 4vw, 72px);
-  width: 100%;
-  max-width: 1500px;
-}
-
-.mask {
-  display: block;
-  overflow: hidden;
-  padding: 0.04em 0;
-}
-
-/* each a word over a word, set tight */
-.word {
-  display: block;
-  font-size: clamp(44px, 6.6vw, 124px);
-  font-weight: 300;
-  line-height: 0.88;
-  letter-spacing: -0.045em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.word > span {
-  display: block;
-}
-
-.left {
-  text-align: right;
-}
-
-.right {
-  text-align: left;
+  place-items: center;
 }
 
 /* ===== the frame ===== */
 .device {
   position: relative;
-  height: min(64svh, 700px);
+  height: var(--frame-h);
   aspect-ratio: 9 / 16;
   will-change: transform;
+}
+
+/* on the paper: a real shadow under it */
+.device::before {
+  content: "";
+  position: absolute;
+  inset: 4% 6% 1%;
+  border-radius: 16px;
+  box-shadow:
+    0 50px 90px -20px rgb(20 14 6 / 0.45),
+    0 24px 40px -24px rgb(20 14 6 / 0.5);
+  pointer-events: none;
 }
 
 .screen {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  border-radius: 18px;
-  background: #0c0c0c;
-  box-shadow:
-    0 0 0 1px rgb(246 244 240 / 0.14),
-    0 60px 140px rgb(0 0 0 / 0.75);
+  border-radius: 16px;
+  background: #121212;
   isolation: isolate;
 }
 
@@ -112,7 +89,7 @@
   position: absolute;
   z-index: 1;
   inset: 0;
-  background: linear-gradient(to top, rgb(0 0 0 / 0.55), transparent 30%, transparent 84%, rgb(0 0 0 / 0.4));
+  background: linear-gradient(to bottom, rgb(0 0 0 / 0.35), transparent 18%);
   pointer-events: none;
 }
 
@@ -133,17 +110,17 @@
   height: 2px;
   overflow: hidden;
   border-radius: 2px;
-  background: rgb(246 244 240 / 0.3);
+  background: rgb(255 255 255 / 0.35);
 }
 
 .segs .segDone {
-  background: rgb(246 244 240 / 0.9);
+  background: rgb(255 255 255 / 0.9);
 }
 
 .segs b {
   position: absolute;
   inset: 0;
-  background: var(--paper);
+  background: #fff;
   transform-origin: 0 50%;
   animation: fill linear both;
 }
@@ -157,80 +134,110 @@
   }
 }
 
-.caption {
+/* the finder's corners, a breath outside the frame, in ink */
+.corners {
   position: absolute;
-  z-index: 2;
-  left: 16px;
-  right: 16px;
-  bottom: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgb(246 244 240 / 0.7);
-  text-shadow: 0 1px 10px rgb(0 0 0 / 0.6);
+  inset: -16px;
+  pointer-events: none;
 }
 
-.caption b {
-  font-weight: 400;
-  font-size: 12px;
-  color: var(--paper);
-  animation: caption-in 0.7s var(--ease) both;
-}
-
-@keyframes caption-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
-
-/* the finder's corners, a breath outside the frame */
-.corner {
+.corners i {
   position: absolute;
-  width: 18px;
-  height: 18px;
-  border: 0 solid rgb(246 244 240 / 0.55);
+  width: 20px;
+  height: 20px;
+  border: 0 solid var(--ink);
 }
 
 .tl {
-  top: -14px;
-  left: -14px;
-  border-top-width: 1px;
-  border-left-width: 1px;
+  top: 0;
+  left: 0;
+  border-top-width: 1px !important;
+  border-left-width: 1px !important;
 }
 
 .tr {
-  top: -14px;
-  right: -14px;
-  border-top-width: 1px;
-  border-right-width: 1px;
+  top: 0;
+  right: 0;
+  border-top-width: 1px !important;
+  border-right-width: 1px !important;
 }
 
 .bl {
-  bottom: -14px;
-  left: -14px;
-  border-bottom-width: 1px;
-  border-left-width: 1px;
+  bottom: 0;
+  left: 0;
+  border-bottom-width: 1px !important;
+  border-left-width: 1px !important;
 }
 
 .br {
-  bottom: -14px;
-  right: -14px;
-  border-bottom-width: 1px;
-  border-right-width: 1px;
+  bottom: 0;
+  right: 0;
+  border-bottom-width: 1px !important;
+  border-right-width: 1px !important;
 }
 
-/* ===== the line, and the cue ===== */
+/* ===== the foot: the line on the left, what's playing on the right ===== */
+.line,
+.now {
+  position: absolute;
+  bottom: clamp(30px, 5.5vh, 56px);
+}
+
 .line {
-  max-width: 420px;
+  left: var(--ui);
+  max-width: 360px;
+}
+
+.lead {
   margin: 0;
-  font-size: clamp(13px, 1.05vw, 16px);
-  line-height: 1.6;
-  text-align: center;
-  color: rgb(246 244 240 / 0.6);
+  font-size: clamp(20px, 1.8vw, 30px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.sub {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgb(11 11 11 / 0.55);
+}
+
+.now {
+  right: var(--ui);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.nowCount {
+  font-variant-numeric: tabular-nums;
+}
+
+.nowCount i {
+  font-style: normal;
+  opacity: 0.4;
+}
+
+.nowMask {
+  position: relative;
+  display: block;
+  height: 1.4em;
+  overflow: hidden;
+}
+
+.nowTitle {
+  display: block;
+  white-space: nowrap;
+}
+
+.nowTitle em {
+  margin-left: 10px;
+  font-style: normal;
+  color: rgb(11 11 11 / 0.5);
 }
 
 .cue {
@@ -241,8 +248,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  color: rgb(246 244 240 / 0.5);
+  gap: 10px;
+  color: rgb(11 11 11 / 0.55);
   font-size: 9px;
   letter-spacing: 0.32em;
   text-transform: uppercase;
@@ -251,22 +258,22 @@
 }
 
 .cue:hover {
-  color: var(--paper);
+  color: var(--ink);
 }
 
 .cue i {
   position: relative;
   width: 1px;
-  height: 34px;
+  height: 30px;
   overflow: hidden;
-  background: rgb(246 244 240 / 0.15);
+  background: rgb(11 11 11 / 0.12);
 }
 
 .cue i::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--paper);
+  background: var(--ink);
   animation: fall 2.4s var(--ease) infinite;
 }
 
@@ -280,32 +287,45 @@
   }
 }
 
-/* phones and narrow screens: "Made for" over the frame, "the scroll" under it */
+/* phones and narrow screens: the frame, and the line and what's playing under it */
 @media (max-width: 860px) {
-  .stage {
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: center;
-    gap: 18px;
+  .intro {
+    --frame-h: min(56svh, 520px);
+    padding-bottom: clamp(140px, 20vh, 170px);
   }
-  .left,
-  .right {
+  .line {
+    left: var(--ui);
+    right: var(--ui);
+    bottom: 72px;
+    max-width: none;
     text-align: center;
   }
-  .word {
-    font-size: clamp(38px, 12vw, 64px);
+  .lead {
+    font-size: 19px;
   }
-  /* one line each over and under the frame */
-  .word > span {
-    display: inline;
+  .sub {
+    margin-top: 6px;
+    font-size: 12px;
   }
-  .device {
-    height: min(56svh, 560px);
+  .now {
+    left: var(--ui);
+    right: var(--ui);
+    bottom: 34px;
+    align-items: center;
+    flex-direction: row;
+    justify-content: center;
+    gap: 12px;
+  }
+  .nowTitle em {
+    display: none;
+  }
+  .cue {
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .segs b,
-  .caption b,
   .cue i::after {
     animation: none;
   }
