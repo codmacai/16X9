@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { AnimatePresence, motion, useMotionValue, useSpring, type Transition, type Variants } from "framer-motion";
 import { EASE } from "./_shared/chrome";
-import { brandOf, logoOf, type Logo, type Project } from "./_shared/data";
+import { brandOf, clipFor, logoOf, posterFor, stillFor, type Logo, type Project } from "./_shared/data";
 import FileView from "./file-view";
 import type { Drawer } from "./file-view";
 import f from "./file.module.css";
@@ -13,7 +13,11 @@ import s from "./brand.module.css";
 // BRAND FILMS — THE BRAND WALL. The room itself is the wall: on black, six
 // equal tiles from edge to edge of the screen, joined with no line between
 // them, each holding a brand's logo in its own colours (the versions it
-// wears on dark). The tiles come in one by one, the logos rising into place.
+// wears on dark) over the brand's own films playing behind it, graded down
+// so the logo reads: a brand with several films cuts from one to the next
+// every few seconds, each tile on its own beat; a film with no file yet plays
+// the stand-in its own page plays. The tiles come in one by one, the logos
+// rising into place, and the films start once the wall is up.
 // A soft light follows the pointer over the wall. The tile pointed at lights
 // up in its brand's colour from where the pointer is, its edges catching the
 // same light, and its logo comes forward and leans toward the pointer on a
@@ -50,6 +54,20 @@ const GLOW: Record<string, string> = {
   "/brands/masdar.png": "#4f8fd0",
 };
 
+const LIVE_MS = 1100; // the films start once the wall has come in
+const CUT_MS = 3600; // a brand with several films cuts to the next this often...
+const CUT_STEP_MS = 700; // ...each tile on its own beat
+// a film in a tile: its preview clip (or the film from 20s in; a film with no file yet plays its
+// stand-in), over its own still while it loads (never another film's: a film with a file but no shot
+// yet waits on black)
+// iOS plays a film on its own only when it's muted as an attribute, not just the property
+const startMuted = (v: HTMLVideoElement | null) => {
+  if (!v) return;
+  v.muted = true;
+  v.setAttribute("muted", "");
+  v.play().catch(() => {});
+};
+const reelOf = (p: Project) => ({ clip: clipFor(p) ?? p.src, still: posterFor(p) ?? (p.film ? undefined : stillFor(p.src)) });
 const delayOf = (i: number) => 0.25 + (i % 3) * 0.09 + Math.floor(i / 3) * 0.12;
 const tiles: Variants = {
   hidden: { opacity: 0 },
@@ -100,6 +118,14 @@ export default function BrandIndex({
   const [opening, setOpening] = useState<{ brand: Brand; rect: DOMRect } | null>(null);
   const [leaving, setLeaving] = useState(false);
   const up = opened === null && opening === null && !leaving;
+  // the films play once the wall is up, and stop while a brand's films are out over it
+  const [started, setStarted] = useState(false);
+  useEffect(() => {
+    if (reduce) return;
+    const t = window.setTimeout(() => setStarted(true), LIVE_MS);
+    return () => window.clearTimeout(t);
+  }, [reduce]);
+  const playing = started && up;
   const live = useRef({ busy: false, leaving: false });
   useEffect(() => {
     live.current.busy = !up;
@@ -195,6 +221,7 @@ export default function BrandIndex({
                   <Tile
                     brand={b}
                     k={k}
+                    playing={playing}
                     tabbable={up}
                     reduce={reduce}
                     onEnter={() => up && setHover(k)}
@@ -235,6 +262,7 @@ export default function BrandIndex({
 function Tile({
   brand,
   k,
+  playing,
   tabbable,
   reduce,
   onEnter,
@@ -243,6 +271,8 @@ function Tile({
 }: {
   brand: Brand;
   k: number;
+  /** its films are running */
+  playing: boolean;
   tabbable: boolean;
   reduce: boolean;
   onEnter: () => void;
@@ -250,6 +280,24 @@ function Tile({
   onOpen: (el: HTMLElement) => void;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
+  // its films, and the one showing: a brand with several cuts from one to the next on its own beat
+  const reels = useMemo(() => brand.films.map(reelOf), [brand]);
+  const [at, setAt] = useState(0);
+  useEffect(() => {
+    if (!playing || reels.length < 2) return;
+    let id = 0;
+    const t = window.setTimeout(() => {
+      setAt((i) => (i + 1) % reels.length);
+      id = window.setInterval(() => setAt((i) => (i + 1) % reels.length), CUT_MS);
+    }, CUT_MS + k * CUT_STEP_MS);
+    return () => {
+      window.clearTimeout(t);
+      window.clearInterval(id);
+    };
+  }, [playing, reels.length, k]);
+  // the one showing, and the next already running out of sight, so a cut lands on a playing film
+  // (keyed by file: the next becomes the one showing without reloading)
+  const shown = [at, (at + 1) % reels.length].filter((j, i, a) => a.indexOf(j) === i);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
   const x = useSpring(mx, TILT);
@@ -290,6 +338,29 @@ function Tile({
       onClick={() => ref.current && onOpen(ref.current)}
       aria-label={`${brand.name}: ${n} ${n === 1 ? "film" : "films"}`}
     >
+      {/* its films, behind the logo */}
+      <span className={s.media} aria-hidden="true">
+        {reels[at].still && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={reels[at].still} className={s.still} src={reels[at].still} alt="" draggable={false} decoding="async" />
+        )}
+        {playing &&
+          shown.map((j, i) => (
+            <video
+              key={reels[j].clip}
+              ref={startMuted}
+              className={`${s.film} ${i === 0 ? s.filmOn : ""}`}
+              src={reels[j].clip}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              disablePictureInPicture
+            />
+          ))}
+      </span>
+      <span className={s.shade} aria-hidden="true" />
       <motion.span className={s.logoBox} data-wide={brand.logo.wide || undefined} style={{ x, y }} aria-hidden="true">
         <motion.span className={s.rise} variants={marks} custom={k}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
