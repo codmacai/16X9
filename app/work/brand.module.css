@@ -1,40 +1,16 @@
-/* BRAND FILMS — THE BRAND WALL (brand-index.tsx): the brands' logos in their own colours on a white
-   wall, one plaque each, hairlines between. Motion is transform and opacity; one clip for the flood. */
+/* BRAND FILMS — THE BRAND WALL (brand-index.tsx): on black, the brands' logos in their own colours,
+   one to a tile, every tile the same size; a light after the pointer, each tile lit in its brand's
+   colour where it's pointed at. Motion is transform and opacity, and one clip for the opening. */
 
 .view {
-  --ink: #0b0b0b;
-  --line: #e7e5e0;
-  --paper: var(--ink); /* the shared head (file.module.css) draws in paper: here, in ink */
   overflow: hidden;
-  background: #fff;
-  color: var(--ink);
-  transition: background-color 0.5s var(--ease);
-}
-
-/* while a brand's films are out over it, the wall goes to the dark they sit on */
-.viewOut {
   background: #050505;
 }
 
-.viewOut .wall {
-  opacity: 0;
-}
-
-/* closing: the white room fades back into the cabinet's dark */
+/* closing: the wall fades back into the cabinet's dark */
 .viewLeave {
   opacity: 0;
   transition: opacity 0.4s var(--ease);
-}
-
-/* a hairline under the band */
-.view::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: var(--band);
-  height: 1px;
-  background: rgb(11 11 11 / 0.08);
 }
 
 .body {
@@ -42,6 +18,7 @@
   inset: calc(var(--band) + 56px) 0 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
   padding: 0 var(--ui) clamp(28px, 5vh, 56px);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -52,180 +29,47 @@
   display: none;
 }
 
-/* centred in the room while it fits, from the top once it doesn't */
+/* the wall's width: as wide as fits, but never so wide two rows of tiles run off the screen */
+.top,
+.stage {
+  --gap: clamp(12px, 1.2vw, 18px);
+  width: min(1200px, 100%, calc((100svh - var(--band) - 56px - 150px) / 2 * 1.6 * 3 + var(--gap) * 2));
+}
+
 .top {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
   gap: 20px;
-  width: min(1240px, 100%);
-  margin: auto auto 16px;
-  font-size: 10px;
-  letter-spacing: 0.28em;
+  margin: auto 0 clamp(18px, 3vh, 28px);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(22px, 2.1vw, 34px);
+  font-weight: 300;
+  letter-spacing: -0.02em;
   text-transform: uppercase;
-  color: rgb(11 11 11 / 0.5);
-}
-
-/* ===== the wall: three across, hairlines between (the wall's colour showing through the gaps) ===== */
-.wall {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-rows: clamp(170px, calc((100svh - var(--band) - 56px - 170px) / 2), 300px);
-  gap: 1px;
-  width: min(1240px, 100%);
-  margin: 0 auto;
-  padding: 0;
-  list-style: none;
-  background: var(--line);
-  border: 1px solid var(--line);
-  transition: opacity 0.35s var(--ease);
-}
-
-.wall > li {
-  position: relative;
-  min-width: 0;
-  background: #fff;
-}
-
-.plaque {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  cursor: pointer;
-  overflow: hidden;
-  transition: opacity 0.5s var(--ease);
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* a breath of the brand's colour comes up behind the logo */
-.plaque::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 50%, var(--hex), transparent 70%);
-  opacity: 0;
-  transition: opacity 0.7s var(--ease);
-}
-
-.on .plaque::before {
-  opacity: 0.08;
-}
-
-.logo {
-  position: relative;
-  width: auto;
-  height: 38% !important;
-  max-width: 62% !important;
-  object-fit: contain;
-  transition: transform 0.9s var(--ease);
-}
-
-.logo[data-wide] {
-  width: 58% !important;
-  height: auto !important;
-}
-
-.on .logo {
-  transform: translateY(-6px) scale(1.06);
-}
-
-/* the others quieten */
-.wallFocus > li:not(.on) .plaque {
-  opacity: 0.4;
-}
-
-.no {
-  position: absolute;
-  top: 16px;
-  left: 18px;
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  color: rgb(11 11 11 / 0.4);
-  font-variant-numeric: tabular-nums;
-}
-
-.count {
-  position: absolute;
-  right: 18px;
-  bottom: 16px;
-  font-size: 10px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgb(11 11 11 / 0.45);
-  font-variant-numeric: tabular-nums;
-  transition: color 0.5s var(--ease);
-}
-
-.count i {
-  display: inline-block;
-  margin-left: 6px;
-  font-style: normal;
-  opacity: 0;
-  transform: translateX(-6px);
-  transition:
-    opacity 0.4s var(--ease),
-    transform 0.6s var(--ease);
-}
-
-.on .count {
-  color: var(--hex);
-}
-
-.on .count i {
-  opacity: 1;
-  transform: none;
-}
-
-/* a line in the brand's colour draws along the plaque's foot */
-.rule {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: var(--hex);
-  transform: scaleX(0);
-  transform-origin: 0 50%;
-  transition: transform 0.8s var(--ease);
-}
-
-.on .rule {
-  transform: scaleX(1);
-}
-
-.plaque:focus-visible {
-  outline: none;
-}
-
-.plaque:focus-visible .rule {
-  transform: scaleX(1);
 }
 
 .all {
-  align-self: flex-end;
-  margin: 22px max(0px, calc((100% - 1240px) / 2)) auto 0;
-  padding: 0 0 5px;
+  padding: 0 0 4px;
   border: 0;
-  border-bottom: 1px solid rgb(11 11 11 / 0.28);
+  border-bottom: 1px solid rgb(246 244 240 / 0.3);
   background: none;
-  color: var(--ink);
+  color: var(--paper);
   font: inherit;
   font-size: 10px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
+  white-space: nowrap;
   cursor: pointer;
   transition: border-color 0.35s ease;
 }
 
 .all span {
   margin-left: 4px;
-  opacity: 0.45;
+  opacity: 0.5;
 }
 
 .all i {
@@ -236,40 +80,239 @@
 }
 
 .all:hover {
-  border-color: var(--ink);
+  border-color: var(--paper);
 }
 
 .all:hover i {
   transform: translateX(4px);
 }
 
-/* phones: two across */
-@media (max-width: 760px) {
-  .wall {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: 38vw;
-  }
-  .logo {
-    height: 40% !important;
-  }
-  .no {
-    top: 10px;
-    left: 12px;
+/* ===== the wall ===== */
+.stage {
+  position: relative;
+  margin-bottom: auto;
+}
+
+/* the light after the pointer */
+.light {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  width: 760px;
+  height: 760px;
+  margin: -380px 0 0 -380px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(246 244 240 / 0.08), rgb(246 244 240 / 0.025) 55%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s var(--ease);
+  will-change: transform;
+}
+
+.lightOn {
+  opacity: 1;
+}
+
+/* one wall: the tiles joined edge to edge, no lines — told apart only by a breath of shade */
+.wall {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.wall > li {
+  min-width: 0;
+}
+
+.tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.03);
+  color: var(--paper);
+  font: inherit;
+  cursor: pointer;
+  isolation: isolate;
+  transition:
+    opacity 0.5s var(--ease),
+    background-color 0.6s var(--ease);
+  will-change: transform;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* the brand's colour, lit from where the pointer is */
+.tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(520px circle at var(--x, 50%) var(--y, 50%), color-mix(in srgb, var(--glow) 34%, transparent), transparent 62%);
+  opacity: 0;
+  transition: opacity 0.6s var(--ease);
+}
+
+/* ...and its edge catching the same light */
+.tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(260px circle at var(--x, 50%) var(--y, 50%), var(--glow), transparent 70%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  opacity: 0;
+  transition: opacity 0.6s var(--ease);
+  pointer-events: none;
+}
+
+/* every other tile a shade deeper, so the wall reads as tiles without a line between them */
+.wall > li:nth-child(even) .tile {
+  background: rgb(255 255 255 / 0.018);
+}
+
+.on .tile,
+.wall > li.on:nth-child(even) .tile {
+  background: rgb(255 255 255 / 0.05);
+}
+
+.on .tile::before,
+.on .tile::after {
+  opacity: 1;
+}
+
+/* the others fall back */
+.wallFocus > li:not(.on) .tile {
+  opacity: 0.38;
+}
+
+/* the logo, centred, a fixed share of its tile */
+.logoBox {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 46%;
+  height: 40%;
+  margin: auto;
+  will-change: transform;
+}
+
+.logoBox[data-wide] {
+  width: 66%;
+  height: 18%;
+}
+
+.logo {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: contain;
+  transition: transform 0.9s var(--ease);
+}
+
+.on .logo {
+  transform: scale(1.08);
+}
+
+.count {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  font-size: 9.5px;
+  letter-spacing: 0.24em;
+  text-align: center;
+  text-transform: uppercase;
+  color: rgb(246 244 240 / 0.75);
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.45s var(--ease),
+    transform 0.6s var(--ease);
+}
+
+.count i {
+  margin-left: 4px;
+  font-style: normal;
+}
+
+.on .count {
+  opacity: 1;
+  transform: none;
+}
+
+.tile:focus-visible {
+  outline: none;
+}
+
+.tile:focus-visible::after {
+  opacity: 1;
+}
+
+/* touch screens: each tile carries a faint breath of its colour, and its count */
+@media (hover: none) {
+  .tile::before {
+    opacity: 0.45;
   }
   .count {
-    right: 12px;
-    bottom: 10px;
-    font-size: 8.5px;
-    letter-spacing: 0.16em;
-  }
-  .all {
-    align-self: center;
-    margin-right: 0;
+    opacity: 0.6;
+    transform: none;
   }
 }
 
-/* ===== into the brand: its colour floods out ===== */
-.flood {
+/* phones: two across */
+@media (max-width: 760px) {
+  .top,
+  .stage {
+    width: 100%;
+  }
+  .top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    margin-top: 8px;
+  }
+  .wall {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: 12px;
+  }
+  .tile {
+    aspect-ratio: 1;
+  }
+  /* two across, the shade alternates like a chessboard */
+  .wall > li:nth-child(even) .tile {
+    background: rgb(255 255 255 / 0.03);
+  }
+  .wall > li:nth-child(4n + 2) .tile,
+  .wall > li:nth-child(4n + 3) .tile {
+    background: rgb(255 255 255 / 0.018);
+  }
+  .count {
+    bottom: 10px;
+    font-size: 8.5px;
+  }
+}
+
+/* ===== into the brand: the tile opens to the whole screen ===== */
+.opening {
   position: fixed;
   inset: 0;
   z-index: 15; /* under the line of films, which comes after it */
@@ -277,12 +320,12 @@
   will-change: clip-path;
 }
 
-.floodMark {
+.openingMark {
   position: absolute;
   left: 50%;
-  width: min(30vw, 420px);
+  width: min(28vw, 400px);
   aspect-ratio: 1.5;
-  margin: calc(min(30vw, 420px) / -3) 0 0 calc(min(30vw, 420px) / -2);
+  margin: calc(min(28vw, 400px) / -3) 0 0 calc(min(28vw, 400px) / -2);
   background: #fff;
   mask-size: contain;
   mask-repeat: no-repeat;
@@ -292,8 +335,14 @@
   -webkit-mask-position: center;
 }
 
+.openingMark[data-wide] {
+  width: min(46vw, 640px);
+  aspect-ratio: 5.5;
+  margin: calc(min(46vw, 640px) / -11) 0 0 calc(min(46vw, 640px) / -2);
+}
+
 @media (max-width: 760px) {
-  .floodMark {
+  .openingMark {
     width: 60vw;
     margin: -20vw 0 0 -30vw;
   }

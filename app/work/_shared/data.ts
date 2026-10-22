@@ -352,22 +352,24 @@ const BRAND_NAME: Record<string, string> = {
   "Masdar Institute": "Masdar",
   "Rolls-Royce Kyiv": "Rolls-Royce",
 };
-/** Each logo in its own colours (for a white ground, in /public/brands/colour), and the brand's colour. */
-const LOGO_COLOUR: Record<string, { src: string; hex: string }> = {
-  "/brands/toyota.svg": { src: "/brands/colour/toyota.svg", hex: "#EB0A1E" },
-  "/brands/bmw.svg": { src: "/brands/colour/bmw.svg", hex: "#0066B1" },
-  "/brands/rolls-royce.svg": { src: "/brands/colour/rolls-royce.svg", hex: "#281432" },
-  "/brands/etihad-airways.svg": { src: "/brands/colour/etihad-airways.svg", hex: "#BD8B13" },
-  "/brands/what3words.svg": { src: "/brands/colour/what3words.svg", hex: "#E11F26" },
-  "/brands/masdar.png": { src: "/brands/colour/masdar.png", hex: "#3271A9" },
+/** Each logo in its own colours: on a white ground (/public/brands/colour) and on a dark one
+ *  (/public/brands/colour-dark: the versions the brands use on black), and the brand's colour. */
+const LOGO_COLOUR: Record<string, { src: string; dark: string; hex: string }> = {
+  "/brands/toyota.svg": { src: "/brands/colour/toyota.svg", dark: "/brands/colour/toyota.svg", hex: "#EB0A1E" },
+  "/brands/bmw.svg": { src: "/brands/colour/bmw.svg", dark: "/brands/colour-dark/bmw.svg", hex: "#0066B1" },
+  "/brands/rolls-royce.svg": { src: "/brands/colour/rolls-royce.svg", dark: "/brands/colour-dark/rolls-royce.svg", hex: "#281432" },
+  "/brands/etihad-airways.svg": { src: "/brands/colour/etihad-airways.svg", dark: "/brands/colour/etihad-airways.svg", hex: "#BD8B13" },
+  "/brands/what3words.svg": { src: "/brands/colour/what3words.svg", dark: "/brands/colour-dark/what3words.svg", hex: "#E11F26" },
+  "/brands/masdar.png": { src: "/brands/colour/masdar.png", dark: "/brands/colour/masdar.png", hex: "#3271A9" },
 };
-export type Logo = { src: string; wide: boolean; colour?: string; hex?: string };
+export type Logo = { src: string; wide: boolean; colour?: string; dark?: string; hex?: string };
 /** The brand a film was made for, and its logo (if we have the file): the single-colour mark (`src`),
- *  the logo in its own colours (`colour`) and the brand's colour (`hex`). */
+ *  the logo in its own colours for white (`colour`) and for black (`dark`), and the brand's colour (`hex`). */
 export const brandOf = (p: Project) => BRAND_NAME[p.client] ?? p.client;
 export const logoOf = (p: Project): Logo | undefined => {
   const src = BRAND_LOGOS[p.client];
-  return src ? { src, wide: WIDE_LOGOS.has(src), colour: LOGO_COLOUR[src]?.src, hex: LOGO_COLOUR[src]?.hex } : undefined;
+  const c = src ? LOGO_COLOUR[src] : undefined;
+  return src ? { src, wide: WIDE_LOGOS.has(src), colour: c?.src, dark: c?.dark, hex: c?.hex } : undefined;
 };
 
 export type Preview = { src: string; title: string; brand: string; logo?: string; shot?: string };
