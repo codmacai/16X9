@@ -10,16 +10,18 @@ import f from "./file.module.css";
 import s from "./brand.module.css";
 
 // ===========================================================================
-// BRAND FILMS — THE BRAND WALL. On black: the brands' logos in their own
-// colours (the versions they use on dark), one to a tile, every tile the
-// same size, three across. A soft light follows the pointer over the wall.
-// The tile pointed at lights up in its brand's colour from where the pointer
-// is, its edge catching the same light; it leans toward the pointer and its
-// logo comes forward, both on springs; the other tiles fall back. Click it
+// BRAND FILMS — THE BRAND WALL. The room itself is the wall: on black, six
+// equal tiles from edge to edge of the screen, joined with no line between
+// them, each holding a brand's logo in its own colours (the versions it
+// wears on dark). The tiles come in one by one, the logos rising into place.
+// A soft light follows the pointer over the wall. The tile pointed at lights
+// up in its brand's colour from where the pointer is, its edges catching the
+// same light, and its logo comes forward and leans toward the pointer on a
+// spring while the other logos fall back. Click it
 // and the brand's colour opens from the tile to the whole screen, the logo
 // carried to the middle — then every film the studio made for that brand
 // rises out of the dark (file-view.tsx). Brands without a logo file yet stay
-// off the wall; "All brand films" holds every one.
+// off the wall until one comes in.
 // ===========================================================================
 
 type Brand = { name: string; films: Project[]; logo: Logo };
@@ -48,10 +50,17 @@ const GLOW: Record<string, string> = {
   "/brands/masdar.png": "#4f8fd0",
 };
 
+const delayOf = (i: number) => 0.25 + (i % 3) * 0.09 + Math.floor(i / 3) * 0.12;
 const tiles: Variants = {
-  hidden: { opacity: 0, y: 40, scale: 0.94 },
-  shown: (i: number) => ({ opacity: 1, y: 0, scale: 1, transition: { ...ARRIVE, delay: 0.3 + (i % 3) * 0.08 + Math.floor(i / 3) * 0.1 } }),
-  away: (i: number) => ({ opacity: 0, y: 0, scale: 0.97, transition: { duration: 0.3, ease: EASE, delay: i * 0.025 } }),
+  hidden: { opacity: 0 },
+  shown: (i: number) => ({ opacity: 1, transition: { duration: 0.9, ease: EASE, delay: delayOf(i) } }),
+  away: (i: number) => ({ opacity: 0, transition: { duration: 0.3, ease: EASE, delay: i * 0.025 } }),
+};
+// the logo rising into its tile, after the tile
+const marks: Variants = {
+  hidden: { opacity: 0, scale: 0.86, y: 26 },
+  shown: (i: number) => ({ opacity: 1, scale: 1, y: 0, transition: { ...ARRIVE, delay: delayOf(i) + 0.15 } }),
+  away: { opacity: 0, scale: 0.96, transition: { duration: 0.25, ease: EASE } },
 };
 
 export default function BrandIndex({
@@ -144,11 +153,6 @@ export default function BrandIndex({
       setHover(null);
     }, OPEN_MS);
   };
-  const all = () => {
-    if (!up) return;
-    onCursor(null);
-    setOpened({ label: drawer.label, no: drawer.no, films: drawer.films });
-  };
 
   const state = up ? "shown" : "away";
   return (
@@ -174,20 +178,7 @@ export default function BrandIndex({
           </button>
         </motion.div>
 
-        <div className={s.body}>
-          <motion.header
-            className={s.top}
-            initial={{ opacity: 0, y: 12 }}
-            animate={up ? { opacity: 1, y: 0 } : { opacity: 0, y: -8 }}
-            transition={up ? { ...ARRIVE, delay: 0.2 } : { duration: 0.25, ease: EASE }}
-          >
-            <h2 className={s.title}>Brands on film</h2>
-            <button type="button" className={s.all} onClick={all} tabIndex={up ? 0 : -1}>
-              All brand films <span>{pad2(drawer.films.length)}</span> <i aria-hidden="true">→</i>
-            </button>
-          </motion.header>
-
-          <div className={s.stage} onPointerMove={follow} onPointerLeave={() => setLit(false)}>
+        <div className={s.stage} onPointerMove={follow} onPointerLeave={() => setLit(false)}>
             {/* a soft light after the pointer, over the wall */}
             <motion.span className={`${s.light} ${lit && up ? s.lightOn : ""}`} style={{ x: lightX, y: lightY }} aria-hidden="true" />
             <ul className={`${s.wall} ${hover !== null ? s.wallFocus : ""}`} onPointerLeave={() => setHover(null)}>
@@ -203,6 +194,7 @@ export default function BrandIndex({
                 >
                   <Tile
                     brand={b}
+                    k={k}
                     tabbable={up}
                     reduce={reduce}
                     onEnter={() => up && setHover(k)}
@@ -212,7 +204,7 @@ export default function BrandIndex({
                 </motion.li>
               ))}
             </ul>
-          </div>
+          <span className={s.vignette} aria-hidden="true" />
         </div>
       </div>
 
@@ -242,6 +234,7 @@ export default function BrandIndex({
 // ---------------------------------------------------------------------------
 function Tile({
   brand,
+  k,
   tabbable,
   reduce,
   onEnter,
@@ -249,6 +242,7 @@ function Tile({
   onOpen,
 }: {
   brand: Brand;
+  k: number;
   tabbable: boolean;
   reduce: boolean;
   onEnter: () => void;
@@ -256,12 +250,8 @@ function Tile({
   onOpen: (el: HTMLElement) => void;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
-  const rx = useMotionValue(0);
-  const ry = useMotionValue(0);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
-  const rotateX = useSpring(rx, TILT);
-  const rotateY = useSpring(ry, TILT);
   const x = useSpring(mx, TILT);
   const y = useSpring(my, TILT);
 
@@ -274,25 +264,20 @@ function Tile({
     e.currentTarget.style.setProperty("--x", `${(px * 100).toFixed(1)}%`);
     e.currentTarget.style.setProperty("--y", `${(py * 100).toFixed(1)}%`);
     if (reduce) return;
-    ry.set((px - 0.5) * 10);
-    rx.set(-(py - 0.5) * 8);
-    mx.set((px - 0.5) * 18);
-    my.set((py - 0.5) * 14);
+    mx.set((px - 0.5) * Math.min(r.width * 0.07, 34));
+    my.set((py - 0.5) * Math.min(r.height * 0.07, 26));
   };
   const leave = () => {
-    rx.set(0);
-    ry.set(0);
     mx.set(0);
     my.set(0);
     onLeave();
   };
   const n = brand.films.length;
   return (
-    <motion.button
+    <button
       ref={ref}
       type="button"
       className={s.tile}
-      style={{ rotateX, rotateY, transformPerspective: 900 }}
       tabIndex={tabbable ? 0 : -1}
       onPointerEnter={(e) => {
         move(e);
@@ -306,13 +291,15 @@ function Tile({
       aria-label={`${brand.name}: ${n} ${n === 1 ? "film" : "films"}`}
     >
       <motion.span className={s.logoBox} data-wide={brand.logo.wide || undefined} style={{ x, y }} aria-hidden="true">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className={s.logo} src={brand.logo.dark} alt="" draggable={false} style={{ scale: String(OPTICAL[brand.logo.src] ?? 1) }} />
+        <motion.span className={s.rise} variants={marks} custom={k}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className={s.logo} src={brand.logo.dark} alt="" draggable={false} style={{ scale: String(OPTICAL[brand.logo.src] ?? 1) }} />
+        </motion.span>
       </motion.span>
       <span className={s.count} aria-hidden="true">
         {pad2(n)} {n === 1 ? "film" : "films"} <i>→</i>
       </span>
-    </motion.button>
+    </button>
   );
 }
 
