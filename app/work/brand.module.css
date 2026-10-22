@@ -1,69 +1,41 @@
-/* BRAND FILMS — THE BRAND WALL (brand-index.tsx): the room itself is the wall. On black, six equal
-   tiles from edge to edge of the screen, no line between them, each holding a brand's logo in its
-   own colours; a light after the pointer, each tile lit in its brand's colour where it's pointed at.
-   Motion is transform and opacity, and one clip for the opening. */
+/* BRAND FILMS — THE VIEWFINDER (brand-index.tsx): the brands' logos faint in a dark room, and a
+   16:9 viewfinder that brings the wall alive wherever it's pointed. The frame and the lit wall move
+   by transform only; one clip for the opening. */
 
 .view {
   overflow: hidden;
   background: #050505;
 }
 
-/* closing: the wall fades back into the cabinet's dark */
+/* closing: the room fades back into the cabinet's dark */
 .viewLeave {
   opacity: 0;
   transition: opacity 0.4s var(--ease);
 }
 
 /* the drawer's name and Close sit over the wall */
-.view > :first-child {
-  z-index: 3;
+.head {
+  z-index: 4;
 }
 
-/* ===== the wall: the whole room under the band ===== */
+/* ===== the room under the band ===== */
 .stage {
   position: absolute;
   inset: var(--band) 0 0;
   overflow: hidden;
 }
 
-/* the light after the pointer */
-.light {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 1;
-  width: 900px;
-  height: 900px;
-  margin: -450px 0 0 -450px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(246 244 240 / 0.07), rgb(246 244 240 / 0.02) 55%, transparent);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.6s var(--ease);
-  will-change: transform;
-}
-
-.lightOn {
-  opacity: 1;
-}
-
-/* the edges of the room fall to black */
-.vignette {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  background:
-    radial-gradient(ellipse 85% 80% at 50% 52%, transparent 55%, rgb(0 0 0 / 0.55)),
-    linear-gradient(to bottom, rgb(0 0 0 / 0.55), transparent 16%);
-  pointer-events: none;
+/* under a pointer, the viewfinder is the cursor */
+@media (hover: hover) and (pointer: fine) {
+  .stage {
+    cursor: none;
+  }
 }
 
 .wall {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
   margin: 0;
   padding: 0;
   list-style: none;
@@ -74,39 +46,99 @@
   min-height: 0;
 }
 
-.tile {
+.cell {
   position: relative;
   display: block;
   width: 100%;
   height: 100%;
   padding: 0;
   border: 0;
-  overflow: hidden;
-  background: #0b0b0b;
-  color: var(--paper);
-  font: inherit;
-  cursor: pointer;
-  isolation: isolate;
-  transition: background-color 0.7s var(--ease);
+  background: none;
+  cursor: inherit;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* a chessboard of two near-blacks: the wall reads as tiles without a line between them */
-.wall > li:nth-child(even) .tile {
-  background: #080808;
+.cell:focus-visible {
+  outline: none;
 }
 
-/* ===== its films, behind the logo ===== */
+/* a logo, centred, the same share of its part of the wall in the dark and in the frame (so they
+   register exactly as the frame passes) */
+.logoBox {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 28%;
+  height: 28%;
+  margin: auto;
+}
+
+.logoBox[data-wide] {
+  width: 44%;
+  height: 11%;
+}
+
+.narrow .logoBox {
+  width: 46%;
+  height: 26%;
+}
+
+.narrow .logoBox[data-wide] {
+  width: 72%;
+  height: 10%;
+}
+
+.logo {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: contain;
+}
+
+/* in the dark, the logos hang faint */
+.faint {
+  opacity: 0.2;
+  filter: saturate(0.6);
+}
+
+/* ===== through the viewfinder ===== */
+.window {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.inner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  will-change: transform;
+}
+
+.liveCell {
+  position: relative;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+.liveCell .logo {
+  filter: drop-shadow(0 2px 18px rgb(0 0 0 / 0.55));
+}
+
 .media {
   position: absolute;
   inset: 0;
-  z-index: 0;
 }
 
-/* most films carry letterbox bars (scope inside 16:9): run the picture far enough past the tile's
-   top and bottom that the bars fall outside it */
-.still,
-.film {
+/* most films carry letterbox bars: run the picture far enough past the top and bottom that they fall outside */
+.pic {
   position: absolute;
   top: -20%;
   left: 0;
@@ -114,18 +146,6 @@
   height: 140% !important;
   max-width: none !important;
   object-fit: cover;
-  transform: scale(1.06);
-  transition: transform 1.6s var(--ease);
-}
-
-.still {
-  animation: still-in 0.8s var(--ease) both;
-}
-
-@keyframes still-in {
-  from {
-    opacity: 0;
-  }
 }
 
 /* the next film runs out of sight; a cut is instant */
@@ -137,227 +157,192 @@
   opacity: 1;
 }
 
-.on .still,
-.on .film {
-  transform: scale(1.12);
-}
-
-/* the grade: the films held down so the logo reads, lifted on the one pointed at */
-.shade {
+.grade {
   position: absolute;
   inset: 0;
-  z-index: 1;
-  background:
-    radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / 0.38), rgb(0 0 0 / 0.62) 80%),
-    rgb(8 6 4 / 0.18);
-  transition: opacity 0.8s var(--ease);
+  background: radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / 0.22), rgb(0 0 0 / 0.5) 85%);
 }
 
-.on .shade {
-  opacity: 0.55;
-}
-
-/* pointing at one: the other films go darker, the wall falls back round it */
-.wallFocus > li:not(.on) .shade {
-  background: rgb(0 0 0 / 0.72);
-}
-
-/* the brand's colour, lit from where the pointer is */
-.tile::before {
-  content: "";
+/* ===== the viewfinder ===== */
+.finder {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
   z-index: 2;
-  mix-blend-mode: screen;
-  background: radial-gradient(70% 90% at var(--x, 50%) var(--y, 50%), color-mix(in srgb, var(--glow) 30%, transparent), transparent 70%);
-  opacity: 0;
-  transition: opacity 0.7s var(--ease);
-}
-
-/* ...and its edges catching the same light */
-.tile::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  padding: 1px;
-  background: radial-gradient(340px circle at var(--x, 50%) var(--y, 50%), color-mix(in srgb, var(--glow) 80%, transparent), transparent 70%);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box exclude,
-    linear-gradient(#000 0 0);
-  opacity: 0;
-  transition: opacity 0.7s var(--ease);
   pointer-events: none;
-}
-
-.on .tile::before,
-.on .tile::after,
-.tile:focus-visible::before,
-.tile:focus-visible::after {
-  opacity: 1;
-}
-
-.tile:focus-visible {
-  outline: none;
-}
-
-/* the logo, centred, a fixed share of its tile */
-.logoBox {
-  position: absolute;
-  z-index: 3;
-  inset: 0;
-  display: block;
-  width: 30%;
-  height: 30%;
-  margin: auto;
+  box-shadow: 0 40px 120px rgb(0 0 0 / 0.55);
   will-change: transform;
 }
 
-.logoBox[data-wide] {
-  width: 46%;
-  height: 12%;
-}
-
-.rise {
+.corner {
   position: absolute;
-  inset: 0;
+  width: 22px;
+  height: 22px;
+  border: 0 solid var(--paper);
 }
 
-.logo {
+.tl {
+  top: -1px;
+  left: -1px;
+  border-top-width: 1.5px;
+  border-left-width: 1.5px;
+}
+
+.tr {
+  top: -1px;
+  right: -1px;
+  border-top-width: 1.5px;
+  border-right-width: 1.5px;
+}
+
+.bl {
+  bottom: -1px;
+  left: -1px;
+  border-bottom-width: 1.5px;
+  border-left-width: 1.5px;
+}
+
+.br {
+  bottom: -1px;
+  right: -1px;
+  border-bottom-width: 1.5px;
+  border-right-width: 1.5px;
+}
+
+.rec,
+.tc,
+.label {
   position: absolute;
-  inset: 0;
-  width: 100% !important;
-  height: 100% !important;
-  max-width: none !important;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 18px rgb(0 0 0 / 0.55));
-  transition:
-    transform 1s var(--ease),
-    opacity 0.6s var(--ease),
-    filter 0.6s var(--ease);
-}
-
-.on .logo {
-  transform: scale(1.1);
-}
-
-/* pointing at one: the other logos fall back */
-.wallFocus > li:not(.on) .logo {
-  opacity: 0.35;
-  filter: saturate(0.4) drop-shadow(0 2px 18px rgb(0 0 0 / 0.55));
-}
-
-.count {
-  position: absolute;
-  z-index: 3;
-  left: 0;
-  right: 0;
-  bottom: clamp(18px, 4vh, 36px);
-  font-size: 10px;
-  letter-spacing: 0.28em;
-  text-align: center;
+  font-size: 9px;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: rgb(246 244 240 / 0.8);
-  opacity: 0;
-  transform: translateY(8px);
-  transition:
-    opacity 0.5s var(--ease),
-    transform 0.7s var(--ease);
+  color: rgb(246 244 240 / 0.85);
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
+  white-space: nowrap;
 }
 
-.count i {
-  margin-left: 6px;
+.rec {
+  top: 14px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.rec b {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e5322d;
+  animation: blink 1.4s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.15;
+  }
+}
+
+.tc {
+  top: 14px;
+  right: 16px;
+  letter-spacing: 0.16em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* a fine cross at the frame's centre */
+.cross {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  translate: -50% -50%;
+  opacity: 0.5;
+  background:
+    linear-gradient(var(--paper), var(--paper)) center / 1px 100% no-repeat,
+    linear-gradient(var(--paper), var(--paper)) center / 100% 1px no-repeat;
+}
+
+.label {
+  left: 16px;
+  right: 16px;
+  bottom: 13px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.label span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--paper);
+}
+
+.label i {
+  margin-left: 4px;
   font-style: normal;
 }
 
-.on .count {
-  opacity: 1;
-  transform: none;
+/* on a touch screen the frame is a whole part of the wall: no cross, the labels a touch smaller */
+.narrow .cross {
+  display: none;
 }
 
-/* touch screens: each tile carries a breath of its colour, and its count */
-@media (hover: none) {
-  .tile::before {
-    opacity: 0.35;
-  }
-  .count {
-    opacity: 0.6;
-    transform: none;
-  }
+.narrow .rec,
+.narrow .tc,
+.narrow .label {
+  font-size: 8px;
+  letter-spacing: 0.16em;
 }
 
-/* phones and portrait screens: two across, three down */
-@media (max-width: 760px), (max-aspect-ratio: 4/5) {
-  .wall {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(3, minmax(0, 1fr));
-  }
-  /* two across: the chessboard turns every row */
-  .wall > li:nth-child(even) .tile {
-    background: #0b0b0b;
-  }
-  .wall > li:nth-child(4n + 2) .tile,
-  .wall > li:nth-child(4n + 3) .tile {
-    background: #080808;
-  }
-  .logoBox {
-    width: 44%;
-    height: 32%;
-  }
-  .logoBox[data-wide] {
-    width: 70%;
-    height: 12%;
-  }
-  .count {
-    font-size: 8.5px;
-    letter-spacing: 0.2em;
-  }
-}
-
-/* ===== into the brand: the tile opens to the whole screen ===== */
+/* ===== into the brand: the frame opens to the whole screen ===== */
 .opening {
   position: fixed;
   inset: 0;
-  z-index: 15; /* under the line of films, which comes after it */
+  z-index: 15;
   pointer-events: none;
+  background: #050505;
   will-change: clip-path;
 }
 
-.openingMark {
+.openingFilm {
   position: absolute;
-  left: 50%;
-  width: min(28vw, 400px);
-  aspect-ratio: 1.5;
-  margin: calc(min(28vw, 400px) / -3) 0 0 calc(min(28vw, 400px) / -2);
-  background: #fff;
-  mask-size: contain;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
+  inset: var(--band) 0 0;
+  overflow: hidden;
 }
 
-.openingMark[data-wide] {
-  width: min(46vw, 640px);
-  aspect-ratio: 5.5;
-  margin: calc(min(46vw, 640px) / -11) 0 0 calc(min(46vw, 640px) / -2);
+.openingFilm .pic {
+  top: -14%;
+  height: 128% !important;
+}
+
+.openingLogo {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+}
+
+.openingLogo img {
+  width: min(26vw, 340px) !important;
+  height: min(16vw, 200px) !important;
+  max-width: none !important;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 24px rgb(0 0 0 / 0.5));
 }
 
 @media (max-width: 760px) {
-  .openingMark {
-    width: 60vw;
-    margin: -20vw 0 0 -30vw;
+  .openingLogo img {
+    width: 56vw !important;
+    height: 30vw !important;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .still,
-  .film {
-    transition: none;
+  .rec b {
+    animation: none;
   }
 }
