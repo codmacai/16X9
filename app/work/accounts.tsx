@@ -1,27 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatePresence, motion, useReducedMotion, type Transition } from "framer-motion";
+import { useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform, type MotionValue, type Transition } from "framer-motion";
 import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
 import { Band, rootClass } from "./_shared/chrome";
-import { ACCOUNTS, WORKS_9X16, instagramOf } from "./_shared/data";
+import { ACCOUNTS, instagramOf } from "./_shared/data";
 import Reels from "./reels";
-import Works from "./works";
 import Intro916 from "./intro-916";
 import Profile, { Player } from "./profile";
 import styles from "./accounts.module.css";
 
 // ===========================================================================
-// WORK, 9x16 — it opens on what 9x16 is (intro-916.tsx); then the
-// Instagram accounts the studio runs, as slim 9:16
-// frames in the dark, outlined in a hairline, each holding the brand's logo
-// at its centre (its Instagram picture, in a circle) and its followers and
-// posts at the foot; name and handle sit underneath. Point at one (or tap it)
-// and it plays that account's reels inside the frame, a feed you scroll
-// through like the app. The name underneath opens the account on Instagram.
-// Four to a row (two on a phone), the next four in the row below.
-// Below them, the selected reels (works.tsx), and a line to talk.
+// WORK, 9x16 — it opens on the paper with what 9x16 is (intro-916.tsx), and
+// the scroll carries you into the vertical frame and out into the dark: the
+// Instagram accounts the studio runs, as slim 9:16 frames, outlined in a
+// hairline, each holding the brand's logo at its centre (its Instagram
+// picture, in a circle) and its followers and posts at the foot; name and
+// handle underneath. Point at one (or tap it) and it plays that account's
+// reels inside the frame, a feed you scroll through like the app. The name
+// underneath opens the account on Instagram. Four to a row (two on a phone);
+// as the page scrolls past them each column drifts at its own pace.
 // ===========================================================================
 
 // a frame rising into place as it scrolls in
@@ -37,18 +36,21 @@ export default function Accounts() {
   // a reel clicked in a frame's grid plays on its own
   const [reel, setReel] = useState<{ handle: string; i: number } | null>(null);
   const reelAcc = reel ? ACCOUNTS.find((a) => a.handle === reel.handle) : undefined;
-  // a selected reel clicked: it plays full height, the others a scroll away
-  const [work, setWork] = useState<number | null>(null);
+  // as the page scrolls past the accounts, each column drifts at its own pace
+  const rowRef = useRef<HTMLUListElement>(null);
+  const { scrollYProgress } = useScroll({ target: rowRef, offset: ["start end", "end start"] });
+  const drift = useSpring(scrollYProgress, { stiffness: 90, damping: 24, mass: 0.5 });
+  const cols = [useDrift(drift, 30, reduce), useDrift(drift, 90, reduce), useDrift(drift, 50, reduce), useDrift(drift, 110, reduce)];
   return (
     <main className={`${rootClass} ${styles.page}`}>
       <Band
         crumb="Index"
         workHref="/work?format=9x16"
         /* a reel or an account's page open: Back closes it first */
-        onBack={work !== null ? () => setWork(null) : reel ? () => setReel(null) : open ? () => setOpen(null) : undefined}
+        onBack={reel ? () => setReel(null) : open ? () => setOpen(null) : undefined}
         center={<RoomSwitch room="9x16" onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })} tone="light" />}
       />
-      <Intro916 reduce={reduce} onOpen={setWork} />
+      <Intro916 reduce={reduce} />
       <section id="accounts" className={styles.sheet} aria-label="9x16 work — the Instagram accounts we run">
         <motion.p
           className={styles.index}
@@ -59,15 +61,16 @@ export default function Accounts() {
         >
           <span>01</span> The accounts we run
         </motion.p>
-        <ul className={styles.row}>
+        <ul ref={rowRef} className={styles.row}>
           {ACCOUNTS.map((a, i) => (
-            <motion.li
-              key={a.handle}
-              initial={reduce ? false : { opacity: 0, y: 56 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ ...RISE, delay: (i % 4) * 0.08 }}
-            >
+            // the column's drift on the scroll, and the frame's own rise into place as it comes into view
+            <motion.li key={a.handle} style={{ y: cols[i % 4] }}>
+              <motion.div
+                initial={reduce ? false : { opacity: 0, y: 70, scale: 0.96 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true, amount: 0.15 }}
+                transition={{ ...RISE, delay: (i % 4) * 0.09 }}
+              >
               <div
                 className={`${styles.item} ${on === a.handle ? styles.itemOn : ""}`}
                 onPointerEnter={(e) => e.pointerType === "mouse" && setOn(a.handle)}
@@ -100,21 +103,23 @@ export default function Accounts() {
                   </>
                 )}
               </div>
+              </motion.div>
             </motion.li>
           ))}
         </ul>
       </section>
-      <Works onOpen={setWork} />
       <AnimatePresence>
         {reelAcc && reel && (
           <Player key="reel" reels={reelAcc.reels ?? []} start={reel.i} handle={reelAcc.demo ? reelAcc.name : reelAcc.handle} logo={reelAcc.logo} onClose={() => setReel(null)} dark />
         )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {work !== null && <Player key="work" reels={WORKS_9X16} start={work} onClose={() => setWork(null)} dark />}
       </AnimatePresence>
       <AnimatePresence>{openAcc && <Profile key={openAcc.handle} account={openAcc} onClose={() => setOpen(null)} />}</AnimatePresence>
     </main>
   );
 }
 
+
+// a column's drift as the page scrolls past: from `px` below its place to `px` above it
+function useDrift(progress: MotionValue<number>, px: number, reduce: boolean) {
+  return useTransform(progress, [0, 1], reduce ? [0, 0] : [px, -px]);
+}
