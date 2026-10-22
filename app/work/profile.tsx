@@ -65,18 +65,26 @@ export default function Profile({ account, onClose }: { account: Account; onClos
           <div className={styles.meta}>
             <div className={styles.handleRow}>
               <h2>{account.handle}</h2>
-              <a className={styles.follow} href={instagramOf(account)} target="_blank" rel="noopener noreferrer">
-                View on Instagram ↗
-              </a>
+              {!account.demo && (
+                <a className={styles.follow} href={instagramOf(account)} target="_blank" rel="noopener noreferrer">
+                  View on Instagram ↗
+                </a>
+              )}
             </div>
-            <ul className={styles.counts}>
-              <li>
-                <b>{account.posts}</b> posts
-              </li>
-              <li>
-                <b>{account.followers}</b> followers
-              </li>
-            </ul>
+            {account.demo ? (
+              <ul className={styles.counts}>
+                <li>Demo account</li>
+              </ul>
+            ) : (
+              <ul className={styles.counts}>
+                <li>
+                  <b>{account.posts}</b> posts
+                </li>
+                <li>
+                  <b>{account.followers}</b> followers
+                </li>
+              </ul>
+            )}
             <p className={styles.name}>{account.name}</p>
           </div>
         </header>
@@ -117,7 +125,22 @@ function GridReel({ reel, onClick }: { reel: Reel; onClick: () => void }) {
 }
 
 // the reel, full height in the middle like the app; scroll (or the arrows) for the next
-export function Player({ reels, start, handle, logo, onClose }: { reels: Reel[]; start: number; handle: string; logo: string; onClose: () => void }) {
+export function Player({
+  reels,
+  start,
+  handle,
+  logo,
+  onClose,
+  dark = false,
+}: {
+  reels: Reel[];
+  start: number;
+  handle?: string;
+  logo?: string;
+  onClose: () => void;
+  /** over a dark page: the room round the reel goes dark too */
+  dark?: boolean;
+}) {
   const feedRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const [at, setAt] = useState(start);
@@ -142,7 +165,7 @@ export function Player({ reels, start, handle, logo, onClose }: { reels: Reel[];
 
   return (
     <motion.div
-      className={styles.player}
+      className={`${styles.player} ${dark ? styles.playerDark : ""}`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1, transition: { duration: 0.35 } }}
       exit={{ opacity: 0, transition: { duration: 0.25 } }}
@@ -166,6 +189,7 @@ export function Player({ reels, start, handle, logo, onClose }: { reels: Reel[];
                   }}
                   src={Math.abs(i - at) <= 1 ? r.src : undefined}
                   poster={stillFor(r.src ?? "")}
+                  style={r.zoom ? { scale: String(r.zoom) } : undefined}
                   muted
                   loop
                   playsInline
@@ -177,9 +201,16 @@ export function Player({ reels, start, handle, logo, onClose }: { reels: Reel[];
         </div>
         <span className={styles.playerHead}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logo} alt="" />
-          {handle}
-          <Views n={reels[at]?.views ?? ""} />
+          {logo && <img src={logo} alt="" />}
+          {reels[at]?.title ? (
+            <span className={styles.playerTitle}>
+              {reels[at].title}
+              <small>{reels[at].kind}</small>
+            </span>
+          ) : (
+            handle
+          )}
+          {reels[at]?.views && <Views n={reels[at].views} />}
         </span>
         {reels[at]?.ig && (
           <a className={styles.openIg} href={reelLink(reels[at].ig!)} target="_blank" rel="noopener noreferrer">

@@ -53,11 +53,12 @@ export default function ReelMedia({ reel, live = false, play = false, interactiv
         })()}
       </span>
     );
+  const zoom = reel.zoom ? { scale: String(reel.zoom) } : undefined;
   return (
     <span ref={boxRef} className={styles.box}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className={styles.still} src={stillFor(reel.src ?? "")} alt="" draggable={false} loading="lazy" />
-      {live && <video ref={videoRef} className={`${styles.still} ${play ? styles.on : styles.off}`} src={reel.src} muted loop playsInline preload="none" />}
+      <img className={styles.still} style={zoom} src={stillFor(reel.src ?? "")} alt="" draggable={false} loading="lazy" />
+      {live && <video ref={videoRef} className={`${styles.still} ${play ? styles.on : styles.off}`} style={zoom} src={reel.src} muted loop playsInline preload="none" />}
     </span>
   );
 }

@@ -245,11 +245,24 @@ export type Account = {
   /** its reels, played in its frame when pointed at. Stand-ins for now: drop the account's real
    *  reel files (vertical MP4s) in /public/work/reels/<handle>/ and list them here. */
   reels?: Reel[];
+  /** a demo account, holding a place until a real one comes in: no Instagram link, no counts */
+  demo?: boolean;
 };
 
 /** One reel: either a video file we host (`src`) or a reel on Instagram (`ig`, its id from the link
  *  instagram.com/reel/<id>/, played through Instagram's own embed). `views` as shown on Instagram. */
-export type Reel = { src?: string; ig?: string; views: string; /** an Instagram reel's shape in the embed, height / width (default 1.25) */ ar?: number };
+export type Reel = {
+  src?: string;
+  ig?: string;
+  views: string;
+  /** an Instagram reel's shape in the embed, height / width (default 1.25) */
+  ar?: number;
+  /** a demo work's name and kind, shown under it and in the player */
+  title?: string;
+  kind?: string;
+  /** how far a hosted film is scaled up to fill 9:16 (the stand-ins carry black bands) */
+  zoom?: number;
+};
 
 const standIn = (...n: number[]): Reel[] =>
   n.map((x, i) => ({ src: `/clips/clip-${String(x).padStart(2, "0")}.mp4`, views: (((x * 977 + i * 613) % 3100) + 380).toLocaleString("en-US") }));
@@ -270,6 +283,42 @@ export const ACCOUNTS: Account[] = [
   { name: "Amer Lounge", handle: "amerlounge", followers: "10K", posts: 148, logo: "/work/accounts/amerlounge.webp", reels: standIn(5, 9, 14, 1, 6, 10, 15, 3, 8) },
   { name: "Business Lounge", handle: "businesslounge.ae", followers: "8,508", posts: 309, logo: "/work/accounts/businesslounge.webp", reels: standIn(8, 12, 4, 15, 2, 7, 11, 13, 6) },
   { name: "Business Avenue", handle: "businessavenue.ae", followers: "7,309", posts: 99, logo: "/work/accounts/businessavenue.webp", reels: standIn(6, 10, 13, 2, 4, 9, 1, 14, 7) },
+  // demo accounts for now — replace each with a real account (its name, handle, counts, logo and reels)
+  ...([
+    ["Saffron & Salt", "saffron-salt", [3, 7, 12, 2, 15, 9]],
+    ["Marina Lofts", "marina-lofts", [6, 15, 2, 11, 4, 8]],
+    ["Oud Atelier", "oud-atelier", [11, 9, 3, 14, 7, 12]],
+    ["Desert Bloom", "desert-bloom", [15, 2, 8, 3, 10, 4]],
+  ] as const).map(([name, slug, reels]): Account => ({
+    name,
+    handle: slug,
+    followers: "",
+    posts: 0,
+    logo: `/work/accounts/demo-${slug}.svg`,
+    reels: standIn(...reels),
+    demo: true,
+  })),
+];
+
+// ---------------------------------------------------------------------------
+// 9x16's selected reels, under the accounts: demo works for now, cut from the
+// studio's reel. Swap each for a real vertical film (its MP4 in
+// /public/work/reels/, or an Instagram reel as `ig`) with its real name and kind.
+// ---------------------------------------------------------------------------
+const demo = (clip: string, title: string, kind: string): Reel => ({ src: `/clips/clip-${clip}.mp4`, views: "", title, kind, zoom: 1.46 });
+export const WORKS_9X16: Reel[] = [
+  demo("03", "Golden Hour", "Brand reel"),
+  demo("12", "Court Session", "Fashion reel"),
+  demo("04", "Night Shift", "Short documentary"),
+  demo("10", "After Hours", "Event recap"),
+  demo("02", "The Long Horizon", "Travel series"),
+  demo("08", "Break", "Culture reel"),
+  demo("11", "In Her Words", "Portrait series"),
+  demo("14", "Beat", "Music teaser"),
+  demo("07", "The Majlis", "Hospitality reel"),
+  demo("15", "Dune Line", "Travel series"),
+  demo("09", "First Person", "Portrait series"),
+  demo("01", "Press Play", "Launch teaser"),
 ];
 
 export const instagramOf = (a: Account) => `https://www.instagram.com/${a.handle}/`;

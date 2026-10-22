@@ -213,6 +213,7 @@
 
 .reel {
   height: 100%;
+  overflow: hidden;
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
@@ -237,6 +238,44 @@
   font-weight: 600;
   text-shadow: 0 1px 8px rgb(0 0 0 / 0.5);
   pointer-events: none;
+}
+
+/* over a dark page */
+.playerDark {
+  background: rgb(5 5 5 / 0.9);
+}
+
+.playerDark .phone {
+  border-radius: 4px;
+  box-shadow: 0 40px 120px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(246 244 240 / 0.08);
+}
+
+.playerDark .arrows button,
+.playerDark .playerClose {
+  background: rgb(246 244 240 / 0.08);
+  color: #f6f4f0;
+  transition: background-color 0.3s ease;
+}
+
+.playerDark .arrows button:not(:disabled):hover,
+.playerDark .playerClose:hover {
+  background: rgb(246 244 240 / 0.18);
+}
+
+.playerTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.playerTitle small {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  opacity: 0.75;
 }
 
 .playerHead img {
