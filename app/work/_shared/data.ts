@@ -1,4 +1,4 @@
-import { PREVIEW_CLIPS, SHOTS } from "./shots";
+import { FILM_KEYS, PREVIEW_CLIPS, SHOTS } from "./shots";
 import type { Clip } from "@/components/Hero-config";
 
 // ===========================================================================
@@ -133,6 +133,9 @@ const VIDEO_BASE = (process.env.NEXT_PUBLIC_VIDEO_BASE || "https://pub-9d250cf0e
 /** A file in the bucket -> its public URL (each part of the path escaped: the names have spaces, brackets, apostrophes). */
 const hosted = (key?: string) =>
   key && VIDEO_BASE ? `${VIDEO_BASE}/${key.split("/").map(encodeURIComponent).join("/")}` : undefined;
+/** A film's file -> its URL, at the path the build found it under in the bucket (FILM_KEYS, for a
+ *  file named without its folder) or as named. */
+const filmUrl = (key?: string) => hosted(key && (FILM_KEYS[key] ?? key));
 
 const KIND: Record<CategoryId, string> = { brand: "Brand film", documentary: "Documentary", music: "Music video", tvc: "TVC" };
 let realNo = 17;
@@ -150,7 +153,7 @@ const R = (title: string, client: string, category: CategoryId, file?: string): 
     accent: "#cfc8bd",
     synopsis: `${line}.`,
     src: `/clips/clip-${String(((realNo - 18) % 15) + 1).padStart(2, "0")}.mp4`,
-    film: hosted(file),
+    film: filmUrl(file),
   };
 };
 
@@ -162,13 +165,13 @@ PROJECTS.push(
   R("1001: One Tank Challenge", "Toyota Prius", "brand", "brandfilms/prius_1001_one_tank_challenge_v1 (720p) (1).mp4"),
   R("Hybrid Falcon", "Toyota Prius", "brand", "brandfilms/prius_hybrid_falcon.mp4_v1 (1080p).mp4"),
   R("Riyadh Marathon 2025", "Riyadh Marathon", "brand", "brandfilms/riyadh_marathon_2025_fanzone_casestudy_v1 (1080p).mp4"),
-  // Documentaries
-  R("Digital Divide", "GMIS", "documentary"),
-  R("General Corporation", "GMIS", "documentary"),
-  R("Rural Transformation", "GMIS", "documentary"),
-  R("Sustainable Cities", "GMIS", "documentary"),
-  R("Sustainable Energy", "GMIS", "documentary"),
-  R("UAE Pioneers", "", "documentary"),
+  // Documentaries (named as uploaded, without a folder: the build finds where they sit in the bucket)
+  R("Digital Divide", "GMIS", "documentary", "gims_digital_divide_docu.mp4_v1 (720p).mp4"),
+  R("General Corporation", "GMIS", "documentary", "gims_general_corporation_docu.mp4_v1 (1080p).mp4"),
+  R("Rural Transformation", "GMIS", "documentary", "gmis_rural_transformation_docu_v1 (1080p).mp4"),
+  R("Sustainable Cities", "GMIS", "documentary", "gmis_sustainable_cities_docu.mp4_v1 (1080p).mp4"),
+  R("Sustainable Energy", "GMIS", "documentary", "gmis_sustainablr_energy_docu.mp4_v1 (720p).mp4"),
+  R("UAE Pioneers", "", "documentary", "uae_pioneers_-_dr_zainab_v1 (720p).mp4"),
   // Music Videos (music/)
   R("I Love Kuwait", "", "music", "music/I Love Kuwait - FINAL.MP4"),
   R("RELM", "", "music", "music/RELM 2 min final 16x9.mp4"),
@@ -222,7 +225,7 @@ export const countIn = (id: CategoryId) => PROJECTS.filter((p) => p.category ===
 export const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.webp");
 
 /** The real film's own shot (scripts/make-shots.mjs picks a sharp frame from it at build time), by film URL. */
-const SHOT_BY_FILM = new Map(Object.entries(SHOTS).map(([key, shot]) => [hosted(key), shot]));
+const SHOT_BY_FILM = new Map(Object.entries(SHOTS).map(([key, shot]) => [filmUrl(key), shot]));
 export const shotFor = (film?: string) => (film ? SHOT_BY_FILM.get(film) : undefined);
 /** A film's poster (cards, the cover, the screen, the folders): the shot cut from the film itself,
  *  or nothing — never another film's picture. Without one, FilmStill (chrome.tsx) shows a frame
@@ -358,7 +361,7 @@ export const PREVIEWS_16X9: Preview[] = PROJECTS.filter((p) => p.format === "16x
 /** A film on hero 6's 16x9 wall: its 5-second preview clip (cut by scripts/make-shots.mjs), its
  *  shot as the still under it, and its brand's logo. */
 export type WallFilm = { clip: string; shot?: string; brand: string; logo: string; wide?: boolean; title: string };
-const CLIP_BY_FILM = new Map(Object.entries(PREVIEW_CLIPS).map(([key, clip]) => [hosted(key), clip]));
+const CLIP_BY_FILM = new Map(Object.entries(PREVIEW_CLIPS).map(([key, clip]) => [filmUrl(key), clip]));
 // only the films of brands we have a logo for, each tile its own film under its own brand's logo:
 // its preview clip once cut, else the film itself from 20s in (MP4 only, so every browser plays it)
 const onWall = (p: Project) =>

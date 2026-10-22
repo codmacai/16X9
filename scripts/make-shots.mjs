@@ -148,8 +148,22 @@ async function main() {
     fetch(urlOf(key), { headers: { Range: "bytes=0-0" }, signal: AbortSignal.timeout(15_000) })
       .then((r) => (r.body?.cancel(), r.ok))
       .catch(() => false);
-  const reachable = (await Promise.all(todo.slice(0, 3).map((j) => probe(j.key)))).some(Boolean);
-  if (todo.length && !reachable) console.log("make-shots: the bucket can't be reached from here; keeping the shots there are");
+  const reachable = (await Promise.all(keys.filter((k) => k.includes("/")).slice(0, 3).map(probe))).some(Boolean);
+  if (!reachable) console.log("make-shots: the bucket can't be reached from here; keeping the shots there are");
+
+  // a film named without its folder: find which folder of the bucket it's in (the top first)
+  const FOLDERS = ["", "documentaries/", "Documentaries/", "documentary/", "Documentary/", "docs/", "Docs/", "documentries/", "Documentries/"];
+  const where = {};
+  if (reachable)
+    await Promise.all(
+      keys
+        .filter((k) => !k.includes("/"))
+        .map(async (k) => {
+          for (const f of FOLDERS) if (await probe(f + k)) return void (f && (where[k] = f + k));
+          console.log(`make-shots: ${k} isn't in the bucket (looked in: ${FOLDERS.map((f) => f || "the top").join(", ")})`);
+        })
+    );
+  const at = (key) => urlOf(where[key] ?? key);
 
   // every film gets its own shot: none is skipped because others were slow, and one the first pass
   // missed gets a second go, earlier in the film
@@ -160,8 +174,8 @@ async function main() {
       const job = queue.shift();
       const { key, name, clip, hasShot, hasClip } = job;
       const ok =
-        (await bestShot(urlOf(key), hasShot ? null : join(OUT_DIR, name), hasClip ? null : join(CLIP_DIR, clip))) ||
-        (await bestShot(urlOf(key), hasShot ? null : join(OUT_DIR, name), hasClip ? null : join(CLIP_DIR, clip), RETRY_MOMENTS));
+        (await bestShot(at(key), hasShot ? null : join(OUT_DIR, name), hasClip ? null : join(CLIP_DIR, clip))) ||
+        (await bestShot(at(key), hasShot ? null : join(OUT_DIR, name), hasClip ? null : join(CLIP_DIR, clip), RETRY_MOMENTS));
       if (existsSync(join(OUT_DIR, name))) shots[key] = `/work/shots/${name}`;
       if (existsSync(join(CLIP_DIR, clip))) clips[key] = `/work/previews/${clip}`;
       console.log(`${ok ? "shot" : "none"}  ${key}`);
@@ -178,7 +192,7 @@ async function main() {
       .join("\n");
   writeFileSync(
     MAP,
-    `// Written by scripts/make-shots.mjs (before each build), by each film's file in the bucket: a real\n// frame from it, and a 5-second preview clip cut from the same moment. Edit by replacing the files in\n// public/work/shots and public/work/previews, not these lists.\nexport const SHOTS: Record<string, string> = {\n${list(shots)}\n};\n\nexport const PREVIEW_CLIPS: Record<string, string> = {\n${list(clips)}\n};\n`
+    `// Written by scripts/make-shots.mjs (before each build), by each film's file in the bucket: a real\n// frame from it, and a 5-second preview clip cut from the same moment. Edit by replacing the files in\n// public/work/shots and public/work/previews, not these lists.\nexport const SHOTS: Record<string, string> = {\n${list(shots)}\n};\n\n// a film named without its folder -> where it was found in the bucket\nexport const FILM_KEYS: Record<string, string> = {\n${list(where)}\n};\n\nexport const PREVIEW_CLIPS: Record<string, string> = {\n${list(clips)}\n};\n`
   );
   console.log(`shots: ${Object.keys(shots).length}, clips: ${Object.keys(clips).length} of ${keys.length} films`);
 }
