@@ -524,8 +524,47 @@ function coverGrid({ w, h }: { w: number; h: number }) {
   return { cols, rows };
 }
 
-// the wall's films are the brands' own once there are enough of them cut (else stand-ins, with logos dealt round)
-const WALL_MIN = 6;
+// a cut looks for its film from this many films on: a step sharing no factor with the count, so a
+// tile works through all of them (a step of 7 over 7 films would never move)
+const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+const stepFor = (n: number) => [7, 5, 3, 2].find((s) => s < n && gcd(n, s) === 1) ?? 1;
+
+// the wall's deal: the film each tile shows now and the one it has loaded next. A tile that cuts
+// takes its next film and loads another — one that neither its neighbours show nor have loaded next,
+// and of those the one fewest tiles are showing — so no two tiles side by side ever show the same film
+type Deal = { key: string; vs: number[]; cur: number[]; next: number[] };
+function dealFilm(d: Deal, i: number, cols: number, count: number, from: number) {
+  const n = d.cur.length;
+  const near = [i - cols, i + cols, i % cols ? i - 1 : -1, (i + 1) % cols ? i + 1 : -1].filter((j) => j >= 0 && j < n);
+  let best = from;
+  let least = Infinity;
+  for (let k = 0; k < count; k++) {
+    const f = (from + k) % count;
+    if (f === d.cur[i] && count > 1) continue;
+    let score = 0;
+    for (const j of near) score += (d.cur[j] === f ? 100 : 0) + (d.next[j] === f ? 10 : 0);
+    for (const c of d.cur) if (c === f) score += 1;
+    if (score < least) [best, least] = [f, score];
+  }
+  return best;
+}
+function freshDeal(key: string, vs: number[], cols: number, count: number, turn: number, step: number): Deal {
+  const d: Deal = { key, vs, cur: vs.map(() => -1), next: vs.map(() => -1) };
+  vs.forEach((_, i) => (d.cur[i] = dealFilm(d, i, cols, count, (i * 5 + turn * 3) % count)));
+  vs.forEach((_, i) => (d.next[i] = dealFilm(d, i, cols, count, (d.cur[i] + step) % count)));
+  return d;
+}
+function advanceDeal(d: Deal, vs: number[], cols: number, count: number, step: number): Deal {
+  if (vs.every((v, i) => v <= d.vs[i])) return d;
+  const e: Deal = { ...d, vs, cur: [...d.cur], next: [...d.next] };
+  vs.forEach((v, i) => {
+    if (v <= d.vs[i]) return;
+    e.cur[i] = e.next[i];
+    e.next[i] = -1;
+    e.next[i] = dealFilm(e, i, cols, count, (e.cur[i] + step) % count);
+  });
+  return e;
+}
 
 const FormatGrid = memo(function FormatGrid({
   kind,
@@ -553,21 +592,34 @@ const FormatGrid = memo(function FormatGrid({
   // the beat only runs once the films are on (not while the window is opening)
   const beat = useBeat(on && cuts && live > 0 && live >= Math.min(n, budget));
   const marks = kind === "9x16" ? ACCOUNT_MARKS : LOGO_MARKS;
-  const films = big && kind === "16x9" && wall && wall.length >= WALL_MIN ? wall : null;
+  // hero 6's 16x9: the brands' own films only, each under its own logo
+  const films = big && kind === "16x9" && wall?.length ? wall : null;
+  const count = films ? films.length : pool.length;
+  const step = stepFor(count);
+  const vOf = (i: number) => {
+    const cycle = CUT.cycles[i % CUT.cycles.length];
+    return cuts ? Math.floor((beat + (i * 2) % cycle) / cycle) : 0; // how many times this tile has cut
+  };
+  const vs = Array.from({ length: n }, (_, i) => vOf(i));
+  const dealKey = `${count}|${n}|${g.cols}|${turn}`;
+  const [kept, setDeal] = useState<Deal | null>(null);
+  const deal = films
+    ? kept && kept.key === dealKey ? advanceDeal(kept, vs, g.cols, count, step) : freshDeal(dealKey, vs, g.cols, count, turn, step)
+    : null;
+  if (deal !== kept) setDeal(deal);
   return (
     <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""} ${big ? styles.cine : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}
       data-kind={kind} aria-hidden="true">
       {Array.from({ length: n }, (_, i) => {
-        const cycle = CUT.cycles[i % CUT.cycles.length];
-        const v = cuts ? Math.floor((beat + (i * 2) % cycle) / cycle) : 0; // how many times this tile has cut
-        const pick = (k: number) => (i * 5 + turn * 3 + k * 7) % (films ? films.length : pool.length);
-        const film = films ? films[pick(v)] : null;
+        const v = vs[i];
+        const pick = (k: number) => (i * 5 + turn * 3 + k * step) % count;
+        const film = deal ? films![deal.cur[i]] : null;
         const src = film ? film.clip : pool[pick(v)];
-        const nextSrc = films ? films[pick(v + 1)].clip : pool[pick(v + 1)];
+        const nextSrc = deal ? films![deal.next[i]].clip : pool[pick(v + 1)];
         const still = film ? film.shot : stillOf(src);
-        // logos only — a film whose brand has no logo file yet carries none (never its name in type)
+        // logos only, and on the wall always the film's own brand
         const mark: Mark | null = film
-          ? film.logo ? { name: film.brand || film.title, src: film.logo } : null
+          ? { name: film.brand, src: film.logo }
           : big
             ? marks[(i * 2 + turn + v) % marks.length]
             : null;
