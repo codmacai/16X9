@@ -283,18 +283,19 @@ export const ACCOUNTS: Account[] = [
   { name: "Amer Lounge", handle: "amerlounge", followers: "10K", posts: 148, logo: "/work/accounts/amerlounge.webp", reels: standIn(5, 9, 14, 1, 6, 10, 15, 3, 8) },
   { name: "Business Lounge", handle: "businesslounge.ae", followers: "8,508", posts: 309, logo: "/work/accounts/businesslounge.webp", reels: standIn(8, 12, 4, 15, 2, 7, 11, 13, 6) },
   { name: "Business Avenue", handle: "businessavenue.ae", followers: "7,309", posts: 99, logo: "/work/accounts/businessavenue.webp", reels: standIn(6, 10, 13, 2, 4, 9, 1, 14, 7) },
-  // demo accounts for now — replace each with a real account (its name, handle, counts, logo and reels)
+  // demo accounts for now, under the logos of brands the studio has made films for (their own
+  // profile pictures, drawn from the logo files) — replace each with a real account we run
   ...([
-    ["Saffron & Salt", "saffron-salt", [3, 7, 12, 2, 15, 9]],
-    ["Marina Lofts", "marina-lofts", [6, 15, 2, 11, 4, 8]],
-    ["Oud Atelier", "oud-atelier", [11, 9, 3, 14, 7, 12]],
-    ["Desert Bloom", "desert-bloom", [15, 2, 8, 3, 10, 4]],
-  ] as const).map(([name, slug, reels]): Account => ({
+    ["Etihad Airways", "etihad", "/work/accounts/demo-etihad.svg", [3, 7, 12, 2, 15, 9]],
+    ["Toyota", "toyota", "/work/accounts/demo-toyota.svg", [6, 15, 2, 11, 4, 8]],
+    ["Masdar", "masdar", "/work/accounts/demo-masdar.webp", [11, 9, 3, 14, 7, 12]],
+    ["what3words", "what3words", "/work/accounts/demo-what3words.svg", [15, 2, 8, 3, 10, 4]],
+  ] as const).map(([name, slug, logo, reels]): Account => ({
     name,
-    handle: slug,
+    handle: `demo-${slug}`,
     followers: "",
     posts: 0,
-    logo: `/work/accounts/demo-${slug}.svg`,
+    logo,
     reels: standIn(...reels),
     demo: true,
   })),

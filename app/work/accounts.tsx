@@ -72,7 +72,7 @@ export default function Accounts() {
                       {a.followers} followers · {a.posts} posts
                     </span>
                   )}
-                  {a.reels?.length ? <Reels reels={a.reels} logo={a.logo} handle={a.handle} on={on === a.handle} onPick={(i) => setReel({ handle: a.handle, i })} /> : null}
+                  {a.reels?.length ? <Reels reels={a.reels} logo={a.logo} label={a.demo ? a.name : `@${a.handle}`} on={on === a.handle} onPick={(i) => setReel({ handle: a.handle, i })} /> : null}
                 </span>
                 {a.demo ? (
                   <>
@@ -97,7 +97,7 @@ export default function Accounts() {
       <Works onOpen={setWork} />
       <AnimatePresence>
         {reelAcc && reel && (
-          <Player key="reel" reels={reelAcc.reels ?? []} start={reel.i} handle={reelAcc.handle} logo={reelAcc.logo} onClose={() => setReel(null)} dark />
+          <Player key="reel" reels={reelAcc.reels ?? []} start={reel.i} handle={reelAcc.demo ? reelAcc.name : reelAcc.handle} logo={reelAcc.logo} onClose={() => setReel(null)} dark />
         )}
       </AnimatePresence>
       <AnimatePresence>

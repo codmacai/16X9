@@ -64,7 +64,7 @@ export default function Profile({ account, onClose }: { account: Account; onClos
           <img className={styles.avatar} src={account.logo} alt="" />
           <div className={styles.meta}>
             <div className={styles.handleRow}>
-              <h2>{account.handle}</h2>
+              <h2>{account.demo ? account.name : account.handle}</h2>
               {!account.demo && (
                 <a className={styles.follow} href={instagramOf(account)} target="_blank" rel="noopener noreferrer">
                   View on Instagram ↗
@@ -85,7 +85,7 @@ export default function Profile({ account, onClose }: { account: Account; onClos
                 </li>
               </ul>
             )}
-            <p className={styles.name}>{account.name}</p>
+            {!account.demo && <p className={styles.name}>{account.name}</p>}
           </div>
         </header>
 
@@ -107,7 +107,7 @@ export default function Profile({ account, onClose }: { account: Account; onClos
       </div>
 
       <AnimatePresence>
-        {play !== null && <Player reels={reels} start={play} handle={account.handle} logo={account.logo} onClose={() => setPlay(null)} />}
+        {play !== null && <Player reels={reels} start={play} handle={account.demo ? account.name : account.handle} logo={account.logo} onClose={() => setPlay(null)} />}
       </AnimatePresence>
     </motion.div>
   );

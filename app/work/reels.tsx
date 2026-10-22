@@ -11,13 +11,14 @@ import styles from "./accounts.module.css";
 export default function Reels({
   reels,
   logo,
-  handle,
+  label,
   on,
   onPick,
 }: {
   reels: Reel[];
   logo: string;
-  handle: string;
+  /** shown by the logo at the top: the account's @handle (a demo account's name) */
+  label: string;
   on: boolean;
   onPick: (i: number) => void;
 }) {
@@ -25,7 +26,8 @@ export default function Reels({
     <div className={`${styles.reels} ${on ? styles.reelsOn : ""}`} aria-hidden={!on}>
       <span className={styles.reelsHead}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={logo} alt="" draggable={false} />@{handle}
+        <img src={logo} alt="" draggable={false} />
+        {label}
       </span>
       <div className={styles.grid}>
         {reels.map((r, i) => (
