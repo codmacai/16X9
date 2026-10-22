@@ -48,7 +48,7 @@ export default function Accounts() {
         onBack={work !== null ? () => setWork(null) : reel ? () => setReel(null) : open ? () => setOpen(null) : undefined}
         center={<RoomSwitch room="9x16" onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })} tone="light" />}
       />
-      <Intro916 reduce={reduce} />
+      <Intro916 reduce={reduce} onOpen={setWork} />
       <section id="accounts" className={styles.sheet} aria-label="9x16 work — the Instagram accounts we run">
         <motion.p
           className={styles.index}
