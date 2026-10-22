@@ -1,190 +1,501 @@
-/* WORK, 9x16 — the opening (intro-916.tsx), on the paper. Everything hangs on one vertical axis from
-   the frame in the middle: the headline on its top and bottom edges, the kicker a measured step above,
-   the line the same step below. The words are the paper's colour on a difference blend: ink over the
-   paper, white over the black. The scroll opens the frame until it fills the screen. Motion is
-   transform and opacity only. */
+/* WORK, 9x16 — the opening (intro-916.tsx), in the dark: one vertical frame in the middle, a reel
+   playing in it and its light on the room; the headline through the frame. The opening plays in CSS;
+   the scroll (--g, how far the frame's edges have moved) opens the frame to the whole screen. */
 
 .intro {
-  --paper-bg: #f4f2ee;
-  --fh: min(44svh, 470px); /* the frame's height */
-  --ts: clamp(48px, min(8vw, 13svh), 150px); /* the headline's size */
-  --step: clamp(26px, 4.4svh, 46px); /* from a line of the headline to the kicker, and to the line under */
-  --cy: calc(var(--band) + (100% - var(--band)) / 2); /* the middle of the page under the band */
+  --bg: #050505;
+  --fh: min(66svh, 700px); /* the frame's height */
+  --fw: calc(var(--fh) * 9 / 16);
+  --cy: calc(var(--band) + (100% - var(--band)) / 2); /* the middle of the room under the band */
+  --ws: clamp(30px, 3.4vw, 60px); /* the headline's size */
+  --gap: clamp(26px, 2.8vw, 52px); /* between the frame and the words */
   position: relative;
-  height: 280svh; /* the scroll the frame opens over */
-  background: var(--paper-bg);
+  height: 240svh; /* the scroll the frame opens over */
+  background: var(--bg);
+  color: var(--paper);
 }
 
-/* the page holds still while the frame opens */
+/* the room holds still while the frame opens */
 .pin {
   position: sticky;
   top: 0;
   height: 100svh;
   overflow: hidden;
-  isolation: isolate;
-  background: var(--paper-bg); /* what the words difference against */
+  background: var(--bg);
+}
+
+/* ===== the reel's light, thrown on the room ===== */
+.glow {
+  position: absolute;
+  left: 50%;
+  top: var(--cy);
+  width: calc(var(--fw) * 3.2);
+  height: calc(var(--fh) * 1.45);
+  translate: -50% -50%;
+  pointer-events: none;
+}
+
+.glow canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.6;
+  filter: blur(56px) saturate(1.35);
+  mask-image: radial-gradient(closest-side, #000 20%, rgb(0 0 0 / 0.55) 55%, transparent);
+  -webkit-mask-image: radial-gradient(closest-side, #000 20%, rgb(0 0 0 / 0.55) 55%, transparent);
+  animation: glow-in 2.8s ease 0.5s backwards;
+}
+
+@keyframes glow-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* ===== the frame, in the middle ===== */
 .frame {
   position: absolute;
+  z-index: 2;
   left: 50%;
   top: var(--cy);
-  width: calc(var(--fh) * 9 / 16);
+  width: var(--fw);
   height: var(--fh);
-  margin: calc(var(--fh) / -2) 0 0 calc(var(--fh) * 9 / -32);
-  border-radius: 8px;
-  background: #050505;
+  margin: calc(var(--fh) / -2) 0 0 calc(var(--fw) / -2);
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: none;
+  cursor: pointer;
   will-change: transform;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* ===== the words: the paper's colour, differenced ===== */
-.words {
+/* it opens from a line across its middle, out to its full height */
+.screen {
   position: absolute;
   inset: 0;
-  color: var(--paper-bg);
-  mix-blend-mode: difference;
-  text-align: center;
+  overflow: hidden;
+  border-radius: inherit;
+  background: #0c0c0c;
+  isolation: isolate;
+  animation: open 1.6s var(--ease) 0.1s both;
+}
+
+@keyframes open {
+  from {
+    clip-path: inset(50% 0 50% 0 round 16px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 16px);
+  }
+}
+
+/* a hairline at its edge */
+.screen::after {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.09);
   pointer-events: none;
 }
 
-.title {
-  margin: 0;
-  font-size: var(--ts);
-  font-weight: 300;
-  line-height: 1;
-  letter-spacing: -0.05em;
-  text-transform: uppercase;
+/* the reels, one over another as they swipe; the newest on top */
+.feed {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  isolation: isolate;
+  animation: settle 2.2s var(--ease) 0.1s both;
 }
 
-/* each line centred on an edge of the frame */
-.line {
+@keyframes settle {
+  from {
+    scale: 1.3;
+  }
+}
+
+.reel {
   position: absolute;
-  left: 0;
-  right: 0;
-  display: block;
+  inset: 0;
+  overflow: hidden;
+  background: #0c0c0c;
   will-change: transform;
 }
 
-.top {
-  top: calc(var(--cy) - var(--fh) / 2);
-  translate: 0 -50%;
+.reel img,
+.reel video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: cover;
 }
 
-.bottom {
-  top: calc(var(--cy) + var(--fh) / 2);
-  translate: 0 -50%;
+/* the reel swiped away, going dark */
+.shade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
 }
 
-/* the line rises into its mask; the mask is the cap height and a breath, so it sits true on the edge */
+/* a fine bar for each reel, as stories have */
+.bars {
+  position: absolute;
+  z-index: 2;
+  left: 12px;
+  right: 12px;
+  top: 12px;
+  display: flex;
+  gap: 4px;
+}
+
+.bars::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -12px -12px -48px;
+  background: linear-gradient(rgb(0 0 0 / 0.32), transparent);
+}
+
+.bars i {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgb(246 244 240 / 0.28);
+}
+
+.bars .barDone {
+  background: rgb(246 244 240 / 0.85);
+}
+
+.bars b {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  transform-origin: 0 50%;
+  animation: fill linear both;
+}
+
+@keyframes fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* "Play", while the frame is pointed at */
+.playBox {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+}
+
+.play {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 18px 0 15px;
+  border-radius: 999px;
+  background: rgb(246 244 240 / 0.92);
+  color: #0b0b0b;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  translate: -50% 0;
+  backdrop-filter: blur(6px);
+}
+
+.play i {
+  width: 0;
+  height: 0;
+  border-left: 8px solid currentColor;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
+
+@media (hover: hover) {
+  .play {
+    transform: translateY(8px);
+    opacity: 0;
+    transition:
+      transform 0.6s var(--ease),
+      opacity 0.4s var(--ease);
+  }
+  .frame:hover .play {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.frame:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 8px;
+}
+
+/* opened to the whole screen, it goes dark */
+.dim {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  background: var(--bg);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ===== the headline, through the frame: one side of it, then the other ===== */
+.title {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  font-size: var(--ws);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.side {
+  position: absolute;
+  top: var(--cy);
+}
+
+/* each pushed out before the frame's edge as it opens */
+.sideA {
+  right: calc(50% + var(--fw) / 2);
+  translate: calc(var(--g, 0) * var(--fw) / -2) -50%;
+}
+
+.sideB {
+  left: calc(50% + var(--fw) / 2);
+  translate: calc(var(--g, 0) * var(--fw) / 2) -50%;
+}
+
+/* the mask's edge is the frame's: the words slide out from behind it */
 .mask {
   display: block;
   overflow: hidden;
-  padding: 0.08em 0 0.06em;
 }
 
-.mask > span {
+.sideA .mask {
+  padding-right: var(--gap);
+}
+
+.sideB .mask {
+  padding-left: var(--gap);
+}
+
+.word {
   display: block;
+  padding: 0.06em 0;
+  white-space: nowrap;
 }
 
+.sideA .word {
+  animation: from-right 1.5s var(--ease) 0.7s both;
+}
+
+.sideB .word {
+  animation: from-left 1.5s var(--ease) 0.7s both;
+}
+
+@keyframes from-right {
+  from {
+    translate: 135% 0;
+  }
+}
+
+@keyframes from-left {
+  from {
+    translate: -135% 0;
+  }
+}
+
+/* over the first word, what this is; under the second, a line on it */
 .kicker,
 .lede {
   position: absolute;
-  left: var(--ui);
-  right: var(--ui);
   margin: 0;
 }
 
 .kicker {
-  top: calc(var(--cy) - var(--fh) / 2 - var(--ts) * 0.5 - var(--step));
+  right: calc(50% + var(--fw) / 2 + var(--gap));
+  top: calc(var(--cy) - var(--ws) * 0.56 - clamp(16px, 2.2vh, 24px));
   translate: 0 -100%;
   font-size: 10px;
-  letter-spacing: 0.34em;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
+  white-space: nowrap;
+  color: rgb(246 244 240 / 0.5);
+}
+
+.kicker b {
+  font-weight: 400;
+  color: var(--paper);
+}
+
+.kicker b::after {
+  content: "";
+  display: inline-block;
+  width: 24px;
+  height: 1px;
+  margin: 0 12px 0 14px;
+  vertical-align: middle;
+  background: rgb(246 244 240 / 0.3);
 }
 
 .lede {
-  top: calc(var(--cy) + var(--fh) / 2 + var(--ts) * 0.5 + var(--step));
-  max-width: 520px;
-  margin: 0 auto;
-  font-size: clamp(13px, 1.05vw, 15px);
-  line-height: 1.6;
-  opacity: 0.62;
+  left: calc(50% + var(--fw) / 2 + var(--gap));
+  top: calc(var(--cy) + var(--ws) * 0.56 + clamp(18px, 2.6vh, 28px));
+  width: min(250px, calc(50% - var(--fw) / 2 - var(--gap) - var(--ui)));
+  font-size: 13px;
+  line-height: 1.65;
+  color: rgb(246 244 240 / 0.55);
 }
 
 .kicker > span,
-.lede > span {
-  display: block;
+.lede > span,
+.caption > span {
+  display: inline-block;
+  animation: rise 1.1s var(--ease) 1.2s both;
 }
 
-/* ===== scroll on: a fine line at the foot ===== */
-.pin .cue {
-  position: absolute;
-  left: 50%;
-  bottom: clamp(14px, 2.6svh, 26px);
-  display: block;
-  width: 1px;
-  height: 30px;
-  translate: -50% 0;
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
 }
 
-.cue i {
+/* ===== under the frame: which reel it is ===== */
+.caption {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: calc(var(--cy) + var(--fh) / 2 + clamp(18px, 2.8vh, 28px));
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgb(246 244 240 / 0.75);
+  pointer-events: none;
+}
+
+.caption > span {
+  display: inline-flex;
+  gap: 14px;
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+}
+
+.count i {
+  font-style: normal;
+  opacity: 0.45;
+}
+
+.capMask {
+  position: relative;
+  display: block;
+  height: 1.4em;
   overflow: hidden;
-  background: rgb(11 11 11 / 0.12);
 }
 
-.cue i::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: #0b0b0b;
-  animation: fall 2.4s var(--ease) infinite;
+.capTitle {
+  display: block;
+  white-space: nowrap;
 }
 
-@keyframes fall {
-  0% {
-    transform: translateY(-100%);
+/* phones and portrait screens: the headline runs down through the frame — above it, then under it */
+@media (max-width: 760px), (max-aspect-ratio: 4/5) {
+  .intro {
+    --fh: min(58svh, 68vw * 16 / 9, 760px);
+    --ws: clamp(26px, 8.4vw, 52px);
+    --gap: clamp(14px, 2.2svh, 24px);
+    height: 220svh;
   }
-  60%,
-  100% {
-    transform: translateY(100%);
+  .glow {
+    width: calc(var(--fw) * 2.6);
+    height: calc(var(--fh) * 1.35);
   }
-}
-
-/* short screens: the cue would meet the line; the line alone leads on */
-@media (max-height: 780px) {
-  .pin .cue {
+  .sideA,
+  .sideB {
+    left: 0;
+    right: 0;
+    text-align: center;
+  }
+  .sideA {
+    top: auto;
+    bottom: calc(100% - var(--cy) + var(--fh) / 2);
+    translate: 0 calc(var(--g, 0) * var(--fh) / -2);
+  }
+  .sideB {
+    top: calc(var(--cy) + var(--fh) / 2);
+    translate: 0 calc(var(--g, 0) * var(--fh) / 2);
+  }
+  .sideA .mask {
+    padding: 0 0 var(--gap);
+  }
+  .sideB .mask {
+    padding: var(--gap) 0 0;
+  }
+  .sideA .word {
+    animation-name: from-below;
+  }
+  .sideB .word {
+    animation-name: from-above;
+  }
+  .kicker,
+  .lede,
+  .caption {
     display: none;
   }
 }
 
-/* phones */
-@media (max-width: 760px) {
-  .intro {
-    --fh: min(40svh, 340px);
-    --ts: clamp(38px, 12.2vw, 58px);
-    --step: 26px;
-    height: 240svh;
-  }
-  .lede {
-    max-width: 300px;
+@keyframes from-below {
+  from {
+    translate: 0 165%;
   }
 }
 
-/* reduced motion: no scroll to open over — the words on the paper, and the dark below */
+@keyframes from-above {
+  from {
+    translate: 0 -165%;
+  }
+}
+
+/* reduced motion: no scroll to open over — the frame, its first reel and the words, then the dark */
 .still {
   height: auto;
 }
 
 .still .pin {
   position: relative;
-  height: 100svh;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cue i::after {
+  .screen,
+  .feed,
+  .word,
+  .glow canvas,
+  .kicker > span,
+  .lede > span,
+  .caption > span {
     animation: none;
   }
 }

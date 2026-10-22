@@ -5,16 +5,16 @@ import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTra
 import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
 import { Band, rootClass } from "./_shared/chrome";
-import { ACCOUNTS, instagramOf } from "./_shared/data";
+import { ACCOUNTS, WORKS_9X16, instagramOf } from "./_shared/data";
 import Reels from "./reels";
 import Intro916 from "./intro-916";
 import Profile, { Player } from "./profile";
 import styles from "./accounts.module.css";
 
 // ===========================================================================
-// WORK, 9x16 — it opens on the paper with what 9x16 is (intro-916.tsx), and
-// the scroll carries you into the vertical frame and out into the dark: the
-// Instagram accounts the studio runs, as slim 9:16 frames, outlined in a
+// WORK, 9x16 — it opens on one vertical frame in the dark (intro-916.tsx),
+// and the scroll opens the frame to the whole screen and on into the dark:
+// the Instagram accounts the studio runs, as slim 9:16 frames, outlined in a
 // hairline, each holding the brand's logo at its centre (its Instagram
 // picture, in a circle) and its followers and posts at the foot; name and
 // handle underneath. Point at one (or tap it) and it plays that account's
@@ -36,6 +36,8 @@ export default function Accounts() {
   // a reel clicked in a frame's grid plays on its own
   const [reel, setReel] = useState<{ handle: string; i: number } | null>(null);
   const reelAcc = reel ? ACCOUNTS.find((a) => a.handle === reel.handle) : undefined;
+  // a reel in the opening's frame clicked: it plays full height, the others a scroll away
+  const [work, setWork] = useState<number | null>(null);
   // as the page scrolls past the accounts, each column drifts at its own pace
   const rowRef = useRef<HTMLUListElement>(null);
   const { scrollYProgress } = useScroll({ target: rowRef, offset: ["start end", "end start"] });
@@ -47,10 +49,10 @@ export default function Accounts() {
         crumb="Index"
         workHref="/work?format=9x16"
         /* a reel or an account's page open: Back closes it first */
-        onBack={reel ? () => setReel(null) : open ? () => setOpen(null) : undefined}
+        onBack={work !== null ? () => setWork(null) : reel ? () => setReel(null) : open ? () => setOpen(null) : undefined}
         center={<RoomSwitch room="9x16" onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })} tone="light" />}
       />
-      <Intro916 reduce={reduce} />
+      <Intro916 reduce={reduce} onOpen={setWork} />
       <section id="accounts" className={styles.sheet} aria-label="9x16 work — the Instagram accounts we run">
         <motion.p
           className={styles.index}
@@ -112,6 +114,9 @@ export default function Accounts() {
         {reelAcc && reel && (
           <Player key="reel" reels={reelAcc.reels ?? []} start={reel.i} handle={reelAcc.demo ? reelAcc.name : reelAcc.handle} logo={reelAcc.logo} onClose={() => setReel(null)} dark />
         )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {work !== null && <Player key="work" reels={WORKS_9X16.slice(0, 5)} start={work} onClose={() => setWork(null)} dark />}
       </AnimatePresence>
       <AnimatePresence>{openAcc && <Profile key={openAcc.handle} account={openAcc} onClose={() => setOpen(null)} />}</AnimatePresence>
     </main>
