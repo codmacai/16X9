@@ -366,6 +366,9 @@ export const PREVIEWS_16X9: Preview[] = PROJECTS.filter((p) => p.format === "16x
  *  shot as the still under it, and its brand's logo. */
 export type WallFilm = { clip: string; shot?: string; brand: string; logo: string; wide?: boolean; title: string };
 const CLIP_BY_FILM = new Map(Object.entries(PREVIEW_CLIPS).map(([key, clip]) => [filmUrl(key), clip]));
+/** A film moving, for a preview: its 5-second clip once cut, else the film itself from 20s in (MP4s only). */
+export const clipFor = (p: Project) =>
+  p.film ? (CLIP_BY_FILM.get(p.film) ?? (/\.mp4$/i.test(p.film) ? `${p.film}#t=20` : undefined)) : undefined;
 // only the films of brands we have a logo for, each tile its own film under its own brand's logo:
 // its preview clip once cut, else the film itself from 20s in (MP4 only, so every browser plays it)
 const onWall = (p: Project) =>

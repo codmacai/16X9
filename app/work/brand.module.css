@@ -1,16 +1,42 @@
-/* BRAND FILMS, BY BRAND (brand-index.tsx): the brands as a large index on the dark, a picture of
-   each brand's film following the pointer. Motion is transform and opacity only. */
+/* BRAND FILMS, BY BRAND (brand-index.tsx): a wall of the brands' logos on the dark, each a window
+   onto its film. Motion is transform, opacity and one clip at a time. */
 
 .view {
   overflow: hidden;
+  background: #050505;
 }
 
+/* ===== the room's wash: the film pointed at, far out of focus ===== */
+.ambient {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.amb {
+  position: absolute;
+  inset: -12%;
+  width: 124% !important;
+  height: 124% !important;
+  max-width: none !important;
+  object-fit: cover;
+  filter: blur(48px) saturate(1.15);
+  opacity: 0;
+  transition: opacity 0.9s var(--ease);
+}
+
+.ambOn {
+  opacity: 0.2;
+}
+
+/* ===== the wall ===== */
 .body {
   position: absolute;
   inset: calc(var(--band) + 56px) 0 0;
   display: flex;
   flex-direction: column;
-  padding: 0 var(--ui) clamp(32px, 7vh, 72px);
+  padding: 0 var(--ui) clamp(28px, 6vh, 64px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
@@ -25,239 +51,351 @@
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  width: min(1180px, 100%);
-  margin: auto auto 18px;
+  width: min(1280px, 100%);
+  margin: auto auto 16px;
   font-size: 10px;
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: rgb(246 244 240 / 0.5);
 }
 
-.list {
-  width: min(1180px, 100%);
+/* the brand with the most films takes the large tile; the others sit beside it, two by two */
+.wall {
+  --row: clamp(170px, calc((100svh - var(--band) - 56px - 150px) / 2), 320px);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: var(--row);
+  gap: clamp(10px, 1.1vw, 16px);
+  width: min(1280px, 100%);
   margin: 0 auto auto;
   padding: 0;
   list-style: none;
-  border-bottom: 1px solid rgb(246 244 240 / 0.12);
 }
 
-.row {
+.wall > li:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.wall > li {
+  min-width: 0;
+}
+
+/* ===== a tile ===== */
+.tile {
   position: relative;
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto 92px 28px;
-  align-items: center;
-  gap: clamp(14px, 2vw, 32px);
+  display: block;
   width: 100%;
-  padding: clamp(14px, 2.5vh, 26px) 0;
+  height: 100%;
+  padding: 0;
   border: 0;
-  border-top: 1px solid rgb(246 244 240 / 0.12);
-  background: none;
+  border-radius: 4px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 45%, #141414, #0a0a0a 75%);
   color: var(--paper);
   font: inherit;
-  text-align: left;
   cursor: pointer;
-  transition: opacity 0.5s var(--ease);
+  isolation: isolate;
+  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.08);
+  transition:
+    opacity 0.55s var(--ease),
+    box-shadow 0.6s var(--ease);
+  will-change: transform;
 }
 
-.no {
-  align-self: start;
-  padding-top: 0.9em;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  color: rgb(246 244 240 / 0.4);
-  font-variant-numeric: tabular-nums;
+.tileOn {
+  box-shadow:
+    inset 0 0 0 1px rgb(246 244 240 / 0.28),
+    0 40px 90px rgb(0 0 0 / 0.55);
 }
 
-.name {
-  font-size: clamp(30px, 4.5vw, 78px);
-  font-weight: 300;
-  line-height: 0.98;
-  letter-spacing: -0.04em;
-  text-transform: uppercase;
-  overflow-wrap: anywhere;
-  transition: transform 0.8s var(--ease);
+.tileDim {
+  opacity: 0.38;
 }
 
-.kinds,
-.count {
-  font-size: 10px;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: rgb(246 244 240 / 0.5);
-  white-space: nowrap;
-}
-
-.count {
-  text-align: right;
-  color: rgb(246 244 240 / 0.75);
-  font-variant-numeric: tabular-nums;
-}
-
-.arrow {
-  font-size: 15px;
-  opacity: 0;
-  transform: translateX(-10px);
-  transition: opacity 0.4s var(--ease), transform 0.6s var(--ease);
-}
-
-/* pointed at: the name steps in, its arrow arrives; the others fall back */
-.rowOn .name {
-  transform: translateX(clamp(8px, 1.2vw, 18px));
-}
-
-.rowOn .arrow {
-  opacity: 1;
-  transform: none;
-}
-
-.listFocus li:not(.rowOn) .row {
-  opacity: 0.26;
-}
-
-.row:focus-visible {
-  outline: none;
-}
-
-.row:focus-visible .name {
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.12em;
-}
-
-/* ===== the picture after the pointer ===== */
-.preview {
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: 3;
-  pointer-events: none;
-}
-
-.pvBox {
-  position: absolute;
-  left: 36px;
-  top: 0;
-  width: clamp(260px, 26vw, 420px);
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: 3px;
-  background: #0d0d0d;
-  box-shadow: 0 40px 100px rgb(0 0 0 / 0.65);
-  translate: 0 -50%;
-  transform-origin: 0 50%;
-  will-change: transform, opacity;
-}
-
-.pv {
+/* its film, opened by an iris from where the pointer came in */
+.film {
   position: absolute;
   inset: 0;
-  opacity: 0;
-  transition: opacity 0.35s var(--ease);
+  clip-path: circle(0% at var(--x, 50%) var(--y, 50%));
+  transition: clip-path 0.95s var(--ease);
 }
 
-.pvOn {
-  opacity: 1;
+.tileOn .film {
+  clip-path: circle(150% at var(--x, 50%) var(--y, 50%));
 }
 
-/* the films are mostly scope inside 16:9: run the picture past the bars */
-.pvImg {
+/* most films are scope inside 16:9: run the picture past the bars */
+.still {
   position: absolute;
   top: -14%;
   left: 0;
-  width: 100%;
-  height: 128%;
+  width: 100% !important;
+  height: 128% !important;
+  max-width: none !important;
   object-fit: cover;
   transform: scale(1.1);
-  transition: transform 1.4s var(--ease);
+  transition: transform 1.6s var(--ease);
 }
 
-.pvOn .pvImg {
+.tileOn .still {
   transform: scale(1.02);
 }
 
-.pvShade {
+.shade {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / 0.35), rgb(0 0 0 / 0.1) 70%);
+  background:
+    radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.12) 72%),
+    linear-gradient(to top, rgb(0 0 0 / 0.6), transparent 34%);
 }
 
-/* the brand's logo, in paper, on its film */
-.pvLogo {
+/* the logo, in paper, a slow light passing over it in turn */
+.logo {
   position: absolute;
+  z-index: 2;
   left: 50%;
   top: 50%;
-  width: 22%;
+  height: 34%;
   aspect-ratio: 1;
   translate: -50% -50%;
-  background: #f6f4f0;
+  overflow: hidden;
+  background: rgb(246 244 240 / 0.88);
   mask-size: contain;
   mask-repeat: no-repeat;
   mask-position: center;
   -webkit-mask-size: contain;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center;
-  filter: drop-shadow(0 1px 8px rgb(0 0 0 / 0.5));
+  transition:
+    transform 0.9s var(--ease),
+    background-color 0.6s var(--ease);
 }
 
-.pvLogo[data-wide] {
-  width: 46%;
+.wall > li:first-child .logo {
+  height: 30%;
+}
+
+.logo[data-wide] {
+  height: 11%;
   aspect-ratio: 5.5;
 }
 
-/* ===== touch screens: each brand carries its picture ===== */
-.thumb {
-  position: relative;
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: 3px;
-  background: #0d0d0d;
-  grid-column: 2 / -1;
-  grid-row: 2;
+.wall > li:first-child .logo[data-wide] {
+  height: 9%;
 }
 
-.thumbImg {
+.logo::after {
+  content: "";
   position: absolute;
-  top: -14%;
-  left: 0;
-  width: 100%;
-  height: 128%;
-  object-fit: cover;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.95) 50%, transparent 62%);
+  transform: translateX(-130%);
+  animation: sheen 9s var(--ease) infinite;
+  animation-delay: calc(1.6s + var(--i, 0) * 1.4s);
 }
 
+@keyframes sheen {
+  0% {
+    transform: translateX(-130%);
+  }
+  22%,
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+.tileOn .logo {
+  background: #fff;
+  transform: scale(1.07);
+}
+
+/* a brand without a logo file yet: its name, set as a mark */
+.word {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  width: 78%;
+  translate: -50% -50%;
+  font-size: clamp(12px, 1.25vw, 19px);
+  line-height: 1.55;
+  letter-spacing: 0.34em;
+  text-align: center;
+  text-transform: uppercase;
+  color: rgb(246 244 240 / 0.9);
+  transition: transform 0.9s var(--ease);
+}
+
+.tileOn .word {
+  transform: scale(1.05);
+}
+
+.no {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  left: 16px;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: rgb(246 244 240 / 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.meta {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgb(246 244 240 / 0.85);
+}
+
+.mCount {
+  color: rgb(246 244 240 / 0.55);
+  font-variant-numeric: tabular-nums;
+  transition: color 0.5s var(--ease);
+}
+
+.mCount i {
+  display: inline-block;
+  margin-left: 6px;
+  font-style: normal;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition:
+    opacity 0.4s var(--ease),
+    transform 0.6s var(--ease);
+}
+
+.tileOn .mCount {
+  color: var(--paper);
+}
+
+.tileOn .mCount i {
+  opacity: 1;
+  transform: none;
+}
+
+.tile:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--paper);
+}
+
+/* touch screens can't point: each film is faintly there behind its logo */
+@media (hover: none) {
+  .film {
+    clip-path: none;
+    opacity: 0.42;
+  }
+  .still {
+    transform: none;
+  }
+}
+
+/* phones: two across, the first brand across the top */
 @media (max-width: 760px) {
   .body {
-    justify-content: flex-start;
-    padding-top: 8px;
+    padding-top: 6px;
   }
-  .row {
-    grid-template-columns: 34px minmax(0, 1fr) auto;
-    row-gap: 14px;
-    padding: 22px 0;
+  .wall {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 40vw;
+    gap: 10px;
   }
-  .kinds,
-  .arrow {
+  .wall > li:first-child {
+    grid-row: span 1;
+  }
+  .wall > li:first-child .logo {
+    height: 44%;
+  }
+  .wall > li:first-child .logo[data-wide] {
+    height: 13%;
+  }
+  .meta {
+    left: 12px;
+    right: 12px;
+    bottom: 10px;
+    font-size: 8.5px;
+    letter-spacing: 0.16em;
+  }
+  .mName {
     display: none;
   }
-  .name {
-    font-size: clamp(28px, 9vw, 40px);
-  }
-  .no {
-    padding-top: 0.5em;
+  .word {
+    font-size: 10px;
+    letter-spacing: 0.26em;
   }
 }
 
-/* a tablet's touch screen: the picture sits to the right of the name, not under it */
-@media (min-width: 761px) and (hover: none) {
-  .row {
-    grid-template-columns: 52px minmax(0, 1fr) auto 92px 200px;
-  }
-  .arrow {
-    display: none;
-  }
-  .thumb {
-    grid-column: auto;
-    grid-row: auto;
+/* ===== through the logo, into the brand ===== */
+.opening {
+  position: fixed;
+  inset: 0;
+  z-index: 15; /* under the line of films, which comes after it */
+  overflow: hidden;
+  background: #050505;
+  pointer-events: none;
+  will-change: clip-path;
+}
+
+.openingFilm {
+  position: absolute;
+  inset: var(--band) 0 0;
+}
+
+.openingFilm .still {
+  transform: none;
+}
+
+.openingLogo {
+  position: absolute;
+  left: 50%;
+  width: min(26vw, 340px);
+  aspect-ratio: 1;
+  margin: calc(min(26vw, 340px) / -2) 0 0 calc(min(26vw, 340px) / -2);
+  background: #fff;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  filter: drop-shadow(0 2px 16px rgb(0 0 0 / 0.5));
+}
+
+.openingLogo[data-wide] {
+  width: min(48vw, 640px);
+  aspect-ratio: 5.5;
+  margin: calc(min(48vw, 640px) / -11) 0 0 calc(min(48vw, 640px) / -2);
+}
+
+.openingWord {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin-top: -0.8em;
+  font-size: clamp(16px, 2.2vw, 30px);
+  letter-spacing: 0.36em;
+  text-align: center;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo::after {
+    animation: none;
   }
 }
