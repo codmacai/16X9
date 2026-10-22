@@ -46,7 +46,7 @@ export default function Works({ onOpen }: { onOpen: (i: number) => void }) {
     <section className={styles.works} aria-labelledby="works-title">
       <header className={styles.worksHead}>
         <p className={styles.index}>
-          <span>02</span> Selected reels
+          <span>02</span> The work
         </p>
         {/* the lines rise in their masks once the heading is in view (watched on the heading: the
             lines themselves start hidden in their masks, so they'd never be seen to come in) */}
@@ -57,7 +57,7 @@ export default function Works({ onOpen }: { onOpen: (i: number) => void }) {
           whileInView="shown"
           viewport={{ once: true, amount: 0.5 }}
         >
-          {["Made for", "the scroll"].map((line, i) => (
+          {["Selected", "reels"].map((line, i) => (
             <span key={line} className={styles.mask}>
               <motion.span
                 variants={{ hidden: { y: "105%" }, shown: { y: 0, transition: { delay: i * 0.08, duration: 1.1, ease: EASE } } }}

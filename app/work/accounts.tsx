@@ -49,7 +49,7 @@ export default function Accounts() {
         center={<RoomSwitch room="9x16" onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })} tone="light" />}
       />
       <Intro916 reduce={reduce} />
-      <section className={styles.sheet} aria-label="9x16 work — the Instagram accounts we run">
+      <section id="accounts" className={styles.sheet} aria-label="9x16 work — the Instagram accounts we run">
         <motion.p
           className={styles.index}
           initial={reduce ? false : { opacity: 0, y: 16 }}
