@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion, type Transition } from "framer-motion";
 import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
-import { Band, EASE, rootClass } from "./_shared/chrome";
+import { Band, rootClass } from "./_shared/chrome";
 import { ACCOUNTS, WORKS_9X16, instagramOf } from "./_shared/data";
 import Reels from "./reels";
 import Works from "./works";
+import Intro916 from "./intro-916";
 import Profile, { Player } from "./profile";
 import styles from "./accounts.module.css";
 
 // ===========================================================================
-// WORK, 9x16 — the Instagram accounts the studio runs, as four slim 9:16
+// WORK, 9x16 — it opens on what 9x16 is (intro-916.tsx); then the
+// Instagram accounts the studio runs, as slim 9:16
 // frames in the dark, outlined in a hairline, each holding the brand's logo
 // at its centre (its Instagram picture, in a circle) and its followers and
 // posts at the foot; name and handle sit underneath. Point at one (or tap it)
@@ -21,6 +23,9 @@ import styles from "./accounts.module.css";
 // Four to a row (two on a phone), the next four in the row below.
 // Below them, the selected reels (works.tsx), and a line to talk.
 // ===========================================================================
+
+// a frame rising into place as it scrolls in
+const RISE: Transition = { type: "spring", stiffness: 80, damping: 17, mass: 1 };
 
 export default function Accounts() {
   const reduce = !!useReducedMotion();
@@ -43,11 +48,14 @@ export default function Accounts() {
         onBack={work !== null ? () => setWork(null) : reel ? () => setReel(null) : open ? () => setOpen(null) : undefined}
         center={<RoomSwitch room="9x16" onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })} tone="light" />}
       />
+      <Intro916 reduce={reduce} />
       <section className={styles.sheet} aria-label="9x16 work — the Instagram accounts we run">
         <motion.p
           className={styles.index}
-          initial={reduce ? false : { opacity: 0 }}
-          animate={{ opacity: 1, transition: { delay: 0.5, duration: 0.9 } }}
+          initial={reduce ? false : { opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.6 }}
+          transition={RISE}
         >
           <span>01</span> The accounts we run
         </motion.p>
@@ -55,8 +63,10 @@ export default function Accounts() {
           {ACCOUNTS.map((a, i) => (
             <motion.li
               key={a.handle}
-              initial={reduce ? false : { opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0, transition: { delay: 0.6 + (i % 4) * 0.08 + Math.floor(i / 4) * 0.2, duration: 1, ease: EASE } }}
+              initial={reduce ? false : { opacity: 0, y: 56 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ ...RISE, delay: (i % 4) * 0.08 }}
             >
               <div
                 className={`${styles.item} ${on === a.handle ? styles.itemOn : ""}`}

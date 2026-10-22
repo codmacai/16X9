@@ -12,7 +12,7 @@ import styles from "../hero2/hero2.module.css";
 import own from "./hero7.module.css";
 
 // ===========================================================================
-// HERO 7 — hero 6 in white smoke: pointing at a format brings up its preview with a soft white
+// HERO 7 — hero 6 in smoke: pointing at a format brings up its preview with a soft warm ivory
 // cloud drifting in the middle behind the words (still in ink), at once — no edge anywhere. No
 // line at the foot and no prompt under the words: the three words alone.
 // (From hero 6: hero 5 with tall 9x16 cards and a refined Beyond board.)

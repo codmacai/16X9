@@ -345,6 +345,10 @@ const WIDE_LOGOS = new Set(["/brands/masdar.png"]);
 
 /** The brand shown for a film: Filmmaster MEA made Toyota's Corolla film, so it reads as Toyota. */
 const BRAND_NAME: Record<string, string> = { "Filmmaster MEA": "Toyota", "Toyota Prius": "Toyota", "Masdar Institute": "Masdar" };
+/** The brand a film was made for, and its logo (if we have the file). */
+export const brandOf = (p: Project) => BRAND_NAME[p.client] ?? p.client;
+export const logoOf = (p: Project): { src: string; wide: boolean } | undefined =>
+  BRAND_LOGOS[p.client] ? { src: BRAND_LOGOS[p.client], wide: WIDE_LOGOS.has(BRAND_LOGOS[p.client]) } : undefined;
 
 export type Preview = { src: string; title: string; brand: string; logo?: string; shot?: string };
 

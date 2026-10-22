@@ -764,8 +764,9 @@ const ReelStrip = memo(function ReelStrip({ on, pool, turn }: { on: boolean; poo
 });
 
 // ===========================================================================
-// HERO 7's SMOKE — a white cloud in the middle of the preview, behind the
-// words: dense where they are, thinning into wisps outward, no edge anywhere.
+// HERO 7's SMOKE — a warm ivory cloud in the middle of the preview, behind the
+// words: dense where they are, thinning quickly outward so the films show
+// round it, no edge anywhere.
 // Two stills of smoke (rendered once from a noise shader, in /public/hero7)
 // drift slowly past each other — two layers moved by the compositor, the
 // lightest thing a browser can animate, so it's smooth on any device. It is

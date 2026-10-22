@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { animate, AnimatePresence, motion, useMotionValue, type Transition } from "framer-motion";
 import { EASE } from "./_shared/chrome";
-import { type Project } from "./_shared/data";
+import { type CategoryId, type Project } from "./_shared/data";
 import Card from "./card";
 import Detail from "./detail";
 import s from "./file.module.css";
@@ -32,7 +32,7 @@ import s from "./file.module.css";
 // Click the film in front and its page slides up (detail.tsx).
 // ===========================================================================
 
-export type Drawer = { no: string; label: string; short: string; films: Project[] };
+export type Drawer = { no: string; label: string; short: string; films: Project[]; /** the category it holds */ cat?: CategoryId };
 
 type Geo = {
   vw: number;

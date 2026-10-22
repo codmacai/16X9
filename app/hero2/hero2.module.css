@@ -2483,7 +2483,8 @@
   z-index: 7;
 }
 
-/* (the words stay in ink: the smoke round them is white) */
+/* (the words stay in ink: the smoke round them is a warm ivory, the paper a breath deeper, so it
+   sits in the films' warm grade instead of glaring white over them) */
 
 .smoke7 {
   position: absolute;
@@ -2511,12 +2512,12 @@
 
 /* the two layers drift slowly past each other: the cloud seems to move within itself */
 .smoke7A {
-  opacity: 0.9;
+  opacity: 0.88;
   animation: smokeA 24s ease-in-out infinite alternate;
 }
 
 .smoke7B {
-  opacity: 0.55;
+  opacity: 0.42;
   animation: smokeB 31s ease-in-out infinite alternate;
 }
 
@@ -2542,7 +2543,7 @@
   }
 }
 
-/* under white smoke the grids lose their dark centre pool (the smoke is the ground for the words);
+/* under the smoke the grids lose their dark centre pool (the smoke is the ground for the words);
    only the vignette at the edges stays */
 .stageBand .film .cine::after {
   background: radial-gradient(ellipse 85% 75% at 50% 50%, transparent 50%, rgb(0 0 0 / 0.55)), var(--grade);

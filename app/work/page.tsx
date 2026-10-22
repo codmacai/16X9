@@ -6,6 +6,7 @@ import { motion, useReducedMotion, type Transition } from "framer-motion";
 import { Band, EASE, EASE_CINE, EnterCursor, Info, rootClass, Still, usePlayer } from "./_shared/chrome";
 import { CATEGORIES, PROJECTS } from "./_shared/data";
 import FileView, { type Drawer } from "./file-view";
+import BrandIndex from "./brand-index";
 import Accounts from "./accounts";
 import RoomSwitch from "../hero4/room-switch";
 import type { FormatKey } from "../hero3/format-hero";
@@ -27,6 +28,7 @@ const ORDER: Drawer[] = CATEGORIES.map((c, i) => ({
   label: c.label,
   short: c.short,
   films: PROJECTS.filter((p) => p.category === c.id),
+  cat: c.id,
 }));
 // Opened from a format's room (/work?format=16x9), the cabinet holds that format's work: each
 // category keeps the films made for that frame (and those not marked with one), and empty ones go.
@@ -131,7 +133,9 @@ function WorkCabinet({ fmt }: { fmt: FormatKey | null }) {
   const sectionRef = useRef<HTMLElement>(null);
   const frontRef = useRef<HTMLElement>(null);
   const folderRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const { play, player } = usePlayer(open ? order[open.cat].films : list);
+  // Brand Films opens by brand: each brand's films reach into the other drawers, so it plays from them all
+  const byBrand = open !== null && order[open.cat].cat === "brand";
+  const { play, player } = usePlayer(open && !byBrand ? order[open.cat].films : list);
 
   useScrollLock(sectionRef);
   useEffect(() => {
@@ -304,7 +308,19 @@ function WorkCabinet({ fmt }: { fmt: FormatKey | null }) {
         </nav>
       </section>
 
-      {open && !open.closing && (
+      {open && !open.closing && byBrand && (
+        <BrandIndex
+          key={open.cat}
+          drawer={order[open.cat]}
+          pool={list}
+          start={shown[open.cat]}
+          reduce={reduce}
+          onPlay={play}
+          onCursor={setCursor}
+          onClosed={filed}
+        />
+      )}
+      {open && !open.closing && !byBrand && (
         <FileView
           key={open.cat}
           drawer={order[open.cat]}
