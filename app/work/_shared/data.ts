@@ -286,10 +286,13 @@ export const BRAND_LOGOS: Record<string, string> = {
   BMW: "/brands/bmw.svg",
   "Etihad Airways": "/brands/etihad-airways.svg",
   what3words: "/brands/what3words.svg",
+  "Masdar Institute": "/brands/masdar.png", // the wordmark (alpha PNG)
 };
+// logos far wider than tall, given a wider box on a tile
+const WIDE_LOGOS = new Set(["/brands/masdar.png"]);
 
 /** The brand shown for a film: Filmmaster MEA made Toyota's Corolla film, so it reads as Toyota. */
-const BRAND_NAME: Record<string, string> = { "Filmmaster MEA": "Toyota", "Toyota Prius": "Toyota" };
+const BRAND_NAME: Record<string, string> = { "Filmmaster MEA": "Toyota", "Toyota Prius": "Toyota", "Masdar Institute": "Masdar" };
 
 export type Preview = { src: string; title: string; brand: string; logo?: string; shot?: string };
 
@@ -305,7 +308,7 @@ export const PREVIEWS_16X9: Preview[] = PROJECTS.filter((p) => p.format === "16x
 
 /** A film on hero 6's 16x9 wall: its 5-second preview clip (cut by scripts/make-shots.mjs), its
  *  shot as the still under it, and its brand's logo. */
-export type WallFilm = { clip: string; shot?: string; brand: string; logo: string; title: string };
+export type WallFilm = { clip: string; shot?: string; brand: string; logo: string; wide?: boolean; title: string };
 const CLIP_BY_FILM = new Map(Object.entries(PREVIEW_CLIPS).map(([key, clip]) => [hosted(key), clip]));
 // only the films of brands we have a logo for, each tile its own film under its own brand's logo:
 // its preview clip once cut, else the film itself from 20s in (MP4 only, so every browser plays it)
@@ -316,5 +319,21 @@ export const WALL_16X9: WallFilm[] = PROJECTS.filter(onWall).map((p) => ({
   shot: shotFor(p.film),
   brand: BRAND_NAME[p.client] ?? p.client,
   logo: BRAND_LOGOS[p.client],
+  wide: WIDE_LOGOS.has(BRAND_LOGOS[p.client]),
   title: p.title,
 }));
+
+// For now: brands with no film in the bucket yet, each on stand-in clips from the studio's reel.
+// When a brand's own film comes in, add it to PROJECTS (with its logo above) and drop it from here.
+const STAND_INS: { brand: string; logo: string; clips: string[] }[] = [
+  { brand: "BMW", logo: "/brands/bmw.svg", clips: ["clip-04", "clip-15"] }, // night lights, the dunes
+  { brand: "Nike", logo: "/brands/nike.svg", clips: ["clip-12", "clip-08"] }, // dance, breaking
+  { brand: "Rolls-Royce", logo: "/brands/rolls-royce.svg", clips: ["clip-02", "clip-07"] }, // the Arabian horse, the majlis
+  { brand: "Aldar", logo: "/brands/aldar.png", clips: ["clip-03"] }, // the Abu Dhabi skyline
+  // not clip-06 (Emaar's name is on its skyline) nor clip-05 (a hospital)
+];
+WALL_16X9.push(
+  ...STAND_INS.flatMap(({ brand, logo, clips }) =>
+    clips.map((c) => ({ clip: `/clips/${c}.mp4`, shot: `/clips/stills/${c}.webp`, brand, logo, wide: WIDE_LOGOS.has(logo), title: brand }))
+  )
+);

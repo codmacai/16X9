@@ -1887,6 +1887,12 @@
   filter: drop-shadow(0 1px 8px rgb(0 0 0 / 0.5));
 }
 
+/* a wordmark: a wider, shallower box, so it reads at the same weight as the emblems */
+.tlMask[data-wide] {
+  width: 40%;
+  aspect-ratio: 5.5;
+}
+
 .fcell .tlRound {
   inset: auto;
   left: 50%;

@@ -530,38 +530,69 @@ const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
 const stepFor = (n: number) => [7, 5, 3, 2].find((s) => s < n && gcd(n, s) === 1) ?? 1;
 
 // the wall's deal: the film each tile shows now and the one it has loaded next. A tile that cuts
-// takes its next film and loads another — one that neither its neighbours show nor have loaded next,
-// and of those the one fewest tiles are showing — so no two tiles side by side ever show the same film
-type Deal = { key: string; vs: number[]; cur: number[]; next: number[] };
-function dealFilm(d: Deal, i: number, cols: number, count: number, from: number) {
+// takes its next film and loads another — not one its neighbours show or have loaded next, and
+// not their brand either where it can help it; of those, the brand fewest tiles are showing — so
+// no two tiles side by side show the same film, and no one brand fills the wall
+type Deal = { key: string; beat: number; vs: number[]; cur: number[]; next: number[] };
+function dealFilm(d: Deal, i: number, cols: number, brands: string[], from: number) {
   const n = d.cur.length;
-  const near = [i - cols, i + cols, i % cols ? i - 1 : -1, (i + 1) % cols ? i + 1 : -1].filter((j) => j >= 0 && j < n);
+  const count = brands.length;
+  const near = nearOf(i, cols, n);
   let best = from;
   let least = Infinity;
   for (let k = 0; k < count; k++) {
     const f = (from + k) % count;
     if (f === d.cur[i] && count > 1) continue;
     let score = 0;
-    for (const j of near) score += (d.cur[j] === f ? 100 : 0) + (d.next[j] === f ? 10 : 0);
-    for (const c of d.cur) if (c === f) score += 1;
+    for (const j of near) {
+      if (d.cur[j] >= 0) score += d.cur[j] === f ? 1000 : brands[d.cur[j]] === brands[f] ? 100 : 0;
+      if (d.next[j] >= 0) score += d.next[j] === f ? 50 : brands[d.next[j]] === brands[f] ? 10 : 0;
+    }
+    // across the wall: the same film anywhere else counts heavily, the same brand less; what's
+    // showing counts more than what's loaded next
+    for (const c of d.cur) if (c >= 0) score += (c === f ? 40 : 0) + (brands[c] === brands[f] ? 30 : 0);
+    for (const c of d.next) if (c >= 0) score += (c === f ? 10 : 0) + (brands[c] === brands[f] ? 2 : 0);
     if (score < least) [best, least] = [f, score];
   }
   return best;
 }
-function freshDeal(key: string, vs: number[], cols: number, count: number, turn: number, step: number): Deal {
-  const d: Deal = { key, vs, cur: vs.map(() => -1), next: vs.map(() => -1) };
-  vs.forEach((_, i) => (d.cur[i] = dealFilm(d, i, cols, count, (i * 5 + turn * 3) % count)));
-  vs.forEach((_, i) => (d.next[i] = dealFilm(d, i, cols, count, (d.cur[i] + step) % count)));
+function freshDeal(key: string, beat: number, vs: number[], cols: number, brands: string[], turn: number, step: number): Deal {
+  const count = brands.length;
+  const d: Deal = { key, beat, vs, cur: vs.map(() => -1), next: vs.map(() => -1) };
+  vs.forEach((_, i) => (d.cur[i] = dealFilm(d, i, cols, brands, (i * 5 + turn * 3) % count)));
+  vs.forEach((_, i) => (d.next[i] = dealFilm(d, i, cols, brands, (d.cur[i] + step) % count)));
   return d;
 }
-function advanceDeal(d: Deal, vs: number[], cols: number, count: number, step: number): Deal {
-  if (vs.every((v, i) => v <= d.vs[i])) return d;
-  const e: Deal = { ...d, vs, cur: [...d.cur], next: [...d.next] };
-  vs.forEach((v, i) => {
-    if (v <= d.vs[i]) return;
-    e.cur[i] = e.next[i];
+// a tile's neighbours: above, below, left, right
+const nearOf = (i: number, cols: number, n: number) =>
+  [i - cols, i + cols, i % cols ? i - 1 : -1, (i + 1) % cols ? i + 1 : -1].filter((j) => j >= 0 && j < n);
+// whether film f on tile i would clash with the wall as it is: the same film showing on another
+// tile, its brand showing beside it, or its brand already on `cap` other tiles
+function clashes(d: Deal, i: number, f: number, cols: number, brands: string[], cap: number) {
+  if (d.cur.some((c, j) => j !== i && c === f)) return true;
+  if (nearOf(i, cols, d.cur.length).some((j) => brands[d.cur[j]] === brands[f])) return true;
+  return d.cur.filter((c, j) => j !== i && c >= 0 && brands[c] === brands[f]).length >= cap;
+}
+// each beat: the tiles due a cut take their next film (or, if it now clashes with a film or brand
+// beside it, deal another there and then); then any tile whose next film now clashes deals itself
+// another, while it still has a beat or more to load it before its cut
+function advanceDeal(d: Deal, beat: number, vs: number[], soon: boolean[], cols: number, brands: string[], step: number): Deal {
+  if (beat === d.beat) return d;
+  const e: Deal = { ...d, beat, vs, cur: [...d.cur], next: [...d.next] };
+  // each brand on about its share of the wall
+  const cap = Math.max(1, Math.ceil(vs.length / new Set(brands).size));
+  const cut = vs.map((v, i) => v > d.vs[i]);
+  cut.forEach((c, i) => {
+    if (!c) return;
+    const f = e.next[i];
     e.next[i] = -1;
-    e.next[i] = dealFilm(e, i, cols, count, (e.cur[i] + step) % count);
+    e.cur[i] = clashes(e, i, f, cols, brands, Infinity) ? dealFilm(e, i, cols, brands, (f + step) % brands.length) : f;
+    e.next[i] = dealFilm(e, i, cols, brands, (e.cur[i] + step) % brands.length);
+  });
+  e.next.forEach((f, i) => {
+    if (cut[i] || soon[i] || !clashes(e, i, f, cols, brands, cap)) return;
+    e.next[i] = -1;
+    e.next[i] = dealFilm(e, i, cols, brands, (f + step) % brands.length);
   });
   return e;
 }
@@ -595,16 +626,20 @@ const FormatGrid = memo(function FormatGrid({
   // hero 6's 16x9: the brands' own films only, each under its own logo
   const films = big && kind === "16x9" && wall?.length ? wall : null;
   const count = films ? films.length : pool.length;
+  const brands = films ? films.map((f) => f.brand) : [];
   const step = stepFor(count);
-  const vOf = (i: number) => {
+  const vOf = (i: number, at: number) => {
     const cycle = CUT.cycles[i % CUT.cycles.length];
-    return cuts ? Math.floor((beat + (i * 2) % cycle) / cycle) : 0; // how many times this tile has cut
+    return cuts ? Math.floor((at + (i * 2) % cycle) / cycle) : 0; // how many times this tile has cut
   };
-  const vs = Array.from({ length: n }, (_, i) => vOf(i));
+  const vs = Array.from({ length: n }, (_, i) => vOf(i, beat));
+  const soon = vs.map((v, i) => vOf(i, beat + 1) > v); // cutting on the next beat
   const dealKey = `${count}|${n}|${g.cols}|${turn}`;
   const [kept, setDeal] = useState<Deal | null>(null);
   const deal = films
-    ? kept && kept.key === dealKey ? advanceDeal(kept, vs, g.cols, count, step) : freshDeal(dealKey, vs, g.cols, count, turn, step)
+    ? kept && kept.key === dealKey
+      ? advanceDeal(kept, beat, vs, soon, g.cols, brands, step)
+      : freshDeal(dealKey, beat, vs, g.cols, brands, turn, step)
     : null;
   if (deal !== kept) setDeal(deal);
   return (
@@ -619,7 +654,7 @@ const FormatGrid = memo(function FormatGrid({
         const still = film ? film.shot : stillOf(src);
         // logos only, and on the wall always the film's own brand
         const mark: Mark | null = film
-          ? { name: film.brand, src: film.logo }
+          ? { name: film.brand, src: film.logo, wide: film.wide }
           : big
             ? marks[(i * 2 + turn + v) % marks.length]
             : null;
@@ -650,10 +685,12 @@ const FormatGrid = memo(function FormatGrid({
 
 // hero 6: a brand at the centre of every tile — the brands' logos (a mask, drawn in paper) or
 // their names; 9x16's tiles carry the accounts the studio runs
-type Mark = { name: string; src?: string; round?: boolean };
+type Mark = { name: string; src?: string; round?: boolean; wide?: boolean };
 const BRAND_MARKS: Mark[] = [
   { name: "Toyota", src: "/brands/toyota.svg" },
   { name: "Nike", src: "/brands/nike.svg" },
+  { name: "Rolls-Royce", src: "/brands/rolls-royce.svg" },
+  { name: "Aldar", src: "/brands/aldar.png" },
   { name: "Cleveland Clinic" },
   { name: "Etihad", src: "/brands/etihad-airways.svg" },
   { name: "Museum of the Future" },
@@ -661,7 +698,7 @@ const BRAND_MARKS: Mark[] = [
   { name: "Etisalat" },
   { name: "what3words", src: "/brands/what3words.svg" },
   { name: "MBC" },
-  { name: "Masdar" },
+  { name: "Masdar", src: "/brands/masdar.png", wide: true },
   { name: "Rotana" },
   { name: "Special Olympics" },
 ];
@@ -749,7 +786,7 @@ function TileLogo({ mark }: { mark: Mark }) {
   if (mark.round && mark.src)
     // eslint-disable-next-line @next/next/no-img-element
     return <img className={styles.tlRound} src={mark.src} alt="" draggable={false} />;
-  if (mark.src) return <span className={styles.tlMask} style={{ maskImage: `url(${mark.src})`, WebkitMaskImage: `url(${mark.src})` }} />;
+  if (mark.src) return <span className={styles.tlMask} data-wide={mark.wide || undefined} style={{ maskImage: `url(${mark.src})`, WebkitMaskImage: `url(${mark.src})` }} />;
   return null;
 }
 
