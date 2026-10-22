@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useInView, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
-import { EASE } from "./_shared/chrome";
+import { EASE, FilmStill } from "./_shared/chrome";
 import { posterFor, type Project } from "./_shared/data";
 import Credits from "./credits";
 import Story from "./story";
@@ -302,8 +302,7 @@ export default function Detail({
               animate={{ y: 0, opacity: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 60, damping: 15, delay: 0.25 }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className={d.coverImg} src={still} alt="" draggable={false} />
+              <FilmStill film={film} className={d.coverImg} />
               <span className={d.coverShade} aria-hidden="true" />
               <span className={d.coverType}>
                 <motion.span
@@ -393,8 +392,7 @@ export default function Detail({
             >
               <span className={d.glass}>
                 <motion.span className={d.picture} style={reduce ? undefined : { scale: pictureScale }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={still} alt="" draggable={false} />
+                  <FilmStill film={film} />
                 </motion.span>
                 {/* the film itself, in the glass */}
                 <AnimatePresence>
@@ -466,7 +464,9 @@ export default function Detail({
           <button type="button" className={d.nextLink} onClick={onNext}>
             <span className={d.nextTitle}>
               <span className={d.nextName}>{next.title}</span>
-              <span className={d.nextReel} style={{ backgroundImage: `url(${posterFor(next)})` }} aria-hidden="true" />
+              <span className={d.nextReel} aria-hidden="true">
+                <FilmStill film={next} className={d.nextReelFill} />
+              </span>
             </span>
             <span className={d.nextMeta}>
               {[next.client, next.year, next.duration].filter(Boolean).join(" · ")} <i aria-hidden="true">→</i>

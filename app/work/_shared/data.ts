@@ -221,14 +221,13 @@ export const countIn = (id: CategoryId) => PROJECTS.filter((p) => p.category ===
 /** 1280×720 still for every film: /clips/clip-01.mp4 -> /clips/stills/clip-01.webp */
 export const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.webp");
 
-// placeholder posters until each film has its own: four, dealt round the films
-const POSTERS = [1, 2, 3, 4].map((n) => `/work/posters/poster-${n}.webp`);
 /** The real film's own shot (scripts/make-shots.mjs picks a sharp frame from it at build time), by film URL. */
 const SHOT_BY_FILM = new Map(Object.entries(SHOTS).map(([key, shot]) => [hosted(key), shot]));
 export const shotFor = (film?: string) => (film ? SHOT_BY_FILM.get(film) : undefined);
-/** A film's poster (cards, the cover, the screen, the folders): a shot from the film itself when
- *  there is one, else a placeholder. */
-export const posterFor = (p: Project) => shotFor(p.film) ?? POSTERS[PROJECTS.indexOf(p) % POSTERS.length] ?? stillFor(p.src);
+/** A film's poster (cards, the cover, the screen, the folders): the shot cut from the film itself,
+ *  or nothing — never another film's picture. Without one, FilmStill (chrome.tsx) shows a frame
+ *  read from the film, or the film's title. */
+export const posterFor = (p: Project) => shotFor(p.film);
 
 // ---------------------------------------------------------------------------
 // 9x16 — the Instagram accounts the studio runs. The 9x16 work page shows

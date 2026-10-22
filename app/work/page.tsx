@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExt
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useReducedMotion, type Transition } from "framer-motion";
 import { Band, EASE, EASE_CINE, EnterCursor, Info, rootClass, Still, usePlayer } from "./_shared/chrome";
-import { CATEGORIES, PROJECTS, posterFor } from "./_shared/data";
+import { CATEGORIES, PROJECTS } from "./_shared/data";
 import FileView, { type Drawer } from "./file-view";
 import Accounts from "./accounts";
 import RoomSwitch from "../hero4/room-switch";
@@ -285,7 +285,7 @@ function WorkCabinet({ fmt }: { fmt: FormatKey | null }) {
                     <span className={styles.labelNo}>{d.films.length}</span>
                   </span>
                   <span className={styles.window}>
-                    <Still src={posterFor(d.films[shown[i]])} on={on} />
+                    <Still film={d.films[shown[i]]} on={on} />
                     <span className={styles.shade} aria-hidden="true" />
                     <span className={styles.caption}>
                       <span className={styles.title}>{d.label}</span>

@@ -37,7 +37,8 @@ export default function Theatre({
   onClose,
 }: {
   src: string;
-  poster: string;
+  /** the film's shot, over it until it plays (none: the film shows from black) */
+  poster?: string;
   title: string;
   /** the card, where the screen grows from and goes back to (in the hero's coordinates) */
   from: Rect;
@@ -171,14 +172,16 @@ export default function Theatre({
           onClick={toggle}
         />
         {/* the poster, over the film until it's playing */}
-        <motion.img
-          className={t.poster}
-          src={poster}
-          alt=""
-          initial={{ opacity: 1 }}
-          animate={{ opacity: shown && !closing ? 0 : 1 }}
-          transition={{ duration: 0.8, ease: EASE }}
-        />
+        {poster && (
+          <motion.img
+            className={t.poster}
+            src={poster}
+            alt=""
+            initial={{ opacity: 1 }}
+            animate={{ opacity: shown && !closing ? 0 : 1 }}
+            transition={{ duration: 0.8, ease: EASE }}
+          />
+        )}
       </motion.div>
 
       {/* the controls, under the screen */}

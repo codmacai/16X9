@@ -36,7 +36,8 @@ const CLIP_DIR = join(ROOT, "public/work/previews");
 const CLIP_S = 5;
 const BASE = (process.env.NEXT_PUBLIC_VIDEO_BASE || "https://pub-9d250cf0ea9541beac9a7e373fe10d2f.r2.dev").replace(/\/+$/, "");
 const MOMENTS = [12, 20, 30, 42, 58, 75]; // seconds in
-const TIMEOUT_MS = 45_000;
+const RETRY_MOMENTS = [4, 8]; // a second go for a film the first missed (a short one, or a slow read)
+const TIMEOUT_MS = 90_000;
 const PARALLEL = 4;
 
 const ffmpegPath = (() => {
@@ -69,15 +70,15 @@ function run(args) {
 
 /** The best moment of a film (a URL or a path): its frame written to `shotOut` (if given), and a
  *  short clip cut from there to `clipOut` (if given). False if the film couldn't be read. */
-async function bestShot(src, shotOut, clipOut) {
+async function bestShot(src, shotOut, clipOut, moments = MOMENTS) {
   const tmp = join(tmpdir(), `shot-${process.pid}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(tmp, { recursive: true });
   let best = null;
-  for (const t of MOMENTS) {
+  for (const t of moments) {
     const f = join(tmp, `${t}.jpg`);
     const r = await run(["-hide_banner", "-loglevel", "error", "-ss", String(t), "-i", src, "-vf", "thumbnail=48,scale=1280:-2", "-frames:v", "1", "-q:v", "3", "-y", f]);
     if (!r.ok || !existsSync(f)) {
-      if (t === MOMENTS[0] && /Connection|resolve|refused|403|404|Server returned|Input\/output/i.test(r.err)) break; // can't reach it at all
+      if (t === moments[0] && /Connection|resolve|refused|403|404|Server returned|Input\/output/i.test(r.err)) break; // can't reach it at all
       continue;
     }
     // its sharpness: the frame's edges, drawn small; a crisp, well-lit frame has more of them
@@ -141,26 +142,34 @@ async function main() {
     if (!hasShot || !hasClip) todo.push({ key, name, clip, hasShot, hasClip });
   }
 
-  let reached = todo.length === 0;
-  let misses = 0;
-  const queue = [...todo];
+  // can the bucket be reached from here at all? (if not, keep what's there and don't wait on every film)
+  // (the first byte of up to three of the films: one missing file mustn't count as the bucket being away)
+  const probe = (key) =>
+    fetch(urlOf(key), { headers: { Range: "bytes=0-0" }, signal: AbortSignal.timeout(15_000) })
+      .then((r) => (r.body?.cancel(), r.ok))
+      .catch(() => false);
+  const reachable = (await Promise.all(todo.slice(0, 3).map((j) => probe(j.key)))).some(Boolean);
+  if (todo.length && !reachable) console.log("make-shots: the bucket can't be reached from here; keeping the shots there are");
+
+  // every film gets its own shot: none is skipped because others were slow, and one the first pass
+  // missed gets a second go, earlier in the film
+  const queue = reachable ? [...todo] : [];
+  const missed = [];
   const worker = async () => {
     while (queue.length) {
-      if (!reached && misses >= 3) return; // the bucket isn't reachable from here: stop trying
-      const { key, name, clip, hasShot, hasClip } = queue.shift();
-      const ok = await bestShot(urlOf(key), hasShot ? null : join(OUT_DIR, name), hasClip ? null : join(CLIP_DIR, clip));
-      if (ok) {
-        reached = true;
-        if (existsSync(join(OUT_DIR, name))) shots[key] = `/work/shots/${name}`;
-        if (existsSync(join(CLIP_DIR, clip))) clips[key] = `/work/previews/${clip}`;
-        console.log(`shot  ${key}`);
-      } else {
-        misses++;
-        console.log(`none  ${key}`);
-      }
+      const job = queue.shift();
+      const { key, name, clip, hasShot, hasClip } = job;
+      const ok =
+        (await bestShot(urlOf(key), hasShot ? null : join(OUT_DIR, name), hasClip ? null : join(CLIP_DIR, clip))) ||
+        (await bestShot(urlOf(key), hasShot ? null : join(OUT_DIR, name), hasClip ? null : join(CLIP_DIR, clip), RETRY_MOMENTS));
+      if (existsSync(join(OUT_DIR, name))) shots[key] = `/work/shots/${name}`;
+      if (existsSync(join(CLIP_DIR, clip))) clips[key] = `/work/previews/${clip}`;
+      console.log(`${ok ? "shot" : "none"}  ${key}`);
+      if (!ok) missed.push(key);
     }
   };
   await Promise.all(Array.from({ length: PARALLEL }, worker));
+  if (missed.length) console.log(`make-shots: no shot for ${missed.length} (their covers read a frame from the film in the browser):\n  ${missed.join("\n  ")}`);
 
   const list = (o) =>
     Object.entries(o)

@@ -2,8 +2,8 @@
 
 import { type Ref } from "react";
 import { motion } from "framer-motion";
-import { EASE } from "./_shared/chrome";
-import { posterFor, type Project } from "./_shared/data";
+import { EASE, FilmStill } from "./_shared/chrome";
+import type { Project } from "./_shared/data";
 import s from "./file.module.css";
 
 // ===========================================================================
@@ -53,7 +53,6 @@ export default function Card({
   onOpen: () => void;
   onHover: (on: boolean) => void;
 }) {
-  const still = posterFor(film);
   const words = film.title.toUpperCase().split(" ");
   const starts = words.map((_, i) => words.slice(0, i).join("").length); // each word's first letter, for the stagger
 
@@ -77,8 +76,7 @@ export default function Card({
       {/* out of focus */}
       <div className={s.soft} aria-hidden="true">
         <div className={s.media}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={s.still} src={still} alt="" draggable={false} decoding="async" />
+          <FilmStill film={film} className={s.still} />
           <span className={s.shade} />
           <span className={s.titleBlock}>
             <span className={s.kicker}>{label}</span>
@@ -99,8 +97,7 @@ export default function Card({
       <div ref={focusRef} className={s.focus}>
         <div className={s.media}>
           <div ref={artRef} className={s.art}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className={s.still} src={still} alt="" draggable={false} decoding="async" />
+            <FilmStill film={film} className={s.still} />
           </div>
           <span className={s.shade} aria-hidden="true" />
           <span className={s.titleBlock}>

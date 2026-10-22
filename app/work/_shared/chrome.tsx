@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import { Archivo } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ProjectView, { type OpenProject } from "../../hero7/project-view";
 import Drawer from "../../hero11/drawer";
-import type { Project } from "./data";
+import { posterFor, type Project } from "./data";
 import styles from "./chrome.module.css";
 
 // ===========================================================================
@@ -246,17 +246,40 @@ export function Info({ left, centre }: { left: string; centre?: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// FILM STILL — a film's own picture, never another's: the shot cut from it at
+// build time; else a frame of the film itself, read by the browser (a moment
+// in, past any fade up from black); else, for a film with no file yet, a quiet
+// dark frame (its title is always beside it). Drawn with the caller's class,
+// which fills and covers.
+// ---------------------------------------------------------------------------
+const FRAME_AT = 12; // seconds into the film, for a frame read from it
+export function FilmStill({ film, className, style }: { film: Project; className?: string; style?: CSSProperties }) {
+  const shot = posterFor(film);
+  if (shot)
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img className={className} style={style} src={shot} alt="" draggable={false} decoding="async" />;
+  if (film.film)
+    return <video className={`${className ?? ""} ${styles.frame}`} style={style} src={`${film.film}#t=${FRAME_AT}`} muted playsInline preload="metadata" aria-hidden="true" />;
+  return <span className={`${className ?? ""} ${styles.blank}`} style={style} aria-hidden="true" />;
+}
+
+// ---------------------------------------------------------------------------
 // STILL — black and white at rest; `on` fades the colour still in over it
 // ---------------------------------------------------------------------------
-export function Still({ src, on, className }: { src: string; on: boolean; className?: string }) {
+export function Still({ film, on, className }: { film: Project; on: boolean; className?: string }) {
+  // no shot: one layer (a frame read from the film loads once), its grey lifted when on
+  if (!posterFor(film))
+    return (
+      <span className={`${styles.still} ${on ? styles.stillOn : ""} ${className ?? ""}`}>
+        <FilmStill film={film} className={styles.stillOne} />
+      </span>
+    );
   return (
     <span className={`${styles.still} ${on ? styles.stillOn : ""} ${className ?? ""}`}>
       {/* the grey is a filter on a layer that never animates; only the colour
           layer's opacity changes, so nothing repaints while it moves */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className={styles.stillGray} src={src} alt="" draggable={false} decoding="async" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className={styles.stillColour} src={src} alt="" draggable={false} decoding="async" />
+      <FilmStill film={film} className={styles.stillGray} />
+      <FilmStill film={film} className={styles.stillColour} />
     </span>
   );
 }

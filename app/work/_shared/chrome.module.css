@@ -286,7 +286,7 @@
 
 /* most films are scope (2.39:1) inside a 16:9 frame: run the picture past
    the top and bottom so the letterbox bars fall outside the window */
-.still img {
+.still > * {
   position: absolute;
   top: -16%;
   left: 0;
@@ -317,12 +317,33 @@
   opacity: 0;
 }
 
-.stillOn img {
+.stillOn > * {
   transform: scale(1);
 }
 
 .stillOn .stillColour {
   opacity: 1;
+}
+
+/* a film's still when there's no shot of it: a frame of the film itself, or a quiet dark frame */
+.frame {
+  background: #0d0d0d;
+}
+
+.blank {
+  display: block;
+  background: radial-gradient(ellipse at 50% 40%, #1b1b1b, #0a0a0a 70%);
+}
+
+.stillOne {
+  filter: grayscale(1) contrast(1.06);
+  transition:
+    transform 1.4s var(--ease),
+    filter 0.9s var(--ease);
+}
+
+.stillOn .stillOne {
+  filter: none;
 }
 
 /* ================= cursor ================= */
