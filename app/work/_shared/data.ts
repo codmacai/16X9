@@ -113,6 +113,7 @@ export const PROJECTS: Project[] = [
   {
     ...P(11, "Talisman", "Rolls-Royce Kyiv", "tvc", 2025, "1:00", "Rolls-Royce Kyiv × Oberig Jewelry", "#c9a4ff",
       "Two talismans, one evening in Kyiv: the Spirit of Ecstasy on the bonnet, and an Oberig piece at the throat. A film about the things we carry close, made for Rolls-Royce Kyiv with Oberig Jewelry."),
+    format: "16x9",
     credits: TALISMAN_CREDITS,
   },
 ];
@@ -336,6 +337,7 @@ export const BRAND_LOGOS: Record<string, string> = {
   "Toyota Prius": "/brands/toyota.svg",
   "Filmmaster MEA": "/brands/toyota.svg", // Toyota Corolla
   BMW: "/brands/bmw.svg",
+  "Rolls-Royce Kyiv": "/brands/rolls-royce.svg",
   "Etihad Airways": "/brands/etihad-airways.svg",
   what3words: "/brands/what3words.svg",
   "Masdar Institute": "/brands/masdar.png", // the wordmark (alpha PNG)
@@ -344,7 +346,12 @@ export const BRAND_LOGOS: Record<string, string> = {
 const WIDE_LOGOS = new Set(["/brands/masdar.png"]);
 
 /** The brand shown for a film: Filmmaster MEA made Toyota's Corolla film, so it reads as Toyota. */
-const BRAND_NAME: Record<string, string> = { "Filmmaster MEA": "Toyota", "Toyota Prius": "Toyota", "Masdar Institute": "Masdar" };
+const BRAND_NAME: Record<string, string> = {
+  "Filmmaster MEA": "Toyota",
+  "Toyota Prius": "Toyota",
+  "Masdar Institute": "Masdar",
+  "Rolls-Royce Kyiv": "Rolls-Royce",
+};
 /** The brand a film was made for, and its logo (if we have the file). */
 export const brandOf = (p: Project) => BRAND_NAME[p.client] ?? p.client;
 export const logoOf = (p: Project): { src: string; wide: boolean } | undefined =>

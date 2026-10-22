@@ -1,401 +1,288 @@
-/* BRAND FILMS, BY BRAND (brand-index.tsx): a wall of the brands' logos on the dark, each a window
-   onto its film. Motion is transform, opacity and one clip at a time. */
+/* BRAND FILMS — THE SHOWROOM (brand-index.tsx): the brands' logos in ink on the paper, standing on
+   a slow ring. brand-index.tsx places each logo every frame (transform and opacity only). */
 
 .view {
+  --ink: #0b0b0b;
+  --paper: var(--ink); /* the shared head (file.module.css) draws in paper: here, in ink */
   overflow: hidden;
-  background: #050505;
+  background: #f4f2ee;
+  color: var(--ink);
+  touch-action: pan-y;
 }
 
-/* ===== the room's wash: the film pointed at, far out of focus ===== */
-.ambient {
+/* a hairline under the band, so the paper of the room reads as its own */
+.view::before {
+  content: "";
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: var(--band);
+  height: 1px;
+  background: rgb(11 11 11 / 0.08);
+}
+
+/* ===== the front brand's mark again, vast and faint ===== */
+.ghosts {
+  position: absolute;
+  inset: var(--band) 0 0;
   overflow: hidden;
   pointer-events: none;
 }
 
-.amb {
+.ghost {
   position: absolute;
-  inset: -12%;
-  width: 124% !important;
-  height: 124% !important;
-  max-width: none !important;
-  object-fit: cover;
-  filter: blur(48px) saturate(1.15);
-  opacity: 0;
-  transition: opacity 0.9s var(--ease);
-}
-
-.ambOn {
-  opacity: 0.2;
-}
-
-/* ===== the wall ===== */
-.body {
-  position: absolute;
-  inset: calc(var(--band) + 56px) 0 0;
-  display: flex;
-  flex-direction: column;
-  padding: 0 var(--ui) clamp(28px, 6vh, 64px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
-}
-
-.body::-webkit-scrollbar {
-  display: none;
-}
-
-/* centred in the room while it fits, from the top once it doesn't (never cut off above) */
-.top {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  width: min(1280px, 100%);
-  margin: auto auto 16px;
-  font-size: 10px;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: rgb(246 244 240 / 0.5);
-}
-
-/* the brand with the most films takes the large tile; the others sit beside it, two by two */
-.wall {
-  --row: clamp(170px, calc((100svh - var(--band) - 56px - 150px) / 2), 320px);
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: var(--row);
-  gap: clamp(10px, 1.1vw, 16px);
-  width: min(1280px, 100%);
-  margin: 0 auto auto;
-  padding: 0;
-  list-style: none;
-}
-
-.wall > li:first-child {
-  grid-column: span 2;
-  grid-row: span 2;
-}
-
-.wall > li {
-  min-width: 0;
-}
-
-/* ===== a tile ===== */
-.tile {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  border-radius: 4px;
-  overflow: hidden;
-  background: radial-gradient(ellipse at 50% 45%, #141414, #0a0a0a 75%);
-  color: var(--paper);
-  font: inherit;
-  cursor: pointer;
-  isolation: isolate;
-  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.08);
-  transition:
-    opacity 0.55s var(--ease),
-    box-shadow 0.6s var(--ease);
-  will-change: transform;
-}
-
-.tileOn {
-  box-shadow:
-    inset 0 0 0 1px rgb(246 244 240 / 0.28),
-    0 40px 90px rgb(0 0 0 / 0.55);
-}
-
-.tileDim {
-  opacity: 0.38;
-}
-
-/* its film, opened by an iris from where the pointer came in */
-.film {
-  position: absolute;
-  inset: 0;
-  clip-path: circle(0% at var(--x, 50%) var(--y, 50%));
-  transition: clip-path 0.95s var(--ease);
-}
-
-.tileOn .film {
-  clip-path: circle(150% at var(--x, 50%) var(--y, 50%));
-}
-
-/* most films are scope inside 16:9: run the picture past the bars */
-.still {
-  position: absolute;
-  top: -14%;
-  left: 0;
-  width: 100% !important;
-  height: 128% !important;
-  max-width: none !important;
-  object-fit: cover;
-  transform: scale(1.1);
-  transition: transform 1.6s var(--ease);
-}
-
-.tileOn .still {
-  transform: scale(1.02);
-}
-
-.shade {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.12) 72%),
-    linear-gradient(to top, rgb(0 0 0 / 0.6), transparent 34%);
-}
-
-/* the logo, in paper, a slow light passing over it in turn */
-.logo {
-  position: absolute;
-  z-index: 2;
   left: 50%;
   top: 50%;
-  height: 34%;
+  width: min(118vh, 96vw);
   aspect-ratio: 1;
   translate: -50% -50%;
-  overflow: hidden;
-  background: rgb(246 244 240 / 0.88);
+  background: var(--ink);
   mask-size: contain;
   mask-repeat: no-repeat;
   mask-position: center;
   -webkit-mask-size: contain;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center;
-  transition:
-    transform 0.9s var(--ease),
-    background-color 0.6s var(--ease);
+  opacity: 0;
+  will-change: opacity;
 }
 
-.wall > li:first-child .logo {
-  height: 30%;
-}
-
-.logo[data-wide] {
-  height: 11%;
+.ghost[data-wide] {
+  width: 112vw;
   aspect-ratio: 5.5;
 }
 
-.wall > li:first-child .logo[data-wide] {
-  height: 9%;
+/* ===== the ring ===== */
+.ring {
+  --w: min(27vw, 400px); /* the logo in front */
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--band) + 56px);
+  bottom: 120px;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.logo::after {
-  content: "";
+.ring:active {
+  cursor: grabbing;
+}
+
+.item {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  width: var(--w);
+  aspect-ratio: 1.5;
+  margin: calc(var(--w) / -3) 0 0 calc(var(--w) / -2);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  will-change: transform, opacity;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mark {
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.95) 50%, transparent 62%);
-  transform: translateX(-130%);
-  animation: sheen 9s var(--ease) infinite;
-  animation-delay: calc(1.6s + var(--i, 0) * 1.4s);
+  background: var(--ink);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  transition: transform 0.8s var(--ease);
 }
 
-@keyframes sheen {
-  0% {
-    transform: translateX(-130%);
-  }
-  22%,
-  100% {
-    transform: translateX(130%);
-  }
-}
-
-.tileOn .logo {
-  background: #fff;
-  transform: scale(1.07);
-}
-
-/* a brand without a logo file yet: its name, set as a mark */
-.word {
+/* its shadow on the floor */
+.floor {
   position: absolute;
-  z-index: 2;
+  left: 16%;
+  right: 16%;
+  bottom: -16%;
+  height: 14%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(11 11 11 / 0.2), transparent);
+  transition:
+    transform 0.8s var(--ease),
+    opacity 0.8s var(--ease);
+}
+
+/* the logo in front, pointed at, lifts off the floor */
+.itemLift .mark {
+  transform: translateY(-12px) scale(1.04);
+}
+
+.itemLift .floor {
+  transform: scaleX(0.82);
+  opacity: 0.6;
+}
+
+.item:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 18px;
+}
+
+/* ===== where you are, and the way through ===== */
+.foot {
+  position: absolute;
   left: 50%;
-  top: 50%;
-  width: 78%;
-  translate: -50% -50%;
-  font-size: clamp(12px, 1.25vw, 19px);
-  line-height: 1.55;
-  letter-spacing: 0.34em;
-  text-align: center;
-  text-transform: uppercase;
-  color: rgb(246 244 240 / 0.9);
-  transition: transform 0.9s var(--ease);
-}
-
-.tileOn .word {
-  transform: scale(1.05);
-}
-
-.no {
-  position: absolute;
-  z-index: 2;
-  top: 14px;
-  left: 16px;
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  color: rgb(246 244 240 / 0.45);
-  font-variant-numeric: tabular-nums;
-}
-
-.meta {
-  position: absolute;
-  z-index: 2;
-  left: 16px;
-  right: 16px;
-  bottom: 14px;
+  bottom: clamp(28px, 6vh, 56px);
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 10px;
+  align-items: center;
+  gap: 26px;
+  translate: -50% 0;
+}
+
+.arrow {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgb(11 11 11 / 0.2);
+  border-radius: 50%;
+  background: none;
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background-color 0.35s ease,
+    color 0.35s ease,
+    border-color 0.35s ease;
+}
+
+.arrow:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #f4f2ee;
+}
+
+.count {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 150px;
+  font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.mName {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: rgb(246 244 240 / 0.85);
-}
-
-.mCount {
-  color: rgb(246 244 240 / 0.55);
   font-variant-numeric: tabular-nums;
-  transition: color 0.5s var(--ease);
 }
 
-.mCount i {
+.countNow {
+  position: relative;
+  display: inline-block;
+  height: 1.3em;
+  line-height: 1.3em;
+  overflow: hidden;
+}
+
+.countNow span {
+  display: block;
+}
+
+.count i {
+  font-style: normal;
+  opacity: 0.45;
+}
+
+.count b {
+  margin-left: 14px;
+  font-weight: 400;
+  opacity: 0.55;
+}
+
+.all {
+  position: absolute;
+  right: var(--ui);
+  bottom: clamp(36px, 6vh, 64px);
+  padding: 0 0 5px;
+  border: 0;
+  border-bottom: 1px solid rgb(11 11 11 / 0.28);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.35s ease;
+}
+
+.all span {
+  margin-left: 4px;
+  opacity: 0.45;
+}
+
+.all i {
   display: inline-block;
   margin-left: 6px;
   font-style: normal;
-  opacity: 0;
-  transform: translateX(-6px);
-  transition:
-    opacity 0.4s var(--ease),
-    transform 0.6s var(--ease);
+  transition: transform 0.5s var(--ease);
 }
 
-.tileOn .mCount {
-  color: var(--paper);
+.all:hover {
+  border-color: var(--ink);
 }
 
-.tileOn .mCount i {
-  opacity: 1;
-  transform: none;
+.all:hover i {
+  transform: translateX(4px);
 }
 
-.tile:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--paper);
-}
-
-/* touch screens can't point: each film is faintly there behind its logo */
-@media (hover: none) {
-  .film {
-    clip-path: none;
-    opacity: 0.42;
-  }
-  .still {
-    transform: none;
-  }
-}
-
-/* phones: two across, the first brand across the top */
+/* phones: a smaller ring; the count above, the way through under it */
 @media (max-width: 760px) {
-  .body {
-    padding-top: 6px;
+  .ring {
+    --w: 60vw;
+    bottom: 150px;
   }
-  .wall {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: 40vw;
-    gap: 10px;
+  .foot {
+    bottom: 84px;
+    gap: 18px;
   }
-  .wall > li:first-child {
-    grid-row: span 1;
+  .count {
+    min-width: 0;
   }
-  .wall > li:first-child .logo {
-    height: 44%;
-  }
-  .wall > li:first-child .logo[data-wide] {
-    height: 13%;
-  }
-  .meta {
-    left: 12px;
-    right: 12px;
-    bottom: 10px;
-    font-size: 8.5px;
-    letter-spacing: 0.16em;
-  }
-  .mName {
+  .count b {
     display: none;
   }
-  .word {
-    font-size: 10px;
-    letter-spacing: 0.26em;
+  .all {
+    right: auto;
+    left: 50%;
+    bottom: 34px;
+    translate: -50% 0;
+    white-space: nowrap;
   }
 }
 
-/* ===== through the logo, into the brand ===== */
-.opening {
+/* ===== into the brand: the ink flood ===== */
+.flood {
   position: fixed;
   inset: 0;
   z-index: 15; /* under the line of films, which comes after it */
-  overflow: hidden;
   background: #050505;
   pointer-events: none;
   will-change: clip-path;
 }
 
-.openingFilm {
-  position: absolute;
-  inset: var(--band) 0 0;
-}
-
-.openingFilm .still {
-  transform: none;
-}
-
-.openingLogo {
+.floodMark {
   position: absolute;
   left: 50%;
-  width: min(26vw, 340px);
-  aspect-ratio: 1;
-  margin: calc(min(26vw, 340px) / -2) 0 0 calc(min(26vw, 340px) / -2);
-  background: #fff;
+  width: min(30vw, 420px);
+  aspect-ratio: 1.5;
+  margin: calc(min(30vw, 420px) / -3) 0 0 calc(min(30vw, 420px) / -2);
+  background: #f6f4f0;
   mask-size: contain;
   mask-repeat: no-repeat;
   mask-position: center;
   -webkit-mask-size: contain;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center;
-  filter: drop-shadow(0 2px 16px rgb(0 0 0 / 0.5));
 }
 
-.openingLogo[data-wide] {
-  width: min(48vw, 640px);
-  aspect-ratio: 5.5;
-  margin: calc(min(48vw, 640px) / -11) 0 0 calc(min(48vw, 640px) / -2);
-}
-
-.openingWord {
-  position: absolute;
-  left: 0;
-  right: 0;
-  margin-top: -0.8em;
-  font-size: clamp(16px, 2.2vw, 30px);
-  letter-spacing: 0.36em;
-  text-align: center;
-  text-transform: uppercase;
-  color: #fff;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .logo::after {
-    animation: none;
+@media (max-width: 760px) {
+  .floodMark {
+    width: 60vw;
+    margin: -20vw 0 0 -30vw;
   }
 }
