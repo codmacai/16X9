@@ -1,50 +1,47 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { animate, AnimatePresence, motion, useMotionValue, type Transition } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { AnimatePresence, motion, type Transition, type Variants } from "framer-motion";
 import { EASE, EASE_CINE } from "./_shared/chrome";
-import { brandOf, logoOf, type Project } from "./_shared/data";
+import { brandOf, logoOf, type Logo, type Project } from "./_shared/data";
 import FileView from "./file-view";
 import type { Drawer } from "./file-view";
 import f from "./file.module.css";
 import s from "./brand.module.css";
 
 // ===========================================================================
-// BRAND FILMS — THE SHOWROOM. The brands' logos alone, in ink on the paper,
-// standing on a slow ring seen from a little above: the one in front large
-// and sharp, the others turning away behind it, smaller and paler, each with
-// its shadow on the floor; behind them all, the front brand's mark again,
-// vast and faint, filling the room. The ring turns on its own until it's
-// touched; drag it, scroll it, use the arrows, or click a logo to bring it
-// round. Click the logo in front and ink floods out from it over the page,
-// the logo carried to the middle in paper — and every film the studio made
-// for that brand rises out of the dark (file-view.tsx).
-//
-// The ring is one number, `pos` (which brand is in front, as a float, round
-// and round), and every logo is placed from it on every frame, straight on
-// the DOM: transform and opacity only, nothing re-renders while it turns.
-// Brands without a logo file yet stay off the ring; "All brand films" holds
-// every one.
+// BRAND FILMS — THE BRAND WALL. The brands' logos, each in its own colours,
+// on a white wall: one plaque each, three across, hairlines between. Point
+// at one and its plaque takes a breath of the brand's colour, the logo comes
+// forward, a line in that colour draws along its foot and its films are
+// counted; the others quieten. Click it and the brand's colour floods out
+// from the logo over the wall, the logo carried to the middle in white —
+// then every film the studio made for that brand rises out of the dark
+// (file-view.tsx). Brands without a logo file yet stay off the wall; "All
+// brand films" holds every one.
 // ===========================================================================
 
-type Brand = { name: string; films: Project[]; logo: { src: string; wide: boolean } };
+type Brand = { name: string; films: Project[]; logo: Logo };
 type Opened = { label: string; no: string; films: Project[] };
 
-const TURN: Transition = { type: "spring", stiffness: 70, damping: 17, mass: 1 }; // round to the next brand
-const AUTO_MS = 3800; // the ring turns on its own...
-const IDLE_MS = 5200; // ...once it's been left alone this long
-const FLOOD_MS = 760; // the ink has filled the screen: the films rise
+const PLAQUE: Transition = { type: "spring", stiffness: 90, damping: 16, mass: 1 }; // the wall putting itself up
+const FLOOD_MS = 780; // the colour has filled the screen: the films rise
 const LEAVE_MS = 420;
 const pad2 = (n: number) => String(n).padStart(2, "0");
-const mod = (a: number, n: number) => ((a % n) + n) % n;
-const maskOf = (src: string) => ({ maskImage: `url(${src})`, WebkitMaskImage: `url(${src})` });
-// each logo's optical size, so they stand at one weight on the ring: a wordmark in a square file
-// reads small, a solid square heavy
+
+// each logo's optical size, so they hang at one weight: a wordmark in a square file reads small,
+// a solid square heavy
 const OPTICAL: Record<string, number> = {
-  "/brands/etihad-airways.svg": 1.4,
-  "/brands/what3words.svg": 0.74,
-  "/brands/bmw.svg": 0.92,
-  "/brands/masdar.png": 0.94,
+  "/brands/etihad-airways.svg": 1.35,
+  "/brands/what3words.svg": 0.72,
+  "/brands/bmw.svg": 0.9,
+  "/brands/masdar.png": 1,
+};
+
+const plaques: Variants = {
+  hidden: { opacity: 0, y: 36, scale: 0.97 },
+  shown: (i: number) => ({ opacity: 1, y: 0, scale: 1, transition: { ...PLAQUE, delay: 0.3 + (i % 3) * 0.07 + Math.floor(i / 3) * 0.12 } }),
+  away: (i: number) => ({ opacity: 0, y: 0, scale: 0.98, transition: { duration: 0.3, ease: EASE, delay: i * 0.025 } }),
 };
 
 export default function BrandIndex({
@@ -75,186 +72,50 @@ export default function BrandIndex({
         const films = [...all.filter((p) => drawer.films.includes(p)), ...all.filter((p) => !drawer.films.includes(p))];
         return { name, films, logo: films.map(logoOf).find(Boolean)! };
       })
-      .filter((b) => b.logo)
+      .filter((b) => b.logo?.colour)
       .sort((a, b) => b.films.length - a.films.length || a.name.localeCompare(b.name));
   }, [drawer, pool]);
-  const n = brands.length;
+  const total = brands.reduce((n, b) => n + b.films.length, 0);
 
-  const [front, setFront] = useState(0);
+  const [hover, setHover] = useState<number | null>(null);
   const [opened, setOpened] = useState<Opened | null>(null);
   const [flood, setFlood] = useState<{ brand: Brand; x: number; y: number } | null>(null);
   const [leaving, setLeaving] = useState(false);
-  const [lift, setLift] = useState(false); // the front logo pointed at
   const up = opened === null && flood === null && !leaving;
-
-  const pos = useMotionValue(reduce ? 0 : -1.6); // the ring turns into place
-  const items = useRef<(HTMLButtonElement | null)[]>([]);
-  const ghosts = useRef<(HTMLSpanElement | null)[]>([]);
-  const live = useRef({ busy: false, leaving: false, touched: 0, front: 0, geo: { rx: 400, ry: 40 } });
+  const live = useRef({ busy: false, leaving: false });
   useEffect(() => {
     live.current.busy = !up;
     live.current.leaving = leaving;
-    live.current.front = front;
-  }, [up, leaving, front]);
+  }, [up, leaving]);
 
-  // ---- every frame: the logos placed round the ring ----
-  const place = useCallback(
-    (v: number) => {
-      const { rx, ry } = live.current.geo;
-      for (let k = 0; k < n; k++) {
-        let d = mod(k - v, n);
-        if (d > n / 2) d -= n; // the short way round
-        const th = (d * 2 * Math.PI) / n;
-        const z = Math.cos(th);
-        const depth = (z + 1) / 2; // 1 in front, 0 at the back
-        const sc = 0.3 + 0.7 * depth ** 1.4;
-        // seen from a little above: the far side of the ring rises and draws in
-        const x = Math.sin(th) * rx * (0.72 + 0.28 * depth);
-        const y = -(1 - z) * ry;
-        const el = items.current[k];
-        if (el) {
-          el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) scale(${sc.toFixed(4)})`;
-          el.style.opacity = (0.06 + 0.94 * depth ** 2.6).toFixed(3);
-          el.style.zIndex = String(Math.round(depth * 100));
-        }
-        const g = ghosts.current[k];
-        if (g) g.style.opacity = (Math.max(0, 1 - Math.abs(d) * 1.6) * 0.03).toFixed(4); // the vast faint mark behind
-      }
-    },
-    [n]
-  );
-  useEffect(() => {
-    const measure = () => {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      live.current.geo = vw < 760 ? { rx: vw * 0.38, ry: vh * 0.1 } : { rx: Math.min(vw * 0.34, 560), ry: Math.min(vh * 0.12, 120) };
-      place(pos.get());
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    const off = pos.on("change", (v) => {
-      place(v);
-      const k = mod(Math.round(v), n);
-      if (k !== live.current.front) setFront(k);
-    });
-    // the ring turns into place
-    const run = reduce ? null : animate(pos, 0, { ...TURN, stiffness: 40, damping: 14, delay: 0.25 });
-    return () => {
-      window.removeEventListener("resize", measure);
-      off();
-      run?.stop();
-    };
-  }, [n, place, pos, reduce]);
-
-  const go = useCallback(
-    (to: number, velocity = 0) => {
-      live.current.touched = performance.now();
-      animate(pos, Math.round(to), reduce ? { duration: 0 } : { ...TURN, velocity });
-    },
-    [pos, reduce]
-  );
-  const step = useCallback((dir: number) => go(Math.round(pos.get()) + dir), [go, pos]);
-
-  // ---- leaving ----
   const leave = useCallback(() => {
     if (live.current.leaving) return;
     live.current.leaving = true;
     setLeaving(true);
+    setHover(null);
     onCursor(null);
     window.setTimeout(() => onClosed(start), reduce ? 0 : LEAVE_MS);
-  }, [onClosed, onCursor, reduce, start, setLeaving]);
+  }, [onClosed, onCursor, reduce, start, setHover]);
 
-  // ---- the ring turns on its own while it's left alone ----
+  // Esc (and the band's Back) closes the wall — unless a brand is open: its line takes that one
   useEffect(() => {
-    if (reduce || !up) return;
-    const id = window.setInterval(() => {
-      if (performance.now() - live.current.touched > IDLE_MS && !document.hidden) animate(pos, Math.round(pos.get()) + 1, TURN);
-    }, AUTO_MS);
-    return () => window.clearInterval(id);
-  }, [pos, reduce, up]);
-
-  // ---- keys and the wheel: one brand a gesture ----
-  useEffect(() => {
-    let lockUntil = 0;
-    let acc = 0;
     const onKey = (e: KeyboardEvent) => {
-      if (live.current.busy || document.body.style.overflow === "hidden") return;
-      if (e.key === "Escape") leave();
-      else if (e.key === "ArrowRight") step(1);
-      else if (e.key === "ArrowLeft") step(-1);
-    };
-    const onWheel = (e: WheelEvent) => {
-      if (live.current.busy) return;
-      e.preventDefault();
-      const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      if (e.timeStamp < lockUntil) return;
-      acc += d;
-      if (Math.abs(acc) > 36) {
-        step(Math.sign(acc));
-        acc = 0;
-        lockUntil = e.timeStamp + 520;
-      }
+      if (e.key !== "Escape" || live.current.busy || document.body.style.overflow === "hidden") return;
+      leave();
     };
     window.addEventListener("keydown", onKey);
-    window.addEventListener("wheel", onWheel, { passive: false });
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("wheel", onWheel);
-    };
-  }, [leave, step]);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [leave]);
 
-  // ---- drag: the ring follows the hand, then settles on the nearest brand, carrying its speed ----
-  const dragged = useRef(false);
-  const onPointerDown = (e: ReactPointerEvent) => {
-    if (!up || e.button !== 0) return;
-    pos.stop();
-    const p0 = pos.get();
-    const x0 = e.clientX;
-    const per = live.current.geo.rx * Math.sin((2 * Math.PI) / n) || 200; // px of drag per brand
-    let last = { x: x0, t: e.timeStamp };
-    let vx = 0;
-    dragged.current = false;
-    const move = (ev: PointerEvent) => {
-      const dx = ev.clientX - x0;
-      if (!dragged.current && Math.abs(dx) < 6) return;
-      dragged.current = true;
-      pos.set(p0 - dx / per);
-      const dt = Math.max(8, ev.timeStamp - last.t);
-      vx = (ev.clientX - last.x) / dt;
-      last = { x: ev.clientX, t: ev.timeStamp };
-    };
-    const end = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", end);
-      window.removeEventListener("pointercancel", end);
-      if (dragged.current) go(pos.get() - (vx * 220) / per, (-vx * 1000) / per);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", end);
-    window.addEventListener("pointercancel", end);
-  };
-
-  // ---- a logo clicked: round to the front, or (in front) into the brand ----
-  const choose = (k: number, el: HTMLElement) => {
-    if (dragged.current) {
-      dragged.current = false;
-      return;
-    }
+  // into the brand: its colour floods out from the logo
+  const enter = (k: number, el: HTMLElement) => {
     if (!up) return;
-    const cur = Math.round(pos.get());
-    if (k !== mod(cur, n)) {
-      let d = mod(k - cur, n);
-      if (d > n / 2) d -= n;
-      return go(cur + d);
-    }
-    enter(brands[k], el);
-  };
-  const enter = (b: Brand, el: HTMLElement | null) => {
-    const r = el?.getBoundingClientRect();
-    const open = () => setOpened({ label: b.name, no: pad2(brands.indexOf(b) + 1), films: b.films });
-    setLift(false);
+    const b = brands[k];
+    const open = () => setOpened({ label: b.name, no: pad2(k + 1), films: b.films });
+    setHover(null);
     onCursor(null);
-    if (reduce || !r) return open();
+    if (reduce) return open();
+    const r = (el.querySelector(`.${s.logo}`) ?? el).getBoundingClientRect();
     setFlood({ brand: b, x: r.left + r.width / 2, y: r.top + r.height / 2 });
     window.setTimeout(() => {
       open();
@@ -267,25 +128,10 @@ export default function BrandIndex({
     setOpened({ label: drawer.label, no: drawer.no, films: drawer.films });
   };
 
-  const fb = brands[front];
   return (
     <>
-      <div className={`${f.view} ${s.view}`} role="dialog" aria-modal="true" aria-label={`${drawer.label}: the brands`}>
-        {/* the front brand's mark again, vast and faint, filling the room */}
-        <div className={s.ghosts} aria-hidden="true">
-          {brands.map((b, k) => (
-            <span
-              key={b.name}
-              ref={(el) => {
-                ghosts.current[k] = el;
-              }}
-              className={s.ghost}
-              data-wide={b.logo.wide || undefined}
-              style={maskOf(b.logo.src)}
-            />
-          ))}
-        </div>
-
+      {/* the wall; dark while a brand's films are out over it */}
+      <div className={`${f.view} ${s.view} ${opened || flood ? s.viewOut : ""} ${leaving ? s.viewLeave : ""}`} role="dialog" aria-modal="true" aria-label={`${drawer.label}: the brands`}>
         {/* the drawer, and the way back */}
         <motion.div
           className={f.head}
@@ -306,83 +152,79 @@ export default function BrandIndex({
           </button>
         </motion.div>
 
-        {/* the ring */}
-        <motion.div
-          className={s.ring}
-          onPointerDown={onPointerDown}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: leaving ? 0 : 1 }}
-          transition={{ duration: leaving ? 0.3 : 0.9, ease: EASE }}
-        >
-          {brands.map((b, k) => (
-            <button
-              key={b.name}
-              ref={(el) => {
-                items.current[k] = el;
-              }}
-              type="button"
-              className={`${s.item} ${k === front && lift && up ? s.itemLift : ""}`}
-              data-wide={b.logo.wide || undefined}
-              tabIndex={up ? 0 : -1}
-              aria-label={k === front ? `${b.name}: ${b.films.length} ${b.films.length === 1 ? "film" : "films"}, open` : `Turn to ${b.name}`}
-              onClick={(e) => choose(k, e.currentTarget)}
-              onPointerEnter={(e) => e.pointerType === "mouse" && k === front && setLift(true)}
-              onPointerLeave={() => setLift(false)}
-            >
-              <span className={s.mark} style={{ ...maskOf(b.logo.src), scale: String(OPTICAL[b.logo.src] ?? 1) }} />
-              <span className={s.floor} aria-hidden="true" />
-            </button>
-          ))}
-        </motion.div>
-
-        {/* where you are on the ring, and the way through */}
-        <motion.div
-          className={s.foot}
-          initial={{ opacity: 0, y: 10 }}
-          animate={up ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-          transition={{ duration: up ? 0.9 : 0.25, delay: up ? 0.7 : 0, ease: EASE }}
-        >
-          <button type="button" className={s.arrow} onClick={() => step(-1)} aria-label="Previous brand" tabIndex={up ? 0 : -1}>
-            ←
-          </button>
-          <span className={s.count} aria-live="polite">
-            <span className={s.countNow}>
-              <AnimatePresence initial={false} mode="popLayout">
-                <motion.span
-                  key={front}
-                  initial={{ y: "100%", opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: "-100%", opacity: 0 }}
-                  transition={{ duration: reduce ? 0 : 0.55, ease: EASE }}
-                >
-                  {pad2(front + 1)}
-                </motion.span>
-              </AnimatePresence>
+        <div className={s.body}>
+          <motion.p
+            className={s.top}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: up ? 1 : 0 }}
+            transition={{ duration: up ? 0.9 : 0.25, delay: up ? 0.45 : 0, ease: EASE }}
+          >
+            <span>The brands</span>
+            <span>
+              {pad2(brands.length)} brands · {pad2(total)} films
             </span>
-            <i>/ {pad2(n)}</i>
-            <b>
-              {fb ? `${pad2(fb.films.length)} ${fb.films.length === 1 ? "film" : "films"}` : ""}
-            </b>
-          </span>
-          <button type="button" className={s.arrow} onClick={() => step(1)} aria-label="Next brand" tabIndex={up ? 0 : -1}>
-            →
-          </button>
-        </motion.div>
+          </motion.p>
 
-        <motion.button
-          type="button"
-          className={s.all}
-          onClick={all}
-          tabIndex={up ? 0 : -1}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: up ? 1 : 0 }}
-          transition={{ duration: up ? 0.9 : 0.25, delay: up ? 0.9 : 0, ease: EASE }}
-        >
-          All brand films <span>{pad2(drawer.films.length)}</span> <i aria-hidden="true">→</i>
-        </motion.button>
+          <ul className={`${s.wall} ${hover !== null ? s.wallFocus : ""}`} onPointerLeave={() => setHover(null)}>
+            {brands.map((b, k) => {
+              const n = b.films.length;
+              return (
+                <motion.li
+                  key={b.name}
+                  custom={k}
+                  variants={plaques}
+                  initial={reduce ? false : "hidden"}
+                  animate={up ? "shown" : "away"}
+                  className={hover === k ? s.on : undefined}
+                  style={{ ["--hex" as string]: b.logo.hex } as CSSProperties}
+                >
+                  <button
+                    type="button"
+                    className={s.plaque}
+                    tabIndex={up ? 0 : -1}
+                    onPointerEnter={(e) => e.pointerType === "mouse" && up && setHover(k)}
+                    onFocus={(e) => e.currentTarget.matches(":focus-visible") && setHover(k)}
+                    onBlur={() => setHover(null)}
+                    onClick={(e) => enter(k, e.currentTarget)}
+                    aria-label={`${b.name}: ${n} ${n === 1 ? "film" : "films"}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      className={s.logo}
+                      data-wide={b.logo.wide || undefined}
+                      src={b.logo.colour}
+                      alt=""
+                      draggable={false}
+                      style={{ scale: String(OPTICAL[b.logo.src] ?? 1) }}
+                    />
+                    <span className={s.no} aria-hidden="true">
+                      {pad2(k + 1)}
+                    </span>
+                    <span className={s.count} aria-hidden="true">
+                      {pad2(n)} {n === 1 ? "film" : "films"} <i>→</i>
+                    </span>
+                    <span className={s.rule} aria-hidden="true" />
+                  </button>
+                </motion.li>
+              );
+            })}
+          </ul>
+
+          <motion.button
+            type="button"
+            className={s.all}
+            onClick={all}
+            tabIndex={up ? 0 : -1}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: up ? 1 : 0 }}
+            transition={{ duration: up ? 0.9 : 0.25, delay: up ? 0.8 : 0, ease: EASE }}
+          >
+            All brand films <span>{pad2(drawer.films.length)}</span> <i aria-hidden="true">→</i>
+          </motion.button>
+        </div>
       </div>
 
-      {/* into the brand: ink floods out from its logo, the logo carried to the middle in paper */}
+      {/* into the brand: its colour floods out from the logo, the logo carried to the middle in white */}
       <AnimatePresence>{flood && <Flood key="flood" brand={flood.brand} x={flood.x} y={flood.y} />}</AnimatePresence>
 
       {/* the brand's films (or all of Brand Films), as the folders' line */}
@@ -407,21 +249,23 @@ function Flood({ brand, x, y }: { brand: Brand; x: number; y: number }) {
   const band = document.querySelector<HTMLElement>("[data-band]")?.offsetHeight ?? 0;
   const r = Math.hypot(Math.max(x, vw - x), Math.max(y, vh - y));
   const midY = band + (vh - band) / 2;
+  const mask = { maskImage: `url(${brand.logo.src})`, WebkitMaskImage: `url(${brand.logo.src})` };
   return (
     <motion.div
       className={s.flood}
+      style={{ background: brand.logo.hex }}
       initial={{ clipPath: `circle(0px at ${x}px ${y}px)` }}
       animate={{ clipPath: `circle(${r}px at ${x}px ${y}px)` }}
-      exit={{ opacity: 0, transition: { duration: 0.5, delay: 0.2, ease: EASE } }}
+      exit={{ opacity: 0, transition: { duration: 0.55, delay: 0.15, ease: EASE } }}
       transition={{ duration: 0.85, ease: EASE_CINE }}
       aria-hidden="true"
     >
       <motion.span
         className={s.floodMark}
         data-wide={brand.logo.wide || undefined}
-        style={{ ...maskOf(brand.logo.src), top: midY }}
-        initial={{ x: x - vw / 2, y: y - midY, scale: 0.7 }}
-        animate={{ x: 0, y: 0, scale: 1.25 }}
+        style={{ ...mask, top: midY }}
+        initial={{ x: x - vw / 2, y: y - midY, scale: 0.6 }}
+        animate={{ x: 0, y: 0, scale: OPTICAL[brand.logo.src] ?? 1 }}
         transition={{ type: "spring", stiffness: 55, damping: 16 }}
       />
     </motion.div>
