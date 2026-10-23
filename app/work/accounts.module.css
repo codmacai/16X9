@@ -61,8 +61,19 @@
   width: 100%;
   aspect-ratio: 9 / 16;
   margin-bottom: 12px;
+  container-type: size; /* the story's head is placed in the frame's own units */
+  transition: transform 0.8s var(--ease);
+}
+
+/* its hairline, drawn over whatever plays in it */
+.frame::after {
+  content: "";
+  position: absolute;
+  z-index: 4;
+  inset: 0;
   box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.3);
-  transition: background-color 0.5s var(--ease), box-shadow 0.5s var(--ease), transform 0.6s var(--ease);
+  transition: box-shadow 0.6s var(--ease);
+  pointer-events: none;
 }
 
 /* the logo: its Instagram picture, in a circle */
@@ -72,7 +83,9 @@
   aspect-ratio: 1;
   object-fit: cover;
   clip-path: circle(48.5% at 50% 50%);
-  transition: transform 0.7s var(--ease);
+  position: relative;
+  z-index: 3;
+  transition: transform 0.9s var(--ease);
 }
 
 .stats {
@@ -88,23 +101,6 @@
   transition: color 0.5s var(--ease), opacity 0.5s var(--ease);
 }
 
-.item:hover .frame,
-.item:focus-visible .frame {
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--paper);
-  transform: translateY(-6px);
-}
-
-.item:hover .logo,
-.item:focus-visible .logo {
-  transform: scale(1.08);
-}
-
-.item:hover .stats,
-.item:focus-visible .stats {
-  color: #050505;
-  opacity: 0.7;
-}
 
 .name {
   font-size: 11px;
@@ -150,7 +146,7 @@
   }
 }
 
-/* ===== an account's reels, playing in its frame while it's pointed at ===== */
+/* ===== pointed at: the account's reels play in its frame, one after another, as stories do ===== */
 .item {
   cursor: pointer;
 }
@@ -165,209 +161,121 @@
   text-underline-offset: 4px;
 }
 
+/* the frame lifts a little and its hairline lights */
 .itemOn .frame {
-  background: #000;
-  box-shadow: inset 0 0 0 1px var(--paper), 0 30px 80px rgb(0 0 0 / 0.6);
-  transform: translateY(-8px) scale(1.04);
+  transform: translateY(-6px);
 }
 
-.reels {
+.itemOn .frame::after {
+  box-shadow: inset 0 0 0 1px var(--paper);
+}
+
+/* the logo becomes the story's picture, drawn up to its head: 12% of the frame across, by its name */
+.itemOn .logo {
+  transform: translate(calc(12px - 44cqw), calc(24px + 6cqw - 50cqh)) scale(0.176);
+}
+
+/* the story, wiping up from the frame's foot, inside its hairline */
+.story {
   position: absolute;
-  inset: 0;
   z-index: 2;
+  inset: 1px;
   overflow: hidden;
-  background: #000;
-  opacity: 0;
-  clip-path: inset(100% 0 0 0);
-  transition: opacity 0.4s ease, clip-path 0.7s var(--ease);
-  pointer-events: none;
-}
-
-.reelsOn {
-  opacity: 1;
-  clip-path: inset(0 0 0 0);
-  pointer-events: auto;
-}
-
-.feed {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
-  scroll-snap-type: y mandatory;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
-}
-
-.feed::-webkit-scrollbar {
-  display: none;
-}
-
-.reel {
-  height: 100%;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-
-.reel video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
   background: #0a0a0a;
-}
-
-.reelsHead {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  right: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
+  clip-path: inset(100% 0 0 0);
+  transition: clip-path 0.9s var(--ease);
   pointer-events: none;
 }
 
-.reelsHead img {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 0 0 1.5px var(--paper);
+.storyOn {
+  clip-path: inset(0 0 0 0);
 }
 
-.reelsDots {
-  position: absolute;
-  right: 9px;
-  top: 50%;
-  translate: 0 -50%;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  pointer-events: none;
+/* the stand-ins carry black bands: far enough in that they fall outside */
+.story img,
+.story video {
+  scale: 1.4;
 }
 
-.reelsDots i {
-  width: 3px;
-  height: 14px;
-  border-radius: 2px;
-  background: rgb(246 244 240 / 0.35);
-  transition: background-color 0.3s ease, height 0.4s var(--ease);
-}
-
-.reelsDots .dotOn {
-  height: 26px;
-  background: var(--paper);
-}
-
-.reelsHint {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 12px;
-  text-align: center;
-  font-size: 8.5px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  opacity: 0.75;
-  text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
-  pointer-events: none;
-}
-
-/* ===== pointed at: the frame turns paper, a white phone holding the reels ===== */
-.itemOn .frame {
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--paper), 0 30px 80px rgb(0 0 0 / 0.6);
-}
-
-.itemOn .reels {
-  background: var(--paper);
-}
-
-.itemOn .feed {
-  inset: 44px 8px 30px;
-  border-radius: 2px;
-  background: #e9e6e0;
-}
-
-.itemOn .reelsHead {
-  color: #0c0c0c;
-  font-weight: 500;
-  text-shadow: none;
-}
-
-.itemOn .reelsHead img {
-  box-shadow: 0 0 0 1.5px #0c0c0c;
-}
-
-.itemOn .reelsHint {
-  bottom: 10px;
-  color: #0c0c0c;
-  text-shadow: none;
-  opacity: 0.6;
-}
-
-.itemOn .reelsDots {
-  right: 14px;
-}
-
-/* ===== the reels as a grid inside the frame ===== */
-.grid {
-  position: absolute;
-  inset: 44px 6px 6px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  align-content: start;
-  gap: 3px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
-}
-
-.grid::-webkit-scrollbar {
-  display: none;
-}
-
-.cell {
-  position: relative;
-  aspect-ratio: 9 / 16;
-  padding: 0;
-  border: 0;
-  background: #ddd;
-  overflow: hidden;
-  cursor: pointer;
-}
-
-.cell img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100% !important;
-  max-width: none !important;
-  object-fit: cover;
-  transform: scale(1.4); /* the stand-in clips carry black bands; real vertical reels can drop this */
-  transition: transform 0.5s var(--ease);
-}
-
-.cell i {
-  position: absolute;
-  left: 4px;
-  bottom: 3px;
-  color: #fff;
-  font-size: 8px;
-  font-style: normal;
-  text-shadow: 0 1px 4px rgb(0 0 0 / 0.6);
-}
-
-.cell:hover img {
-  transform: scale(1.5);
-}
-
-.cell:hover::after {
+/* held down at the head, where the bars and the name are */
+.story::after {
   content: "";
   position: absolute;
   inset: 0;
-  box-shadow: inset 0 0 0 2px #0c0c0c;
+  background: linear-gradient(rgb(0 0 0 / 0.5), transparent 24%, transparent 78%, rgb(0 0 0 / 0.3));
+  pointer-events: none;
+}
+
+/* a fine bar for each reel; the one playing fills, then the next plays */
+.storyBars {
+  position: absolute;
+  z-index: 1;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  gap: 3px;
+}
+
+.storyBars i {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgb(246 244 240 / 0.3);
+}
+
+.storyBars .barDone {
+  background: rgb(246 244 240 / 0.9);
+}
+
+.storyBars b {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  transform-origin: 0 50%;
+  animation: story-fill 4s linear both;
+}
+
+@keyframes story-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* the account's name, beside its picture */
+.storyName {
+  position: absolute;
+  z-index: 1;
+  top: 24px;
+  left: calc(12px + 12cqw + 8px);
+  right: 10px;
+  display: flex;
+  align-items: center;
+  height: 12cqw;
+  overflow: hidden;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.5);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.storyOn .storyName {
+  opacity: 1;
+  transition: opacity 0.5s ease 0.35s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame,
+  .logo,
+  .story {
+    transition: none;
+  }
 }

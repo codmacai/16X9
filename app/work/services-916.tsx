@@ -9,14 +9,15 @@ import s from "./services.module.css";
 
 // ===========================================================================
 // WORK, 9x16 — what we do, under the accounts: the services as frames in the
-// accounts' language — a hairline in the dark, the work faint inside in grey,
-// the service's number at the head and its name at the foot. As the page
-// scrolls each frame opens from a line across its middle, as the opening's
-// frame does, the picture settling inside it and the name rising after it;
-// once open it stays open. The columns drift at their own pace, as the
-// accounts' do. Point at one (on a phone, scroll it to the middle of the
-// screen) and its work wipes up from its foot and plays in colour, the
-// hairline lit; click it to play it whole.
+// accounts' language — a hairline in the dark, the work inside in black and
+// white, the service's number at the head and its name at the foot. As the
+// page scrolls each frame opens from a line across its middle, as the
+// opening's frame does, the picture settling inside it and the name rising
+// after it; once open it stays open. The pictures drift inside their frames
+// and the columns at their own pace, as the accounts' do. Point at one (on a
+// phone, scroll it to the middle of the screen) and its work wipes up from
+// its foot in colour and plays, the hairline lit and a fine line running
+// along the foot; click it to play it whole.
 // ===========================================================================
 
 const OPEN = { stiffness: 90, damping: 22, mass: 0.6 }; // the opening, eased
@@ -116,6 +117,9 @@ function Card({
   const settle = useTransform(t, [0, 1], [1.4, 1]);
   const rise = useTransform(t, [0.4, 1], ["110%", "0%"]);
   const fade = useTransform(t, [0.5, 1], [0, 1]);
+  // the picture drifting inside the frame as the page scrolls past it
+  const { scrollYProgress: past } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const pan = useTransform(past, [0, 1], ["-7%", "7%"]);
 
   return (
     <motion.li ref={ref} className={s.slot} style={reduce ? undefined : { y: lane }}>
@@ -134,15 +138,19 @@ function Card({
           onOpen(i);
         }}
       >
-        {/* the work, faint in grey, settling as the frame opens */}
+        {/* the work in black and white, settling as the frame opens */}
         <span className={s.print} aria-hidden="true">
-          <motion.img src={stillFor(sv.clip)} alt="" loading="lazy" draggable={false} style={reduce ? undefined : { scale: settle }} />
+          <motion.span className={s.pan} style={reduce ? undefined : { y: pan }}>
+            <motion.img src={stillFor(sv.clip)} alt="" loading="lazy" draggable={false} style={reduce ? undefined : { scale: settle }} />
+          </motion.span>
         </span>
         {/* pointed at: the work in colour, wiping up from the foot */}
         <span className={s.screen} aria-hidden="true">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={stillFor(sv.clip)} alt="" loading="lazy" draggable={false} />
-          {on && !reduce && <video ref={startMuted} src={sv.clip} muted autoPlay playsInline loop preload="auto" />}
+          <motion.span className={s.pan} style={reduce ? undefined : { y: pan }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={stillFor(sv.clip)} alt="" loading="lazy" draggable={false} />
+            {on && !reduce && <video ref={startMuted} src={sv.clip} muted autoPlay playsInline loop preload="auto" />}
+          </motion.span>
         </span>
 
         <motion.span className={s.head} style={reduce ? undefined : { opacity: fade }} aria-hidden="true">
@@ -163,6 +171,8 @@ function Card({
             {sv.tags.join("  ·  ")}
           </motion.span>
         </span>
+        {/* playing: a fine line running along the foot */}
+        <i className={s.progress} aria-hidden="true" />
       </motion.article>
     </motion.li>
   );

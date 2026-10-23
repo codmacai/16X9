@@ -1,7 +1,7 @@
 /* WORK, 9x16 — what we do (services-916.tsx): the services as frames in the accounts' language — a
-   hairline in the dark, the work faint inside in grey, the number at the head and the name at the
-   foot. They open on the scroll from a line across their middle; pointed at, the work wipes up in
-   colour and plays. */
+   hairline in the dark, the work inside in black and white, the number at the head and the name at
+   the foot. They open on the scroll from a line across their middle; pointed at, the work wipes up
+   in colour and plays, a fine line running along the foot. */
 
 .services {
   display: flex;
@@ -63,12 +63,18 @@
   box-shadow: inset 0 0 0 1px var(--paper);
 }
 
-/* the work, faint in grey; and, pointed at, in colour */
+/* the work, in black and white; and, pointed at, in colour — inside the hairline */
 .print,
 .screen {
   position: absolute;
-  inset: 0;
+  inset: 1px;
   overflow: hidden;
+}
+
+/* the picture, a little taller than its frame, drifting inside it on the scroll */
+.pan {
+  position: absolute;
+  inset: -9% 0;
 }
 
 .print img,
@@ -87,8 +93,13 @@
   width: 160% !important;
   height: 160% !important;
   inset: -30%;
-  filter: grayscale(1) contrast(1.1) brightness(0.85);
-  opacity: 0.3;
+  filter: grayscale(1) contrast(1.35) brightness(0.8);
+  opacity: 0.5;
+  transition: opacity 0.8s var(--ease);
+}
+
+.on .print img {
+  opacity: 0.2;
 }
 
 /* held down at the head and foot, where the type is */
@@ -169,7 +180,7 @@
 
 .name {
   margin: 0;
-  font-size: clamp(24px, 2.3vw, 36px);
+  font-size: clamp(26px, 2.5vw, 40px);
   font-weight: 400;
   line-height: 0.96;
   letter-spacing: -0.035em;
@@ -197,6 +208,30 @@
 
 .on .tags {
   color: rgb(246 244 240 / 0.9);
+}
+
+/* playing: a fine line running along the foot */
+.progress {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--paper);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+.on .progress {
+  animation: run 7s linear infinite;
+}
+
+@keyframes run {
+  to {
+    transform: scaleX(1);
+  }
 }
 
 /* tablets and phones: two to a row */

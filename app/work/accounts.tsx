@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
 import { Band, rootClass } from "./_shared/chrome";
 import { ACCOUNTS, SERVICES_9X16, WORKS_9X16, instagramOf, type Reel } from "./_shared/data";
-import Reels from "./reels";
+import AccountStory from "./account-story";
 import Intro916 from "./intro-916";
 import Services916 from "./services-916";
 import Profile, { Player } from "./profile";
@@ -19,9 +19,10 @@ import SectionLabel from "./section-label";
 // the studio runs, as slim 9:16 frames, outlined in a
 // hairline, each holding the brand's logo at its centre (its Instagram
 // picture, in a circle) and its followers and posts at the foot; name and
-// handle underneath. Point at one (or tap it) and it plays that account's
-// reels inside the frame, a feed you scroll through like the app. The name
-// underneath opens the account on Instagram. Four to a row (two on a phone);
+// handle underneath. Point at one and its reels play in the frame, one after
+// another as stories do (account-story.tsx), its logo drawn up to the head as the
+// story's picture; click it to open the account's page. The name underneath
+// opens the account on Instagram. Four to a row (two on a phone);
 // as the page scrolls past them each column drifts at its own pace. Then what
 // we do: the services, as frames that play their work (services-916.tsx).
 // ===========================================================================
@@ -45,9 +46,6 @@ export default function Accounts() {
   // clicked: the account opens as its Instagram page, a grid of its reels
   const [open, setOpen] = useState<string | null>(null);
   const openAcc = ACCOUNTS.find((a) => a.handle === open);
-  // a reel clicked in a frame's grid plays on its own
-  const [reel, setReel] = useState<{ handle: string; i: number } | null>(null);
-  const reelAcc = reel ? ACCOUNTS.find((a) => a.handle === reel.handle) : undefined;
   // a reel in the opening's frame clicked: it plays full height, the others a scroll away
   const [work, setWork] = useState<number | null>(null);
   const [svc, setSvc] = useState<number | null>(null);
@@ -62,7 +60,7 @@ export default function Accounts() {
         crumb="Index"
         workHref="/work?format=9x16"
         /* a reel or an account's page open: Back closes it first */
-        onBack={svc !== null ? () => setSvc(null) : work !== null ? () => setWork(null) : reel ? () => setReel(null) : open ? () => setOpen(null) : undefined}
+        onBack={svc !== null ? () => setSvc(null) : work !== null ? () => setWork(null) : open ? () => setOpen(null) : undefined}
         center={<RoomSwitch room="9x16" onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })} tone="light" />}
       />
       <Intro916 reduce={reduce} onOpen={setWork} />
@@ -94,7 +92,7 @@ export default function Accounts() {
                       {a.followers} followers · {a.posts} posts
                     </span>
                   )}
-                  {a.reels?.length ? <Reels reels={a.reels} logo={a.logo} label={a.demo ? a.name : `@${a.handle}`} on={on === a.handle} onPick={(i) => setReel({ handle: a.handle, i })} /> : null}
+                  {a.reels?.length ? <AccountStory reels={a.reels} label={a.demo ? a.name : `@${a.handle}`} on={on === a.handle} /> : null}
                 </span>
                 {a.demo ? (
                   <>
@@ -118,11 +116,6 @@ export default function Accounts() {
         </ul>
       </section>
       <Services916 reduce={reduce} onOpen={setSvc} />
-      <AnimatePresence>
-        {reelAcc && reel && (
-          <Player key="reel" reels={reelAcc.reels ?? []} start={reel.i} handle={reelAcc.demo ? reelAcc.name : reelAcc.handle} logo={reelAcc.logo} onClose={() => setReel(null)} dark />
-        )}
-      </AnimatePresence>
       <AnimatePresence>
         {work !== null && <Player key="work" reels={WORKS_9X16.slice(0, 5)} start={work} onClose={() => setWork(null)} dark />}
       </AnimatePresence>
