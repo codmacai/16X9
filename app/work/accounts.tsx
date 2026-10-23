@@ -5,9 +5,10 @@ import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTra
 import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
 import { Band, rootClass } from "./_shared/chrome";
-import { ACCOUNTS, WORKS_9X16, instagramOf } from "./_shared/data";
+import { ACCOUNTS, SERVICES_9X16, WORKS_9X16, instagramOf, type Reel } from "./_shared/data";
 import Reels from "./reels";
 import Intro916 from "./intro-916";
+import Services916 from "./services-916";
 import Profile, { Player } from "./profile";
 import styles from "./accounts.module.css";
 
@@ -20,8 +21,18 @@ import styles from "./accounts.module.css";
 // handle underneath. Point at one (or tap it) and it plays that account's
 // reels inside the frame, a feed you scroll through like the app. The name
 // underneath opens the account on Instagram. Four to a row (two on a phone);
-// as the page scrolls past them each column drifts at its own pace.
+// as the page scrolls past them each column drifts at its own pace. Then what
+// we do: the services, as one passage of type (services-916.tsx).
 // ===========================================================================
+
+// a service clicked plays its kind of work, the others a scroll away
+const SERVICE_REELS: Reel[] = SERVICES_9X16.map((sv, i) => ({
+  src: sv.clip,
+  views: "",
+  title: sv.name.join(" "),
+  kind: `Service ${String(i + 1).padStart(2, "0")}`,
+  zoom: 1.46,
+}));
 
 // a frame rising into place as it scrolls in
 const RISE: Transition = { type: "spring", stiffness: 80, damping: 17, mass: 1 };
@@ -38,6 +49,7 @@ export default function Accounts() {
   const reelAcc = reel ? ACCOUNTS.find((a) => a.handle === reel.handle) : undefined;
   // a reel in the opening's frame clicked: it plays full height, the others a scroll away
   const [work, setWork] = useState<number | null>(null);
+  const [svc, setSvc] = useState<number | null>(null);
   // as the page scrolls past the accounts, each column drifts at its own pace
   const rowRef = useRef<HTMLUListElement>(null);
   const { scrollYProgress } = useScroll({ target: rowRef, offset: ["start end", "end start"] });
@@ -49,7 +61,7 @@ export default function Accounts() {
         crumb="Index"
         workHref="/work?format=9x16"
         /* a reel or an account's page open: Back closes it first */
-        onBack={work !== null ? () => setWork(null) : reel ? () => setReel(null) : open ? () => setOpen(null) : undefined}
+        onBack={svc !== null ? () => setSvc(null) : work !== null ? () => setWork(null) : reel ? () => setReel(null) : open ? () => setOpen(null) : undefined}
         center={<RoomSwitch room="9x16" onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })} tone="light" />}
       />
       <Intro916 reduce={reduce} onOpen={setWork} />
@@ -110,6 +122,7 @@ export default function Accounts() {
           ))}
         </ul>
       </section>
+      <Services916 reduce={reduce} onOpen={setSvc} />
       <AnimatePresence>
         {reelAcc && reel && (
           <Player key="reel" reels={reelAcc.reels ?? []} start={reel.i} handle={reelAcc.demo ? reelAcc.name : reelAcc.handle} logo={reelAcc.logo} onClose={() => setReel(null)} dark />
@@ -118,6 +131,7 @@ export default function Accounts() {
       <AnimatePresence>
         {work !== null && <Player key="work" reels={WORKS_9X16.slice(0, 5)} start={work} onClose={() => setWork(null)} dark />}
       </AnimatePresence>
+      <AnimatePresence>{svc !== null && <Player key="svc" reels={SERVICE_REELS} start={svc} onClose={() => setSvc(null)} dark />}</AnimatePresence>
       <AnimatePresence>{openAcc && <Profile key={openAcc.handle} account={openAcc} onClose={() => setOpen(null)} />}</AnimatePresence>
     </main>
   );

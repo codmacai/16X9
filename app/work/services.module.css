@@ -1,0 +1,191 @@
+/* WORK, 9x16 — what we do (services-916.tsx): the services as one passage of type in the dark, a
+   small vertical frame before each name, lit word by word as the page is read. No cards: the type
+   is the design. */
+
+.services {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(36px, 6vh, 64px);
+  padding: clamp(10px, 3vh, 40px) var(--ui) clamp(150px, 24vh, 260px);
+}
+
+/* the section's number and name, as the accounts' */
+.index {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgb(246 244 240 / 0.6);
+}
+
+.index span {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--paper);
+}
+
+.index span::after {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: rgb(246 244 240 / 0.35);
+}
+
+/* ===== the passage ===== */
+.passage {
+  max-width: 1180px;
+  margin: 0;
+  font-size: clamp(30px, 4.6vw, 78px);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  text-align: center;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+/* a service: its frame, its name, its number */
+.svc {
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.6s var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* one pointed at: the rest fall back */
+.svcBack {
+  opacity: 0.28;
+}
+
+.svc:focus-visible .word {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12em;
+}
+
+.word {
+  display: inline;
+}
+
+.keep {
+  white-space: nowrap;
+}
+
+/* its number, small at the cap line */
+.no {
+  display: inline-block;
+  margin: 0 0 0 0.45em;
+  font-size: 0.16em;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  vertical-align: 4.1em;
+  color: rgb(246 244 240 / 0.5);
+}
+
+/* ===== a frame, a letter tall ===== */
+.frame {
+  position: relative;
+  display: inline-block;
+  height: 0.86em;
+  aspect-ratio: 9 / 16;
+  margin: 0 0.22em 0 0;
+  vertical-align: -0.07em;
+  transition: scale 0.9s var(--ease);
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 0.09em;
+  background: #141414;
+}
+
+.screen img,
+.screen video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: cover;
+  scale: 1.5; /* the stand-ins carry black bands: far enough in that they fall outside */
+}
+
+/* grey and still, unless it's its turn */
+.screen img {
+  filter: grayscale(1) brightness(0.62);
+  transition: filter 0.9s var(--ease);
+}
+
+.frameOn .screen img {
+  filter: none;
+}
+
+/* pointed at: its frame grows a little */
+.svcOn .frame {
+  scale: 1.28;
+}
+
+/* ===== under the passage: the service playing, what it covers ===== */
+.caption {
+  display: inline-flex;
+  gap: 16px;
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgb(246 244 240 / 0.75);
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+}
+
+.count i {
+  font-style: normal;
+  opacity: 0.45;
+}
+
+.capMask {
+  position: relative;
+  display: block;
+  height: 1.4em;
+  overflow: hidden;
+}
+
+.capText {
+  display: block;
+  white-space: pre;
+}
+
+/* phones: the passage smaller, the same */
+@media (max-width: 640px) {
+  .passage {
+    font-size: clamp(24px, 7.4vw, 36px);
+    line-height: 1.14;
+  }
+  .no {
+    font-size: 0.24em;
+    vertical-align: 2.6em;
+  }
+  .caption {
+    gap: 12px;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .svc,
+  .frame,
+  .screen img {
+    transition: none;
+  }
+}

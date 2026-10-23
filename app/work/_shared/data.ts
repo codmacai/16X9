@@ -325,6 +325,21 @@ export const WORKS_9X16: Reel[] = [
   demo("01", "Press Play", "Launch teaser"),
 ];
 
+// ---------------------------------------------------------------------------
+// 9x16's services, under the accounts: each plays its kind of work in the
+// small frame before its name (stand-in clips for now; swap each for a reel of
+// that service). Its name; three words on what it covers.
+// ---------------------------------------------------------------------------
+export type Service = { name: [string, string]; tags: string[]; clip: string };
+export const SERVICES_9X16: Service[] = [
+  { name: ["Social media", "management"], tags: ["Strategy", "Calendar", "Community"], clip: "/clips/clip-06.mp4" },
+  { name: ["Short-form", "reels"], tags: ["Concept", "Shoot", "Edit"], clip: "/clips/clip-08.mp4" },
+  { name: ["Content", "series"], tags: ["Formats", "Hosts", "Episodes"], clip: "/clips/clip-11.mp4" },
+  { name: ["Paid", "social"], tags: ["Ads", "Cutdowns", "Testing"], clip: "/clips/clip-01.mp4" },
+  { name: ["Creator", "campaigns"], tags: ["Casting", "Briefs", "Production"], clip: "/clips/clip-14.mp4" },
+  { name: ["Event", "coverage"], tags: ["Live stories", "Highlights", "Recaps"], clip: "/clips/clip-10.mp4" },
+];
+
 export const instagramOf = (a: Account) => `https://www.instagram.com/${a.handle}/`;
 
 // ---------------------------------------------------------------------------
