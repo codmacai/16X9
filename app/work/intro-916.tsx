@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, cubicBezier, motion, useMotionValue, useScroll, useSpring, useTransform, type MotionStyle, type Variants } from "framer-motion";
+import { AnimatePresence, motion, useScroll, useSpring, useTransform, type MotionStyle, type Variants } from "framer-motion";
 import { EASE_CINE } from "./_shared/chrome";
 import { stillFor, WORKS_9X16 } from "./_shared/data";
 import { startMuted } from "./brand-shared";
@@ -15,9 +15,10 @@ import s from "./intro.module.css";
 // (above and below it on a phone) — the words sliding out from behind it as
 // it opens. The reels follow one another the way stories do: a fine bar for
 // each at the frame's head, and each swipes up into the next. Point at the
-// frame and the reel holds; click it to play it whole. Scroll, and the frame
-// opens until the room is all frame, pushing the words out before its
-// edges, and goes dark: the room the accounts are in, below.
+// frame and the reel holds; click it to play it whole. Scroll, and the page
+// swipes on the way the feed does: the room holds and falls back into the
+// dark, its headline drifting apart, while the accounts rise over it as a
+// sheet (accounts.tsx) — the next reel coming up over the last.
 // The opening is CSS; the scroll is framer-motion, through a spring.
 // ===========================================================================
 
@@ -25,8 +26,6 @@ const REELS = WORKS_9X16.slice(0, 5);
 const N = REELS.length;
 const HOLD = 5.5; // seconds a reel holds the frame
 const SMOOTH = { stiffness: 120, damping: 28, mass: 0.4 }; // the scroll, eased
-const PULL = cubicBezier(0.5, 0, 0.75, 0.35); // the frame opens slowly, then draws you in
-const OPEN: [number, number] = [0.04, 0.8]; // the part of the scroll that opens the frame
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
 // a reel swipes up into the frame; the one before it goes up and away into the dark
@@ -36,7 +35,6 @@ const SHADE: Variants = { below: { opacity: 0 }, in: { opacity: 0 }, gone: { opa
 
 export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: (index: number) => void }) {
   const ref = useRef<HTMLElement>(null);
-  const frameRef = useRef<HTMLButtonElement>(null);
   const screenRef = useRef<HTMLSpanElement>(null);
   const feedRef = useRef<HTMLSpanElement>(null);
   const glowRef = useRef<HTMLCanvasElement>(null);
@@ -61,30 +59,18 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
     };
   }, []);
 
-  // the scroll: the frame opens to cover the screen, the words pushed out before its edges
+  // the scroll, while the accounts rise over the room: it falls back — a little smaller, a little
+  // higher, into the dark — the headline drifting apart from the frame and the small type going first
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
   const p = useSpring(scrollYProgress, SMOOTH);
   useEffect(() => p.on("change", (v) => setHeld(v > 0.02)), [p]);
-  const cover = useMotionValue(10);
-  useEffect(() => {
-    const measure = () => {
-      const f = frameRef.current;
-      const pin = f?.offsetParent as HTMLElement | null;
-      if (!f || !pin) return;
-      const cy = f.offsetTop + f.offsetHeight / 2;
-      cover.set(Math.max(pin.clientWidth / f.offsetWidth, (Math.max(cy, pin.clientHeight - cy) * 2) / f.offsetHeight) * 1.1);
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [cover]);
-  const open = useTransform(p, OPEN, [0, 1], { ease: PULL });
-  const grow = useTransform(() => 1 + open.get() * (cover.get() - 1));
-  const g = useTransform(grow, (v) => v - 1); // how far the frame's edges have moved, in halves of the frame
-  const words = useTransform(p, [0.1, 0.42], [1, 0]);
-  const meta = useTransform(p, [0.01, 0.1], [1, 0]);
-  const light = useTransform(p, [0.12, 0.5], [1, 0]);
-  const dim = useTransform(p, [0.66, 0.97], [0, 1]);
+  const back = useTransform(p, [0, 1], [1, 0.9]);
+  const lift = useTransform(p, [0, 1], ["0svh", "-8svh"]);
+  const dark = useTransform(p, [0.05, 0.9], [0, 0.85]);
+  const g = useTransform(p, [0, 0.7], [0, 0.45]); // the words' drift, in halves of the frame
+  const words = useTransform(p, [0.05, 0.5], [1, 0]);
+  const meta = useTransform(p, [0, 0.14], [1, 0]);
+  const light = useTransform(p, [0.1, 0.7], [1, 0.25]);
 
   // the light: the reel in the frame drawn small, ten times a second, and let into the
   // last a little at a time so it changes like light does; the CSS blurs it over the room
@@ -126,7 +112,7 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
   const reel = REELS[at];
   return (
     <section ref={ref} className={`${s.intro} ${reduce ? s.still : ""}`} aria-labelledby="intro-title">
-      <motion.div className={s.pin} style={reduce ? undefined : ({ "--g": g } as MotionStyle)}>
+      <motion.div className={s.pin} style={reduce ? undefined : ({ "--g": g, scale: back, y: lift } as MotionStyle)}>
         {/* the reel's light, on the room */}
         <motion.div className={s.glow} style={reduce ? undefined : { opacity: light }} aria-hidden="true">
           <canvas ref={glowRef} width={24} height={42} />
@@ -158,10 +144,8 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
 
         {/* the frame */}
         <motion.button
-          ref={frameRef}
           type="button"
           className={s.frame}
-          style={reduce ? undefined : { scale: grow }}
           onClick={() => onOpen(at)}
           onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)}
           onPointerLeave={() => setHover(false)}
@@ -202,8 +186,6 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
               </span>
             </motion.span>
 
-            {/* opened to the whole screen, it goes dark */}
-            <motion.i className={s.dim} style={reduce ? undefined : { opacity: dim }} aria-hidden="true" />
           </span>
         </motion.button>
 
@@ -222,6 +204,9 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
             </span>
           </span>
         </motion.div>
+
+        {/* falling back into the dark as the accounts come up over it */}
+        {!reduce && <motion.i className={s.dark} style={{ opacity: dark }} aria-hidden="true" />}
       </motion.div>
     </section>
   );

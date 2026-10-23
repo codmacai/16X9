@@ -1,6 +1,7 @@
 /* WORK, 9x16 — the opening (intro-916.tsx), in the dark: one vertical frame in the middle, a reel
    playing in it and its light on the room; the headline through the frame. The opening plays in CSS;
-   the scroll (--g, how far the frame's edges have moved) opens the frame to the whole screen. */
+   on the scroll the room falls back into the dark (--g drifts the words apart) while the accounts
+   rise over it. */
 
 .intro {
   --bg: #050505;
@@ -10,18 +11,29 @@
   --ws: clamp(30px, 3.4vw, 60px); /* the headline's size */
   --gap: clamp(26px, 2.8vw, 52px); /* between the frame and the words */
   position: relative;
-  height: 240svh; /* the scroll the frame opens over */
+  height: 200svh; /* the room holds while the accounts rise over it (they start 100svh up) */
   background: var(--bg);
   color: var(--paper);
 }
 
-/* the room holds still while the frame opens */
+/* the room holds still while the accounts rise over it */
 .pin {
   position: sticky;
   top: 0;
   height: 100svh;
   overflow: hidden;
   background: var(--bg);
+  transform-origin: 50% 40%;
+}
+
+/* ...and falls back into the dark */
+.dark {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* ===== the reel's light, thrown on the room ===== */
@@ -246,16 +258,6 @@
   outline-offset: 8px;
 }
 
-/* opened to the whole screen, it goes dark */
-.dim {
-  position: absolute;
-  z-index: 4;
-  inset: 0;
-  background: var(--bg);
-  opacity: 0;
-  pointer-events: none;
-}
-
 /* ===== the headline, through the frame: one side of it, then the other ===== */
 .title {
   position: absolute;
@@ -427,7 +429,6 @@
     --fh: min(58svh, 68vw * 16 / 9, 760px);
     --ws: clamp(26px, 8.4vw, 52px);
     --gap: clamp(14px, 2.2svh, 24px);
-    height: 220svh;
   }
   .glow {
     width: calc(var(--fw) * 2.6);

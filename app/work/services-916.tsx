@@ -1,172 +1,167 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useScroll, useSpring, useTransform, type MotionValue, type Transition } from "framer-motion";
-import { EASE_CINE } from "./_shared/chrome";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { motion, useScroll, useSpring, useTransform, type Variants } from "framer-motion";
+import { EASE } from "./_shared/chrome";
 import { SERVICES_9X16, stillFor, type Service } from "./_shared/data";
 import { startMuted } from "./brand-shared";
+import label from "./label.module.css";
 import s from "./services.module.css";
 
 // ===========================================================================
-// WORK, 9x16 — what we do, under the accounts: the services set as one
-// passage of type, a small vertical frame before each name — a letter tall —
-// with that kind of work in it. Scroll, and the passage lights a word at a
-// time as you'd read it, each frame opening from a line across its middle as
-// the reading reaches it. The frames take turns to play, the one playing in
-// colour and the rest grey, and under the passage what it covers rolls in.
-// Point at a service and its frame plays and grows, the others fall back;
-// click it to play it whole.
+// WORK, 9x16 — what we do, under the accounts: the services as tickets.
+// Paper, upright like the frame, notched where a perforation runs above the
+// stub ("16x9 & Beyond · Admit one · Nº 001"), the service's number at the
+// head and its name at the foot. As the page scrolls each is dealt in —
+// rising from below, turning as it comes, settling square. Point at one and
+// it tips toward the pointer, a sheen crossing the paper, and the ticket
+// becomes a screen: the service's work wipes up from the perforation and
+// plays, its name turning to paper over it. Click it to play it whole.
+// Three to a row (two on a tablet); on a phone they run in a row you swipe,
+// the one in the middle of the screen playing.
 // ===========================================================================
 
-const RISE: Transition = { type: "spring", stiffness: 80, damping: 17, mass: 1 };
-const READ = { stiffness: 140, damping: 30, mass: 0.4 }; // the reading, eased
-const TURN = 3800; // ms each frame plays in turn
-const N = SERVICES_9X16.length;
-const pad2 = (n: number) => String(n).padStart(2, "0");
-
-// the passage in reading order — each service's frame, then its words — and where each falls in it
-const WORDS = SERVICES_9X16.map((sv) => sv.name.join(" ").split(" "));
-const START = WORDS.map((_, i) => WORDS.slice(0, i).reduce((n, w) => n + 1 + w.length, 0));
-const LENGTH = START[N - 1] + 1 + WORDS[N - 1].length;
+const DEAL = { stiffness: 110, damping: 22, mass: 0.6 }; // the deal, eased
+// the section's label, its stub wiping in
+const STUB: Variants = {
+  out: { clipPath: "inset(0 100% 0 0)", y: 10 },
+  in: { clipPath: "inset(0 0% 0 0)", y: 0, transition: { duration: 1.1, ease: EASE } },
+};
+const TURN = [-7, 5, -4, 6, -6, 4]; // how far each is turned as it comes up, degrees
+const pad = (n: number, w = 2) => String(n).padStart(w, "0");
 
 export default function Services916({ reduce, onOpen }: { reduce: boolean; onOpen: (index: number) => void }) {
-  const ref = useRef<HTMLParagraphElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.92", "end 0.8"] /* reached before the page ends */ });
-  const read = useSpring(scrollYProgress, READ);
+  const [on, setOn] = useState<number | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
-  // the frames take turns while the passage is on screen; pointing at one holds it
-  const [turn, setTurn] = useState(0);
-  const [hover, setHover] = useState<number | null>(null);
-  const [seen, setSeen] = useState(false);
+  // no pointer to point with: the ticket in the middle of the screen plays
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(([e]) => setSeen(e.isIntersecting));
-    io.observe(el);
+    const list = listRef.current;
+    if (!list || !window.matchMedia("(hover: none)").matches) return;
+    const items = [...list.children];
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          const i = items.indexOf(e.target);
+          setOn((cur) => (e.isIntersecting ? i : cur === i ? null : cur));
+        }
+      },
+      { rootMargin: "-40% -30% -40% -30%" },
+    );
+    items.forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, []);
-  useEffect(() => {
-    if (!seen || hover !== null || reduce) return;
-    const t = setInterval(() => setTurn((n) => (n + 1) % N), TURN);
-    return () => clearInterval(t);
-  }, [seen, hover, reduce]);
-  const playing = hover ?? turn;
 
   return (
     <section className={s.services} aria-labelledby="services-title">
-      <motion.h2
-        id="services-title"
-        className={s.index}
-        initial={reduce ? false : { opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.6 }}
-        transition={RISE}
-      >
-        <span>02</span> Our services
+      <motion.h2 id="services-title" className={label.label} initial={reduce ? false : "out"} whileInView="in" viewport={{ once: true, amount: 0.6 }}>
+        <motion.span className={label.stub} variants={STUB}>
+          <span>02</span>
+          <span>Our services</span>
+        </motion.span>
       </motion.h2>
-
-      <p ref={ref} className={s.passage}>
+      <ul ref={listRef} className={s.grid}>
         {SERVICES_9X16.map((sv, i) => (
-          <span
-            key={sv.clip}
-            role="button"
-            tabIndex={0}
-            className={`${s.svc} ${hover === i ? s.svcOn : hover !== null ? s.svcBack : ""}`}
-            onPointerEnter={(e) => e.pointerType === "mouse" && setHover(i)}
-            onPointerLeave={() => {
-              if (hover === i) setTurn(i);
-              setHover(null);
-            }}
-            onClick={() => onOpen(i)}
-            onKeyDown={(e) => {
-              if (e.key !== "Enter" && e.key !== " ") return;
-              e.preventDefault();
-              onOpen(i);
-            }}
-            aria-label={`Play ${sv.name.join(" ")}`}
-          >
-            {/* the frame never parts from the name's first word, nor the number from its last */}
-            <span className={s.keep}>
-              <Frame sv={sv} at={START[i]} read={read} on={playing === i} reduce={reduce} />
-              <Word at={START[i] + 1} read={read} reduce={reduce}>
-                {WORDS[i][0]}
-              </Word>
-              {WORDS[i].length === 1 && <sup className={s.no}>{pad2(i + 1)}</sup>}
-            </span>
-            {WORDS[i].slice(1).map((w, k, rest) => (
-              <Fragment key={k}>
-                {" "}
-                {k < rest.length - 1 ? (
-                  <Word at={START[i] + 2 + k} read={read} reduce={reduce}>
-                    {w}
-                  </Word>
-                ) : (
-                  <span className={s.keep}>
-                    <Word at={START[i] + 2 + k} read={read} reduce={reduce}>
-                      {w}
-                    </Word>
-                    <sup className={s.no}>{pad2(i + 1)}</sup>
-                  </span>
-                )}
-              </Fragment>
-            ))}{" "}
-          </span>
+          <Ticket key={sv.clip} sv={sv} i={i} on={on === i} reduce={reduce} onPoint={setOn} onOpen={onOpen} />
         ))}
-      </p>
-
-      {/* under the passage: the service playing, and what it covers */}
-      <motion.div
-        className={s.caption}
-        initial={reduce ? false : { opacity: 0, y: 10 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 1 }}
-        transition={{ ...RISE, delay: 0.2 }}
-        aria-hidden="true"
-      >
-        <span className={s.count}>
-          {pad2(playing + 1)} <i>/ {pad2(N)}</i>
-        </span>
-        <span className={s.capMask}>
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.span
-              key={playing}
-              className={s.capText}
-              initial={{ y: "110%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "-110%" }}
-              transition={{ duration: 0.8, ease: EASE_CINE }}
-            >
-              {SERVICES_9X16[playing].tags.join("   ·   ")}
-            </motion.span>
-          </AnimatePresence>
-        </span>
-      </motion.div>
+      </ul>
     </section>
   );
 }
 
-/** A word of the passage, lit as the reading reaches it. */
-function Word({ read, at, reduce, children }: { read: MotionValue<number>; at: number; reduce: boolean; children: string }) {
-  const opacity = useTransform(read, [at / LENGTH, (at + 1) / LENGTH], [0.14, 1]);
-  return (
-    <motion.span className={s.word} style={reduce ? undefined : { opacity }}>
-      {children}
-    </motion.span>
-  );
-}
+function Ticket({
+  sv,
+  i,
+  on,
+  reduce,
+  onPoint,
+  onOpen,
+}: {
+  sv: Service;
+  i: number;
+  on: boolean;
+  reduce: boolean;
+  onPoint: (fn: (cur: number | null) => number | null) => void;
+  onOpen: (index: number) => void;
+}) {
+  // dealt in as it scrolls up: from below, turned, to its place, square; each in a row a beat after the last
+  const ref = useRef<HTMLLIElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "start 0.55"] });
+  const deal = useSpring(scrollYProgress, DEAL);
+  const k = (i % 3) * 0.12;
+  const t = useTransform(deal, [k, k + 0.76], [0, 1]);
+  const y = useTransform(t, [0, 1], [200, 0]);
+  const rotate = useTransform(t, [0, 1], [TURN[i % TURN.length], 0]);
+  const opacity = useTransform(t, [0, 0.3], [0, 1]);
 
-/** A service's frame, a letter tall: shut to a line until the reading reaches it, then open; in
- *  colour and playing on its turn, grey and still otherwise. */
-function Frame({ sv, read, at, on, reduce }: { sv: Service; read: MotionValue<number>; at: number; on: boolean; reduce: boolean }) {
-  const shut = useTransform(read, [at / LENGTH, (at + 1.5) / LENGTH], [50, 0]);
-  const clipPath = useTransform(shut, (v) => `inset(${v}% 0 ${v}% 0 round 0.09em)`);
+  // the tip toward the pointer, and the sheen where it is
+  const tip = (e: PointerEvent<HTMLElement>) => {
+    if (e.pointerType !== "mouse") return;
+    const el = e.currentTarget;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    el.style.setProperty("--ry", `${(px - 0.5) * 10}deg`);
+    el.style.setProperty("--rx", `${(0.5 - py) * 8}deg`);
+    el.style.setProperty("--mx", `${px * 100}%`);
+    el.style.setProperty("--my", `${py * 100}%`);
+  };
+  const name = sv.name.join(" ");
+
   return (
-    <span className={`${s.frame} ${on ? s.frameOn : ""}`} aria-hidden="true">
-      <motion.span className={s.screen} style={reduce ? undefined : { clipPath }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={stillFor(sv.clip)} alt="" loading="lazy" draggable={false} />
-        {on && !reduce && <video ref={startMuted} src={sv.clip} muted autoPlay playsInline loop preload="auto" />}
-      </motion.span>
-    </span>
+    <motion.li ref={ref} className={s.slot} style={reduce ? undefined : { y, rotate, opacity }}>
+      <article
+        className={`${s.ticket} ${on ? s.on : ""}`}
+        role="button"
+        tabIndex={0}
+        aria-label={`Service ${pad(i + 1)}: ${name}. Play`}
+        onPointerEnter={(e) => e.pointerType === "mouse" && onPoint(() => i)}
+        onPointerMove={tip}
+        onPointerLeave={(e) => {
+          e.currentTarget.style.setProperty("--rx", "0deg");
+          e.currentTarget.style.setProperty("--ry", "0deg");
+          if (e.pointerType === "mouse") onPoint((cur) => (cur === i ? null : cur));
+        }}
+        onClick={() => onOpen(i)}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          onOpen(i);
+        }}
+      >
+        <div className={s.body}>
+          {/* the work, printed faintly on the paper */}
+          <span className={s.print} aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={stillFor(sv.clip)} alt="" loading="lazy" draggable={false} />
+          </span>
+          {/* the screen the ticket becomes: wiping up from the perforation */}
+          <span className={s.screen} aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={stillFor(sv.clip)} alt="" loading="lazy" draggable={false} />
+            {on && !reduce && <video ref={startMuted} src={sv.clip} muted autoPlay playsInline loop preload="auto" />}
+          </span>
+          <span className={s.head} aria-hidden="true">
+            <span>Service</span>
+            <span>{pad(i + 1)}</span>
+          </span>
+          <span className={s.foot}>
+            <h3 className={s.name}>
+              {sv.name.map((line) => (
+                <span key={line}>{line}</span>
+              ))}
+            </h3>
+            <span className={s.tags}>{sv.tags.join("  ·  ")}</span>
+          </span>
+        </div>
+        {/* the stub, under the perforation */}
+        <span className={s.stub} aria-hidden="true">
+          <span>16x9 &amp; Beyond</span>
+          <span>Admit one</span>
+          <span>Nº {pad(i + 1, 3)}</span>
+        </span>
+        <i className={s.sheen} aria-hidden="true" />
+      </article>
+    </motion.li>
   );
 }

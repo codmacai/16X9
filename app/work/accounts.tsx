@@ -1,28 +1,29 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform, type MotionValue, type Transition } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform, type MotionValue, type Transition, type Variants } from "framer-motion";
 import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
-import { Band, rootClass } from "./_shared/chrome";
+import { Band, EASE, rootClass } from "./_shared/chrome";
 import { ACCOUNTS, SERVICES_9X16, WORKS_9X16, instagramOf, type Reel } from "./_shared/data";
 import Reels from "./reels";
 import Intro916 from "./intro-916";
 import Services916 from "./services-916";
 import Profile, { Player } from "./profile";
 import styles from "./accounts.module.css";
+import label from "./label.module.css";
 
 // ===========================================================================
 // WORK, 9x16 — it opens on one vertical frame in the dark (intro-916.tsx),
-// and the scroll opens the frame to the whole screen and on into the dark:
-// the Instagram accounts the studio runs, as slim 9:16 frames, outlined in a
+// and the scroll brings up, over it, a sheet holding the Instagram accounts
+// the studio runs, as slim 9:16 frames, outlined in a
 // hairline, each holding the brand's logo at its centre (its Instagram
 // picture, in a circle) and its followers and posts at the foot; name and
 // handle underneath. Point at one (or tap it) and it plays that account's
 // reels inside the frame, a feed you scroll through like the app. The name
 // underneath opens the account on Instagram. Four to a row (two on a phone);
 // as the page scrolls past them each column drifts at its own pace. Then what
-// we do: the services, as one passage of type (services-916.tsx).
+// we do: the services, as tickets (services-916.tsx).
 // ===========================================================================
 
 // a service clicked plays its kind of work, the others a scroll away
@@ -36,6 +37,11 @@ const SERVICE_REELS: Reel[] = SERVICES_9X16.map((sv, i) => ({
 
 // a frame rising into place as it scrolls in
 const RISE: Transition = { type: "spring", stiffness: 80, damping: 17, mass: 1 };
+// a section's label, its stub wiping in
+const STUB: Variants = {
+  out: { clipPath: "inset(0 100% 0 0)", y: 10 },
+  in: { clipPath: "inset(0 0% 0 0)", y: 0, transition: { duration: 1.1, ease: EASE } },
+};
 
 export default function Accounts() {
   const reduce = !!useReducedMotion();
@@ -65,16 +71,13 @@ export default function Accounts() {
         center={<RoomSwitch room="9x16" onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })} tone="light" />}
       />
       <Intro916 reduce={reduce} onOpen={setWork} />
-      <section id="accounts" className={styles.sheet} aria-label="9x16 work — the Instagram accounts we run">
-        <motion.p
-          className={styles.index}
-          initial={reduce ? false : { opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.6 }}
-          transition={RISE}
-        >
-          <span>01</span> The accounts we run
-        </motion.p>
+      <section id="accounts" className={`${styles.sheet} ${reduce ? "" : styles.over}`} aria-label="9x16 work — the Instagram accounts we run">
+        <motion.h2 className={label.label} initial={reduce ? false : "out"} whileInView="in" viewport={{ once: true, amount: 0.6 }}>
+          <motion.span className={label.stub} variants={STUB}>
+            <span>01</span>
+            <span>The accounts we run</span>
+          </motion.span>
+        </motion.h2>
         <ul ref={rowRef} className={styles.row}>
           {ACCOUNTS.map((a, i) => (
             // the column's drift on the scroll, and the frame's own rise into place as it comes into view

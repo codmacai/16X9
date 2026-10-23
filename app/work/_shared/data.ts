@@ -326,9 +326,9 @@ export const WORKS_9X16: Reel[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// 9x16's services, under the accounts: each plays its kind of work in the
-// small frame before its name (stand-in clips for now; swap each for a reel of
-// that service). Its name; three words on what it covers.
+// 9x16's services, under the accounts, as tickets: each plays its kind of
+// work when pointed at (stand-in clips for now; swap each for a reel of that
+// service). Its name in two lines; three words on what it covers.
 // ---------------------------------------------------------------------------
 export type Service = { name: [string, string]; tags: string[]; clip: string };
 export const SERVICES_9X16: Service[] = [
