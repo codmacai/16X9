@@ -326,7 +326,7 @@ export const WORKS_9X16: Reel[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// 9x16's services, under the accounts, as tickets: each plays its kind of
+// 9x16's services, under the accounts, as frames: each plays its kind of
 // work when pointed at (stand-in clips for now; swap each for a reel of that
 // service). Its name in two lines; three words on what it covers.
 // ---------------------------------------------------------------------------

@@ -1,17 +1,17 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform, type MotionValue, type Transition, type Variants } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform, type MotionValue, type Transition } from "framer-motion";
 import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
-import { Band, EASE, rootClass } from "./_shared/chrome";
+import { Band, rootClass } from "./_shared/chrome";
 import { ACCOUNTS, SERVICES_9X16, WORKS_9X16, instagramOf, type Reel } from "./_shared/data";
 import Reels from "./reels";
 import Intro916 from "./intro-916";
 import Services916 from "./services-916";
 import Profile, { Player } from "./profile";
 import styles from "./accounts.module.css";
-import label from "./label.module.css";
+import SectionLabel from "./section-label";
 
 // ===========================================================================
 // WORK, 9x16 — it opens on one vertical frame in the dark (intro-916.tsx),
@@ -23,7 +23,7 @@ import label from "./label.module.css";
 // reels inside the frame, a feed you scroll through like the app. The name
 // underneath opens the account on Instagram. Four to a row (two on a phone);
 // as the page scrolls past them each column drifts at its own pace. Then what
-// we do: the services, as tickets (services-916.tsx).
+// we do: the services, as frames that play their work (services-916.tsx).
 // ===========================================================================
 
 // a service clicked plays its kind of work, the others a scroll away
@@ -37,11 +37,6 @@ const SERVICE_REELS: Reel[] = SERVICES_9X16.map((sv, i) => ({
 
 // a frame rising into place as it scrolls in
 const RISE: Transition = { type: "spring", stiffness: 80, damping: 17, mass: 1 };
-// a section's label, its stub wiping in
-const STUB: Variants = {
-  out: { clipPath: "inset(0 100% 0 0)", y: 10 },
-  in: { clipPath: "inset(0 0% 0 0)", y: 0, transition: { duration: 1.1, ease: EASE } },
-};
 
 export default function Accounts() {
   const reduce = !!useReducedMotion();
@@ -72,12 +67,9 @@ export default function Accounts() {
       />
       <Intro916 reduce={reduce} onOpen={setWork} />
       <section id="accounts" className={`${styles.sheet} ${reduce ? "" : styles.over}`} aria-label="9x16 work — the Instagram accounts we run">
-        <motion.h2 className={label.label} initial={reduce ? false : "out"} whileInView="in" viewport={{ once: true, amount: 0.6 }}>
-          <motion.span className={label.stub} variants={STUB}>
-            <span>01</span>
-            <span>The accounts we run</span>
-          </motion.span>
-        </motion.h2>
+        <SectionLabel no="01" reduce={reduce}>
+          The accounts we run
+        </SectionLabel>
         <ul ref={rowRef} className={styles.row}>
           {ACCOUNTS.map((a, i) => (
             // the column's drift on the scroll, and the frame's own rise into place as it comes into view

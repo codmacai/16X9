@@ -1,40 +1,48 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { motion, useScroll, useSpring, useTransform, type Variants } from "framer-motion";
-import { EASE } from "./_shared/chrome";
+import { useEffect, useRef, useState } from "react";
+import { motion, useMotionValue, useMotionValueEvent, useScroll, useSpring, useTransform, type MotionValue } from "framer-motion";
 import { SERVICES_9X16, stillFor, type Service } from "./_shared/data";
 import { startMuted } from "./brand-shared";
-import label from "./label.module.css";
+import SectionLabel from "./section-label";
 import s from "./services.module.css";
 
 // ===========================================================================
-// WORK, 9x16 — what we do, under the accounts: the services as tickets.
-// Paper, upright like the frame, notched where a perforation runs above the
-// stub ("16x9 & Beyond · Admit one · Nº 001"), the service's number at the
-// head and its name at the foot. As the page scrolls each is dealt in —
-// rising from below, turning as it comes, settling square. Point at one and
-// it tips toward the pointer, a sheen crossing the paper, and the ticket
-// becomes a screen: the service's work wipes up from the perforation and
-// plays, its name turning to paper over it. Click it to play it whole.
-// Three to a row (two on a tablet); on a phone they run in a row you swipe,
-// the one in the middle of the screen playing.
+// WORK, 9x16 — what we do, under the accounts: the services as frames in the
+// accounts' language — a hairline in the dark, the work faint inside in grey,
+// the service's number at the head and its name at the foot. As the page
+// scrolls each frame opens from a line across its middle, as the opening's
+// frame does, the picture settling inside it and the name rising after it;
+// once open it stays open. The columns drift at their own pace, as the
+// accounts' do. Point at one (on a phone, scroll it to the middle of the
+// screen) and its work wipes up from its foot and plays in colour, the
+// hairline lit; click it to play it whole.
 // ===========================================================================
 
-const DEAL = { stiffness: 110, damping: 22, mass: 0.6 }; // the deal, eased
-// the section's label, its stub wiping in
-const STUB: Variants = {
-  out: { clipPath: "inset(0 100% 0 0)", y: 10 },
-  in: { clipPath: "inset(0 0% 0 0)", y: 0, transition: { duration: 1.1, ease: EASE } },
-};
-const TURN = [-7, 5, -4, 6, -6, 4]; // how far each is turned as it comes up, degrees
-const pad = (n: number, w = 2) => String(n).padStart(w, "0");
+const OPEN = { stiffness: 90, damping: 22, mass: 0.6 }; // the opening, eased
+const DRIFT = { stiffness: 90, damping: 24, mass: 0.5 }; // the columns' drift, eased
+const pad2 = (n: number) => String(n).padStart(2, "0");
 
 export default function Services916({ reduce, onOpen }: { reduce: boolean; onOpen: (index: number) => void }) {
   const [on, setOn] = useState<number | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  // no pointer to point with: the ticket in the middle of the screen plays
+  // three to a row, two on a tablet or a phone: which column each frame is in
+  const [cols, setCols] = useState(3);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1080px)");
+    const set = () => setCols(mq.matches ? 2 : 3);
+    set();
+    mq.addEventListener("change", set);
+    return () => mq.removeEventListener("change", set);
+  }, []);
+
+  // each column drifting at its own pace as the page scrolls past
+  const { scrollYProgress } = useScroll({ target: listRef, offset: ["start end", "end start"] });
+  const drift = useSpring(scrollYProgress, DRIFT);
+  const lanes = [useDrift(drift, 24, reduce), useDrift(drift, 72, reduce), useDrift(drift, 40, reduce)];
+
+  // no pointer to point with: the frame in the middle of the screen plays
   useEffect(() => {
     const list = listRef.current;
     if (!list || !window.matchMedia("(hover: none)").matches) return;
@@ -46,7 +54,7 @@ export default function Services916({ reduce, onOpen }: { reduce: boolean; onOpe
           setOn((cur) => (e.isIntersecting ? i : cur === i ? null : cur));
         }
       },
-      { rootMargin: "-40% -30% -40% -30%" },
+      { rootMargin: "-45% -20% -45% -20%" },
     );
     items.forEach((el) => io.observe(el));
     return () => io.disconnect();
@@ -54,24 +62,33 @@ export default function Services916({ reduce, onOpen }: { reduce: boolean; onOpe
 
   return (
     <section className={s.services} aria-labelledby="services-title">
-      <motion.h2 id="services-title" className={label.label} initial={reduce ? false : "out"} whileInView="in" viewport={{ once: true, amount: 0.6 }}>
-        <motion.span className={label.stub} variants={STUB}>
-          <span>02</span>
-          <span>Our services</span>
-        </motion.span>
-      </motion.h2>
+      <SectionLabel no="02" id="services-title" reduce={reduce}>
+        Our services
+      </SectionLabel>
       <ul ref={listRef} className={s.grid}>
         {SERVICES_9X16.map((sv, i) => (
-          <Ticket key={sv.clip} sv={sv} i={i} on={on === i} reduce={reduce} onPoint={setOn} onOpen={onOpen} />
+          <Card
+            key={sv.clip}
+            sv={sv}
+            i={i}
+            col={i % cols}
+            lane={lanes[i % cols]}
+            on={on === i}
+            reduce={reduce}
+            onPoint={setOn}
+            onOpen={onOpen}
+          />
         ))}
       </ul>
     </section>
   );
 }
 
-function Ticket({
+function Card({
   sv,
   i,
+  col,
+  lane,
   on,
   reduce,
   onPoint,
@@ -79,49 +96,37 @@ function Ticket({
 }: {
   sv: Service;
   i: number;
+  col: number;
+  lane: MotionValue<number>;
   on: boolean;
   reduce: boolean;
   onPoint: (fn: (cur: number | null) => number | null) => void;
   onOpen: (index: number) => void;
 }) {
-  // dealt in as it scrolls up: from below, turned, to its place, square; each in a row a beat after the last
+  // the opening, on the scroll: each column a beat after the one before; once open, it stays open
   const ref = useRef<HTMLLIElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "start 0.55"] });
-  const deal = useSpring(scrollYProgress, DEAL);
-  const k = (i % 3) * 0.12;
-  const t = useTransform(deal, [k, k + 0.76], [0, 1]);
-  const y = useTransform(t, [0, 1], [200, 0]);
-  const rotate = useTransform(t, [0, 1], [TURN[i % TURN.length], 0]);
-  const opacity = useTransform(t, [0, 0.3], [0, 1]);
-
-  // the tip toward the pointer, and the sheen where it is
-  const tip = (e: PointerEvent<HTMLElement>) => {
-    if (e.pointerType !== "mouse") return;
-    const el = e.currentTarget;
-    const r = el.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width;
-    const py = (e.clientY - r.top) / r.height;
-    el.style.setProperty("--ry", `${(px - 0.5) * 10}deg`);
-    el.style.setProperty("--rx", `${(0.5 - py) * 8}deg`);
-    el.style.setProperty("--mx", `${px * 100}%`);
-    el.style.setProperty("--my", `${py * 100}%`);
-  };
-  const name = sv.name.join(" ");
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "start 0.45"] });
+  const eased = useSpring(scrollYProgress, OPEN);
+  const k = col * 0.1;
+  const reach = useTransform(eased, [k, k + 0.8], [0, 1]);
+  const t = useMotionValue(0);
+  useMotionValueEvent(reach, "change", (v) => v > t.get() && t.set(v));
+  const shut = useTransform(t, [0, 0.75], [50, 0]);
+  const clipPath = useTransform(shut, (v) => `inset(${v}% 0 ${v}% 0)`);
+  const settle = useTransform(t, [0, 1], [1.4, 1]);
+  const rise = useTransform(t, [0.4, 1], ["110%", "0%"]);
+  const fade = useTransform(t, [0.5, 1], [0, 1]);
 
   return (
-    <motion.li ref={ref} className={s.slot} style={reduce ? undefined : { y, rotate, opacity }}>
-      <article
-        className={`${s.ticket} ${on ? s.on : ""}`}
+    <motion.li ref={ref} className={s.slot} style={reduce ? undefined : { y: lane }}>
+      <motion.article
+        className={`${s.card} ${on ? s.on : ""}`}
+        style={reduce ? undefined : { clipPath }}
         role="button"
         tabIndex={0}
-        aria-label={`Service ${pad(i + 1)}: ${name}. Play`}
+        aria-label={`${pad2(i + 1)} ${sv.name.join(" ")}: play`}
         onPointerEnter={(e) => e.pointerType === "mouse" && onPoint(() => i)}
-        onPointerMove={tip}
-        onPointerLeave={(e) => {
-          e.currentTarget.style.setProperty("--rx", "0deg");
-          e.currentTarget.style.setProperty("--ry", "0deg");
-          if (e.pointerType === "mouse") onPoint((cur) => (cur === i ? null : cur));
-        }}
+        onPointerLeave={(e) => e.pointerType === "mouse" && onPoint((cur) => (cur === i ? null : cur))}
         onClick={() => onOpen(i)}
         onKeyDown={(e) => {
           if (e.key !== "Enter" && e.key !== " ") return;
@@ -129,39 +134,41 @@ function Ticket({
           onOpen(i);
         }}
       >
-        <div className={s.body}>
-          {/* the work, printed faintly on the paper */}
-          <span className={s.print} aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={stillFor(sv.clip)} alt="" loading="lazy" draggable={false} />
-          </span>
-          {/* the screen the ticket becomes: wiping up from the perforation */}
-          <span className={s.screen} aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={stillFor(sv.clip)} alt="" loading="lazy" draggable={false} />
-            {on && !reduce && <video ref={startMuted} src={sv.clip} muted autoPlay playsInline loop preload="auto" />}
-          </span>
-          <span className={s.head} aria-hidden="true">
-            <span>Service</span>
-            <span>{pad(i + 1)}</span>
-          </span>
-          <span className={s.foot}>
-            <h3 className={s.name}>
-              {sv.name.map((line) => (
-                <span key={line}>{line}</span>
-              ))}
-            </h3>
-            <span className={s.tags}>{sv.tags.join("  ·  ")}</span>
-          </span>
-        </div>
-        {/* the stub, under the perforation */}
-        <span className={s.stub} aria-hidden="true">
-          <span>16x9 &amp; Beyond</span>
-          <span>Admit one</span>
-          <span>Nº {pad(i + 1, 3)}</span>
+        {/* the work, faint in grey, settling as the frame opens */}
+        <span className={s.print} aria-hidden="true">
+          <motion.img src={stillFor(sv.clip)} alt="" loading="lazy" draggable={false} style={reduce ? undefined : { scale: settle }} />
         </span>
-        <i className={s.sheen} aria-hidden="true" />
-      </article>
+        {/* pointed at: the work in colour, wiping up from the foot */}
+        <span className={s.screen} aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={stillFor(sv.clip)} alt="" loading="lazy" draggable={false} />
+          {on && !reduce && <video ref={startMuted} src={sv.clip} muted autoPlay playsInline loop preload="auto" />}
+        </span>
+
+        <motion.span className={s.head} style={reduce ? undefined : { opacity: fade }} aria-hidden="true">
+          <span>{pad2(i + 1)}</span>
+          <span className={s.play}>
+            <i /> Play
+          </span>
+        </motion.span>
+        <span className={s.foot}>
+          <h3 className={s.name}>
+            {sv.name.map((line) => (
+              <span key={line} className={s.mask}>
+                <motion.span style={reduce ? undefined : { y: rise }}>{line}</motion.span>
+              </span>
+            ))}
+          </h3>
+          <motion.span className={s.tags} style={reduce ? undefined : { opacity: fade }}>
+            {sv.tags.join("  ·  ")}
+          </motion.span>
+        </span>
+      </motion.article>
     </motion.li>
   );
+}
+
+// a column's drift as the page scrolls past: from `px` below its place to `px` above it
+function useDrift(progress: MotionValue<number>, px: number, reduce: boolean) {
+  return useTransform(progress, [0, 1], reduce ? [0, 0] : [px, -px]);
 }
