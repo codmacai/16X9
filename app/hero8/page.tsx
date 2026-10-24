@@ -17,9 +17,9 @@ import own from "../hero7/hero7.module.css";
 // Beyond, the studio's top service, is an entrance: the screen goes black,
 // the other words fall away and BEYOND turns to paper, and a single hairline
 // of light — its film, seen through the gap — draws down the middle of the
-// dark like a door left ajar onto a lit room. Pointing at Click to step
-// inside eases it open a little; going in swings it wide, the light flooding
-// the screen, on into Beyond's work.
+// dark like a door left ajar onto a lit room. Click BEYOND and the door
+// opens: the line reaches the full height, light pours through the widening
+// gap and settles into the film, and on into Beyond's work.
 //
 // Clicking a word goes on to that format's work (/work?format=…), as in hero 7.
 // ===========================================================================
@@ -32,6 +32,8 @@ const AUTO_MS = 3400;
 const AUTO_SEQ: (FormatKey | null)[] = ["16x9", "9x16", "beyond", null];
 // ms from the click to the work page: the preview has filled the screen by then
 const GO_MS = 1050;
+// ...and for Beyond, once its door has opened onto the film and it has held a moment
+const GO_BEYOND_MS = 1650;
 
 // The variant depends on the URL and today's date, so it's read on the client only.
 const noopSubscribe = () => () => {};
@@ -94,7 +96,7 @@ function Home({ variant }: { variant: HeroVariant }) {
       try {
         sessionStorage.setItem(HOME_KEY, "/hero8");
       } catch {}
-      window.setTimeout(() => router.push(`/work?format=${k}`), reduce ? 0 : GO_MS);
+      window.setTimeout(() => router.push(`/work?format=${k}`), reduce ? 0 : k === "beyond" ? GO_BEYOND_MS : GO_MS);
     },
     [ready, reduce, room, router]
   );

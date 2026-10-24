@@ -1063,8 +1063,9 @@ export default function Chooser({
    *  open out from the word to the corners of the screen */
   plainBeyond?: boolean;
   /** hero 8: Beyond as a door. The screen goes black, BEYOND turns to paper, and a single hairline
-   *  of light stands in the dark like a door left ajar; pointing at the way in eases it open a
-   *  little, and going in swings it wide onto the film (with plainBeyond) */
+   *  of light stands in the dark like a door left ajar; clicking BEYOND opens it — the line reaches
+   *  the full height, light pours through the widening gap and settles into the film (with
+   *  plainBeyond) */
   doorBeyond?: boolean;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
@@ -1242,9 +1243,6 @@ export default function Chooser({
     };
   }, [plainBeyond, reduce]);
 
-  // hero 8: the way in pointed at — the door eases open a little
-  const [doorAjar, setDoorAjar] = useState(false);
-
   // the pointer leaving the line (not just a word) lets the film go
   const leave = useRef(0);
   const point = (k: FormatKey | null) => {
@@ -1260,7 +1258,7 @@ export default function Chooser({
       ref={stageRef}
       className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""}`}
       initial={false}
-      animate={{ opacity: open ? 0 : 1 }}
+      animate={{ opacity: open && !(doorBeyond && launch === "beyond") ? 0 : 1 }}
       transition={reduce ? { duration: 0 } : open ? { delay: 0.95, duration: 0.6, ease: EASE } : { duration: 0.5, ease: EASE }}
       style={{ pointerEvents: open ? "none" : "auto" }}
     >
@@ -1288,7 +1286,7 @@ export default function Chooser({
           ref={(el) => {
             filmRefs.current[f.key] = el;
           }}
-          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""} ${f.key === "beyond" && doorBeyond ? `${styles.filmDoor} ${doorAjar ? styles.doorAjar : ""} ${up === "beyond" && open ? styles.doorOpen : ""}` : ""}`}
+          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""} ${f.key === "beyond" && doorBeyond ? `${styles.filmDoor} ${up === "beyond" && open ? styles.doorOpen : ""}` : ""}`}
           aria-hidden="true"
         >
           <div
@@ -1321,8 +1319,9 @@ export default function Chooser({
           </div>
           {/* the light from the door, soft on the dark round it */}
           {f.key === "beyond" && doorBeyond && <span className={styles.doorGlow} aria-hidden="true" />}
-          {/* the light through the gap */}
+          {/* the light through the gap, and the light that pours through as it opens */}
           {f.key === "beyond" && doorBeyond && <span className={styles.doorLine} aria-hidden="true" />}
+          {f.key === "beyond" && doorBeyond && <span className={styles.doorFlood} aria-hidden="true" />}
           {f.key === "beyond" && plainBeyond && !doorBeyond && <OpenCorners on={up === "beyond"} word={wordRefs} stage={stageRef} />}
           {f.key === "beyond" && pool?.length && !plainBeyond ? (
             grid ? (
@@ -1343,9 +1342,9 @@ export default function Chooser({
       {/* hero 7: smoke in the middle, over the preview and under the words */}
       {band && <Smoke on={!!up && !open && !(doorBeyond && up === "beyond")} />}
 
-      {/* hero 7 and 8: under the line while Beyond is up, the way in — over the smoke, and it holds
-          the preview while it's pointed at */}
-      {plainBeyond && (
+      {/* hero 7: under the line while Beyond is up, the way in — over the smoke, and it holds the
+          preview while it's pointed at (hero 8's door has none: BEYOND itself is the way in) */}
+      {plainBeyond && !doorBeyond && (
         // the way down from the word to it: while Beyond is up, the strip under the line holds it
         <span
           className={`${styles.stepBridge} ${up === "beyond" && !open ? styles.stepBridgeOn : ""}`}
@@ -1354,19 +1353,13 @@ export default function Chooser({
           aria-hidden="true"
         />
       )}
-      {plainBeyond && (
+      {plainBeyond && !doorBeyond && (
         <button
           type="button"
           className={`${styles.stepIn} ${up === "beyond" && !open ? styles.stepInOn : ""}`}
           tabIndex={up === "beyond" && !open ? 0 : -1}
-          onPointerEnter={() => {
-            point("beyond");
-            setDoorAjar(true);
-          }}
-          onPointerLeave={() => {
-            point(null);
-            setDoorAjar(false);
-          }}
+          onPointerEnter={() => point("beyond")}
+          onPointerLeave={() => point(null)}
           onClick={() => onOpen("beyond")}
         >
           Click to step inside <i aria-hidden="true">→</i>
