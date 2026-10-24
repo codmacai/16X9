@@ -519,6 +519,10 @@
   position: absolute;
 }
 
+.fullDark {
+  background: rgb(3 3 3 / 0.94);
+}
+
 /* ===================== phones: a column — the categories across, the card, the strip across ===================== */
 @media (max-width: 760px) {
   .page[class] {
