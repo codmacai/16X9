@@ -1,74 +1,127 @@
-/* WORK, BEYOND (beyond.tsx): on white. The white room, as the landing's Beyond (hero 8) leads into
-   it; then the projects, a screen each, each rising over the last as a sheet. */
+/* WORK, BEYOND (beyond.tsx): a viewing room on the white, one screen — the categories down the left,
+   the film on show as a card inside Beyond's four corners, every film as a strip down the right.
+   Inside the card everything is sized to the card itself (cqw), so the same card opened to the
+   whole screen is simply the card, larger. */
 
 /* ([class] lifts it over the shared root's dark ground) */
 .page[class] {
   --white: #fbfaf7;
   --ink: #0b0b0b;
   --grey: #8f8a83;
+  --pad: clamp(18px, 3vh, 34px);
+  height: 100svh;
+  overflow: hidden;
   background: var(--white);
   color: var(--ink);
 }
 
-/* ===================== the white room ===================== */
 .room {
-  position: relative;
-  height: 100svh;
-  overflow: hidden;
-  background: var(--white);
+  position: absolute;
+  inset: var(--band) 0 0;
+  display: grid;
+  grid-template-columns: clamp(180px, 16vw, 250px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(18px, 2.4vw, 40px);
+  padding: var(--pad) var(--ui);
 }
 
-/* the warmth of the sun, from one corner */
-.sun {
+/* ===================== down the left: the categories ===================== */
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 clamp(20px, 3.4vh, 32px);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgb(11 11 11 / 0.55);
+}
+
+.kicker span {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--ink);
+}
+
+.kicker span::after {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: rgb(11 11 11 / 0.3);
+}
+
+.cats ol {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(8px, 1.4vh, 13px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cats button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgb(11 11 11 / 0.3);
+  font: inherit;
+  font-size: clamp(15px, 1.3vw, 20px);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.4s ease;
+}
+
+/* its count, in a small box: filled for the category on show */
+.cats button i {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 3px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: 9px;
+  font-style: normal;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color 0.4s ease,
+    color 0.4s ease;
+}
+
+.cats button:hover {
+  color: rgb(11 11 11 / 0.7);
+}
+
+.cats .catOn {
+  color: var(--ink);
+}
+
+.cats .catOn i {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--white);
+}
+
+/* ===================== in the middle: the film on show, inside the corners ===================== */
+.stage {
+  position: relative;
+  justify-self: center;
+  width: min(100%, calc((100svh - var(--band) - var(--pad) * 2 - 56px) * 2 + 56px));
+  padding: 28px;
+}
+
+.corners {
+  --arm: 14px;
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 60% 70% at 88% 8%, rgb(255 238 214 / 0.75), transparent 70%),
-    radial-gradient(ellipse 70% 60% at 0% 100%, rgb(40 32 24 / 0.06), transparent 70%);
-  pointer-events: none;
-}
-
-/* soft bars of shade, as from tall windows, drifting slowly across the wall */
-.daylight {
-  position: absolute;
-  inset: -30% -20%;
-  display: flex;
-  justify-content: center;
-  gap: 11vw;
-  rotate: -16deg;
-  filter: blur(34px);
-  animation: daylight 28s ease-in-out infinite alternate;
-  pointer-events: none;
-  will-change: transform;
-}
-
-.daylight i {
-  flex: none;
-  width: 6vw;
-  height: 100%;
-  background: rgb(46 38 30 / 0.085);
-}
-
-.daylight i:nth-child(2),
-.daylight i:nth-child(4) {
-  width: 2.4vw;
-  background: rgb(46 38 30 / 0.06);
-}
-
-@keyframes daylight {
-  from {
-    translate: -7vw 0;
-  }
-  to {
-    translate: 7vw 0;
-  }
-}
-
-/* the four corners, opened out to the room's */
-.corners {
-  --arm: clamp(14px, 1.4vw, 20px);
-  position: absolute;
-  inset: calc(var(--band) + 14px) 14px 14px;
   pointer-events: none;
 }
 
@@ -103,339 +156,438 @@
   border-width: 0 1.5px 1.5px 0;
 }
 
-.roomIn {
-  position: absolute;
-  inset: var(--band) var(--ui) 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(22px, 4vh, 40px);
-  text-align: center;
-}
-
-.kicker {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 0;
-  font-size: 10px;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: rgb(11 11 11 / 0.55);
-}
-
-.kicker span {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  color: var(--ink);
-}
-
-.kicker span::after {
-  content: "";
-  width: 28px;
-  height: 1px;
-  background: rgb(11 11 11 / 0.3);
-}
-
-.title {
-  margin: 0;
-  font-size: clamp(44px, 7.4vw, 128px);
-  font-weight: 400;
-  line-height: 0.92;
-  letter-spacing: -0.045em;
-  text-transform: uppercase;
-}
-
-.mask {
-  display: block;
-  overflow: hidden;
-  padding-bottom: 0.05em;
-}
-
-.mask > span {
-  display: block;
-}
-
-/* what Beyond covers */
-.what {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px clamp(20px, 2.8vw, 44px);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 10px;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-}
-
-.what b {
-  margin-right: 12px;
-  font-weight: 400;
-  color: var(--grey);
-  font-variant-numeric: tabular-nums;
-}
-
-/* down to the projects */
-.cue {
-  position: absolute;
-  left: 50%;
-  bottom: clamp(26px, 5vh, 48px);
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--ink);
-  font: inherit;
-  font-size: 9px;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  cursor: pointer;
-  translate: -50% 0;
-}
-
-.cue i {
+.cardBox {
   position: relative;
-  width: 1px;
-  height: 34px;
-  overflow: hidden;
-  background: rgb(11 11 11 / 0.15);
+  aspect-ratio: 2 / 1;
 }
 
-.cue i::after {
-  content: "";
+/* ===================== the card ===================== */
+.card {
   position: absolute;
   inset: 0;
-  background: var(--ink);
-  animation: fall 2.4s var(--ease) infinite;
-}
-
-@keyframes fall {
-  0% {
-    transform: translateY(-100%);
-  }
-  60%,
-  100% {
-    transform: translateY(100%);
-  }
-}
-
-/* ===================== the projects, a screen each ===================== */
-.stack {
-  position: relative;
-}
-
-/* each sticks under the band as it arrives, and the next rises over it */
-.sheet {
-  position: sticky;
-  top: var(--band);
-  height: calc(100svh - var(--band));
   overflow: hidden;
-  border-radius: clamp(18px, 2vw, 28px) clamp(18px, 2vw, 28px) 0 0;
-  background: var(--white);
-  box-shadow:
-    0 -1px 0 rgb(11 11 11 / 0.08),
-    0 -30px 70px rgb(11 11 11 / 0.08);
+  border-radius: 14px;
+  background: #0b0b0b;
+  color: #f6f4f0;
+  container-type: inline-size;
+  box-shadow: 0 40px 90px -40px rgb(20 14 6 / 0.45);
 }
 
-/* each holds the screen a while before the next comes up over it */
-.sheet + .sheet {
-  margin-top: 40svh;
+.cardFull {
+  border-radius: 18px;
 }
 
-/* ...and the last holds it a while before the page ends */
-.stack {
-  padding-bottom: 30svh;
-}
-
-/* its film, its name and a line on it, all to the film's width */
-.sheetIn {
-  --w: min(100%, calc((100svh - var(--band) - 300px) * 2.39));
+/* the film, the whole card; each film comes up over the last inside it, under the words */
+.film,
+.shot {
   position: absolute;
   inset: 0;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  justify-items: center;
-  gap: clamp(16px, 2.6vh, 28px);
-  padding: clamp(22px, 3.6vh, 40px) var(--ui) clamp(24px, 4.4vh, 48px);
-  transform-origin: 50% 0;
 }
 
-.head,
-.foot {
-  width: var(--w);
+.film {
+  z-index: 0;
+  isolation: isolate;
 }
 
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 10px;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-}
-
-.head b {
-  margin-right: 14px;
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-}
-
-.demo {
-  color: var(--grey);
-}
-
-/* the film, in Beyond's wide frame */
-.screen {
-  position: relative;
-  align-self: center;
-  width: var(--w);
-  aspect-ratio: 2.39 / 1;
+.shot {
   overflow: hidden;
-  background: #0c0c0c;
+  background: #0b0b0b;
 }
 
-.screen img,
-.screen video {
+.shot img,
+.shot video {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100% !important;
   max-width: none !important;
   object-fit: cover;
+  scale: 1.2; /* the wide films carry bars in their 16:9 files: far enough in that they fall outside */
 }
 
-.foot {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
-  align-items: end;
-  gap: 24px;
+/* graded where the words are, a film's gate round its edge, and its grain */
+.grade {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 0.55), transparent 55%),
+    linear-gradient(0deg, rgb(0 0 0 / 0.55), transparent 48%),
+    linear-gradient(180deg, rgb(0 0 0 / 0.35), transparent 26%);
+  box-shadow: inset 0 0 0 0.9cqw #0b0b0b;
+  pointer-events: none;
 }
 
-.name {
+.grade::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--noise);
+  opacity: 0.55;
+  mix-blend-mode: overlay;
+}
+
+.words {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* at its head: the year and the kind */
+.year {
+  position: absolute;
+  left: 4.5cqw;
+  top: 4.2cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5cqw;
   margin: 0;
-  font-size: clamp(34px, 5vw, 84px);
+  font-size: max(9px, 1cqw);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.year b {
+  font-size: max(18px, 2.6cqw);
   font-weight: 400;
-  line-height: 0.92;
+  letter-spacing: -0.02em;
+}
+
+/* across from them: its tags, in a fine row */
+.tags {
+  position: absolute;
+  right: 4.5cqw;
+  top: 4.2cqw;
+  display: flex;
+  margin: 0;
+  background: rgb(0 0 0 / 0.18);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.tags span {
+  padding: max(5px, 0.55cqw) max(9px, 1.2cqw);
+  border: 1px solid rgb(246 244 240 / 0.45);
+  font-size: max(8px, 0.82cqw);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tags span + span {
+  border-left: 0;
+}
+
+/* down its side: what the studio did */
+.did {
+  position: absolute;
+  right: 4.5cqw;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 2.6cqw;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: right;
+  translate: 0 -46%;
+}
+
+.did i {
+  display: block;
+  margin-bottom: 0.5cqw;
+  font-size: max(8px, 0.78cqw);
+  font-style: normal;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.did b {
+  font-size: max(14px, 1.9cqw);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+/* at its foot: its name, over a table of what it was */
+.foot {
+  position: absolute;
+  left: 4.5cqw;
+  bottom: 4.2cqw;
+  width: 44cqw;
+}
+
+.demo {
+  display: block;
+  margin-bottom: 1cqw;
+  font-size: max(8px, 0.8cqw);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.title {
+  margin: 0;
+  font-size: max(30px, 6.4cqw);
+  font-weight: 400;
+  line-height: 0.9;
   letter-spacing: -0.04em;
   text-transform: uppercase;
 }
 
-.line {
+.table {
+  margin: 1.8cqw 0 0;
+  border-top: 1px solid rgb(246 244 240 / 0.5);
+}
+
+.table div {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  padding: max(4px, 0.55cqw) 0;
+  border-bottom: 1px solid rgb(246 244 240 / 0.5);
+  font-size: max(8.5px, 0.92cqw);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.table dt {
+  opacity: 0.7;
+}
+
+.table dd {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.65;
-  color: rgb(11 11 11 / 0.6);
 }
 
-/* falling back as the next rises over it */
-.veil {
+/* opened: a line on it */
+.line {
+  max-width: 34cqw;
+  margin: 1.6cqw 0 0;
+  font-size: max(12px, 1.05cqw);
+  line-height: 1.6;
+  opacity: 0.82;
+}
+
+/* Explore (opened: Close) */
+.act {
   position: absolute;
-  z-index: 2;
-  inset: 0;
-  background: #000;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* ===================== down the side: the projects by number ===================== */
-.index {
-  position: fixed;
-  z-index: 20;
-  right: var(--ui);
-  top: 50%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  translate: 0 -50%;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.5s ease;
-}
-
-.indexOn {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.index button {
+  z-index: 4;
+  right: 4.5cqw;
+  bottom: 4.2cqw;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px 0;
-  border: 0;
-  background: none;
-  color: rgb(11 11 11 / 0.3);
+  gap: max(10px, 1.4cqw);
+  height: max(34px, 3.6cqw);
+  padding: 0 max(14px, 1.8cqw);
+  border: 1px solid rgb(246 244 240 / 0.6);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.2);
+  color: #f6f4f0;
   font: inherit;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  font-variant-numeric: tabular-nums;
+  font-size: max(9px, 0.92cqw);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: color 0.3s ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition:
+    background-color 0.4s ease,
+    color 0.4s ease;
 }
 
-.index button::before {
-  content: "";
-  width: 0;
-  height: 1px;
-  background: currentColor;
-  transition: width 0.5s var(--ease);
+.act i {
+  font-style: normal;
+  letter-spacing: 0;
+  transition: translate 0.6s var(--ease);
 }
 
-.index button:hover {
-  color: rgb(11 11 11 / 0.7);
+.act:hover {
+  background: #f6f4f0;
+  color: #0b0b0b;
 }
 
-.index .indexAt {
+.act:hover i {
+  translate: 3px 0;
+}
+
+.act:focus-visible {
+  outline: 1px solid #f6f4f0;
+  outline-offset: 3px;
+}
+
+/* ===================== down the right: its place, and every film ===================== */
+.side {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+
+.count {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: rgb(11 11 11 / 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.count b {
+  font-weight: 400;
   color: var(--ink);
 }
 
-.index .indexAt::before {
+.count i {
   width: 18px;
+  height: 1px;
+  background: rgb(11 11 11 / 0.35);
 }
 
-/* ===================== phones ===================== */
+.strip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  margin: 0;
+  padding: 42vh 6px;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(transparent, #000 16%, #000 84%, transparent);
+  mask-image: linear-gradient(transparent, #000 16%, #000 84%, transparent);
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* a little air between one category's films and the next */
+.strip .chapter {
+  margin-top: 14px;
+}
+
+.strip button {
+  display: block;
+  width: clamp(92px, 8.4vw, 128px);
+  aspect-ratio: 3 / 2;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #e8e5df;
+  cursor: pointer;
+  opacity: 0.5;
+  outline: 1px solid transparent;
+  outline-offset: 3px;
+  transition:
+    opacity 0.4s ease,
+    outline-color 0.4s ease;
+}
+
+.strip button img {
+  width: 100%;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: cover;
+  scale: 1.2;
+}
+
+.strip button:hover {
+  opacity: 0.85;
+}
+
+.strip .thumbOn {
+  opacity: 1;
+  outline-color: var(--ink);
+}
+
+/* ===================== the card, opened to the whole screen ===================== */
+.full {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  background: rgb(251 250 247 / 0.94);
+}
+
+.fullBox {
+  position: absolute;
+}
+
+/* ===================== phones: a column — the categories across, the card, the strip across ===================== */
 @media (max-width: 760px) {
-  .sheetIn {
-    --w: 100%;
-    grid-template-rows: auto auto 1fr;
-    align-content: start;
+  .page[class] {
+    height: auto;
+    min-height: 100svh;
+    overflow: visible;
   }
-  /* on a phone the film stands tall, pushed in past the bars the wide films carry */
-  .screen {
-    align-self: start;
+  .room {
+    position: relative;
+    inset: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    margin-top: var(--band);
+    padding: 18px var(--ui) 28px;
+  }
+  .kicker {
+    margin-bottom: 14px;
+  }
+  .cats ol {
+    flex-direction: row;
+    gap: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .cats button {
+    font-size: 15px;
+  }
+  .stage {
+    width: 100%;
+    padding: 14px;
+  }
+  .cardBox {
     aspect-ratio: 4 / 5;
   }
-  .screen img,
-  .screen video {
-    scale: 1.48;
-  }
-  .foot {
-    grid-template-columns: minmax(0, 1fr);
-    align-self: end;
-  }
-  .what {
-    flex-direction: column;
-    align-items: center;
-    gap: 9px;
-    font-size: 9px;
-    letter-spacing: 0.22em;
-  }
-  .index {
+  .tags,
+  .did {
     display: none;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .daylight,
-  .cue i::after {
-    animation: none;
+  .foot {
+    right: 5cqw;
+    width: auto;
+  }
+  .title {
+    font-size: 11cqw;
+  }
+  .act {
+    top: 4.2cqw;
+    bottom: auto;
+  }
+  .side {
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+  }
+  .strip {
+    flex-direction: row;
+    height: auto;
+    padding: 4px 40vw;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  }
+  .strip .chapter {
+    margin: 0 0 0 12px;
+  }
+  .strip button {
+    width: 96px;
   }
 }

@@ -341,18 +341,38 @@ export const SERVICES_9X16: Service[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// BEYOND's projects (work?format=beyond), one screen each: demo projects for
-// now, each with a stand-in clip from the studio's reel. Replace each with a
-// real Beyond project — its film (in the wide 2.39:1 frame), its name, what
-// kind of work it was and a line on it — and drop `demo`.
+// BEYOND's work (work?format=beyond): its categories, each with what the
+// studio does in it, and its films — demo films for now, three to a category,
+// each with a stand-in clip from the studio's reel and a year to replace.
+// Swap each for a real Beyond project (its film, its name, its year and a
+// line on it) and drop `demo`.
 // ---------------------------------------------------------------------------
-export type BeyondProject = { title: string; kind: string; line: string; clip: string; demo?: boolean };
-export const BEYOND_PROJECTS: BeyondProject[] = [
-  { title: "Skyline", kind: "Projection mapping", line: "The city at dusk as the canvas: light mapped across its towers, cut to a score.", clip: "/clips/clip-06.mp4", demo: true },
-  { title: "The Light Room", kind: "Immersive experience", line: "A room that answers whoever walks in: light, sound and image moving with them.", clip: "/clips/clip-10.mp4", demo: true },
-  { title: "Mirage", kind: "AR experience", line: "The desert redrawn through the phone in your hand, one horizon at a time.", clip: "/clips/clip-02.mp4", demo: true },
-  { title: "Open House", kind: "Brand activation", line: "A launch staged as a night out: the brand as the place everyone wanted to be.", clip: "/clips/clip-08.mp4", demo: true },
-  { title: "Dune Line", kind: "Experiential event", line: "An evening on the sand, staged from the first light to the last guest.", clip: "/clips/clip-15.mp4", demo: true },
+export type BeyondCategory = { name: string; short: string; did: string[] };
+export const BEYOND_CATEGORIES: BeyondCategory[] = [
+  { name: "Brand activations", short: "Activation", did: ["Concept", "Design & build", "Live"] },
+  { name: "Immersive experiences", short: "Immersive", did: ["Concept", "Content", "Build"] },
+  { name: "Projection mapping", short: "Mapping", did: ["Content", "Mapping", "Show control"] },
+  { name: "AR & VR", short: "AR & VR", did: ["Concept", "3D & engine", "Launch"] },
+  { name: "Experiential events", short: "Experiential", did: ["Concept", "Production", "On the night"] },
+];
+export type BeyondFilm = { title: string; cat: number; year: string; line: string; clip: string; demo?: boolean };
+const bf = (cat: number, title: string, clip: string, year: string, line: string): BeyondFilm => ({ title, cat, year, line, clip: `/clips/clip-${clip}.mp4`, demo: true });
+export const BEYOND_FILMS: BeyondFilm[] = [
+  bf(0, "Open House", "08", "2025", "A launch staged as a night out: the brand as the place to be."),
+  bf(0, "Launch Night", "01", "2024", "One switch, and the room lit up in the brand's colours."),
+  bf(0, "Pop-Up", "12", "2024", "A court for a weekend, and the city came to play on it."),
+  bf(1, "The Light Room", "10", "2025", "A room that answers whoever walks in."),
+  bf(1, "Inner Room", "11", "2024", "Faces, voices and light, close enough to touch."),
+  bf(1, "Echo", "04", "2024", "A walk through the dark, lit only by the story."),
+  bf(2, "Skyline", "06", "2025", "The city at dusk as the canvas, mapped to a score."),
+  bf(2, "Night Canvas", "14", "2024", "A wall turned into a stage, frame by frame."),
+  bf(2, "Facade", "13", "2024", "A building's face, redrawn in light for one night."),
+  bf(3, "Mirage", "02", "2025", "The desert redrawn through the phone in your hand."),
+  bf(3, "Horizon", "15", "2024", "A headset, and the dunes as far as you can see."),
+  bf(3, "Second Sight", "09", "2024", "What the room hides, shown to whoever looks."),
+  bf(4, "Majlis Night", "07", "2025", "An evening of stories, hosted the old way."),
+  bf(4, "Desert Table", "03", "2024", "Supper on the sand, staged from the first light to the last guest."),
+  bf(4, "First Light", "05", "2024", "A morning made into an occasion."),
 ];
 
 export const instagramOf = (a: Account) => `https://www.instagram.com/${a.handle}/`;
