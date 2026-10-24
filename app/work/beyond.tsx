@@ -11,17 +11,15 @@ import s from "./beyond.module.css";
 
 // ===========================================================================
 // WORK, BEYOND — the studio's top service, a project at a time, each a
-// feature card the size of the room: the film the whole card, in a dark
-// gate with a little grain; at its head the year, the kind and the studio's
-// mark; a Scroll ring; the kind over the name, large, over a ruled table of
-// what it was; down its side what the studio did; and Explore, which opens
-// the film to the whole screen. All of it in the site's own
-// type: Arial, upper case, the small labels tracked wide, the name set
-// large and light.
+// video card the size of the room: the film the whole card, in a dark gate
+// with a little grain, and on it only its eyebrow (the category), its name,
+// large, and Explore, which opens the film to the whole screen. All of it in
+// the site's own type: Arial, upper case, the eyebrow tracked wide, the name
+// set large and light.
 //
 // The cards stand in a deck: scroll (the wheel, the arrows, a swipe) and
 // the deck springs to the next, the card leaving falling back as the next
-// settles, its words rising in once it's there. Across the head, the
+// settles, its film easing in and its words rising in once it's there. Across the head, the
 // categories as the landing's index line, each with its count, a fine line
 // under the one on show sliding to the one you pick: picking one springs
 // the deck to its first project.
@@ -192,12 +190,10 @@ export default function Beyond() {
 /** A project as a feature card, in the site's type. Its words rise in once it's on show. */
 function Feature({ film: f, on, reduce, onExplore }: { film: BeyondFilm; on: boolean; reduce: boolean; onExplore: (r: Rect) => void }) {
   const c = BEYOND_CATEGORIES[f.cat];
-  const mine = filmsOf(f.cat);
-  const place = mine.indexOf(f);
   const ref = useRef<HTMLElement>(null);
   return (
-    <article ref={ref} className={s.card} aria-label={`${f.title} — ${c.name}, ${f.year}`}>
-      {/* the film, the whole card */}
+    <article ref={ref} className={`${s.card} ${on ? s.cardOn : ""}`} aria-label={`${f.title} — ${c.name}`}>
+      {/* the film, the whole card, settling slowly as the card arrives */}
       <div className={s.film} aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={stillFor(f.clip)} alt="" draggable={false} />
@@ -206,27 +202,10 @@ function Feature({ film: f, on, reduce, onExplore }: { film: BeyondFilm; on: boo
       <i className={s.grade} aria-hidden="true" />
 
       <motion.div className={s.words} variants={WORDS} initial={reduce ? false : "out"} animate={on || reduce ? "in" : "out"}>
-        {/* at its head: its place, the year, the kind, the studio's mark */}
-        <motion.div className={s.head} variants={RISE}>
-          <span className={s.place}>
-            {pad2(place + 1)} <i>/ {pad2(mine.length)}</i>
-          </span>
-          <b className={s.year}>{f.year}</b>
-          <span className={s.kind}>{c.name}</span>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={s.seal} src="/logo.png" alt="16x9 & Beyond" draggable={false} />
-        </motion.div>
-
-        {/* a Scroll ring */}
-        <motion.span className={s.scroll} variants={RISE} aria-hidden="true">
-          Scroll
-        </motion.span>
-
-        {/* the kind over the name, over a ruled table */}
+        {/* the eyebrow, over the name */}
         <div className={s.foot}>
           <motion.p className={s.label} variants={RISE}>
             <span>{pad2(f.cat + 1)}</span> {c.name}
-            {f.demo && <em>Demo</em>}
           </motion.p>
           <h2 className={s.title}>
             {f.title.split(" ").map((w, i) => (
@@ -235,32 +214,7 @@ function Feature({ film: f, on, reduce, onExplore }: { film: BeyondFilm; on: boo
               </span>
             ))}
           </h2>
-          <motion.dl className={s.table} variants={RISE}>
-            <div>
-              <dt>Category</dt>
-              <dd>{c.name}</dd>
-            </div>
-            <div>
-              <dt>Year</dt>
-              <dd>{f.year}</dd>
-            </div>
-            <div>
-              <dt>Frame</dt>
-              <dd>2.39 : 1</dd>
-            </div>
-          </motion.dl>
         </div>
-
-        {/* down its side: what the studio did */}
-        <ol className={s.did}>
-          {c.did.map((d, i) => (
-            <motion.li key={d} variants={RISE}>
-              <i aria-hidden="true" />
-              <span>What we did — {pad2(i + 1)}</span>
-              <b>{d}</b>
-            </motion.li>
-          ))}
-        </ol>
 
         {/* Explore: the film, the whole screen */}
         <motion.button
