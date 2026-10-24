@@ -1439,7 +1439,7 @@
 }
 
 /* on the dark, the line of words turns to paper */
-.stageDoor > .namesWrap .names {
+.stagePaper > .namesWrap .names {
   color: var(--paper);
 }
 
@@ -2878,4 +2878,146 @@
    only the vignette at the edges stays */
 .stageBand .film .cine::after {
   background: radial-gradient(ellipse 85% 75% at 50% 50%, transparent 50%, rgb(0 0 0 / 0.55)), var(--grade);
+}
+
+/* ===== hero 8: 16x9's and 9x16's walls in Beyond's dark, the live smoke in the middle ===== */
+/* the room goes black under the films (no paper showing round a window still opening) */
+.stageLuxe {
+  transition: background-color 0.5s ease;
+}
+
+.stageLuxe.stageBandOpen {
+  background: #050505;
+}
+
+/* the words step aside first as a format is gone into */
+.stageGone > .namesWrap {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+/* the smoke: drawn live (live-smoke.tsx), over the films and under the words */
+.liveSmoke {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* under the smoke, a little dark so it reads lit; the room falling to black at its edges; a fine
+   grain; no warm wash */
+.stageLuxe .cine {
+  --grade: linear-gradient(transparent, transparent);
+}
+
+.stageLuxe .film .cine::after {
+  background:
+    radial-gradient(ellipse 56% 34% at 50% 50%, rgb(0 0 0 / 0.55), transparent 100%),
+    radial-gradient(ellipse 90% 80% at 50% 50%, transparent 40%, rgb(0 0 0 / 0.78)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* --- 16x9: the wall --- */
+.stageLuxe .cine.fgrid {
+  gap: 2px;
+  transform: scale(1.06);
+  transition: transform 0s linear 0.6s;
+}
+
+/* coming up, the whole wall settles in, slowly */
+.stageLuxe .fgridOn.cine {
+  transform: none;
+  transition: transform 9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* each tile opens from a line across its middle, out from the centre */
+.stageLuxe .cine .fcell {
+  clip-path: inset(50% 0 50% 0);
+  transition: clip-path 0s linear 0.6s;
+}
+
+.stageLuxe .fgridOn.cine .fcell {
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 1.1s cubic-bezier(0.76, 0, 0.24, 1) var(--open);
+}
+
+/* every film rests low in the dark; one at a time takes the light (.lit, from useLit) */
+.stageLuxe .cine .fcell::after,
+.stageLuxe .feed::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: #050505;
+  opacity: 0.58;
+  transition: opacity 1.6s cubic-bezier(0.45, 0, 0.55, 1);
+  pointer-events: none;
+}
+
+.stageLuxe .feed::after {
+  opacity: 0.68; /* the reels are brighter and busier than the films: they rest a little lower */
+}
+
+.stageLuxe .cine .fcell.lit::after,
+.stageLuxe .feed.lit::after {
+  opacity: 0;
+}
+
+/* the brands, set small and fine */
+.stageLuxe .tlMask {
+  width: 12%;
+  filter: none;
+  opacity: 0.92;
+}
+
+.stageLuxe .tlMask[data-wide] {
+  width: 24%;
+}
+
+/* --- 9x16: the reels --- */
+.stageLuxe .reelStrip {
+  --gap: 10px;
+  background: #050505;
+}
+
+/* clean films with a hairline edge: no handles, no bars */
+.stageLuxe .reelHead,
+.stageLuxe .reelBar {
+  display: none;
+}
+
+.stageLuxe .reelCard {
+  border-radius: 4px;
+}
+
+.stageLuxe .reelCard::after,
+.stageLuxe .feed:not(:nth-child(3)) .reelCard::after {
+  background: none;
+}
+
+/* each column opens from a line across its middle, out from the centre */
+.stageLuxe .feed {
+  clip-path: inset(50% 0 50% 0);
+  transition: clip-path 0s linear 0.6s;
+}
+
+.stageLuxe .reelOn .feed {
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 1.1s cubic-bezier(0.76, 0, 0.24, 1) var(--open);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stageLuxe .cine.fgrid,
+  .stageLuxe .cine .fcell,
+  .stageLuxe .feed {
+    transition: none !important;
+    clip-path: none;
+    transform: none;
+  }
+  .stageLuxe .cine .fcell::after,
+  .stageLuxe .feed::after {
+    transition: none;
+  }
 }

@@ -5,6 +5,7 @@ import { AnimatePresence, animate as fmAnimate, motion } from "framer-motion";
 import { FORMATS, Ratio, type FormatKey } from "../hero13/formats";
 import type { Preview, WallFilm } from "../work/_shared/data";
 import styles from "./hero2.module.css";
+import LiveSmoke from "./live-smoke";
 
 export const EASE = [0.16, 1, 0.3, 1] as const;
 export const EASE_CINE = [0.76, 0, 0.24, 1] as const;
@@ -451,6 +452,32 @@ function Clip({ src, className }: { src: string; className?: string }) {
   );
 }
 
+// hero 8's dark room: every film rests low, and one at a time takes the light — this long each,
+// in a scattered order (the same each time), starting a moment after the wall has opened
+const LIT_S = 2.4;
+function useLit(on: boolean, n: number) {
+  const [lit, setLit] = useState(-1);
+  useEffect(() => {
+    if (!on || n === 0) return;
+    const order = Array.from({ length: n }, (_, k) => k).sort((a, b) => ((a * 37 + 11) % 23) - ((b * 37 + 11) % 23));
+    let k = 0;
+    let id = 0;
+    const t = window.setTimeout(() => {
+      setLit(order[0]);
+      id = window.setInterval(() => {
+        k = (k + 1) % n;
+        setLit(order[k]);
+      }, LIT_S * 1000);
+    }, 900);
+    return () => {
+      window.clearTimeout(t);
+      window.clearInterval(id);
+      setLit(-1);
+    };
+  }, [on, n]);
+  return lit;
+}
+
 function useLiveCount(on: boolean, wanted: number) {
   const { budget } = useDevice();
   const total = Math.min(wanted, budget);
@@ -642,6 +669,7 @@ const FormatGrid = memo(function FormatGrid({
       : freshDeal(dealKey, beat, vs, g.cols, brands, turn, step)
     : null;
   if (deal !== kept) setDeal(deal);
+  const lit = useLit(on && big, n);
   return (
     <div className={`${styles.fgrid} ${on ? styles.fgridOn : ""} ${big ? styles.cine : ""}`} style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}
       data-kind={kind} aria-hidden="true">
@@ -660,8 +688,14 @@ const FormatGrid = memo(function FormatGrid({
             : null;
         const col = i % g.cols;
         const row = Math.floor(i / g.cols);
+        // hero 8's dark room: each tile opens out from the centre
+        const open = Math.hypot(col + 0.5 - g.cols / 2, row + 0.5 - g.rows / 2) * 0.09;
         return (
-          <span key={i} className={styles.fcell} style={{ transitionDelay: on ? `${0.15 + col * 0.07 + row * 0.04}s` : "0s" }}>
+          <span
+            key={i}
+            className={`${styles.fcell} ${lit === i ? styles.lit : ""}`}
+            style={{ transitionDelay: on ? `${0.15 + col * 0.07 + row * 0.04}s` : "0s", "--open": `${open.toFixed(2)}s` } as React.CSSProperties}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {still && <img src={still} alt="" draggable={false} />}
             {cuts && rich ? (
@@ -728,11 +762,16 @@ const PER_FEED = 4; // reels in a column (shown twice, so the swipe loops withou
 
 const ReelStrip = memo(function ReelStrip({ on, pool, turn }: { on: boolean; pool: string[]; turn: number }) {
   const live = useLiveCount(on, FEEDS * PER_FEED * 2);
+  const lit = useLit(on, FEEDS);
   let n = 0;
   return (
     <div className={`${styles.reelStrip} ${styles.cine} ${on ? styles.reelOn : ""}`} aria-hidden="true">
       {Array.from({ length: FEEDS }, (_, c) => (
-        <div key={c} className={styles.feed}>
+        <div
+          key={c}
+          className={`${styles.feed} ${lit === c ? styles.lit : ""}`}
+          style={{ "--open": `${(Math.abs(c - (FEEDS - 1) / 2) * 0.1).toFixed(2)}s` } as React.CSSProperties}
+        >
           <div className={styles.feedTrack} style={{ animationDelay: `${feedDelay(c)}s` }}>
             {[0, 1].map((copy) =>
               Array.from({ length: PER_FEED }, (_, i) => {
@@ -1028,6 +1067,7 @@ export default function Chooser({
   band = false,
   plainBeyond = false,
   doorBeyond = false,
+  luxe = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -1067,6 +1107,10 @@ export default function Chooser({
    *  the full height, light pours through the widening gap and settles into the film (with
    *  plainBeyond) */
   doorBeyond?: boolean;
+  /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; live smoke in the middle
+   *  under the words, unfurling from a line; every film resting low, one at a time taking the
+   *  light; each tile opening from a line across its middle, out from the centre */
+  luxe?: boolean;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
   const base = reduce ? 0 : first ? (logo ? LOGO_T.names : INTRO.names) : 0.1;
@@ -1256,10 +1300,10 @@ export default function Chooser({
   return (
     <motion.div
       ref={stageRef}
-      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""}`}
+      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${doorBeyond && up === "beyond" ? styles.stagePaper : ""} ${luxe && open && launch !== "beyond" ? styles.stageGone : ""}`}
       initial={false}
       animate={{ opacity: open && !(doorBeyond && launch === "beyond") ? 0 : 1 }}
-      transition={reduce ? { duration: 0 } : open ? { delay: 0.95, duration: 0.6, ease: EASE } : { duration: 0.5, ease: EASE }}
+      transition={reduce ? { duration: 0 } : open ? { delay: luxe ? 0.45 : 0.95, duration: 0.6, ease: EASE } : { duration: 0.5, ease: EASE }}
       style={{ pointerEvents: open ? "none" : "auto" }}
     >
       {/* the line, in ink on the paper */}
@@ -1340,7 +1384,8 @@ export default function Chooser({
       {/* hero 7: the paper parts above and below a band that keeps the words; on a click the band
           parts too and the film is the whole screen */}
       {/* hero 7: smoke in the middle, over the preview and under the words */}
-      {band && <Smoke on={!!up && !open && !(doorBeyond && up === "beyond")} />}
+      {band && !luxe && <Smoke on={!!up && !open && !(doorBeyond && up === "beyond")} />}
+      {band && luxe && <LiveSmoke on={!!up && !open && up !== "beyond"} still={reduce} />}
 
       {/* hero 7: under the line while Beyond is up, the way in — over the smoke, and it holds the
           preview while it's pointed at (hero 8's door has none: BEYOND itself is the way in) */}

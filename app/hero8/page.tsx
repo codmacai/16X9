@@ -12,8 +12,12 @@ import styles from "../hero2/hero2.module.css";
 import own from "../hero7/hero7.module.css";
 
 // ===========================================================================
-// HERO 8 — hero 7, with Beyond as a door. 16x9 and 9x16 open on their walls
-// of films in the dark, the warm smoke behind the words, as in hero 7.
+// HERO 8 — hero 7, in Beyond's dark. 16x9 and 9x16 open on their walls of
+// films in a black room: each tile (or column of reels) opens from a hairline
+// across its middle, out from the centre, as the wall settles in, and every
+// film rests low while one at a time takes the light. Through the middle, under
+// the words, the smoke — live now (live-smoke.tsx), its wisps curling and
+// drifting — unfurls from a hairline as the format is pointed at.
 // Beyond, the studio's top service, is an entrance: the screen goes black,
 // the other words fall away and BEYOND turns to paper, and a single hairline
 // of light — its film, seen through the gap — draws down the middle of the
@@ -129,6 +133,7 @@ function Home({ variant }: { variant: HeroVariant }) {
         band
         plainBeyond
         doorBeyond
+        luxe
       />
     </section>
   );
