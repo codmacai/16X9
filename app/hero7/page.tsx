@@ -15,6 +15,8 @@ import own from "./hero7.module.css";
 // HERO 7 — hero 6 in smoke: pointing at a format brings up its preview with a soft warm ivory
 // cloud drifting in the middle behind the words (still in ink), at once — no edge anywhere. No
 // line at the foot and no prompt under the words: the three words alone.
+// Beyond, the studio's top service, is no board: its one film alone, the whole screen, its corners
+// opening out from the word to the corners of the screen, the film leaning after the pointer.
 // (From hero 6: hero 5 with tall 9x16 cards and a refined Beyond board.)
 // (From hero 5:) 16x9 & BEYOND: hero 2's white start, and each word leads straight to its work.
 //
@@ -124,6 +126,7 @@ function Home({ variant }: { variant: HeroVariant }) {
         refined
         wall={WALL_16X9}
         band
+        plainBeyond
       />
 
     </section>

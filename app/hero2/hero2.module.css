@@ -1144,6 +1144,78 @@
   opacity: 0.35;
 }
 
+/* ===== hero 7: Beyond plain — its one film alone, the whole screen ===== */
+/* graded only at the edges: the smoke in the middle is the ground for the words */
+.film_beyond.filmPlain .filmBox::after {
+  background: radial-gradient(ellipse 85% 80% at 50% 50%, transparent 40%, rgb(0 0 0 / 0.5));
+}
+
+/* each time it comes up it eases in, slowly, and it leans a little after the pointer */
+.filmPlain .filmBox video {
+  scale: 1.16;
+  translate: calc(var(--lx, 0) * -1.5%) calc(var(--ly, 0) * -1.2%);
+  transition:
+    scale 0s linear 0.6s,
+    translate 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.filmPlainOn .filmBox video {
+  scale: 1.05;
+  transition:
+    scale 9s cubic-bezier(0.16, 1, 0.3, 1),
+    translate 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* its four corners, opened out from the word to the corners of the screen */
+.opened {
+  --arm: clamp(14px, 1.4vw, 20px);
+  position: absolute;
+  z-index: 1;
+  inset: clamp(10px, 1vw, 15px);
+  pointer-events: none;
+}
+
+.opened i {
+  position: absolute;
+  width: var(--arm);
+  height: var(--arm);
+  border: 0 solid #f6f4f0;
+}
+
+.opened i:nth-child(1) {
+  left: 0;
+  top: 0;
+  border-width: 1.5px 0 0 1.5px;
+}
+
+.opened i:nth-child(2) {
+  right: 0;
+  top: 0;
+  border-width: 1.5px 1.5px 0 0;
+}
+
+.opened i:nth-child(3) {
+  left: 0;
+  bottom: 0;
+  border-width: 0 0 1.5px 1.5px;
+}
+
+.opened i:nth-child(4) {
+  right: 0;
+  bottom: 0;
+  border-width: 0 1.5px 1.5px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filmPlain .filmBox video,
+  .filmPlainOn .filmBox video {
+    scale: 1.05;
+    translate: none;
+    transition: none;
+  }
+}
+
 /* ===== Beyond: the film dims and the long-term numbers count up over it ===== */
 .film_beyond .filmBox::after {
   content: "";

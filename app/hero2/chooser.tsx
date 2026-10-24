@@ -783,6 +783,48 @@ function Smoke({ on }: { on: boolean }) {
   );
 }
 
+/** hero 7: Beyond's four corners — the ones round the word — opening out to the corners of the
+ *  screen as its film comes up: the frame has opened, and the film is all there is. They fold back
+ *  round the word as it goes. Only the box's inset moves; the corners are its four ends. */
+function OpenCorners({
+  on,
+  word,
+  stage,
+}: {
+  on: boolean;
+  word: RefObject<Partial<Record<FormatKey, HTMLElement | null>>>;
+  stage: RefObject<HTMLDivElement | null>;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    const w = word.current.beyond;
+    const st = stage.current;
+    if (!el || !w || !st) return;
+    const s = st.getBoundingClientRect();
+    const r = w.getBoundingClientRect();
+    const round = `${(r.top - s.top).toFixed(1)}px ${(s.right - r.right).toFixed(1)}px ${(s.bottom - r.bottom).toFixed(1)}px ${(r.left - s.left).toFixed(1)}px`;
+    if (on) {
+      el.style.transition = "none";
+      el.style.inset = round;
+      void el.offsetWidth;
+      el.style.transition = "inset 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.08s";
+      el.style.inset = "";
+    } else {
+      el.style.transition = "inset 0.6s cubic-bezier(0.65, 0, 0.35, 1)";
+      el.style.inset = round;
+    }
+  }, [on, word, stage]);
+  return (
+    <div ref={ref} className={styles.opened} aria-hidden="true">
+      <i />
+      <i />
+      <i />
+      <i />
+    </div>
+  );
+}
+
 function TileLogo({ mark }: { mark: Mark }) {
   if (mark.round && mark.src)
     // eslint-disable-next-line @next/next/no-img-element
@@ -984,6 +1026,7 @@ export default function Chooser({
   refined = false,
   wall,
   band = false,
+  plainBeyond = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -1015,6 +1058,9 @@ export default function Chooser({
   wall?: WallFilm[];
   /** hero 7: smoke drifts up in the middle of the preview, behind the words */
   band?: boolean;
+  /** hero 7: Beyond opens on its one film alone, the whole screen — no board — and its corners
+   *  open out from the word to the corners of the screen */
+  plainBeyond?: boolean;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
   const base = reduce ? 0 : first ? (logo ? LOGO_T.names : INTRO.names) : 0.1;
@@ -1171,6 +1217,26 @@ export default function Chooser({
     return () => window.removeEventListener("resize", onResize);
   }, [up, open, reduce, grid]);
 
+  // hero 7: Beyond's film is a place you look around in — it leans a little after the pointer
+  useEffect(() => {
+    if (!plainBeyond || reduce || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    let raf = 0;
+    const move = (e: PointerEvent) => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const el = filmRefs.current.beyond;
+        if (!el) return;
+        el.style.setProperty("--lx", ((e.clientX / window.innerWidth - 0.5) * 2).toFixed(3));
+        el.style.setProperty("--ly", ((e.clientY / window.innerHeight - 0.5) * 2).toFixed(3));
+      });
+    };
+    window.addEventListener("pointermove", move);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("pointermove", move);
+    };
+  }, [plainBeyond, reduce]);
+
   // the pointer leaving the line (not just a word) lets the film go
   const leave = useRef(0);
   const point = (k: FormatKey | null) => {
@@ -1214,7 +1280,7 @@ export default function Chooser({
           ref={(el) => {
             filmRefs.current[f.key] = el;
           }}
-          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""}`}
+          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""}`}
           aria-hidden="true"
         >
           <div
@@ -1245,7 +1311,8 @@ export default function Chooser({
             )}
             {shownFilm[f.key] && <BrandTag film={shownFilm[f.key]!} />}
           </div>
-          {f.key === "beyond" && pool?.length ? (
+          {f.key === "beyond" && plainBeyond && <OpenCorners on={up === "beyond"} word={wordRefs} stage={stageRef} />}
+          {f.key === "beyond" && pool?.length && !plainBeyond ? (
             grid ? (
               <BeyondBento on={up === "beyond" && !open} pool={pool} turn={turn} refined={refined} />
             ) : (
