@@ -146,7 +146,7 @@
   }
 }
 
-/* ===== pointed at: the account's feed comes up in its frame, as the app has it ===== */
+/* ===== pointed at: the account's Instagram page comes up in its frame, as the app has it ===== */
 .item {
   cursor: pointer;
 }
@@ -170,133 +170,191 @@
   box-shadow: inset 0 0 0 1px var(--paper);
 }
 
-/* the logo becomes the feed's picture, drawn up to its head: 12% of the frame across, by its name */
+/* the logo flies up into the page's picture (19% of the frame across, at its head), then gives way
+   to the picture itself, which scrolls with the page */
 .itemOn .logo {
-  transform: translate(calc(12px - 44cqw), calc(24px + 6cqw - 50cqh)) scale(0.176);
+  transform: translate(-36.4cqw, calc(22.5cqw - 50cqh)) scale(0.2794);
+  opacity: 0;
+  transition:
+    transform 0.9s var(--ease),
+    opacity 0.2s ease 0.85s;
 }
 
-/* the feed, wiping up from the frame's foot, inside its hairline */
-.story {
+/* the page, in the app's dark mode, wiping up from the frame's foot inside its hairline */
+.ig {
   position: absolute;
   z-index: 2;
   inset: 1px;
   overflow: hidden;
-  background: #0a0a0a;
+  background: #000;
+  color: #f5f5f5;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
   clip-path: inset(100% 0 0 0);
   transition: clip-path 0.9s var(--ease);
   pointer-events: none;
 }
 
-.storyOn {
+.igOn {
   clip-path: inset(0 0 0 0);
-}
-
-/* the stand-ins carry black bands: far enough in that they fall outside */
-.story img,
-.story video {
-  scale: 1.4;
-}
-
-/* held down at the head, where the name is, and the foot, where the views are */
-.story::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(rgb(0 0 0 / 0.5), transparent 24%, transparent 78%, rgb(0 0 0 / 0.3));
-  pointer-events: none;
-}
-
-/* its feed: one reel the whole frame, the next a scroll down, a reel at a time */
-.feed {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
-  scroll-snap-type: y mandatory;
-  scrollbar-width: none;
-  pointer-events: none;
-}
-
-.feed::-webkit-scrollbar {
-  display: none;
-}
-
-.storyOn .feed {
   pointer-events: auto;
 }
 
-.feedReel {
-  position: relative;
-  height: 100%;
-  overflow: hidden;
-  background: #0a0a0a;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-
-/* a fine mark for each reel down the side, the one in view long */
-.feedMarks {
+/* it scrolls inside the frame, as the app does */
+.igScroll {
   position: absolute;
-  z-index: 1;
-  right: 8px;
-  top: 50%;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  translate: 0 -50%;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
+  inset: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
 
-.storyOn .feedMarks {
-  opacity: 1;
-  transition: opacity 0.5s ease 0.35s;
+.igScroll::-webkit-scrollbar {
+  display: none;
 }
 
-.feedMarks i {
-  width: 2px;
-  height: 10px;
-  border-radius: 2px;
-  background: rgb(246 244 240 / 0.35);
-  transition:
-    height 0.45s var(--ease),
-    background-color 0.3s ease;
-}
-
-.feedMarks .markOn {
-  height: 22px;
-  background: var(--paper);
-}
-
-/* the account's name, beside its picture */
-.storyName {
-  position: absolute;
-  z-index: 1;
-  top: 24px;
-  left: calc(12px + 12cqw + 8px);
-  right: 10px;
+.igTop {
   display: flex;
   align-items: center;
-  height: 12cqw;
-  overflow: hidden;
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 8px rgb(0 0 0 / 0.5);
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  height: 11cqw;
+  padding: 0 4.1cqw;
+  font-size: 12px;
 }
 
-.storyOn .storyName {
+.igTop b {
+  font-weight: 600;
+}
+
+/* the picture, and the posts and followers beside it */
+.igHead {
+  display: flex;
+  align-items: center;
+  gap: 7cqw;
+  padding: 2cqw 4.1cqw 0;
+}
+
+.igAvatar {
+  flex: none;
+  width: 19cqw;
+  height: 19cqw;
+  border-radius: 50%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.igOn .igAvatar {
   opacity: 1;
-  transition: opacity 0.5s ease 0.35s;
+  transition: opacity 0.2s ease 0.85s;
+}
+
+.igStats {
+  display: flex;
+  gap: 7cqw;
+}
+
+.igStats span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 10.5px;
+  color: #f5f5f5;
+}
+
+.igStats b {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.igName {
+  margin: 3cqw 4.1cqw 0;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.igBio {
+  margin: 2px 4.1cqw 0;
+  font-size: 11px;
+  color: #a8a8a8;
+}
+
+.igFollow {
+  display: block;
+  margin: 3.4cqw 4.1cqw 0;
+  height: 26px;
+  border-radius: 7px;
+  background: #0095f6;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 26px;
+  text-align: center;
+}
+
+/* the tabs: the grid, and Reels, lit */
+.igTabs {
+  display: flex;
+  margin-top: 3.4cqw;
+  border-bottom: 1px solid #262626;
+}
+
+.igTabs i {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  height: 34px;
+  margin-bottom: -1px;
+  border-bottom: 1px solid transparent;
+  color: #a8a8a8;
+}
+
+.igTabs .igTabOn {
+  border-bottom-color: #f5f5f5;
+  color: #f5f5f5;
+}
+
+.igTabs svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+/* the reels, three across, each with its views; the one pointed at plays */
+.igGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+}
+
+.igCell {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: #1a1a1a;
+  cursor: pointer;
+}
+
+/* the stand-ins carry black bands: far enough in that they fall outside */
+.igCell img,
+.igCell video {
+  scale: 1.4;
+}
+
+.igCell:focus-visible {
+  outline: 2px solid #f5f5f5;
+  outline-offset: -2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .frame,
   .logo,
-  .story {
+  .ig {
     transition: none;
   }
 }

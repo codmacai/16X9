@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
 import { Band, rootClass } from "./_shared/chrome";
 import { ACCOUNTS, SERVICES_9X16, WORKS_9X16, instagramOf, type Reel } from "./_shared/data";
-import AccountFeed from "./account-feed";
+import AccountProfile from "./account-profile";
 import Intro916 from "./intro-916";
 import Services916 from "./services-916";
 import Profile, { Player } from "./profile";
@@ -20,9 +20,10 @@ import { useSmoothWheel } from "./smooth-wheel";
 // the studio runs, as slim 9:16 frames, outlined in a
 // hairline, each holding the brand's logo at its centre (its Instagram
 // picture, in a circle) and its followers and posts at the foot; name and
-// handle underneath. Point at one and its feed comes up in the frame, as the
-// app has it (account-feed.tsx): a reel the whole frame, the next a scroll
-// down, its logo drawn up to the head as its picture; click it to open the
+// handle underneath. Point at one and its Instagram page comes up in the
+// frame, as the app has it (account-profile.tsx): its picture (the logo,
+// flown into place), posts and followers, and its reels three across — the
+// one pointed at plays, a click plays it whole. Click the frame to open the
 // account's page. The name underneath
 // opens the account on Instagram. Four to a row (two on a phone);
 // as the page scrolls past them each column drifts at its own pace. Then what
@@ -51,8 +52,11 @@ export default function Accounts() {
   // a reel in the opening's frame clicked: it plays full height, the others a scroll away
   const [work, setWork] = useState<number | null>(null);
   const [svc, setSvc] = useState<number | null>(null);
+  // a reel clicked in an account's grid plays on its own
+  const [reel, setReel] = useState<{ handle: string; i: number } | null>(null);
+  const reelAcc = reel ? ACCOUNTS.find((a) => a.handle === reel.handle) : undefined;
   // the page glides on the wheel, except while something is open over it
-  useSmoothWheel(!open && work === null && svc === null);
+  useSmoothWheel(!open && !reel && work === null && svc === null);
   // as the page scrolls past the accounts, each column drifts at its own pace
   const rowRef = useRef<HTMLUListElement>(null);
   const { scrollYProgress } = useScroll({ target: rowRef, offset: ["start end", "end start"] });
@@ -64,7 +68,7 @@ export default function Accounts() {
         crumb="Index"
         workHref="/work?format=9x16"
         /* a reel or an account's page open: Back closes it first */
-        onBack={svc !== null ? () => setSvc(null) : work !== null ? () => setWork(null) : open ? () => setOpen(null) : undefined}
+        onBack={svc !== null ? () => setSvc(null) : work !== null ? () => setWork(null) : reel ? () => setReel(null) : open ? () => setOpen(null) : undefined}
         center={<RoomSwitch room="9x16" onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })} tone="light" />}
       />
       <Intro916 reduce={reduce} onOpen={setWork} />
@@ -96,7 +100,7 @@ export default function Accounts() {
                       {a.followers} followers · {a.posts} posts
                     </span>
                   )}
-                  {a.reels?.length ? <AccountFeed reels={a.reels} label={a.demo ? a.name : `@${a.handle}`} on={on === a.handle} /> : null}
+                  {a.reels?.length ? <AccountProfile account={a} on={on === a.handle} onPick={(i) => setReel({ handle: a.handle, i })} /> : null}
                 </span>
                 {a.demo ? (
                   <>
@@ -120,6 +124,11 @@ export default function Accounts() {
         </ul>
       </section>
       <Services916 reduce={reduce} onOpen={setSvc} />
+      <AnimatePresence>
+        {reelAcc && reel && (
+          <Player key="reel" reels={reelAcc.reels ?? []} start={reel.i} handle={reelAcc.demo ? reelAcc.name : reelAcc.handle} logo={reelAcc.logo} onClose={() => setReel(null)} dark />
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {work !== null && <Player key="work" reels={WORKS_9X16.slice(0, 5)} start={work} onClose={() => setWork(null)} dark />}
       </AnimatePresence>
