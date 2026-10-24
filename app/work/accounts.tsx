@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
 import { Band, rootClass } from "./_shared/chrome";
 import { ACCOUNTS, SERVICES_9X16, WORKS_9X16, instagramOf, type Reel } from "./_shared/data";
-import AccountProfile from "./account-profile";
+import AccountReels from "./account-reels";
 import Intro916 from "./intro-916";
 import Services916 from "./services-916";
 import Profile, { Player } from "./profile";
@@ -20,11 +20,9 @@ import { useSmoothWheel } from "./smooth-wheel";
 // the studio runs, as slim 9:16 frames, outlined in a
 // hairline, each holding the brand's logo at its centre (its Instagram
 // picture, in a circle) and its followers and posts at the foot; name and
-// handle underneath. Point at one and its Instagram page comes up in the
-// frame, as the app has it (account-profile.tsx): its picture (the logo,
-// flown into place), posts and followers, and its reels three across — the
-// one pointed at plays, a click plays it whole. Click the frame to open the
-// account's page. The name underneath
+// handle underneath. Point at one and its reels come up in the frame, the
+// grid alone, three across (account-reels.tsx): the one pointed at plays, a
+// click plays it whole. Click the frame to open the account's page. The name underneath
 // opens the account on Instagram. Four to a row (two on a phone);
 // as the page scrolls past them each column drifts at its own pace. Then what
 // we do: the services, as frames that play their work (services-916.tsx).
@@ -100,7 +98,7 @@ export default function Accounts() {
                       {a.followers} followers · {a.posts} posts
                     </span>
                   )}
-                  {a.reels?.length ? <AccountProfile account={a} on={on === a.handle} onPick={(i) => setReel({ handle: a.handle, i })} /> : null}
+                  {a.reels?.length ? <AccountReels reels={a.reels} on={on === a.handle} onPick={(i) => setReel({ handle: a.handle, i })} /> : null}
                 </span>
                 {a.demo ? (
                   <>

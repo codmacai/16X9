@@ -146,7 +146,7 @@
   }
 }
 
-/* ===== pointed at: the account's Instagram page comes up in its frame, as the app has it ===== */
+/* ===== pointed at: the account's reels come up in its frame, the grid alone ===== */
 .item {
   cursor: pointer;
 }
@@ -170,27 +170,25 @@
   box-shadow: inset 0 0 0 1px var(--paper);
 }
 
-/* the logo flies up into the page's picture (19% of the frame across, at its head), then gives way
-   to the picture itself, which scrolls with the page */
+/* the logo steps back as the grid comes up over it */
 .itemOn .logo {
-  transform: translate(-36.4cqw, calc(22.5cqw - 50cqh)) scale(0.2794);
+  transform: scale(0.88);
   opacity: 0;
   transition:
     transform 0.9s var(--ease),
-    opacity 0.2s ease 0.85s;
+    opacity 0.4s ease;
 }
 
-/* the page, in the app's dark mode, wiping up from the frame's foot inside its hairline */
+/* the grid, three across, filling the frame inside its hairline; it wipes up from the foot */
 .ig {
   position: absolute;
   z-index: 2;
   inset: 1px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
   overflow: hidden;
   background: #000;
-  color: #f5f5f5;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  letter-spacing: 0;
-  text-transform: none;
   clip-path: inset(100% 0 0 0);
   transition: clip-path 0.9s var(--ease);
   pointer-events: none;
@@ -201,143 +199,25 @@
   pointer-events: auto;
 }
 
-/* it scrolls inside the frame, as the app does */
-.igScroll {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.igScroll::-webkit-scrollbar {
-  display: none;
-}
-
-.igTop {
-  display: flex;
-  align-items: center;
-  height: 11cqw;
-  padding: 0 4.1cqw;
-  font-size: 12px;
-}
-
-.igTop b {
-  font-weight: 600;
-}
-
-/* the picture, and the posts and followers beside it */
-.igHead {
-  display: flex;
-  align-items: center;
-  gap: 7cqw;
-  padding: 2cqw 4.1cqw 0;
-}
-
-.igAvatar {
-  flex: none;
-  width: 19cqw;
-  height: 19cqw;
-  border-radius: 50%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.igOn .igAvatar {
-  opacity: 1;
-  transition: opacity 0.2s ease 0.85s;
-}
-
-.igStats {
-  display: flex;
-  gap: 7cqw;
-}
-
-.igStats span {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  font-size: 10.5px;
-  color: #f5f5f5;
-}
-
-.igStats b {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.igName {
-  margin: 3cqw 4.1cqw 0;
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
-.igBio {
-  margin: 2px 4.1cqw 0;
-  font-size: 11px;
-  color: #a8a8a8;
-}
-
-.igFollow {
-  display: block;
-  margin: 3.4cqw 4.1cqw 0;
-  height: 26px;
-  border-radius: 7px;
-  background: #0095f6;
-  color: #fff;
-  font-size: 11.5px;
-  font-weight: 600;
-  line-height: 26px;
-  text-align: center;
-}
-
-/* the tabs: the grid, and Reels, lit */
-.igTabs {
-  display: flex;
-  margin-top: 3.4cqw;
-  border-bottom: 1px solid #262626;
-}
-
-.igTabs i {
-  display: grid;
-  flex: 1;
-  place-items: center;
-  height: 34px;
-  margin-bottom: -1px;
-  border-bottom: 1px solid transparent;
-  color: #a8a8a8;
-}
-
-.igTabs .igTabOn {
-  border-bottom-color: #f5f5f5;
-  color: #f5f5f5;
-}
-
-.igTabs svg {
-  width: 15px;
-  height: 15px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linejoin: round;
-}
-
-/* the reels, three across, each with its views; the one pointed at plays */
-.igGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-}
-
+/* each reel settles in after the wipe, a beat after the one before */
 .igCell {
   position: relative;
-  aspect-ratio: 9 / 16;
+  min-height: 0;
   padding: 0;
   border: 0;
   overflow: hidden;
-  background: #1a1a1a;
+  background: #111;
   cursor: pointer;
+  opacity: 0;
+  transform: scale(1.06);
+  transition:
+    opacity 0.5s ease,
+    transform 0.9s var(--ease);
+}
+
+.igOn .igCell {
+  opacity: 1;
+  transform: none;
 }
 
 /* the stand-ins carry black bands: far enough in that they fall outside */
@@ -347,14 +227,15 @@
 }
 
 .igCell:focus-visible {
-  outline: 2px solid #f5f5f5;
+  outline: 2px solid var(--paper);
   outline-offset: -2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .frame,
   .logo,
-  .ig {
+  .ig,
+  .igCell {
     transition: none;
   }
 }
