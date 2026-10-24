@@ -12,13 +12,14 @@ import styles from "../hero2/hero2.module.css";
 import own from "../hero7/hero7.module.css";
 
 // ===========================================================================
-// HERO 8 — hero 7, with Beyond as a white room. 16x9 and 9x16 open on their
-// walls of films in the dark, the warm smoke behind the words, as in hero 7.
-// Beyond, the studio's top service, opens on no film at all: the screen turns
-// to a bright white wall with daylight drifting slowly across it, as through
-// tall windows; the four corners round the word open out, in ink, to the
-// corners of the screen; and what Beyond covers comes in at the foot like a
-// service menu. The words stay in ink throughout, and so does the mark.
+// HERO 8 — hero 7, with Beyond as a door. 16x9 and 9x16 open on their walls
+// of films in the dark, the warm smoke behind the words, as in hero 7.
+// Beyond, the studio's top service, is an entrance: the screen goes black,
+// the other words fall away and BEYOND turns to paper, and a single hairline
+// of light — its film, seen through the gap — draws down the middle of the
+// dark like a door left ajar onto a lit room. Pointing at Click to step
+// inside eases it open a little; going in swings it wide, the light flooding
+// the screen, on into Beyond's work.
 //
 // Clicking a word goes on to that format's work (/work?format=…), as in hero 7.
 // ===========================================================================
@@ -65,9 +66,8 @@ function Home({ variant }: { variant: HeroVariant }) {
   const [room, setRoom] = useState<FormatKey | null>(null);
   const [launch, setLaunch] = useState<FormatKey | null>(null);
   const indexFmt = room ? null : (fmtHover ?? fmtAuto);
-  // the page goes dark under 16x9's and 9x16's films; Beyond's room is white, so it stays light
-  const lit = room ?? indexFmt;
-  const dark = lit !== null && lit !== "beyond";
+  // the page goes dark under every format's films
+  const dark = (room ?? indexFmt) !== null;
 
   // touch screens: the formats take turns on the index
   useEffect(() => {
@@ -125,7 +125,8 @@ function Home({ variant }: { variant: HeroVariant }) {
         refined
         wall={WALL_16X9}
         band
-        whiteBeyond
+        plainBeyond
+        doorBeyond
       />
     </section>
   );
