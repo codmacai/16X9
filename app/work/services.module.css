@@ -234,6 +234,30 @@
   }
 }
 
+/* shut, two covers in the page's dark meet across the frame's middle; opening on the scroll, they
+   draw back to its head and foot — transforms only, so nothing repaints as it opens */
+.shutHead,
+.shutFoot {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  height: 50.5%;
+  background: #050505;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.shutHead {
+  top: 0;
+  transform-origin: 50% 0;
+}
+
+.shutFoot {
+  bottom: 0;
+  transform-origin: 50% 100%;
+}
+
 /* tablets and phones: two to a row */
 @media (max-width: 1080px) {
   .grid {

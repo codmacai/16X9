@@ -51,10 +51,7 @@
   display: block;
   width: 100%;
   height: 100%;
-  opacity: 0.6;
-  filter: blur(56px) saturate(1.35);
-  mask-image: radial-gradient(closest-side, #000 20%, rgb(0 0 0 / 0.55) 55%, transparent);
-  -webkit-mask-image: radial-gradient(closest-side, #000 20%, rgb(0 0 0 / 0.55) 55%, transparent);
+  opacity: 0.68; /* softened and faded to its edges in the canvas itself: no filter here */
   animation: glow-in 2.8s ease 0.5s backwards;
 }
 
@@ -327,40 +324,10 @@
   }
 }
 
-/* over the first word, what this is; under the second, a line on it */
-.kicker,
+/* under the second word, a line on it */
 .lede {
   position: absolute;
   margin: 0;
-}
-
-.kicker {
-  right: calc(50% + var(--fw) / 2 + var(--gap));
-  top: calc(var(--cy) - var(--ws) * 0.56 - clamp(16px, 2.2vh, 24px));
-  translate: 0 -100%;
-  font-size: 10px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: rgb(246 244 240 / 0.5);
-}
-
-.kicker b {
-  font-weight: 400;
-  color: var(--paper);
-}
-
-.kicker b::after {
-  content: "";
-  display: inline-block;
-  width: 24px;
-  height: 1px;
-  margin: 0 12px 0 14px;
-  vertical-align: middle;
-  background: rgb(246 244 240 / 0.3);
-}
-
-.lede {
   left: calc(50% + var(--fw) / 2 + var(--gap));
   top: calc(var(--cy) + var(--ws) * 0.56 + clamp(18px, 2.6vh, 28px));
   width: min(250px, calc(50% - var(--fw) / 2 - var(--gap) - var(--ui)));
@@ -369,7 +336,6 @@
   color: rgb(246 244 240 / 0.55);
 }
 
-.kicker > span,
 .lede > span,
 .caption > span {
   display: inline-block;
@@ -461,7 +427,6 @@
   .sideB .word {
     animation-name: from-above;
   }
-  .kicker,
   .lede,
   .caption {
     display: none;
@@ -494,7 +459,6 @@
   .feed,
   .word,
   .glow canvas,
-  .kicker > span,
   .lede > span,
   .caption > span {
     animation: none;

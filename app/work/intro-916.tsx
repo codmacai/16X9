@@ -63,7 +63,13 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
   // higher, into the dark — the headline drifting apart from the frame and the small type going first
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
   const p = useSpring(scrollYProgress, SMOOTH);
-  useEffect(() => p.on("change", (v) => setHeld(v > 0.02)), [p]);
+  useEffect(() => {
+    let was = false;
+    return p.on("change", (v) => {
+      const now = v > 0.02;
+      if (now !== was) setHeld((was = now));
+    });
+  }, [p]);
   const back = useTransform(p, [0, 1], [1, 0.9]);
   const lift = useTransform(p, [0, 1], ["0svh", "-8svh"]);
   const dark = useTransform(p, [0.05, 0.9], [0, 0.85]);
@@ -72,13 +78,41 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
   const meta = useTransform(p, [0, 0.14], [1, 0]);
   const light = useTransform(p, [0.1, 0.7], [1, 0.25]);
 
-  // the light: the reel in the frame drawn small, ten times a second, and let into the
-  // last a little at a time so it changes like light does; the CSS blurs it over the room
+  // the light: the reel in the frame drawn tiny, ten times a second, and let into the last a
+  // little at a time so it changes like light does; then drawn up into the canvas shown, softened
+  // (the average of nine copies a little apart) and faded out to its edges there — so nothing on
+  // the page carries a filter or a mask, and the room falls back on the scroll at no cost
   useEffect(() => {
     const c = glowRef.current;
     const ctx = c?.getContext("2d");
     const feed = feedRef.current;
-    if (!c || !ctx || !feed) return;
+    const tiny = document.createElement("canvas");
+    tiny.width = 6;
+    tiny.height = 10;
+    const tctx = tiny.getContext("2d");
+    if (!c || !ctx || !tctx || !feed) return;
+    const edge = ctx.createRadialGradient(c.width / 2, c.height / 2, 0, c.width / 2, c.height / 2, c.width / 2);
+    edge.addColorStop(0, "#000");
+    edge.addColorStop(0.3, "#000");
+    edge.addColorStop(0.62, "rgb(0 0 0 / 0.5)");
+    edge.addColorStop(1, "rgb(0 0 0 / 0)");
+    const spread = c.width * 0.09;
+    const draw = () => {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      let n = 0;
+      for (const dy of [-spread, 0, spread])
+        for (const dx of [-spread, 0, spread]) {
+          ctx.globalAlpha = 1 / ++n; // each copy weighed so they come out even
+          ctx.drawImage(tiny, dx - spread, dy - spread, c.width + spread * 2, c.height + spread * 2);
+        }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "destination-in";
+      ctx.fillStyle = edge;
+      ctx.fillRect(0, 0, c.width, c.height);
+    };
     let raf = 0;
     let last = 0;
     let primed = false;
@@ -96,10 +130,11 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
       if (!src) return;
       const sw = src instanceof HTMLVideoElement ? src.videoWidth : src.naturalWidth;
       const sh = src instanceof HTMLVideoElement ? src.videoHeight : src.naturalHeight;
-      const k = Math.max(c.width / sw, c.height / sh) * (REELS[seqRef.current % N].zoom ?? 1);
-      ctx.globalAlpha = primed ? 0.2 : 1;
-      ctx.drawImage(src, (c.width - sw * k) / 2, (c.height - sh * k) / 2, sw * k, sh * k);
+      const k = Math.max(tiny.width / sw, tiny.height / sh) * (REELS[seqRef.current % N].zoom ?? 1);
+      tctx.globalAlpha = primed ? 0.2 : 1;
+      tctx.drawImage(src, (tiny.width - sw * k) / 2, (tiny.height - sh * k) / 2, sw * k, sh * k);
       primed = true;
+      draw();
       if (reduce) cancelAnimationFrame(raf); // held still: drawn once
     };
     raf = requestAnimationFrame(tick);
@@ -115,14 +150,8 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
       <motion.div className={s.pin} style={reduce ? undefined : ({ "--g": g, scale: back, y: lift } as MotionStyle)}>
         {/* the reel's light, on the room */}
         <motion.div className={s.glow} style={reduce ? undefined : { opacity: light }} aria-hidden="true">
-          <canvas ref={glowRef} width={24} height={42} />
+          <canvas ref={glowRef} width={56} height={56} />
         </motion.div>
-
-        <motion.p className={s.kicker} style={reduce ? undefined : { opacity: meta }}>
-          <span>
-            <b>9x16</b> The vertical frame
-          </span>
-        </motion.p>
 
         {/* the headline, through the frame */}
         <motion.h1 id="intro-title" className={s.title} style={reduce ? undefined : { opacity: words }}>

@@ -112,8 +112,7 @@ function Card({
   const reach = useTransform(eased, [k, k + 0.8], [0, 1]);
   const t = useMotionValue(0);
   useMotionValueEvent(reach, "change", (v) => v > t.get() && t.set(v));
-  const shut = useTransform(t, [0, 0.75], [50, 0]);
-  const clipPath = useTransform(shut, (v) => `inset(${v}% 0 ${v}% 0)`);
+  const shut = useTransform(t, [0, 0.75], [1, 0]); // the two covers over the frame, drawing back
   const settle = useTransform(t, [0, 1], [1.4, 1]);
   const rise = useTransform(t, [0.4, 1], ["110%", "0%"]);
   const fade = useTransform(t, [0.5, 1], [0, 1]);
@@ -125,7 +124,6 @@ function Card({
     <motion.li ref={ref} className={s.slot} style={reduce ? undefined : { y: lane }}>
       <motion.article
         className={`${s.card} ${on ? s.on : ""}`}
-        style={reduce ? undefined : { clipPath }}
         role="button"
         tabIndex={0}
         aria-label={`${pad2(i + 1)} ${sv.name.join(" ")}: play`}
@@ -173,6 +171,13 @@ function Card({
         </span>
         {/* playing: a fine line running along the foot */}
         <i className={s.progress} aria-hidden="true" />
+        {/* shut, two covers in the page's dark meet across its middle; it opens as they draw back */}
+        {!reduce && (
+          <>
+            <motion.i className={s.shutHead} style={{ scaleY: shut }} aria-hidden="true" />
+            <motion.i className={s.shutFoot} style={{ scaleY: shut }} aria-hidden="true" />
+          </>
+        )}
       </motion.article>
     </motion.li>
   );

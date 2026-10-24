@@ -12,6 +12,7 @@ import Services916 from "./services-916";
 import Profile, { Player } from "./profile";
 import styles from "./accounts.module.css";
 import SectionLabel from "./section-label";
+import { useSmoothWheel } from "./smooth-wheel";
 
 // ===========================================================================
 // WORK, 9x16 — it opens on one vertical frame in the dark (intro-916.tsx),
@@ -49,6 +50,8 @@ export default function Accounts() {
   // a reel in the opening's frame clicked: it plays full height, the others a scroll away
   const [work, setWork] = useState<number | null>(null);
   const [svc, setSvc] = useState<number | null>(null);
+  // the page glides on the wheel, except while something is open over it
+  useSmoothWheel(!open && work === null && svc === null);
   // as the page scrolls past the accounts, each column drifts at its own pace
   const rowRef = useRef<HTMLUListElement>(null);
   const { scrollYProgress } = useScroll({ target: rowRef, offset: ["start end", "end start"] });
