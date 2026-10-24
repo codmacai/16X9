@@ -197,10 +197,16 @@
 }
 
 /* the x between the numbers: lowercase and lighter */
+/* the x set close between its figures: Arial's figures all take one width, so each carries air at its
+   sides — pulled in after the x, and further before a 1, which sits in the middle of its slot */
 .fmtX {
-  margin: 0 0.01em;
+  margin: 0 -0.022em 0 -0.025em;
   font-weight: 300;
   text-transform: none;
+}
+
+.fmtX[data-next="1"] {
+  margin-right: -0.06em;
 }
 
 /* the viewfinder: four hairline corners round the word pointed at */

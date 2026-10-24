@@ -28,7 +28,10 @@ export function Ratio({ text, className }: { text: string; className?: string })
   return (
     <>
       {a}
-      <span className={className}>x</span>
+      {/* the figure after the x, so the x can be set close to it (a 1 sits far into its slot) */}
+      <span className={className} data-next={b[0]}>
+        x
+      </span>
       {b}
     </>
   );
