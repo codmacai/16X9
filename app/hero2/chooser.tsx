@@ -5,7 +5,7 @@ import { AnimatePresence, animate as fmAnimate, motion } from "framer-motion";
 import { FORMATS, Ratio, type FormatKey } from "../hero13/formats";
 import type { Preview, WallFilm } from "../work/_shared/data";
 import styles from "./hero2.module.css";
-import LiveSmoke from "./live-smoke";
+import SmokeRibbon from "./smoke-ribbon";
 
 export const EASE = [0.16, 1, 0.3, 1] as const;
 export const EASE_CINE = [0.76, 0, 0.24, 1] as const;
@@ -1107,9 +1107,10 @@ export default function Chooser({
    *  the full height, light pours through the widening gap and settles into the film (with
    *  plainBeyond) */
   doorBeyond?: boolean;
-  /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; live smoke in the middle
-   *  under the words, unfurling from a line; every film resting low, one at a time taking the
-   *  light; each tile opening from a line across its middle, out from the centre */
+  /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; a still ribbon of smoke
+   *  in the middle under the words; every film resting low, one at a time taking the light; each
+   *  tile opening from a line across its middle, out from the centre. Every preview, Beyond's
+   *  door too, comes in the same way: the room fades to black over the one before, then it opens */
   luxe?: boolean;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
@@ -1187,6 +1188,9 @@ export default function Chooser({
 
   // the windows: each film opens out of its word to its frame (or to the edges), and folds back
   useEffect(() => {
+    // hero 8: each window brings the black room with it, so it comes in as the lights going
+    // down — evenly, a little slower — rather than snapping most of the way in at once
+    const fadeIn = luxe ? 0.65 : 0.4;
     const place = (animate: boolean) => {
       const stage = stageRef.current?.getBoundingClientRect();
       if (!stage) return;
@@ -1224,12 +1228,12 @@ export default function Chooser({
             fmAnimate(
               el,
               { opacity: 1, transform: "scale(1)" },
-              { opacity: { duration: 0.4, ease: [0.2, 0.7, 0.2, 1] }, transform: { type: "spring", visualDuration: 0.85, bounce: 0.12 } }
+              { opacity: { duration: fadeIn, ease: luxe ? [0.45, 0, 0.35, 1] : [0.2, 0.7, 0.2, 1] }, transform: { type: "spring", visualDuration: 0.85, bounce: 0.12 } }
             );
           } else if (up) {
             // another window is coming in over it: it stays as it is under that one and goes once
             // it's covered, so only one layer is ever fading
-            fmAnimate(el, { opacity: 0, transform: "scale(1.04)" }, { duration: 0, delay: 0.42 });
+            fmAnimate(el, { opacity: 0, transform: "scale(1.04)" }, { duration: 0, delay: fadeIn + 0.02 });
           } else {
             fmAnimate(
               el,
@@ -1265,7 +1269,7 @@ export default function Chooser({
     const onResize = () => place(false);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [up, open, reduce, grid]);
+  }, [up, open, reduce, grid, luxe]);
 
   // hero 7: Beyond's film is a place you look around in — it leans a little after the pointer
   useEffect(() => {
@@ -1385,7 +1389,7 @@ export default function Chooser({
           parts too and the film is the whole screen */}
       {/* hero 7: smoke in the middle, over the preview and under the words */}
       {band && !luxe && <Smoke on={!!up && !open && !(doorBeyond && up === "beyond")} />}
-      {band && luxe && <LiveSmoke on={!!up && !open && up !== "beyond"} still={reduce} />}
+      {band && luxe && <SmokeRibbon on={!!up && !open && up !== "beyond"} />}
 
       {/* hero 7: under the line while Beyond is up, the way in — over the smoke, and it holds the
           preview while it's pointed at (hero 8's door has none: BEYOND itself is the way in) */}

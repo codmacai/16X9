@@ -2896,14 +2896,29 @@
   transition: opacity 0.25s ease;
 }
 
-/* the smoke: drawn live (live-smoke.tsx), over the films and under the words */
-.liveSmoke {
+/* every preview, Beyond's door too, carries the black room with it: coming in, it fades over the
+   one before as black, then opens (its tiles from their lines, the door's hairline), so going from
+   one to another is always the same quiet crossfade through the dark — never a cut */
+.stageLuxe .film {
+  background: #050505;
+}
+
+/* the smoke: one still ribbon (smoke-ribbon.tsx), over the films and under the words; it only
+   fades, in step with the films */
+.ribbon {
   position: absolute;
   inset: 0;
   z-index: 5;
   width: 100%;
   height: 100%;
+  opacity: 0;
+  transition: opacity 0.45s ease;
   pointer-events: none;
+}
+
+.ribbonOn {
+  opacity: 1;
+  transition: opacity 0.7s ease 0.15s;
 }
 
 /* under the smoke, a little dark so it reads lit; the room falling to black at its edges; a fine

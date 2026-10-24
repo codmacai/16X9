@@ -16,8 +16,9 @@ import own from "../hero7/hero7.module.css";
 // films in a black room: each tile (or column of reels) opens from a hairline
 // across its middle, out from the centre, as the wall settles in, and every
 // film rests low while one at a time takes the light. Through the middle, under
-// the words, the smoke — live now (live-smoke.tsx), its wisps curling and
-// drifting — unfurls from a hairline as the format is pointed at.
+// the words, a still ribbon of smoke (smoke-ribbon.tsx) fades in with them.
+// Every preview, Beyond's door too, comes in the same way — the room fades to
+// black over the one before, then it opens — so moving between them is never a cut.
 // Beyond, the studio's top service, is an entrance: the screen goes black,
 // the other words fall away and BEYOND turns to paper, and a single hairline
 // of light — its film, seen through the gap — draws down the middle of the
