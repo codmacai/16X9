@@ -790,10 +790,13 @@ function OpenCorners({
   on,
   word,
   stage,
+  ink = false,
 }: {
   on: boolean;
   word: RefObject<Partial<Record<FormatKey, HTMLElement | null>>>;
   stage: RefObject<HTMLDivElement | null>;
+  /** drawn in ink, on a light room (hero 8) */
+  ink?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -816,11 +819,38 @@ function OpenCorners({
     }
   }, [on, word, stage]);
   return (
-    <div ref={ref} className={styles.opened} aria-hidden="true">
+    <div ref={ref} className={`${styles.opened} ${ink ? styles.openedInk : ""}`} aria-hidden="true">
       <i />
       <i />
       <i />
       <i />
+    </div>
+  );
+}
+
+/** hero 8: Beyond as a white room. No film and no board: the screen turns to a bright white wall,
+ *  with daylight drifting slowly across it as through tall windows — soft bars of shade, the warmth
+ *  of the sun in one corner — and what Beyond covers set at its foot like a service menu, each line
+ *  coming in after the last. The space is the preview: the work is somewhere you step into. */
+const WHITE_ROOM = ["Brand activations", "Immersive experiences", "Projection mapping", "AR & VR", "Experiential events"];
+function WhiteRoom({ on }: { on: boolean }) {
+  return (
+    <div className={`${styles.whiteRoom} ${on ? styles.whiteRoomOn : ""}`} aria-hidden="true">
+      <span className={styles.sun} />
+      <span className={styles.daylight}>
+        <i />
+        <i />
+        <i />
+        <i />
+      </span>
+      <ol className={styles.roomMenu}>
+        {WHITE_ROOM.map((line, i) => (
+          <li key={line} style={{ transitionDelay: on ? `${0.45 + i * 0.09}s` : "0s" }}>
+            <b>{String(i + 1).padStart(2, "0")}</b>
+            {line}
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
@@ -1027,6 +1057,7 @@ export default function Chooser({
   wall,
   band = false,
   plainBeyond = false,
+  whiteBeyond = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -1061,6 +1092,9 @@ export default function Chooser({
   /** hero 7: Beyond opens on its one film alone, the whole screen — no board — and its corners
    *  open out from the word to the corners of the screen */
   plainBeyond?: boolean;
+  /** hero 8: Beyond opens on a white room — no film, no board: daylight across a white wall, its
+   *  corners opened out in ink and what it covers at the foot */
+  whiteBeyond?: boolean;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
   const base = reduce ? 0 : first ? (logo ? LOGO_T.names : INTRO.names) : 0.1;
@@ -1280,7 +1314,7 @@ export default function Chooser({
           ref={(el) => {
             filmRefs.current[f.key] = el;
           }}
-          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""}`}
+          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""} ${f.key === "beyond" && whiteBeyond ? styles.filmWhite : ""}`}
           aria-hidden="true"
         >
           <div
@@ -1289,7 +1323,9 @@ export default function Chooser({
             }}
             className={styles.filmBox}
           >
-            {grid && pool?.length && f.key !== "beyond" ? (
+            {f.key === "beyond" && whiteBeyond ? (
+              <WhiteRoom on={up === "beyond"} />
+            ) : grid && pool?.length && f.key !== "beyond" ? (
               refined && f.key === "9x16" ? (
                 <ReelStrip on={up === f.key && !open} pool={pool} turn={turn} />
               ) : (
@@ -1311,8 +1347,8 @@ export default function Chooser({
             )}
             {shownFilm[f.key] && <BrandTag film={shownFilm[f.key]!} />}
           </div>
-          {f.key === "beyond" && plainBeyond && <OpenCorners on={up === "beyond"} word={wordRefs} stage={stageRef} />}
-          {f.key === "beyond" && pool?.length && !plainBeyond ? (
+          {f.key === "beyond" && (plainBeyond || whiteBeyond) && <OpenCorners on={up === "beyond"} word={wordRefs} stage={stageRef} ink={whiteBeyond} />}
+          {f.key === "beyond" && pool?.length && !plainBeyond && !whiteBeyond ? (
             grid ? (
               <BeyondBento on={up === "beyond" && !open} pool={pool} turn={turn} refined={refined} />
             ) : (
@@ -1329,7 +1365,7 @@ export default function Chooser({
       {/* hero 7: the paper parts above and below a band that keeps the words; on a click the band
           parts too and the film is the whole screen */}
       {/* hero 7: smoke in the middle, over the preview and under the words */}
-      {band && <Smoke on={!!up && !open} />}
+      {band && <Smoke on={!!up && !open && !(whiteBeyond && up === "beyond")} />}
 
       {logo && !reduce ? <IntroLogo /> : intro && <IntroMark />}
     </motion.div>

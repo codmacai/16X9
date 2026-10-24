@@ -1207,6 +1207,149 @@
   border-width: 0 1.5px 1.5px 0;
 }
 
+/* on a light room the corners are drawn in ink */
+.openedInk i {
+  border-color: #0b0b0b;
+}
+
+/* ===== hero 8: Beyond as a white room — no film: a bright white wall, daylight across it ===== */
+.film_beyond.filmWhite {
+  background: #fbfaf7;
+}
+
+.film_beyond.filmWhite .filmBox {
+  background: #fbfaf7;
+}
+
+.film_beyond.filmWhite .filmBox::after {
+  display: none;
+}
+
+.whiteRoom {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #fbfaf7;
+}
+
+/* the warmth of the sun, from one corner */
+.sun {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 70% at 88% 8%, rgb(255 238 214 / 0.75), transparent 70%),
+    radial-gradient(ellipse 70% 60% at 0% 100%, rgb(40 32 24 / 0.06), transparent 70%);
+  opacity: 0;
+  transition: opacity 1.4s ease 0.1s;
+}
+
+/* soft bars of shade, as from tall windows, drifting slowly across the wall */
+.daylight {
+  position: absolute;
+  inset: -30% -20%;
+  display: flex;
+  justify-content: center;
+  gap: 11vw;
+  rotate: -16deg;
+  filter: blur(34px);
+  opacity: 0;
+  transition: opacity 1.8s ease 0.2s;
+  animation: daylight 28s ease-in-out infinite alternate;
+  animation-play-state: paused;
+  will-change: transform;
+}
+
+.daylight i {
+  flex: none;
+  width: 6vw;
+  height: 100%;
+  background: rgb(46 38 30 / 0.085);
+}
+
+.daylight i:nth-child(2),
+.daylight i:nth-child(4) {
+  width: 2.4vw;
+  background: rgb(46 38 30 / 0.06);
+}
+
+@keyframes daylight {
+  from {
+    translate: -7vw 0;
+  }
+  to {
+    translate: 7vw 0;
+  }
+}
+
+.whiteRoomOn .sun,
+.whiteRoomOn .daylight {
+  opacity: 1;
+}
+
+.whiteRoomOn .daylight {
+  animation-play-state: running;
+}
+
+/* what Beyond covers, at the foot: a service menu, each line after the last */
+.roomMenu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: clamp(36px, 8vh, 80px);
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px clamp(22px, 3vw, 48px);
+  margin: 0;
+  padding: 0 24px;
+  list-style: none;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #0b0b0b;
+}
+
+.roomMenu li {
+  display: inline-flex;
+  gap: 12px;
+  opacity: 0;
+  translate: 0 10px;
+  transition:
+    opacity 0.7s ease,
+    translate 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.roomMenu b {
+  font-weight: 400;
+  color: #9a948c;
+  font-variant-numeric: tabular-nums;
+}
+
+.whiteRoomOn .roomMenu li {
+  opacity: 1;
+  translate: 0 0;
+}
+
+@media (max-width: 760px) {
+  .roomMenu {
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .daylight {
+    animation: none;
+  }
+  .roomMenu li {
+    transition: opacity 0.3s ease;
+    translate: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .filmPlain .filmBox video,
   .filmPlainOn .filmBox video {
