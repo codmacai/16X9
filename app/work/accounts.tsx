@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
 import { Band, rootClass } from "./_shared/chrome";
 import { ACCOUNTS, SERVICES_9X16, WORKS_9X16, instagramOf, type Reel } from "./_shared/data";
-import AccountStory from "./account-story";
+import AccountFeed from "./account-feed";
 import Intro916 from "./intro-916";
 import Services916 from "./services-916";
 import Profile, { Player } from "./profile";
@@ -20,9 +20,10 @@ import { useSmoothWheel } from "./smooth-wheel";
 // the studio runs, as slim 9:16 frames, outlined in a
 // hairline, each holding the brand's logo at its centre (its Instagram
 // picture, in a circle) and its followers and posts at the foot; name and
-// handle underneath. Point at one and its reels play in the frame, one after
-// another as stories do (account-story.tsx), its logo drawn up to the head as the
-// story's picture; click it to open the account's page. The name underneath
+// handle underneath. Point at one and its feed comes up in the frame, as the
+// app has it (account-feed.tsx): a reel the whole frame, the next a scroll
+// down, its logo drawn up to the head as its picture; click it to open the
+// account's page. The name underneath
 // opens the account on Instagram. Four to a row (two on a phone);
 // as the page scrolls past them each column drifts at its own pace. Then what
 // we do: the services, as frames that play their work (services-916.tsx).
@@ -95,7 +96,7 @@ export default function Accounts() {
                       {a.followers} followers · {a.posts} posts
                     </span>
                   )}
-                  {a.reels?.length ? <AccountStory reels={a.reels} label={a.demo ? a.name : `@${a.handle}`} on={on === a.handle} /> : null}
+                  {a.reels?.length ? <AccountFeed reels={a.reels} label={a.demo ? a.name : `@${a.handle}`} on={on === a.handle} /> : null}
                 </span>
                 {a.demo ? (
                   <>

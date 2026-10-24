@@ -1,0 +1,441 @@
+/* WORK, BEYOND (beyond.tsx): on white. The white room, as the landing's Beyond (hero 8) leads into
+   it; then the projects, a screen each, each rising over the last as a sheet. */
+
+/* ([class] lifts it over the shared root's dark ground) */
+.page[class] {
+  --white: #fbfaf7;
+  --ink: #0b0b0b;
+  --grey: #8f8a83;
+  background: var(--white);
+  color: var(--ink);
+}
+
+/* ===================== the white room ===================== */
+.room {
+  position: relative;
+  height: 100svh;
+  overflow: hidden;
+  background: var(--white);
+}
+
+/* the warmth of the sun, from one corner */
+.sun {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 70% at 88% 8%, rgb(255 238 214 / 0.75), transparent 70%),
+    radial-gradient(ellipse 70% 60% at 0% 100%, rgb(40 32 24 / 0.06), transparent 70%);
+  pointer-events: none;
+}
+
+/* soft bars of shade, as from tall windows, drifting slowly across the wall */
+.daylight {
+  position: absolute;
+  inset: -30% -20%;
+  display: flex;
+  justify-content: center;
+  gap: 11vw;
+  rotate: -16deg;
+  filter: blur(34px);
+  animation: daylight 28s ease-in-out infinite alternate;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.daylight i {
+  flex: none;
+  width: 6vw;
+  height: 100%;
+  background: rgb(46 38 30 / 0.085);
+}
+
+.daylight i:nth-child(2),
+.daylight i:nth-child(4) {
+  width: 2.4vw;
+  background: rgb(46 38 30 / 0.06);
+}
+
+@keyframes daylight {
+  from {
+    translate: -7vw 0;
+  }
+  to {
+    translate: 7vw 0;
+  }
+}
+
+/* the four corners, opened out to the room's */
+.corners {
+  --arm: clamp(14px, 1.4vw, 20px);
+  position: absolute;
+  inset: calc(var(--band) + 14px) 14px 14px;
+  pointer-events: none;
+}
+
+.corners i {
+  position: absolute;
+  width: var(--arm);
+  height: var(--arm);
+  border: 0 solid var(--ink);
+}
+
+.corners i:nth-child(1) {
+  left: 0;
+  top: 0;
+  border-width: 1.5px 0 0 1.5px;
+}
+
+.corners i:nth-child(2) {
+  right: 0;
+  top: 0;
+  border-width: 1.5px 1.5px 0 0;
+}
+
+.corners i:nth-child(3) {
+  left: 0;
+  bottom: 0;
+  border-width: 0 0 1.5px 1.5px;
+}
+
+.corners i:nth-child(4) {
+  right: 0;
+  bottom: 0;
+  border-width: 0 1.5px 1.5px 0;
+}
+
+.roomIn {
+  position: absolute;
+  inset: var(--band) var(--ui) 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(22px, 4vh, 40px);
+  text-align: center;
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgb(11 11 11 / 0.55);
+}
+
+.kicker span {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--ink);
+}
+
+.kicker span::after {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: rgb(11 11 11 / 0.3);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(44px, 7.4vw, 128px);
+  font-weight: 400;
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+}
+
+.mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.05em;
+}
+
+.mask > span {
+  display: block;
+}
+
+/* what Beyond covers */
+.what {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px clamp(20px, 2.8vw, 44px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.what b {
+  margin-right: 12px;
+  font-weight: 400;
+  color: var(--grey);
+  font-variant-numeric: tabular-nums;
+}
+
+/* down to the projects */
+.cue {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(26px, 5vh, 48px);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 9px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  cursor: pointer;
+  translate: -50% 0;
+}
+
+.cue i {
+  position: relative;
+  width: 1px;
+  height: 34px;
+  overflow: hidden;
+  background: rgb(11 11 11 / 0.15);
+}
+
+.cue i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  animation: fall 2.4s var(--ease) infinite;
+}
+
+@keyframes fall {
+  0% {
+    transform: translateY(-100%);
+  }
+  60%,
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+/* ===================== the projects, a screen each ===================== */
+.stack {
+  position: relative;
+}
+
+/* each sticks under the band as it arrives, and the next rises over it */
+.sheet {
+  position: sticky;
+  top: var(--band);
+  height: calc(100svh - var(--band));
+  overflow: hidden;
+  border-radius: clamp(18px, 2vw, 28px) clamp(18px, 2vw, 28px) 0 0;
+  background: var(--white);
+  box-shadow:
+    0 -1px 0 rgb(11 11 11 / 0.08),
+    0 -30px 70px rgb(11 11 11 / 0.08);
+}
+
+/* each holds the screen a while before the next comes up over it */
+.sheet + .sheet {
+  margin-top: 40svh;
+}
+
+/* ...and the last holds it a while before the page ends */
+.stack {
+  padding-bottom: 30svh;
+}
+
+/* its film, its name and a line on it, all to the film's width */
+.sheetIn {
+  --w: min(100%, calc((100svh - var(--band) - 300px) * 2.39));
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  gap: clamp(16px, 2.6vh, 28px);
+  padding: clamp(22px, 3.6vh, 40px) var(--ui) clamp(24px, 4.4vh, 48px);
+  transform-origin: 50% 0;
+}
+
+.head,
+.foot {
+  width: var(--w);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.head b {
+  margin-right: 14px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.demo {
+  color: var(--grey);
+}
+
+/* the film, in Beyond's wide frame */
+.screen {
+  position: relative;
+  align-self: center;
+  width: var(--w);
+  aspect-ratio: 2.39 / 1;
+  overflow: hidden;
+  background: #0c0c0c;
+}
+
+.screen img,
+.screen video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: cover;
+}
+
+.foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
+  align-items: end;
+  gap: 24px;
+}
+
+.name {
+  margin: 0;
+  font-size: clamp(34px, 5vw, 84px);
+  font-weight: 400;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.line {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: rgb(11 11 11 / 0.6);
+}
+
+/* falling back as the next rises over it */
+.veil {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ===================== down the side: the projects by number ===================== */
+.index {
+  position: fixed;
+  z-index: 20;
+  right: var(--ui);
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  translate: 0 -50%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+.indexOn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.index button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: rgb(11 11 11 / 0.3);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.index button::before {
+  content: "";
+  width: 0;
+  height: 1px;
+  background: currentColor;
+  transition: width 0.5s var(--ease);
+}
+
+.index button:hover {
+  color: rgb(11 11 11 / 0.7);
+}
+
+.index .indexAt {
+  color: var(--ink);
+}
+
+.index .indexAt::before {
+  width: 18px;
+}
+
+/* ===================== phones ===================== */
+@media (max-width: 760px) {
+  .sheetIn {
+    --w: 100%;
+    grid-template-rows: auto auto 1fr;
+    align-content: start;
+  }
+  /* on a phone the film stands tall, pushed in past the bars the wide films carry */
+  .screen {
+    align-self: start;
+    aspect-ratio: 4 / 5;
+  }
+  .screen img,
+  .screen video {
+    scale: 1.48;
+  }
+  .foot {
+    grid-template-columns: minmax(0, 1fr);
+    align-self: end;
+  }
+  .what {
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+  }
+  .index {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .daylight,
+  .cue i::after {
+    animation: none;
+  }
+}

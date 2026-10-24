@@ -1213,6 +1213,82 @@
   border-width: 0 1.5px 1.5px 0;
 }
 
+/* the strip between the line and the way in: while Beyond is up, moving down to it keeps it up */
+.stepBridge {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  right: 0;
+  top: calc(50% + 0.5em);
+  height: calc(clamp(96px, 13vh, 140px) + 42px);
+  font-size: clamp(34px, 5.2vw, 100px);
+  pointer-events: none;
+}
+
+.stepBridgeOn {
+  pointer-events: auto;
+}
+
+/* hero 7 and 8: Beyond's way in, under the line — it holds the preview while it's pointed at */
+.stepIn {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  top: calc(50% + clamp(96px, 13vh, 140px));
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  height: 42px;
+  padding: 0 22px 0 24px;
+  border: 1px solid rgb(11 11 11 / 0.28);
+  border-radius: 999px;
+  background: rgb(251 250 247 / 0.55);
+  color: #0b0b0b;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  cursor: pointer;
+  translate: -50% 10px;
+  opacity: 0;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition:
+    opacity 0.5s ease,
+    translate 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.4s ease,
+    border-color 0.4s ease;
+}
+
+.stepInOn {
+  opacity: 1;
+  translate: -50% 0;
+  pointer-events: auto;
+  transition-delay: 0.5s, 0.5s, 0s, 0s;
+}
+
+.stepIn i {
+  font-style: normal;
+  letter-spacing: 0;
+  transition: translate 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stepIn:hover {
+  background: #0b0b0b;
+  border-color: #0b0b0b;
+  color: #fbfaf7;
+}
+
+.stepIn:hover i {
+  translate: 4px 0;
+}
+
+.stepIn:focus-visible {
+  outline: 1px solid #0b0b0b;
+  outline-offset: 4px;
+}
+
 /* on a light room the corners are drawn in ink */
 .openedInk i {
   border-color: #0b0b0b;

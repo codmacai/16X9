@@ -340,6 +340,21 @@ export const SERVICES_9X16: Service[] = [
   { name: ["Event", "coverage"], tags: ["Live stories", "Highlights", "Recaps"], clip: "/clips/clip-10.mp4" },
 ];
 
+// ---------------------------------------------------------------------------
+// BEYOND's projects (work?format=beyond), one screen each: demo projects for
+// now, each with a stand-in clip from the studio's reel. Replace each with a
+// real Beyond project — its film (in the wide 2.39:1 frame), its name, what
+// kind of work it was and a line on it — and drop `demo`.
+// ---------------------------------------------------------------------------
+export type BeyondProject = { title: string; kind: string; line: string; clip: string; demo?: boolean };
+export const BEYOND_PROJECTS: BeyondProject[] = [
+  { title: "Skyline", kind: "Projection mapping", line: "The city at dusk as the canvas: light mapped across its towers, cut to a score.", clip: "/clips/clip-06.mp4", demo: true },
+  { title: "The Light Room", kind: "Immersive experience", line: "A room that answers whoever walks in: light, sound and image moving with them.", clip: "/clips/clip-10.mp4", demo: true },
+  { title: "Mirage", kind: "AR experience", line: "The desert redrawn through the phone in your hand, one horizon at a time.", clip: "/clips/clip-02.mp4", demo: true },
+  { title: "Open House", kind: "Brand activation", line: "A launch staged as a night out: the brand as the place everyone wanted to be.", clip: "/clips/clip-08.mp4", demo: true },
+  { title: "Dune Line", kind: "Experiential event", line: "An evening on the sand, staged from the first light to the last guest.", clip: "/clips/clip-15.mp4", demo: true },
+];
+
 export const instagramOf = (a: Account) => `https://www.instagram.com/${a.handle}/`;
 
 // ---------------------------------------------------------------------------

@@ -8,6 +8,7 @@ import { CATEGORIES, PROJECTS } from "./_shared/data";
 import FileView, { type Drawer } from "./file-view";
 import BrandIndex from "./brand-index";
 import Accounts from "./accounts";
+import Beyond from "./beyond";
 import RoomSwitch from "../hero4/room-switch";
 import type { FormatKey } from "../hero3/format-hero";
 import styles from "./cabinet.module.css";
@@ -113,8 +114,10 @@ export default function WorkPage() {
 function WorkByFormat() {
   const q = useSearchParams().get("format");
   const fmt = isFormat(q) ? q : null;
-  // 9x16's work is the Instagram accounts the studio runs; a new format remounts the page
+  // 9x16's work is the Instagram accounts the studio runs, Beyond's its projects a screen each;
+  // a new format remounts the page
   if (fmt === "9x16") return <Accounts key="9x16" />;
+  if (fmt === "beyond") return <Beyond key="beyond" />;
   return <WorkCabinet key={fmt ?? "all"} fmt={fmt} />;
 }
 

@@ -146,7 +146,7 @@
   }
 }
 
-/* ===== pointed at: the account's reels play in its frame, one after another, as stories do ===== */
+/* ===== pointed at: the account's feed comes up in its frame, as the app has it ===== */
 .item {
   cursor: pointer;
 }
@@ -170,12 +170,12 @@
   box-shadow: inset 0 0 0 1px var(--paper);
 }
 
-/* the logo becomes the story's picture, drawn up to its head: 12% of the frame across, by its name */
+/* the logo becomes the feed's picture, drawn up to its head: 12% of the frame across, by its name */
 .itemOn .logo {
   transform: translate(calc(12px - 44cqw), calc(24px + 6cqw - 50cqh)) scale(0.176);
 }
 
-/* the story, wiping up from the frame's foot, inside its hairline */
+/* the feed, wiping up from the frame's foot, inside its hairline */
 .story {
   position: absolute;
   z-index: 2;
@@ -197,7 +197,7 @@
   scale: 1.4;
 }
 
-/* held down at the head, where the bars and the name are */
+/* held down at the head, where the name is, and the foot, where the views are */
 .story::after {
   content: "";
   position: absolute;
@@ -206,45 +206,66 @@
   pointer-events: none;
 }
 
-/* a fine bar for each reel; the one playing fills, then the next plays */
-.storyBars {
-  position: absolute;
-  z-index: 1;
-  top: 10px;
-  left: 10px;
-  right: 10px;
-  display: flex;
-  gap: 3px;
-}
-
-.storyBars i {
-  position: relative;
-  flex: 1;
-  height: 2px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: rgb(246 244 240 / 0.3);
-}
-
-.storyBars .barDone {
-  background: rgb(246 244 240 / 0.9);
-}
-
-.storyBars b {
+/* its feed: one reel the whole frame, the next a scroll down, a reel at a time */
+.feed {
   position: absolute;
   inset: 0;
-  background: var(--paper);
-  transform-origin: 0 50%;
-  animation: story-fill 4s linear both;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  pointer-events: none;
 }
 
-@keyframes story-fill {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
+.feed::-webkit-scrollbar {
+  display: none;
+}
+
+.storyOn .feed {
+  pointer-events: auto;
+}
+
+.feedReel {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0a0a;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* a fine mark for each reel down the side, the one in view long */
+.feedMarks {
+  position: absolute;
+  z-index: 1;
+  right: 8px;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  translate: 0 -50%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.storyOn .feedMarks {
+  opacity: 1;
+  transition: opacity 0.5s ease 0.35s;
+}
+
+.feedMarks i {
+  width: 2px;
+  height: 10px;
+  border-radius: 2px;
+  background: rgb(246 244 240 / 0.35);
+  transition:
+    height 0.45s var(--ease),
+    background-color 0.3s ease;
+}
+
+.feedMarks .markOn {
+  height: 22px;
+  background: var(--paper);
 }
 
 /* the account's name, beside its picture */

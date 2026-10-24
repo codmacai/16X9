@@ -1367,6 +1367,30 @@ export default function Chooser({
       {/* hero 7: smoke in the middle, over the preview and under the words */}
       {band && <Smoke on={!!up && !open && !(whiteBeyond && up === "beyond")} />}
 
+      {/* hero 7 and 8: under the line while Beyond is up, the way in — over the smoke, and it holds
+          the preview while it's pointed at */}
+      {(plainBeyond || whiteBeyond) && (
+        // the way down from the word to it: while Beyond is up, the strip under the line holds it
+        <span
+          className={`${styles.stepBridge} ${up === "beyond" && !open ? styles.stepBridgeOn : ""}`}
+          onPointerEnter={() => point("beyond")}
+          onPointerLeave={() => point(null)}
+          aria-hidden="true"
+        />
+      )}
+      {(plainBeyond || whiteBeyond) && (
+        <button
+          type="button"
+          className={`${styles.stepIn} ${up === "beyond" && !open ? styles.stepInOn : ""}`}
+          tabIndex={up === "beyond" && !open ? 0 : -1}
+          onPointerEnter={() => point("beyond")}
+          onPointerLeave={() => point(null)}
+          onClick={() => onOpen("beyond")}
+        >
+          Click to step inside <i aria-hidden="true">→</i>
+        </button>
+      )}
+
       {logo && !reduce ? <IntroLogo /> : intro && <IntroMark />}
     </motion.div>
   );
