@@ -1,358 +1,153 @@
-/* BEYOND 2 — THE INDEX (page.tsx), on black: the categories as a column of large type with a film
-   riding after the pointer; clicked, the category's films down the page as cards. */
+/* BEYOND 2 — THE FEATURE (page.tsx): the reference's cinematic card at the size of the screen, on
+   black — the categories one after another, then a category's films; where you are at its head, its
+   films as a strip at its foot. */
 
 .page[class] {
+  height: 100svh;
+  overflow: hidden;
   background: #050505;
 }
 
-.kicker {
+.frame {
+  position: absolute;
+  inset: calc(var(--band) + 14px) 14px 14px;
+  container-type: inline-size;
+  touch-action: pan-x pan-y;
+}
+
+/* ===== at the card's head: where you are ===== */
+.rail {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: max(16px, 2.6cqw);
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin: 0;
+  gap: max(12px, 1.6cqw);
+  translate: -50% 0;
   font-size: 10px;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: rgb(246 244 240 / 0.55);
+  white-space: nowrap;
 }
 
-.kicker span {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  color: var(--paper);
-}
-
-.kicker span::after {
-  content: "";
-  width: 28px;
-  height: 1px;
-  background: rgb(246 244 240 / 0.3);
-}
-
-.mask {
-  display: block;
-  overflow: hidden;
-  padding-bottom: 0.06em;
-}
-
-.mask > span {
-  display: block;
-}
-
-/* ===================== the index ===================== */
-.index {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: clamp(22px, 4vh, 40px);
-  min-height: 100svh;
-  padding: calc(var(--band) + clamp(20px, 4vh, 40px)) var(--ui) clamp(24px, 5vh, 50px);
-  box-sizing: border-box;
-}
-
-.list {
-  position: relative;
-  z-index: 1; /* the names read over the film riding behind them */
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-bottom: 1px solid rgb(246 244 240 / 0.16);
-}
-
-.li {
-  border-top: 1px solid rgb(246 244 240 / 0.16);
-}
-
-.row {
-  display: grid;
-  grid-template-columns: clamp(40px, 5vw, 80px) minmax(0, 1fr) clamp(64px, 7vw, 110px);
-  align-items: center;
-  gap: 20px;
-  width: 100%;
-  padding: clamp(6px, 1.2vh, 14px) 0;
+.rail button {
+  padding: 4px 0;
   border: 0;
+  border-bottom: 1px solid transparent;
   background: none;
-  color: var(--paper);
+  color: rgb(246 244 240 / 0.45);
   font: inherit;
-  text-align: left;
-  cursor: pointer;
-  outline: none;
-}
-
-.no,
-.cnt {
-  font-size: 10px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
-  transition: opacity 0.5s ease;
-}
-
-.no {
-  align-self: start;
-  padding-top: 1.1em;
-  opacity: 0.55;
-}
-
-.name {
-  font-size: clamp(34px, 5.1vw, 100px); /* the longest name runs the row's width, no more */
-  line-height: 0.98;
-  letter-spacing: -0.045em;
-  text-transform: uppercase;
-  white-space: nowrap;
+  cursor: pointer;
   transition:
-    opacity 0.5s ease,
-    translate 0.8s var(--ease);
+    color 0.4s ease,
+    border-color 0.4s ease;
 }
 
-.cnt {
-  justify-self: end;
-  opacity: 0.55;
+.rail button:hover {
+  color: rgb(246 244 240 / 0.85);
 }
 
-.cnt i {
-  font-style: normal;
-  opacity: 0.6;
+.rail .railOn {
+  color: var(--paper);
+  border-bottom-color: var(--paper);
 }
 
-/* pointed at: it steps forward, what it covers comes in; the rest fall back */
-.rowOn .name {
-  translate: 1.2vw 0;
-}
-
-.rowOn .no,
-.rowOn .cnt {
-  opacity: 1;
-}
-
-.rowBack .name,
-.rowBack .no,
-.rowBack .cnt {
-  opacity: 0.18;
-}
-
-.row:focus-visible .name {
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.12em;
-}
-
-/* the film beside the pointer, in Beyond's wide frame, behind the names */
-.preview {
-  --pw: clamp(240px, 24vw, 420px);
-  position: fixed;
-  z-index: 0;
-  left: 0;
-  top: 0;
-  width: var(--pw);
-  aspect-ratio: 2.39 / 1;
-  margin: calc(var(--pw) / -4.78) 0 0 32px;
-  pointer-events: none;
-}
-
-.previewCap {
-  position: absolute;
-  left: 0;
-  top: calc(100% + 12px);
-  margin: 0;
-  font-size: 10px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: rgb(246 244 240 / 0.8);
-}
-
-.previewIn {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border-radius: 8px;
-  background: #0b0b0b;
-  box-shadow: 0 30px 70px rgb(0 0 0 / 0.6);
-}
-
-.previewFilm {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-.previewFilm img,
-.previewFilm video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100% !important;
-  max-width: none !important;
-  object-fit: cover;
-  scale: 1.3;
-}
-
-/* ===================== a category's films ===================== */
-.films {
-  padding: calc(var(--band) + clamp(28px, 6vh, 64px)) var(--ui) clamp(80px, 14vh, 160px);
-}
-
-.filmsHead {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: clamp(14px, 2.4vh, 24px);
-  max-width: 1180px;
-  margin: 0 auto clamp(40px, 8vh, 90px);
-}
-
-.back {
+.rail .railBack {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  height: 36px;
-  margin-bottom: clamp(10px, 2vh, 22px);
-  padding: 0 18px;
-  border: 1px solid rgb(246 244 240 / 0.35);
+  gap: 10px;
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid rgb(246 244 240 / 0.4);
   border-radius: 999px;
-  background: none;
   color: var(--paper);
-  font: inherit;
-  font-size: 10px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition:
-    background-color 0.4s ease,
-    color 0.4s ease;
+  background: rgb(0 0 0 / 0.25);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-.back i {
+.rail .railBack i {
   font-style: normal;
   letter-spacing: 0;
 }
 
-.back:hover {
+.rail .railBack:hover {
   background: var(--paper);
   color: #050505;
 }
 
-.filmsName {
-  margin: 0;
-  font-size: clamp(44px, 8.4vw, 150px);
-  font-weight: 400;
-  line-height: 0.92;
-  letter-spacing: -0.05em;
-  text-transform: uppercase;
+.railName {
+  color: var(--paper);
 }
 
-.lede {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 0;
-  font-size: 10px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  color: rgb(246 244 240 / 0.65);
-}
-
-.lede i {
-  width: 28px;
-  height: 1px;
-  background: rgb(246 244 240 / 0.3);
-}
-
-.cards {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(60px, 12vh, 130px);
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 0;
-  list-style: none;
-}
-
-.itemNo {
-  margin: 0 0 14px;
-  font-size: 10px;
-  letter-spacing: 0.24em;
-  color: rgb(246 244 240 / 0.5);
+.railCount {
+  color: rgb(246 244 240 / 0.6);
   font-variant-numeric: tabular-nums;
 }
 
-.itemNo b {
-  font-weight: 400;
-  color: var(--paper);
-}
-
-.box {
-  position: relative;
-  aspect-ratio: 2 / 1;
-  will-change: clip-path, transform;
-}
-
-/* on to the next category */
-.next {
+/* ===== in a category: its films, a strip at the foot ===== */
+.thumbs {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 5cqw;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  width: 100%;
-  max-width: 1180px;
-  margin: clamp(80px, 16vh, 180px) auto 0;
-  padding: clamp(24px, 4vh, 40px) 0 0;
+  gap: 0.8cqw;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  translate: -50% 0;
+}
+
+.thumbs button {
+  display: block;
+  width: max(64px, 7cqw);
+  aspect-ratio: 3 / 2;
+  padding: 0;
   border: 0;
-  border-top: 1px solid rgb(246 244 240 / 0.2);
-  background: none;
-  color: var(--paper);
-  font: inherit;
-  text-align: left;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #111;
   cursor: pointer;
-}
-
-.next span {
-  font-size: 10px;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
   opacity: 0.55;
+  outline: 1px solid transparent;
+  outline-offset: 3px;
+  transition:
+    opacity 0.4s ease,
+    outline-color 0.4s ease;
 }
 
-.next b {
-  font-size: clamp(30px, 5vw, 86px);
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  text-transform: uppercase;
+.thumbs button img {
+  width: 100%;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: cover;
+  scale: 1.2;
 }
 
-.next i {
-  display: inline-block;
-  font-style: normal;
-  transition: translate 0.7s var(--ease);
+.thumbs button:hover {
+  opacity: 0.9;
 }
 
-.next:hover i {
-  translate: 0.3em 0;
+.thumbs .thumbOn {
+  opacity: 1;
+  outline-color: var(--paper);
 }
 
-/* ===================== phones ===================== */
+/* ===== phones: where you are over the card; the strip goes (a swipe moves along) ===== */
 @media (max-width: 760px) {
-  .row {
-    grid-template-columns: 26px minmax(0, 1fr) auto;
-    gap: 10px;
+  .frame {
+    inset: calc(var(--band) + 52px) 10px 10px;
   }
-  .name {
-    font-size: clamp(26px, 8.6vw, 44px);
-    white-space: normal;
+  .rail {
+    top: -40px;
   }
-  .no {
-    padding-top: 0.6em;
+  .rail .railName {
+    display: none;
   }
-  .box {
-    aspect-ratio: 4 / 5;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .name {
-    transition: none;
+  .thumbs {
+    display: none;
   }
 }

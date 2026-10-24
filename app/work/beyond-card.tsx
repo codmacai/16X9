@@ -3,18 +3,82 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { EASE, EASE_CINE } from "./_shared/chrome";
-import { BEYOND_CATEGORIES, stillFor, type BeyondFilm } from "./_shared/data";
+import { BEYOND_CATEGORIES, BEYOND_FILMS, stillFor, type BeyondFilm } from "./_shared/data";
 import { startMuted } from "./brand-shared";
-import s from "./beyond.module.css";
+import s from "./beyond-card.module.css";
 
-// Beyond's film card (the work page, beyond.tsx, and its variants /beyond1–3): the film the whole
-// card, and on it its year and kind, its tags, its name over a table of what it was, and what the
-// studio did; and the same card opened to the whole screen. Inside, everything is sized to the card
-// itself, so it can stand at any size in a box that gives it one.
+// ===========================================================================
+// BEYOND's card — a film (or a category) set as a feature, after the
+// reference's cinematic card. The film the whole card, in a dark gate with a
+// little grain. At its head, the year with the kind stacked under it and the
+// studio's name; hanging from its top edge, a paper ticket strip (kind | year
+// | frame) with its stub torn off. Down its side, what the studio did, each a
+// line in the acclaim style. At its foot, the name, large and heavy, over a
+// ruled table of what it was; across from it, a ticket for a button
+// (Explore | →). It can carry a Scroll ring by its name where the page
+// scrolls through cards. Everything inside is sized to the card itself
+// (cqw), so it stands at any size; small cards keep only the name.
+// Used by the work page's Beyond (beyond.tsx) and /beyond1–3.
+// ===========================================================================
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
-// the next film comes up over the last from below (back: from above)
+/** What a card shows: a film's, or a category's. */
+export type Feature = {
+  key: string;
+  clip: string;
+  title: string;
+  year: string;
+  kind: string;
+  tags: string[];
+  table: [string, string][];
+  did: string[];
+  line?: string;
+  note?: string;
+};
+
+export function filmFeature(f: BeyondFilm): Feature {
+  const c = BEYOND_CATEGORIES[f.cat];
+  return {
+    key: f.clip,
+    clip: f.clip,
+    title: f.title,
+    year: f.year,
+    kind: c.name,
+    tags: [c.short, f.year, "2.39 : 1"],
+    table: [
+      ["Category", c.name],
+      ["Year", f.year],
+      ["Frame", "2.39 : 1"],
+    ],
+    did: c.did,
+    line: f.line,
+    note: f.demo ? "Demo film" : undefined,
+  };
+}
+
+export function catFeature(i: number): Feature {
+  const c = BEYOND_CATEGORIES[i];
+  const films = BEYOND_FILMS.filter((f) => f.cat === i);
+  const years = [...new Set(films.map((f) => f.year))].sort();
+  const span = years.length > 1 ? `${years[0]}—${years[years.length - 1].slice(2)}` : years[0];
+  return {
+    key: c.name,
+    clip: films[0].clip,
+    title: c.name,
+    year: span,
+    kind: `Beyond — ${pad2(i + 1)}`,
+    tags: [c.short, `${pad2(films.length)} films`, span],
+    table: [
+      ["Films", pad2(films.length)],
+      ["Years", span],
+      ["Frame", "2.39 : 1"],
+    ],
+    did: c.did,
+  };
+}
+
+// the next comes up over the last from below (back: from above)
 const CUT = { duration: 0.95, ease: EASE_CINE };
 const WIPE: Variants = {
   from: (d: number) => ({ clipPath: d > 0 ? "inset(100% 0% 0% 0%)" : "inset(0% 0% 100% 0%)" }),
@@ -29,98 +93,114 @@ const WORDS: Variants = {
 
 export type Rect = { top: number; left: number; width: number; height: number };
 
-/** A film as a card: the film the whole card, and on it its year and kind, its tags, its name over
- *  a table of what it was, and what the studio did. The same card, larger, opens to the screen. */
 export function Card({
-  film,
+  feature: f,
   turn,
   dir,
   reduce,
   full = false,
   still = false,
-  onExplore,
+  bare = false,
+  scroll = false,
+  act = "Explore",
+  onAct,
   onClose,
 }: {
-  film: BeyondFilm;
+  feature: Feature;
+  /** every change counted: each is a new layer over the last */
   turn: number;
   dir: number;
   reduce: boolean;
+  /** opened to the whole screen: with its line, and Close */
   full?: boolean;
-  /** its still only, no film running (a card waiting in a row) */
+  /** its still only, no film running (a card waiting) */
   still?: boolean;
-  onExplore?: () => void;
+  /** the film alone, the words gone */
+  bare?: boolean;
+  /** a Scroll ring by its name, where the page scrolls through cards */
+  scroll?: boolean;
+  /** the ticket's word */
+  act?: string;
+  onAct?: () => void;
   onClose?: () => void;
 }) {
-  const cat = BEYOND_CATEGORIES[film.cat];
   return (
-    <article className={`${s.card} ${full ? s.cardFull : ""}`} aria-label={`${film.title} — ${cat.name}, ${film.year}`}>
+    <article className={`${s.card} ${full ? s.cardFull : ""}`} aria-label={`${f.title} — ${f.kind}, ${f.year}`}>
       {/* the film, the next coming up over the last */}
       <div className={s.film} aria-hidden="true">
         <AnimatePresence initial={false} custom={dir}>
           <motion.div key={turn} className={s.shot} style={{ zIndex: turn }} custom={dir} variants={WIPE} initial="from" animate="on" exit="gone">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={stillFor(film.clip)} alt="" draggable={false} />
-            {!reduce && !still && <video ref={startMuted} src={film.clip} muted autoPlay playsInline loop preload="auto" />}
+            <img src={stillFor(f.clip)} alt="" draggable={false} />
+            {!reduce && !still && <video ref={startMuted} src={f.clip} muted autoPlay playsInline loop preload="auto" />}
           </motion.div>
         </AnimatePresence>
       </div>
-      <i className={s.grade} aria-hidden="true" />
+      <i className={`${s.grade} ${bare ? s.gradeBare : ""}`} aria-hidden="true" />
 
       <AnimatePresence mode="wait" initial={false}>
-        <motion.div key={turn} className={s.words} variants={WORDS} initial="from" animate="on" exit="gone">
-          {/* at its head: the year and the kind; across from them, its tags */}
-          <p className={s.year}>
-            <b>{film.year}</b>
-            {cat.name}
-          </p>
-          <p className={s.tags}>
-            <span>{cat.short}</span>
-            <span>{film.year}</span>
-            <span>2.39 : 1</span>
-          </p>
+        {!bare && (
+          <motion.div key={turn} className={s.words} variants={WORDS} initial="from" animate="on" exit="gone">
+            {/* at its head: the year, the kind stacked under it, the studio */}
+            <div className={s.head}>
+              <b className={s.year}>{f.year}</b>
+              <span className={s.kind}>{f.kind}</span>
+              <span className={s.mark}>16x9 &amp; Beyond</span>
+            </div>
 
-          {/* down its side: what the studio did */}
-          <ol className={s.did}>
-            {cat.did.map((d, i) => (
-              <li key={d}>
-                <i>{pad2(i + 1)} — What we did</i>
-                <b>{d}</b>
-              </li>
-            ))}
-          </ol>
+            {/* from its top edge: the ticket strip, its stub torn off */}
+            <p className={s.ticket}>
+              {f.tags.map((t) => (
+                <span key={t}>{t}</span>
+              ))}
+              <i aria-hidden="true" />
+            </p>
 
-          {/* at its foot: its name, over a table of what it was */}
-          <div className={s.foot}>
-            {film.demo && <span className={s.demo}>Demo film</span>}
-            <h2 className={s.title}>{film.title}</h2>
-            <dl className={s.table}>
-              <div>
-                <dt>Category</dt>
-                <dd>{cat.name}</dd>
-              </div>
-              <div>
-                <dt>Year</dt>
-                <dd>{film.year}</dd>
-              </div>
-              <div>
-                <dt>Frame</dt>
-                <dd>2.39 : 1</dd>
-              </div>
-            </dl>
-            {full && <p className={s.line}>{film.line}</p>}
-          </div>
-        </motion.div>
+            {/* down its side: what the studio did, in the acclaim style */}
+            <ol className={s.did}>
+              {f.did.map((d, i) => (
+                <li key={d}>
+                  <i aria-hidden="true" />
+                  <span>{pad2(i + 1)} — What we did</span>
+                  <b>{d}</b>
+                </li>
+              ))}
+            </ol>
+
+            {/* at its foot: the name, over a ruled table */}
+            <div className={s.foot}>
+              {scroll && (
+                <span className={s.scroll} aria-hidden="true">
+                  Scroll
+                </span>
+              )}
+              {f.note && <span className={s.note}>{f.note}</span>}
+              <h2 className={s.title}>{f.title}</h2>
+              <dl className={s.table}>
+                {f.table.map(([k, v]) => (
+                  <div key={k}>
+                    <dt>{k}</dt>
+                    <dd>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+              {full && f.line && <p className={s.line}>{f.line}</p>}
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
-      {full ? (
-        <button type="button" className={s.act} onClick={onClose}>
-          Close <i aria-hidden="true">×</i>
+      {/* the ticket for a button */}
+      {(full || bare ? onClose : onAct) && (
+        <button type="button" className={s.act} onClick={full || bare ? onClose : onAct}>
+          <svg viewBox="0 0 130 42" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M4 .5H90A4 4 0 0 0 98 .5H126Q129.5 .5 129.5 4V38Q129.5 41.5 126 41.5H98A4 4 0 0 0 90 41.5H4Q.5 41.5 .5 38V4Q.5 .5 4 .5Z" />
+            <path d="M94 7V35" strokeDasharray="2 3" />
+          </svg>
+          <span>{full || bare ? "Close" : act}</span>
+          <i aria-hidden="true">{full || bare ? "×" : "→"}</i>
         </button>
-      ) : onExplore ? (
-        <button type="button" className={s.act} onClick={onExplore}>
-          Explore <i aria-hidden="true">→</i>
-        </button>
-      ) : null}
+      )}
     </article>
   );
 }
@@ -128,7 +208,7 @@ export function Card({
 /** The card opened to the whole screen, from where it stood; Esc or Close puts it back. */
 export function FullCard({
   from,
-  film,
+  feature,
   turn,
   dir,
   reduce,
@@ -137,7 +217,7 @@ export function FullCard({
   onStep,
 }: {
   from: Rect;
-  film: BeyondFilm;
+  feature: Feature;
   turn: number;
   dir: number;
   reduce: boolean;
@@ -161,9 +241,17 @@ export function FullCard({
   }, [onClose, onStep]);
   const move = reduce ? { duration: 0 } : { duration: 0.85, ease: EASE_CINE };
   return (
-    <motion.div className={`${s.full} ${dark ? s.fullDark : ""}`} role="dialog" aria-modal="true" aria-label={film.title} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.35, delay: 0.3 } }}>
+    <motion.div
+      className={`${s.full} ${dark ? s.fullDark : ""}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label={feature.title}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.35, delay: 0.3 } }}
+    >
       <motion.div className={s.fullBox} initial={from} animate={to} exit={{ ...from, transition: move }} transition={move}>
-        <Card film={film} turn={turn} dir={dir} reduce={reduce} full onClose={onClose} />
+        <Card feature={feature} turn={turn} dir={dir} reduce={reduce} full onClose={onClose} />
       </motion.div>
     </motion.div>
   );

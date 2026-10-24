@@ -1,182 +1,166 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { EASE, EASE_CINE } from "../work/_shared/chrome";
+import { EASE } from "../work/_shared/chrome";
 import { stillFor } from "../work/_shared/data";
-import { Card, FullCard, type Rect } from "../work/beyond-card";
+import { Card, FullCard, catFeature, filmFeature, type Rect } from "../work/beyond-card";
 import { BeyondShell, CATS, pad2, useSteps } from "../work/beyond-shell";
-import { startMuted } from "../work/brand-shared";
 import s from "./beyond1.module.css";
 
 // ===========================================================================
-// BEYOND 1 — THE PANELS, on black. The screen is five tall panels side by
-// side, a category each: its film running grey behind it, its number and
-// count at the head, its name set upright up its side. Point at one and it
-// opens wide and comes into colour as the others give it room. Click it and
-// it takes the screen; its films slide in over it as a row of cards (the
-// card as Beyond's work page has it), the one in the middle playing — the
-// wheel, the arrows or a swipe move along the row, a side card clicked comes
-// to the middle, Explore opens it to the whole screen. Back (or Esc) closes
-// the row and the panels come back.
+// BEYOND 1 — THE DARK ROOM, after the reference's viewing room: one screen
+// in the dark. Down the left, the categories, each with its count in a
+// small box; in the middle, inside four corners, the card on show; down the
+// right, a strip of every card, the one on show ringed, its place beside it.
+// It opens on the categories: the card shows each category as a feature (its
+// first film, its name, its films and years, what the studio does in it),
+// the strip holds the five, and pointing along the list brings each up.
+// Enter (or a category clicked) goes in: the strip turns to that category's
+// films and the card to each film, its ticket now Explore, which opens it
+// to the whole screen. The wheel and the arrows move along; All categories
+// (or Esc) comes back out.
 // ===========================================================================
+
+type Show = { at: number; turn: number; dir: number };
 
 export default function BeyondOne() {
   const reduce = !!useReducedMotion();
-  const [on, setOn] = useState<number | null>(null);
-  const [open, setOpen] = useState<number | null>(null);
-
-  return (
-    <BeyondShell className={s.page} onBack={open !== null ? () => setOpen(null) : undefined}>
-      <div className={`${s.panels} ${open !== null ? s.panelsOpen : ""}`} onPointerLeave={() => setOn(null)}>
-        {CATS.map((c) => {
-          const live = open === c.i || (open === null && on === c.i);
-          return (
-            <motion.button
-              key={c.name}
-              type="button"
-              className={`${s.panel} ${live ? s.panelOn : ""} ${open === c.i ? s.panelOpen : ""} ${open !== null && open !== c.i ? s.panelGone : ""}`}
-              initial={reduce ? false : { clipPath: "inset(100% 0% 0% 0%)" }}
-              animate={{ clipPath: "inset(0% 0% 0% 0%)" }}
-              transition={{ duration: 1.1, ease: EASE_CINE, delay: 0.1 + c.i * 0.08 }}
-              onPointerEnter={(e) => e.pointerType === "mouse" && setOn(c.i)}
-              onFocus={() => setOn(c.i)}
-              onClick={() => open === null && setOpen(c.i)}
-              tabIndex={open === null ? 0 : -1}
-              aria-label={`${c.name}: ${c.films.length} films`}
-            >
-              <span className={s.media} aria-hidden="true">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={stillFor(c.films[0].clip)} alt="" draggable={false} />
-                {live && !reduce && <video ref={startMuted} src={c.films[0].clip} muted autoPlay playsInline loop preload="auto" />}
-              </span>
-              <span className={s.head} aria-hidden="true">
-                <b>{pad2(c.i + 1)}</b>
-                <span>{pad2(c.films.length)} films</span>
-              </span>
-              <span className={s.name}>{c.name}</span>
-              <span className={s.enter} aria-hidden="true">
-                Enter <i>→</i>
-              </span>
-            </motion.button>
-          );
-        })}
-      </div>
-
-      <AnimatePresence>{open !== null && <Films key={open} cat={open} reduce={reduce} onBack={() => setOpen(null)} />}</AnimatePresence>
-    </BeyondShell>
-  );
-}
-
-/** A category's films, a row of cards over its panel. */
-function Films({ cat, reduce, onBack }: { cat: number; reduce: boolean; onBack: () => void }) {
-  const c = CATS[cat];
-  const n = c.films.length;
-  const trackRef = useRef<HTMLDivElement>(null);
-  const slots = useRef<(HTMLDivElement | null)[]>([]);
-  const [at, setAt] = useState(0);
+  // the category gone into (null: the categories), and the card on show
+  const [cat, setCat] = useState<number | null>(null);
+  const [show, setShow] = useState<Show>({ at: 0, turn: 0, dir: 1 });
+  const { at, turn, dir } = show;
+  const films = cat === null ? null : CATS[cat].films;
+  const n = films ? films.length : CATS.length;
+  const feature = films ? filmFeature(films[at]) : catFeature(at);
   const [full, setFull] = useState<Rect | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLOListElement>(null);
 
-  // a card to the middle of the row
-  const goTo = (k: number) => {
-    const track = trackRef.current;
-    const el = slots.current[k];
-    if (!track || !el) return;
-    track.scrollTo({ left: el.offsetLeft - (track.clientWidth - el.offsetWidth) / 2, behavior: reduce ? "auto" : "smooth" });
+  const go = useCallback((to: number) => setShow((v) => (to === v.at || to < 0 || to >= n ? v : { at: to, turn: v.turn + 1, dir: to > v.at ? 1 : -1 })), [n]);
+  const enter = (i: number) => {
+    setCat(i);
+    setShow((v) => ({ at: 0, turn: v.turn + 1, dir: 1 }));
   };
-  useSteps(!full, (d) => goTo(Math.max(0, Math.min(n - 1, at + d))));
+  const leave = useCallback(() => {
+    setShow((v) => ({ at: cat ?? 0, turn: v.turn + 1, dir: -1 }));
+    setCat(null);
+  }, [cat]);
+  useSteps(!full, (d) => go(at + d));
   useEffect(() => {
-    if (full) return;
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onBack();
+    if (full || cat === null) return;
+    const key = (e: KeyboardEvent) => e.key === "Escape" && leave();
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [full, onBack]);
+  }, [full, cat, leave]);
 
-  // the card nearest the middle is the one on show
-  const onScroll = () => {
-    const track = trackRef.current;
-    if (!track) return;
-    const mid = track.scrollLeft + track.clientWidth / 2;
-    let best = 0;
-    slots.current.forEach((el, k) => {
-      const b = slots.current[best];
-      if (el && b && Math.abs(el.offsetLeft + el.offsetWidth / 2 - mid) < Math.abs(b.offsetLeft + b.offsetWidth / 2 - mid)) best = k;
+  // the strip keeps the card on show in its middle (the strip alone scrolls)
+  useEffect(() => {
+    const strip = stripRef.current;
+    const el = strip?.children[at] as HTMLElement | undefined;
+    if (!strip || !el) return;
+    const across = strip.scrollWidth > strip.clientWidth + 1;
+    strip.scrollTo({
+      top: across ? 0 : el.offsetTop - (strip.clientHeight - el.offsetHeight) / 2,
+      left: across ? el.offsetLeft - (strip.clientWidth - el.offsetWidth) / 2 : 0,
+      behavior: reduce ? "auto" : "smooth",
     });
-    if (best !== at) setAt(best);
+  }, [at, cat, reduce]);
+
+  const explore = () => {
+    const r = cardRef.current?.getBoundingClientRect();
+    if (r) setFull({ top: r.top, left: r.left, width: r.width, height: r.height });
   };
+  const thumbs = films ? films.map((f) => ({ key: f.clip, clip: f.clip, label: f.title })) : CATS.map((c) => ({ key: c.name, clip: c.films[0].clip, label: c.name }));
 
   return (
-    <motion.section
-      className={s.films}
-      aria-label={`${c.name}: the films`}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1, transition: { duration: 0.6, delay: 0.45 } }}
-      exit={{ opacity: 0, transition: { duration: 0.35 } }}
-    >
-      <header className={s.filmsHead}>
-        <button type="button" className={s.back} onClick={onBack}>
-          <i aria-hidden="true">←</i> All categories
-        </button>
-        <div className={s.title}>
-          <p className={s.kicker}>
-            <span>{pad2(cat + 1)}</span> Beyond
-          </p>
-          <h1>{c.name}</h1>
-        </div>
-        <p className={s.count} aria-live="polite">
-          <b>{pad2(at + 1)}</b>
-          <i aria-hidden="true" />
-          {pad2(n)}
-        </p>
-      </header>
+    <BeyondShell className={s.page} onBack={cat !== null ? leave : undefined}>
+      <div className={s.room}>
+        {/* down the left: the categories, each with its count */}
+        <nav className={s.cats} aria-label="Categories">
+          <div className={s.top}>
+            <AnimatePresence mode="wait" initial={false}>
+              {cat === null ? (
+                <motion.p key="k" className={s.kicker} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <span>03</span> Beyond
+                </motion.p>
+              ) : (
+                <motion.button key="b" type="button" className={s.back} onClick={leave} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
+                  <i aria-hidden="true">←</i> All categories
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
+          <ol>
+            {CATS.map((c) => {
+              const lit = cat === null ? at === c.i : cat === c.i;
+              return (
+                <motion.li key={c.name} initial={reduce ? false : { opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, ease: EASE, delay: 0.3 + c.i * 0.06 }}>
+                  <button
+                    type="button"
+                    className={`${lit ? s.catOn : ""} ${cat !== null && !lit ? s.catBack : ""}`}
+                    onPointerEnter={(e) => cat === null && e.pointerType === "mouse" && go(c.i)}
+                    onClick={() => (cat === c.i ? undefined : enter(c.i))}
+                    aria-current={cat === c.i || undefined}
+                  >
+                    {c.name}
+                    <i>{c.films.length}</i>
+                  </button>
+                </motion.li>
+              );
+            })}
+          </ol>
+        </nav>
 
-      <div ref={trackRef} className={s.track} onScroll={onScroll}>
-        {c.films.map((f, k) => (
-          <motion.div
-            key={f.clip}
-            ref={(el) => {
-              slots.current[k] = el;
-            }}
-            className={s.slot}
-            initial={reduce ? false : { opacity: 0, x: 140 }}
-            animate={{ opacity: 1, x: 0, transition: { duration: 1.1, ease: EASE, delay: 0.55 + k * 0.1 } }}
-          >
-            <div className={`${s.slotIn} ${k === at ? s.slotOn : ""}`} onClick={() => k !== at && goTo(k)}>
-              <Card
-                film={f}
-                turn={k}
-                dir={1}
-                reduce={reduce}
-                still={k !== at}
-                onExplore={
-                  k === at
-                    ? () => {
-                        const r = slots.current[k]?.getBoundingClientRect();
-                        if (r) setFull({ top: r.top, left: r.left, width: r.width, height: r.height });
-                      }
-                    : undefined
-                }
-              />
-            </div>
-          </motion.div>
-        ))}
+        {/* in the middle: the card on show, inside four corners */}
+        <motion.div className={s.stage} initial={reduce ? false : { opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.1, ease: EASE, delay: 0.1 }}>
+          <span className={s.corners} aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+          <div ref={cardRef} className={s.cardBox} style={{ visibility: full ? "hidden" : undefined }}>
+            <Card feature={feature} turn={turn} dir={dir} reduce={reduce} act={cat === null ? "Enter" : "Explore"} onAct={cat === null ? () => enter(at) : explore} />
+          </div>
+        </motion.div>
+
+        {/* down the right: its place, and the strip */}
+        <div className={s.side}>
+          <p className={s.count} aria-live="polite">
+            <b>{pad2(at + 1)}</b>
+            <i aria-hidden="true" />
+            {pad2(n)}
+          </p>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.ol
+              key={cat ?? "cats"}
+              ref={stripRef}
+              className={s.strip}
+              aria-label={cat === null ? "Categories" : "Films"}
+              initial="out"
+              animate="in"
+              exit="out"
+              variants={{ out: { opacity: 0, transition: { duration: 0.25 } }, in: { opacity: 1, transition: { staggerChildren: 0.06 } } }}
+            >
+              {thumbs.map((t, i) => (
+                <motion.li key={t.key} variants={{ out: { opacity: 0, x: 24 }, in: { opacity: 1, x: 0, transition: { duration: 0.6, ease: EASE } } }}>
+                  <button type="button" className={i === at ? s.thumbOn : undefined} onClick={() => (cat === null && i === at ? enter(i) : go(i))} aria-label={t.label}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={stillFor(t.clip)} alt="" loading="lazy" draggable={false} />
+                  </button>
+                </motion.li>
+              ))}
+            </motion.ol>
+          </AnimatePresence>
+        </div>
       </div>
 
       <AnimatePresence>
-        {full && (
-          <FullCard
-            key="full"
-            from={full}
-            film={c.films[at]}
-            turn={at}
-            dir={1}
-            reduce={reduce}
-            dark
-            onClose={() => setFull(null)}
-            onStep={(d) => goTo(Math.max(0, Math.min(n - 1, at + d)))}
-          />
+        {full && films && (
+          <FullCard key="full" from={full} feature={feature} turn={turn} dir={dir} reduce={reduce} dark onClose={() => setFull(null)} onStep={(d) => go(at + d)} />
         )}
       </AnimatePresence>
-    </motion.section>
+    </BeyondShell>
   );
 }

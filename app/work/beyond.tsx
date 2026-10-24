@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
 import { Band, EASE, rootClass } from "./_shared/chrome";
 import { BEYOND_CATEGORIES, BEYOND_FILMS, stillFor, type BeyondFilm } from "./_shared/data";
-import { Card, FullCard, type Rect } from "./beyond-card";
+import { Card, FullCard, filmFeature, type Rect } from "./beyond-card";
 import s from "./beyond.module.css";
 
 // ===========================================================================
@@ -149,7 +149,7 @@ export default function Beyond() {
             <i />
           </span>
           <div ref={cardRef} className={s.cardBox} style={{ visibility: full ? "hidden" : undefined }}>
-            <Card film={film} turn={turn} dir={dir} reduce={reduce} onExplore={explore} />
+            <Card feature={filmFeature(film)} turn={turn} dir={dir} reduce={reduce} onAct={explore} />
           </div>
         </motion.div>
 
@@ -176,7 +176,7 @@ export default function Beyond() {
       {/* the card, opened to the whole screen */}
       <AnimatePresence>
         {full && (
-          <FullCard key="full" from={full} film={film} turn={turn} dir={dir} reduce={reduce} onClose={() => setFull(null)} onStep={(d) => go(at + d)} />
+          <FullCard key="full" from={full} feature={filmFeature(film)} turn={turn} dir={dir} reduce={reduce} onClose={() => setFull(null)} onStep={(d) => go(at + d)} />
         )}
       </AnimatePresence>
     </main>
