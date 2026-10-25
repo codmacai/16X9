@@ -222,7 +222,11 @@ function panelAt(w: number, h: number) {
   return { cx: w / 2, cy: h / 2 - ph * 0.08, pw, ph };
 }
 
-export function WallSurface() {
+type Geo = (w: number, h: number) => { cx: number; cy: number; pw: number; ph: number };
+
+/** the wall, its tiles the size of `at`'s (the Beyond tile's by default), their seams running on from
+ *  its edges */
+export function WallSurface({ at = panelAt }: { at?: Geo }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -251,7 +255,7 @@ export function WallSurface() {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       canvas.width = Math.round(canvas.clientWidth * dpr);
       canvas.height = Math.round(canvas.clientHeight * dpr);
-      const { cx, cy, pw, ph } = panelAt(canvas.clientWidth, canvas.clientHeight);
+      const { cx, cy, pw, ph } = at(canvas.clientWidth, canvas.clientHeight);
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform2f(uRes, canvas.width, canvas.height);
       gl.uniform4f(uPanel, cx * dpr, cy * dpr, pw * dpr, ph * dpr);
@@ -269,6 +273,6 @@ export function WallSurface() {
       gl.deleteShader(fs);
       gl.deleteBuffer(buf);
     };
-  }, []);
+  }, [at]);
   return <canvas ref={ref} className={styles.wallSurface} />;
 }

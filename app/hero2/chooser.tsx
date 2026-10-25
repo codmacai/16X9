@@ -655,12 +655,13 @@ const FormatGrid = memo(function FormatGrid({
   wall?: WallFilm[];
   /** hero 9: the wall curved round the viewer, as a cinema's screen (four across, to give it sweep) */
   curved?: boolean;
-  /** hero 9: on one 16:9 screen — three by three, filling it exactly */
+  /** hero 9: on one cinema-wide screen — four across (two on a portrait screen), three down, each
+   *  film 16:9, filling it exactly */
   screen?: boolean;
 }) {
   // hero 6: larger tiles — 16x9 three across, 9x16 five across — enough rows to cover the screen
   const view = useViewport();
-  const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : screen ? { cols: 3, rows: 3 } : coverGrid(view, curved ? 4 : 3)) : GRID[kind];
+  const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : screen ? { cols: view.w / view.h < 1 ? 2 : 4, rows: 3 } : coverGrid(view, curved ? 4 : 3)) : GRID[kind];
   const n = g.cols * g.rows;
   const live = useLiveCount(on && big, n);
   const { budget, rich } = useDevice();
