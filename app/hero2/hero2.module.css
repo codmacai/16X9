@@ -3142,6 +3142,20 @@
   transition: opacity 0.3s ease;
 }
 
+/* on the tile, the rest of the line steps aside — the other words and the slashes fade right out
+   (their own fade is inline, so this one rides on filter) — and BEYOND alone stays where it is,
+   in its corners, under the category: one composition, the category above, the word below and
+   off to the right */
+.namesWrap .name,
+.namesWrap .slash {
+  transition: filter 0.45s ease;
+}
+
+.stagePanel > .namesWrap .name:not([data-fmt="beyond"]),
+.stagePanel > .namesWrap .slash {
+  filter: opacity(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .panel,
   .wallOn .panel,

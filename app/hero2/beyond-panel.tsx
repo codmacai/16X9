@@ -11,10 +11,11 @@ import styles from "./hero2.module.css";
 // of light from above — and the tile in the middle, 16:9, our frame, set in the wall like the rest,
 // lights from a line across it, a warm white, its light faint on the wall round it. On it, as on
 // a museum label: the category's full name small at its head and its number; the category in
-// large regular Arial, set on the line of words, left on its left edge — each one coming into
-// focus as it draws back into place, the one before dissolving; at its foot, five hairlines, the
-// current one drawing across as it holds. The line turns with the tile under it (differenced:
-// paper on the dark wall, ink on the lit tile). Clicking BEYOND the tile grows to the whole screen,
+// large regular Arial, set on the line of words, on its left edge — each one coming into focus as
+// it draws back into place, the one before dissolving; at its foot, five hairlines, the current
+// one drawing across as it holds. Of the line itself only BEYOND stays, where it is, under the
+// category and off to the right (the rest steps aside), turning with the tile under it
+// (differenced: paper on the dark wall, ink on the lit tile). Clicking BEYOND the tile grows to the whole screen,
 // and Beyond's page comes out from under it (work/beyond.tsx).
 const N = BEYOND_CATEGORIES.length;
 const HOLD_MS = 2600;
