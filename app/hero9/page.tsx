@@ -13,18 +13,17 @@ import styles from "../hero2/hero2.module.css";
 import own from "../hero7/hero7.module.css";
 
 // ===========================================================================
-// HERO 9 — hero 8, with Beyond as a lit panel in a wall instead of a door. 16x9
-// and 9x16 as in hero 8: their walls of films in a black room, the still
-// ribbon of smoke under the words. Beyond, the studio's top service, shows no
-// film: the screen becomes a wall of dark matte panels, drawn as a real lit
-// surface, and the one in the middle — 16:9, our frame — comes on from a line
-// across it: a white light panel. On it, Beyond's categories in heavy black
-// type, one after another, each arriving close and huge, cropped by the
-// panel's edges, and drawing back until it sits whole; the line of words runs
-// across it, blended in — ink on the white, paper on the black
-// (hero2/beyond-panel.tsx). Click BEYOND and the panel grows to
-// the whole screen, and Beyond's page comes out from under it
-// (work/beyond.tsx).
+// HERO 9 — hero 8, with Beyond as a lit tile in a gallery wall instead of a
+// door. 16x9 and 9x16 as in hero 8: their walls of films in a black room, the
+// still ribbon of smoke under the words. Beyond, the studio's top service,
+// shows no film: the screen becomes a wall of near-black matte panels, drawn
+// as a real surface, and the tile in the middle — 16:9, our frame — lights a
+// warm white from a line across it. On it, as on a museum label: the
+// category's full name small at its head and its number; the category in large
+// regular Arial, set on the line of words, coming into focus as it draws back
+// into place; five hairlines at its foot, the current one drawing across
+// (hero2/beyond-panel.tsx). Click BEYOND and the tile grows to the whole
+// screen, and Beyond's page comes out from under it (work/beyond.tsx).
 //
 // Clicking a word goes on to that format's work (/work?format=…), as in hero 7.
 // ===========================================================================

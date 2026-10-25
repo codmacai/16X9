@@ -436,7 +436,7 @@
   position: fixed;
   z-index: 60;
   inset: 0;
-  background: radial-gradient(ellipse 85% 75% at 50% 42%, #fbfaf7, #ecebe6);
+  background: linear-gradient(180deg, #f1efea, #e3e1db);
   animation: panel-in 1s cubic-bezier(0.76, 0, 0.24, 1) 0.15s both;
   pointer-events: none;
 }

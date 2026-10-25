@@ -2957,36 +2957,35 @@
   }
 }
 
-/* ===== hero 9: Beyond as a lit panel in a wall (beyond-panel.tsx), no film ===== */
+/* ===== hero 9: Beyond as a lit tile in a gallery wall (beyond-panel.tsx), no film ===== */
 .film_beyond.filmPanel .filmBox {
   display: none;
 }
 
-/* a wall of dark matte panels, the size of the 16:9 one in the middle, their seams running on
-   from its edges. The surface itself is drawn (beyond-panel.tsx, WallSurface); this ground is
+/* a wall of near-black matte panels, the size of the 16:9 one in the middle, their seams running
+   on from its edges. The surface itself is drawn (beyond-panel.tsx, WallSurface); this ground is
    its stand-in without WebGL */
 .wall {
-  --pw: min(58vw, 150vh);
+  --pw: min(66vw, 142vh);
   --ph: calc(var(--pw) * 9 / 16);
-  /* the tile sits a little above the middle, so the lockup — category over the line of words —
-     sits in the middle of it */
-  --lift: calc(var(--ph) * -0.1);
-  --seam: #070707;
+  /* the tile sits a little above the middle, so what's set on it — the category over the line of
+     words — sits in the middle of it */
+  --lift: calc(var(--ph) * -0.08);
+  --seam: #030303;
   position: absolute;
   z-index: 1;
   inset: 0;
   overflow: hidden;
   background:
-    linear-gradient(90deg, var(--seam) 0 4px, transparent 4px) calc(50% - 2px) 0 / var(--pw) 100%,
-    linear-gradient(180deg, var(--seam) 0 4px, transparent 4px) 0 calc(50% + var(--lift) - 2px) / 100% var(--ph),
-    radial-gradient(ellipse 75% 60% at 50% 0%, rgb(255 255 255 / 0.09), transparent 72%),
-    radial-gradient(ellipse 90% 85% at 50% 42%, transparent 35%, rgb(0 0 0 / 0.6)),
-    #262626;
+    linear-gradient(90deg, var(--seam) 0 2px, transparent 2px) calc(50% - 1px) 0 / var(--pw) 100%,
+    linear-gradient(180deg, var(--seam) 0 2px, transparent 2px) 0 calc(50% + var(--lift) - 1px) / 100% var(--ph),
+    radial-gradient(ellipse 60% 70% at 50% 8%, rgb(255 255 255 / 0.06), transparent 72%),
+    #141414;
 }
 
 @media (max-aspect-ratio: 1 / 1) {
   .wall {
-    --pw: 90vw;
+    --pw: 92vw;
   }
 }
 
@@ -2997,52 +2996,74 @@
   height: 100%;
 }
 
-/* the panel in the middle is one of the wall's tiles, set in its seams like the rest (inside the
-   2px either side of each seam), lit the same way — brighter at its top, a little shadow in from
-   its edges, the same fine grain — only white. Off, a hairline across it; on, it lights from
-   the line */
+/* the tile in the middle, one of the wall's, set in its seams like the rest, lit a warm white —
+   brighter towards its top, the finest grain, a breath of shadow in from its edges. Off, a
+   hairline across it; on, it lights from the line */
 .panel {
   position: absolute;
   left: 50%;
   top: calc(50% + var(--lift));
-  width: calc(var(--pw) - 4px);
-  height: calc(var(--ph) - 4px);
+  width: calc(var(--pw) - 2px);
+  height: calc(var(--ph) - 2px);
   translate: -50% -50%;
   overflow: hidden;
+  container-type: size;
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(ellipse 120% 90% at 50% -10%, rgb(255 255 255 / 0.55), transparent 70%),
-    linear-gradient(180deg, #f3f2ee, #e2e1dc);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 110% 85% at 50% 0%, rgb(255 255 255 / 0.6), transparent 70%),
+    linear-gradient(180deg, #f1efea, #e3e1db);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.9),
-    inset 0 0 10px rgb(0 0 0 / 0.16);
+    inset 0 1px 0 rgb(255 255 255 / 0.85),
+    inset 0 0 14px rgb(0 0 0 / 0.1);
   clip-path: inset(50% 0 50% 0);
   transition: clip-path 0s linear 0.6s;
 }
 
 .wallOn .panel {
   clip-path: inset(0 0 0 0);
-  transition: clip-path 0.9s cubic-bezier(0.76, 0, 0.24, 1) 0.25s;
+  transition: clip-path 1.1s cubic-bezier(0.76, 0, 0.24, 1) 0.25s;
 }
 
-/* on it, a category in bold Arial — our type, the line's — set to the line's exact width, right
-   above it (placed and sized from JS): arriving close and huge, cropped by the tile's edges,
-   drawing back until it locks into place */
+/* at its head, as on a museum label: the category's full name, and its number */
+.panelHead,
+.panelTicks {
+  position: absolute;
+  left: 4.5cqw;
+  right: 4.5cqw;
+}
+
+.panelHead {
+  top: 6cqh;
+  display: flex;
+  justify-content: space-between;
+  color: rgb(11 11 11 / 0.6);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: max(9px, 0.95cqw);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.panelHead > span {
+  display: block;
+}
+
+/* the category in large regular Arial, set on the line of words (placed and sized from JS) */
 .panelWord,
 .panelMeasure {
-  color: #0a0a0a;
+  color: #0b0b0b;
   font-family: Arial, Helvetica, sans-serif;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 0.82;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.045em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .panelWord {
   position: absolute;
-  transform-origin: 50% 50%;
-  will-change: transform, opacity;
+  transform-origin: 0% 100%;
+  will-change: transform, opacity, filter;
 }
 
 .panelMeasure {
@@ -3057,7 +3078,44 @@
   pointer-events: none;
 }
 
-/* going in, the panel grows to the whole screen */
+/* at its foot, five hairlines: those shown, and the one showing drawing across as it holds */
+.panelTicks {
+  bottom: 6.5cqh;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1.2cqw;
+}
+
+.panelTicks i {
+  position: relative;
+  height: 1px;
+  background: rgb(11 11 11 / 0.14);
+}
+
+.panelTicks i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #0b0b0b;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.panelTicks i[data-state="past"]::after {
+  transform: none;
+}
+
+.panelTicks i[data-state="on"]::after {
+  animation: panel-tick 2.6s linear forwards;
+}
+
+@keyframes panel-tick {
+  to {
+    transform: none;
+  }
+}
+
+/* going in, the tile grows to the whole screen */
 .wallGo .panel {
   top: 50%;
   width: 100%;
@@ -3069,8 +3127,8 @@
 }
 
 /* the line of words blends into the wall and its tile: paper, differenced against what's behind
-   it — ink on the white tile, paper where it crosses the category's black type or the dark wall,
-   turning as the tile lights under it; the caption steps aside */
+   it — paper on the dark wall, ink on the lit tile, turning as the tile lights under it; the
+   caption steps aside */
 .stagePanel > .namesWrap {
   mix-blend-mode: difference;
 }
@@ -3089,5 +3147,9 @@
   .wallOn .panel,
   .wallGo .panel {
     transition: none;
+  }
+  .panelTicks i[data-state="on"]::after {
+    animation: none;
+    transform: none;
   }
 }
