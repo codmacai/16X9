@@ -20,8 +20,9 @@ import own from "../hero7/hero7.module.css";
 // surface, and the one in the middle — 16:9, our frame — comes on from a line
 // across it: a white light panel. On it, Beyond's categories in heavy black
 // type, one after another, each arriving close and huge, cropped by the
-// panel's edges, and drawing back until it sits whole; the line of words sits
-// on it in ink (hero2/beyond-panel.tsx). Click BEYOND and the panel grows to
+// panel's edges, and drawing back until it sits whole; the line of words runs
+// across it, blended in — ink on the white, paper on the black
+// (hero2/beyond-panel.tsx). Click BEYOND and the panel grows to
 // the whole screen, and Beyond's page comes out from under it
 // (work/beyond.tsx).
 //

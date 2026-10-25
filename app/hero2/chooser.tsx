@@ -1111,7 +1111,7 @@ export default function Chooser({
   /** hero 9: Beyond as a lit panel in a wall — no film: a wall of dark matte panels, the 16:9 one
    *  in the middle coming on as a white light panel, Beyond's categories on it in heavy black
    *  type, each arriving huge and drawing back until it sits whole (beyond-panel.tsx), the line of
-   *  words on it in ink; clicking BEYOND it grows to the whole screen, and Beyond's page comes out
+   *  words blended across it; clicking BEYOND it grows to the whole screen, and Beyond's page comes out
    *  from under it */
   panelBeyond?: boolean;
   /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; a still ribbon of smoke
@@ -1377,7 +1377,7 @@ export default function Chooser({
           {f.key === "beyond" && doorBeyond && <span className={styles.doorGlow} aria-hidden="true" />}
           {/* the light through the gap */}
           {f.key === "beyond" && doorBeyond && <span className={styles.doorLine} aria-hidden="true" />}
-          {f.key === "beyond" && panelBeyond && <BeyondPanel on={up === "beyond" && !open} go={open && launch === "beyond"} reduce={reduce} />}
+          {f.key === "beyond" && panelBeyond && <BeyondPanel on={up === "beyond" && !open} go={open && launch === "beyond"} reduce={reduce} word={wordRefs} />}
           {f.key === "beyond" && plainBeyond && !doorBeyond && !panelBeyond && <OpenCorners on={up === "beyond"} word={wordRefs} stage={stageRef} />}
           {f.key === "beyond" && pool?.length && !plainBeyond ? (
             grid ? (

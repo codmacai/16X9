@@ -1,23 +1,36 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BEYOND_CATEGORIES } from "../work/_shared/data";
+import type { FormatKey } from "../hero13/formats";
 import styles from "./hero2.module.css";
 
 // hero 9: Beyond as a lit panel in a wall. No film: the screen becomes a wall of dark matte
 // panels — drawn once, as a real surface: a fine brushed grain, recessed seams, each panel
-// catching the light at its top, the room lit from above — and the one in the middle, 16:9, our
-// frame, comes on from a line across it: a white light panel. On it, Beyond's categories in
-// heavy black type, one after another, each arriving close and huge, cropped by the panel's
-// edges, and drawing back until it sits whole — then on, as the next comes in. The line of words
-// sits on it in ink. Clicking BEYOND the panel grows to the whole screen, and Beyond's page comes
+// catching the light at its top, the room lit from above — and the tile in the middle, 16:9, our
+// frame, set in the wall like the rest, lights white from a line across it. On it, with the line
+// of words, one lockup: Beyond's categories in bold Arial, one after another, each set to the
+// line's exact width and sitting right above it — each arriving close and huge, cropped by the
+// tile's edges, and drawing back until it locks into place. The line turns with the tile under it
+// (differenced: paper on the dark wall, ink on the lit tile). Clicking BEYOND the panel grows to the whole screen, and Beyond's page comes
 // out from under it (work/beyond.tsx).
 const N = BEYOND_CATEGORIES.length;
 const HOLD_MS = 2300;
 const ZOOM = [0.16, 1, 0.3, 1] as const;
 
-export default function BeyondPanel({ on, go, reduce }: { on: boolean; go: boolean; reduce: boolean }) {
+export default function BeyondPanel({
+  on,
+  go,
+  reduce,
+  word,
+}: {
+  on: boolean;
+  go: boolean;
+  reduce: boolean;
+  /** the line of words, so each category can be set to its width, right above it */
+  word: RefObject<Partial<Record<FormatKey, HTMLElement | null>>>;
+}) {
   const [i, setI] = useState(0);
   // the categories, one after another, while it's on; going in, the one showing stays; from the
   // first again each time it comes on
@@ -33,45 +46,49 @@ export default function BeyondPanel({ on, go, reduce }: { on: boolean; go: boole
     return () => window.clearInterval(id);
   }, [on, reduce]);
 
-  // each category set to sit whole across the panel: its width measured once the type is in
-  const panelRef = useRef<HTMLDivElement>(null);
+  // the lockup: where the line of words stands on the tile, and each category's size to match its
+  // width (measured as it comes on, and again if the screen changes)
   const measureRef = useRef<HTMLSpanElement>(null);
-  const [sizes, setSizes] = useState<number[] | null>(null);
+  const [lock, setLock] = useState<{ x: number; y: number; sizes: number[] } | null>(null);
   useLayoutEffect(() => {
-    const panel = panelRef.current;
+    if (!on) return;
     const m = measureRef.current;
-    if (!panel || !m) return;
+    const a = word.current["16x9"];
+    const z = word.current.beyond;
+    if (!m || !a || !z) return;
     const fit = () => {
-      const w = panel.offsetWidth;
-      const h = panel.offsetHeight;
-      if (!w || !h) return;
-      setSizes(
-        [...m.children].map((el) => Math.min((w * 0.84) / ((el as HTMLElement).offsetWidth / 100), h * 0.46))
-      );
+      const ra = a.getBoundingClientRect();
+      const rz = z.getBoundingClientRect();
+      const { cx, cy, pw, ph } = panelAt(window.innerWidth, window.innerHeight);
+      const width = rz.right - ra.left;
+      setLock({
+        x: ra.left + width / 2 - (cx - (pw - 4) / 2),
+        y: ra.top - ra.height * 0.14 - (cy - (ph - 4) / 2),
+        sizes: [...m.children].map((el) => width / ((el as HTMLElement).offsetWidth / 100)),
+      });
     };
     fit();
     document.fonts?.ready.then(fit);
-    const ro = new ResizeObserver(fit);
-    ro.observe(panel);
-    return () => ro.disconnect();
-  }, []);
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [on, word]);
 
   const c = BEYOND_CATEGORIES[i];
   return (
     <div className={`${styles.wall} ${on || go ? styles.wallOn : ""} ${go ? styles.wallGo : ""}`} aria-hidden="true">
       <WallSurface />
-      <div ref={panelRef} className={styles.panel}>
+      <div className={styles.panel}>
         <span ref={measureRef} className={styles.panelMeasure}>
           {BEYOND_CATEGORIES.map((k) => (
             <span key={k.short}>{k.short}</span>
           ))}
         </span>
         <AnimatePresence initial={false}>
-          {sizes && (
+          {lock && (
             <motion.span
               key={c.short}
               className={styles.panelWord}
-              style={{ x: "-50%", y: "-50%", fontSize: sizes[i] }}
+              style={{ left: lock.x, top: lock.y, x: "-50%", y: "-100%", fontSize: lock.sizes[i] }}
               initial={reduce ? false : { scale: 2.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={reduce ? { opacity: 0 } : { scale: 0.86, opacity: 0, transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }}
@@ -134,9 +151,9 @@ void main() {
   vec2 q = (px - vec2(uRes.x * 0.5, -uRes.y * 0.2)) / vec2(uRes.x * 0.62, uRes.y * 1.25);
   float key = exp(-dot(q, q) * 1.5);
   v *= 0.38 + 1.0 * key;
-  // the light panel's glow on the wall round it
+  // the lit tile's light, faint on the wall round it
   vec2 e = max(abs(px - c) - s * 0.5, 0.0);
-  v += 0.045 * exp(-length(e) / s.y * 4.0);
+  v += 0.03 * exp(-length(e) / s.y * 5.0);
   // the seams: recessed, a little shadow either side of them, the top edge of each panel lit
   v *= mix(0.7, 1.0, smoothstep(gap, gap + 9.0 * uDpr, d));
   v += 0.045 * smoothstep(gap + 1.6 * uDpr, gap + 0.4 * uDpr, l.y) * step(gap, l.y) * step(gap, min(l.x, s.x - l.x));
@@ -159,7 +176,7 @@ function panelAt(w: number, h: number) {
   const vh = window.innerHeight;
   const pw = vw <= vh ? vw * 0.9 : Math.min(vw * 0.58, vh * 1.5);
   const ph = (pw * 9) / 16;
-  return { cx: w / 2, cy: h / 2 - ph * 0.09, pw, ph };
+  return { cx: w / 2, cy: h / 2 - ph * 0.1, pw, ph };
 }
 
 function WallSurface() {

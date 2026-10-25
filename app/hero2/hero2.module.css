@@ -2968,8 +2968,9 @@
 .wall {
   --pw: min(58vw, 150vh);
   --ph: calc(var(--pw) * 9 / 16);
-  /* the panel sits a little above the middle, so the line of words falls under its type */
-  --lift: calc(var(--ph) * -0.09);
+  /* the tile sits a little above the middle, so the lockup — category over the line of words —
+     sits in the middle of it */
+  --lift: calc(var(--ph) * -0.1);
   --seam: #070707;
   position: absolute;
   z-index: 1;
@@ -2996,49 +2997,50 @@
   height: 100%;
 }
 
-/* the panel in the middle, a white light panel: off, a hairline across it; on, it opens from the
-   line, a faint glow of it on the wall */
+/* the panel in the middle is one of the wall's tiles, set in its seams like the rest (inside the
+   2px either side of each seam), lit the same way — brighter at its top, a little shadow in from
+   its edges, the same fine grain — only white. Off, a hairline across it; on, it lights from
+   the line */
 .panel {
   position: absolute;
   left: 50%;
   top: calc(50% + var(--lift));
-  width: var(--pw);
-  height: var(--ph);
+  width: calc(var(--pw) - 4px);
+  height: calc(var(--ph) - 4px);
   translate: -50% -50%;
   overflow: hidden;
-  background: radial-gradient(ellipse 85% 75% at 50% 42%, #fbfaf7, #ecebe6);
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.55);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 120% 90% at 50% -10%, rgb(255 255 255 / 0.55), transparent 70%),
+    linear-gradient(180deg, #f3f2ee, #e2e1dc);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    inset 0 0 10px rgb(0 0 0 / 0.16);
   clip-path: inset(50% 0 50% 0);
   transition: clip-path 0s linear 0.6s;
 }
 
 .wallOn .panel {
   clip-path: inset(0 0 0 0);
-  box-shadow:
-    0 0 0 1px rgb(0 0 0 / 0.55),
-    0 0 16vh 1vh rgb(255 255 255 / 0.06);
-  transition:
-    clip-path 0.9s cubic-bezier(0.76, 0, 0.24, 1) 0.25s,
-    box-shadow 1.2s ease 0.6s;
+  transition: clip-path 0.9s cubic-bezier(0.76, 0, 0.24, 1) 0.25s;
 }
 
-/* on it, a category in heavy black type: arriving close and huge, cropped by the panel's edges,
-   drawing back until it sits whole (its size measured to the panel) */
+/* on it, a category in bold Arial — our type, the line's — set to the line's exact width, right
+   above it (placed and sized from JS): arriving close and huge, cropped by the tile's edges,
+   drawing back until it locks into place */
 .panelWord,
 .panelMeasure {
   color: #0a0a0a;
-  font-family: var(--font-sans), Arial, sans-serif;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.045em;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 700;
+  line-height: 0.82;
+  letter-spacing: -0.04em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .panelWord {
   position: absolute;
-  left: 50%;
-  top: 30%;
   transform-origin: 50% 50%;
   will-change: transform, opacity;
 }
@@ -3060,16 +3062,21 @@
   top: 50%;
   width: 100%;
   height: 100%;
-  box-shadow: none;
   transition:
     top 0.95s cubic-bezier(0.76, 0, 0.24, 1),
     width 0.95s cubic-bezier(0.76, 0, 0.24, 1),
     height 0.95s cubic-bezier(0.76, 0, 0.24, 1);
 }
 
-/* on the panel, the line of words in ink (its corners too); the caption steps aside */
+/* the line of words blends into the wall and its tile: paper, differenced against what's behind
+   it — ink on the white tile, paper where it crosses the category's black type or the dark wall,
+   turning as the tile lights under it; the caption steps aside */
+.stagePanel > .namesWrap {
+  mix-blend-mode: difference;
+}
+
 .stagePanel > .namesWrap .names {
-  color: #0a0a0a;
+  color: var(--paper);
 }
 
 .stagePanel > .namesWrap .cap {
