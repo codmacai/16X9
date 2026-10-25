@@ -2,25 +2,24 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { WallSurface } from "./beyond-panel";
-import { screenAt } from "./framed-screen";
 import styles from "./hero2.module.css";
 
 // hero 9's 9x16: a row of reels, each its own panel in the wall. The room is the Beyond tile's —
 // the same near-black matte tiles and fine seams (WallSurface) — but here its tiles are tall, 9:16,
 // and across the middle row every one is a screen: a reel on each, its account's mark small at its
 // foot, the wall's own seams between them; the rows above and below dark. The row sits in the
-// middle, as tall as 16x9's screen, the wall above it and below it the same. The panels come on
-// from a line across each, out from the middle; every reel rests low, and one at a time takes the
-// light.
+// middle, the wall above it and below it the same. The panels come on from a line across each, out
+// from the middle; every reel rests low, and one at a time takes the light.
 
 const LIT_MS = 2400;
 const ACCOUNTS = ["/work/accounts/ded_cafe.webp", "/work/accounts/amerlounge.webp", "/work/accounts/businesslounge.webp", "/work/accounts/businessavenue.webp"];
 const stillOf = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.webp");
 
-/** the panels' size and the row's place — as the CSS sets it (.rp): as tall as 16x9's screen, so
-    the wall above and below is the same moving between them */
+/** the panels' size and the row's place — as the CSS sets it (.rp) */
 export function reelPanelAt(w: number, h: number) {
-  const { ph } = screenAt(w, h);
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const ph = vw <= vh ? (vw * 0.92 * 27) / 32 : Math.min((vw * 0.96 * 9) / 16, vh * 0.76);
   return { cx: w / 2, cy: h / 2, pw: (ph * 9) / 16, ph };
 }
 

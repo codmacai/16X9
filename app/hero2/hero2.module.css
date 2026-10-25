@@ -3241,18 +3241,19 @@
 }
 
 /* ===== hero 9's 16x9: a cinema's screen in the wall (framed-screen.tsx) ===== */
-/* the screen: 16:9, large, in the middle — the wall above it and below it the same — and one of the
-   wall's tiles (the wall's tiles are its size here: screenAt), exactly within its seams, no frame of
-   its own; its light soft on the wall round it. Off, a hairline across it; on, it comes on from the
-   line */
+/* the screen: wide and tall, in the middle — near the screen's sides but short of them, the wall a
+   margin round it — 16:9, or wider where the screen is (up to 2:1); one of the wall's tiles (the
+   wall's tiles are its size here: screenAt), exactly within its seams, no frame of its own; its
+   light soft on the wall round it. Off, a hairline across it; on, it comes on from the line */
 .tv {
-  --tw: min(96vw, 76vh * 16 / 9);
+  --tw: min(92vw, 168vh); /* as screenAt() has it */
+  --th: min(84vh, var(--tw) * 9 / 16);
   position: absolute;
   z-index: 2;
   left: 50%;
   top: 50%;
   width: calc(var(--tw) - 2px);
-  aspect-ratio: 16 / 9;
+  height: calc(var(--th) - 2px);
   translate: -50% -50%;
   overflow: hidden;
   background: #030303;
@@ -3265,7 +3266,7 @@
 @media (max-aspect-ratio: 1 / 1) {
   .tv {
     --tw: 92vw;
-    aspect-ratio: 32 / 27;
+    --th: calc(92vw * 27 / 32);
   }
 }
 
@@ -3279,10 +3280,17 @@
     box-shadow 1.6s ease 0.7s;
 }
 
-/* its films, edge to edge, each 16:9: between them only the wall's own fine seams, so its grid runs
-   on through the screen, finer; the wall's push-in left off, so it stays true */
+/* its films, edge to edge, three rows filling it (each 16:9, or as wide as the screen is): between
+   them only the wall's own fine seams, so its grid runs on through the screen, finer; the wall's
+   push-in left off, so it stays true */
 .tv > .fgrid {
   inset: 0;
+  grid-template-rows: repeat(3, 1fr);
+  align-content: stretch;
+}
+
+.tv .cine[data-kind="16x9"] .fcell {
+  aspect-ratio: auto;
 }
 
 .stageLuxe .tv .cine.fgrid {
@@ -3330,7 +3338,7 @@
 /* a panel: one of the wall's tall tiles (reelPanelAt), exactly within its seams, across the middle
    row; it comes on from a line across it, out from the middle */
 .rp {
-  --ph: min(96vw * 9 / 16, 76vh); /* 16x9's screen's height (.tv) */
+  --ph: min(96vw * 9 / 16, 76vh); /* as reelPanelAt() has it */
   --pw: calc(var(--ph) * 9 / 16);
   position: absolute;
   z-index: 2;
