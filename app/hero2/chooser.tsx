@@ -1109,10 +1109,11 @@ export default function Chooser({
    *  the line reaches the full height — and Beyond's page, arriving, opens the dark from it */
   doorBeyond?: boolean;
   /** hero 9: Beyond as a lit tile in a gallery wall — no film: a wall of near-black matte panels,
-   *  the 16:9 one in the middle lighting a warm white; the line of words sinks away and the tile
-   *  carries it all, Beyond's categories on it coming into focus one after another
-   *  (beyond-panel.tsx); the whole tile is the way in: a click on it grows it to the whole
-   *  screen, and Beyond's page comes out from under it */
+   *  the 16:9 one in the middle lighting a warm white; the line of words resets itself in the
+   *  tile's type (the others in outline, BEYOND solid), still answering the pointer; Beyond's
+   *  categories on the tile, set on the line, coming into focus one after another
+   *  (beyond-panel.tsx); a click on the tile grows it to the whole screen, and Beyond's page
+   *  comes out from under it */
   panelBeyond?: boolean;
   /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; a still ribbon of smoke
    *  in the middle under the words; every film resting low, one at a time taking the light; each
@@ -1382,6 +1383,7 @@ export default function Chooser({
               on={up === "beyond" && !open}
               go={open && launch === "beyond"}
               reduce={reduce}
+              word={wordRefs}
               onEnter={() => point("beyond")}
               onLeave={() => point(null)}
               onOpen={() => onOpen("beyond")}

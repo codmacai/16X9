@@ -3054,61 +3054,20 @@
   display: block;
 }
 
-/* in the middle, the category over what it covers, on the label's left edge */
-.panelBody {
-  position: absolute;
-  left: 4.5cqw;
-  right: 4.5cqw;
-  top: 50%;
-  display: flex;
-  flex-direction: column;
-  gap: 4cqh;
-  translate: 0 -46%;
-}
-
-.panelRow {
-  display: flex;
-  align-items: flex-end;
-}
-
-.panelSub {
-  display: block;
-  min-height: 1.2em;
-  color: rgb(11 11 11 / 0.55);
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: max(9px, 0.95cqw);
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-}
-
-.panelSub > span {
-  display: inline-flex;
-  align-items: center;
-}
-
-.panelSub i {
-  display: inline-block;
-  width: 2.4cqw;
-  height: 1px;
-  margin: 0 1.4cqw;
-  background: currentColor;
-  opacity: 0.6;
-}
-
-/* the category in large regular Arial (sized from JS) */
+/* the category in large regular Arial, set on the line of words (placed and sized from JS) */
 .panelWord,
 .panelMeasure {
   color: #0b0b0b;
   font-family: Arial, Helvetica, sans-serif;
   font-weight: 400;
   line-height: 0.82;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.035em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .panelWord {
-  display: block;
+  position: absolute;
   transform-origin: 0% 100%;
   will-change: transform, opacity, filter;
 }
@@ -3189,43 +3148,56 @@
   transition: opacity 0.3s ease;
 }
 
-/* as the tile lights, the line of words hands over to it: the words sink away into their masks,
-   one after another, the reverse of how they rose in (on translate, which sits alongside the
-   words' own inline transform), BEYOND's corners letting go; pointing off the tile, they rise back.
-   While it's lit, only BEYOND (and the tile) still answer the pointer */
-.namesWrap .nameWord,
-.namesWrap .slash {
-  transition: translate 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+/* as the tile lights, the line of words resets itself in the tile's type and steps back for the
+   category: each word sinks into its mask and rises again (on translate, alongside the words' own
+   inline transform), drawn anew in a hairline outline (the switch made while they're down) — the
+   others and the slashes fainter, BEYOND in its corners. It stays where it was, and still answers
+   the pointer, so the formats can be gone back and forth between */
+.stagePanel > .namesWrap .nameWord,
+.stagePanel > .namesWrap .slash {
+  animation: line-reset 1.05s cubic-bezier(0.65, 0, 0.35, 1) both;
 }
 
-.namesWrap .finder {
-  transition: filter 0.3s ease;
+.stagePanel > .namesWrap .slash {
+  animation-delay: 0.03s;
+}
+
+.stagePanel > .namesWrap .name[data-fmt="9x16"] .nameWord {
+  animation-delay: 0.06s;
+}
+
+.stagePanel > .namesWrap .name[data-fmt="beyond"] .nameWord {
+  animation-delay: 0.1s;
+}
+
+@keyframes line-reset {
+  0% {
+    translate: 0 0;
+  }
+  40%,
+  54% {
+    translate: 0 118%;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+
+/* the outline: a hairline in paper — ink on the lit tile, through the line's difference — the
+   others a little stronger than their own inline fade would leave them, BEYOND at full */
+.stagePanel > .namesWrap .name:not([data-fmt="beyond"]),
+.stagePanel > .namesWrap .slash {
+  opacity: 0.42 !important;
+  transition: opacity 0s linear 0.5s;
 }
 
 .stagePanel > .namesWrap .nameWord,
 .stagePanel > .namesWrap .slash {
-  translate: 0 118%;
-  transition: translate 0.6s cubic-bezier(0.76, 0, 0.24, 1);
-}
-
-.stagePanel > .namesWrap .slash {
-  transition-delay: 0.04s;
-}
-
-.stagePanel > .namesWrap .name[data-fmt="9x16"] .nameWord {
-  transition-delay: 0.07s;
-}
-
-.stagePanel > .namesWrap .name[data-fmt="beyond"] .nameWord {
-  transition-delay: 0.12s;
-}
-
-.stagePanel > .namesWrap .finder {
-  filter: opacity(0);
-}
-
-.stagePanel > .namesWrap .name:not([data-fmt="beyond"]) {
-  pointer-events: none !important;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--paper);
+  transition:
+    color 0s linear 0.5s,
+    -webkit-text-stroke-color 0s linear 0.5s;
 }
 
 @media (prefers-reduced-motion: reduce) {
