@@ -234,6 +234,7 @@ function Names({
   onOpen,
   idle,
   springy = false,
+  beyondLine,
 }: {
   ink: boolean;
   show: boolean;
@@ -248,6 +249,8 @@ function Names({
   idle?: string;
   /** hero 6: the words, their corners and the caption move on springs */
   springy?: boolean;
+  /** hero 8: Beyond's caption, in place of its list of services */
+  beyondLine?: string;
 }) {
   // hero 6 moves on springs: the corners snap in with a little give, the words settle
   const SPRING = { type: "spring", visualDuration: 0.5, bounce: 0.28 } as const;
@@ -339,7 +342,7 @@ function Names({
             >
               <i>{f.no}</i>
               <span className={styles.capRule} />
-              {f.line}
+              {f.key === "beyond" && beyondLine ? beyondLine : f.line}
             </motion.span>
           )}
           {!f && idle && show && ready && (
@@ -1120,6 +1123,7 @@ export default function Chooser({
   band = false,
   plainBeyond = false,
   doorBeyond = false,
+  beyondLine,
   panelBeyond = false,
   curved = false,
   poster = false,
@@ -1162,6 +1166,8 @@ export default function Chooser({
    *  of light stands in the dark like a door left ajar; clicking BEYOND, the words step aside and
    *  the line reaches the full height — and Beyond's page, arriving, opens the dark from it */
   doorBeyond?: boolean;
+  /** Beyond's caption, in place of its list of services (hero 8) */
+  beyondLine?: string;
   /** hero 9: Beyond as a lit tile in a gallery wall — no film: a wall of near-black matte panels,
    *  the 16:9 one in the middle lighting a warm white; the line of words resets itself in the
    *  tile's type (the others in outline, BEYOND solid), still answering the pointer; Beyond's
@@ -1413,6 +1419,7 @@ export default function Chooser({
           onOpen={onOpen}
           idle={idle}
           springy={refined}
+          beyondLine={beyondLine}
         />
       </div>
 
