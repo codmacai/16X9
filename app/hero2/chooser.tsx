@@ -7,6 +7,7 @@ import type { Preview, WallFilm } from "../work/_shared/data";
 import styles from "./hero2.module.css";
 import SmokeRibbon from "./smoke-ribbon";
 import BeyondPanel from "./beyond-panel";
+import FramedScreen from "./framed-screen";
 
 export const EASE = [0.16, 1, 0.3, 1] as const;
 export const EASE_CINE = [0.76, 0, 0.24, 1] as const;
@@ -1106,6 +1107,7 @@ export default function Chooser({
   doorBeyond = false,
   panelBeyond = false,
   curved = false,
+  poster = false,
   luxe = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
@@ -1156,6 +1158,9 @@ export default function Chooser({
    *  drawing back, the sides coming round, fine gutters between the films; the view shifting a
    *  little with the pointer (with luxe) */
   curved?: boolean;
+  /** hero 9: 16x9 as a framed screen on the Beyond tile's wall, in daylight — the brand films
+   *  playing in it with their marks, set as a print in a paper mat; no smoke (framed-screen.tsx) */
+  poster?: boolean;
   /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; a still ribbon of smoke
    *  in the middle under the words; every film resting low, one at a time taking the light; each
    *  tile opening from a line across its middle, out from the centre. Every preview, Beyond's
@@ -1373,7 +1378,7 @@ export default function Chooser({
   return (
     <motion.div
       ref={stageRef}
-      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${doorBeyond && up === "beyond" ? styles.stagePaper : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
+      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${(doorBeyond && up === "beyond") || (poster && up === "16x9") ? styles.stagePaper : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
       initial={false}
       animate={{ opacity: open && !((doorBeyond || panelBeyond) && launch === "beyond") ? 0 : 1 }}
       transition={reduce ? { duration: 0 } : open ? { delay: luxe ? 0.45 : 0.95, duration: 0.6, ease: EASE } : { duration: 0.5, ease: EASE }}
@@ -1412,7 +1417,9 @@ export default function Chooser({
             }}
             className={styles.filmBox}
           >
-            {grid && pool?.length && f.key !== "beyond" ? (
+            {poster && f.key === "16x9" && wall?.length ? (
+              <FramedScreen on={up === "16x9" && !open} films={wall} reduce={reduce} />
+            ) : grid && pool?.length && f.key !== "beyond" ? (
               refined && f.key === "9x16" ? (
                 <ReelStrip on={up === f.key && !open} pool={pool} turn={turn} curved={curved} />
               ) : (
@@ -1469,7 +1476,7 @@ export default function Chooser({
           parts too and the film is the whole screen */}
       {/* hero 7: smoke in the middle, over the preview and under the words */}
       {band && !luxe && <Smoke on={!!up && !open && !(doorBeyond && up === "beyond")} />}
-      {band && luxe && <SmokeRibbon on={!!up && !open && up !== "beyond"} />}
+      {band && luxe && <SmokeRibbon on={!!up && !open && up !== "beyond" && !(poster && up === "16x9")} />}
 
       {/* hero 7: under the line while Beyond is up, the way in — over the smoke, and it holds the
           preview while it's pointed at (hero 8's door has none: BEYOND itself is the way in) */}

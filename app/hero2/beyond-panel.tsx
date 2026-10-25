@@ -222,7 +222,7 @@ function panelAt(w: number, h: number) {
   return { cx: w / 2, cy: h / 2 - ph * 0.08, pw, ph };
 }
 
-function WallSurface() {
+export function WallSurface() {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current;
