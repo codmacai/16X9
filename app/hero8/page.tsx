@@ -33,7 +33,7 @@ import own from "../hero7/hero7.module.css";
 
 const HEADLINE = "Stories beyond the frame";
 // Beyond's caption: the way in — click, and step through the door
-const BEYOND_LINE = "Click to step through the door";
+const BEYOND_LINE = "Click to experience Beyond";
 // from here the page answers
 const SETTLE_S = LOGO_T.names + 0.9;
 // touch screens have no hover: on the index the formats take turns
