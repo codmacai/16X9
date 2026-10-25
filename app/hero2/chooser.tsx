@@ -8,6 +8,7 @@ import styles from "./hero2.module.css";
 import SmokeRibbon from "./smoke-ribbon";
 import BeyondPanel from "./beyond-panel";
 import FramedScreen from "./framed-screen";
+import ReelPanels from "./reel-panels";
 
 export const EASE = [0.16, 1, 0.3, 1] as const;
 export const EASE_CINE = [0.76, 0, 0.24, 1] as const;
@@ -1432,7 +1433,9 @@ export default function Chooser({
             }}
             className={styles.filmBox}
           >
-            {poster && f.key !== "beyond" && pool?.length ? (
+            {poster && f.key === "9x16" && pool?.length ? (
+              <ReelPanels on={up === "9x16" && !open} pool={pool} turn={turn} reduce={reduce} />
+            ) : poster && f.key === "16x9" && pool?.length ? (
               <FramedScreen on={up === f.key && !open}>
                 <FormatGrid kind={f.key} on={up === f.key && !open} pool={pool} turn={turn} big={refined} wall={wall} screen />
               </FramedScreen>
