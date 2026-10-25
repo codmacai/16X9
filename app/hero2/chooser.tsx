@@ -4,7 +4,6 @@ import { Fragment, memo, useEffect, useRef, useState, useSyncExternalStore, type
 import { AnimatePresence, animate as fmAnimate, motion } from "framer-motion";
 import { FORMATS, Ratio, type FormatKey } from "../hero13/formats";
 import type { Preview, WallFilm } from "../work/_shared/data";
-import { leaveDoor } from "../work/_shared/door";
 import styles from "./hero2.module.css";
 import SmokeRibbon from "./smoke-ribbon";
 
@@ -1068,7 +1067,6 @@ export default function Chooser({
   band = false,
   plainBeyond = false,
   doorBeyond = false,
-  doorFilm,
   luxe = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
@@ -1105,13 +1103,9 @@ export default function Chooser({
    *  open out from the word to the corners of the screen */
   plainBeyond?: boolean;
   /** hero 8: Beyond as a door. The screen goes black, BEYOND turns to paper, and a single hairline
-   *  of light stands in the dark like a door left ajar; clicking BEYOND opens it — the line reaches
-   *  the full height, light pours through the widening gap and settles into the film (with
-   *  plainBeyond) */
+   *  of light stands in the dark like a door left ajar; clicking BEYOND, the words step aside and
+   *  the line reaches the full height — and Beyond's page, arriving, opens the dark from it */
   doorBeyond?: boolean;
-  /** hero 8: the film behind Beyond's door — the first of Beyond's projects, which its work page
-   *  picks up where the door leaves it (work/_shared/door.ts) */
-  doorFilm?: string;
   /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; a still ribbon of smoke
    *  in the middle under the words; every film resting low, one at a time taking the light; each
    *  tile opening from a line across its middle, out from the centre. Every preview, Beyond's
@@ -1190,13 +1184,6 @@ export default function Chooser({
     }, 1000);
     return () => window.clearTimeout(t);
   }, [up]); // eslint-disable-line react-hooks/exhaustive-deps -- a new film only when the word changes
-
-  // hero 8: going through Beyond's door, note how far into its film it is, so Beyond's page
-  // picks the film up there
-  useEffect(() => {
-    const v = videoRefs.current.beyond;
-    if (open && launch === "beyond" && doorFilm && v) leaveDoor({ clip: doorFilm, t: v.currentTime, at: Date.now() });
-  }, [open, launch, doorFilm]);
 
   // the windows: each film opens out of its word to its frame (or to the edges), and folds back
   useEffect(() => {
@@ -1361,13 +1348,14 @@ export default function Chooser({
               ) : (
                 <FormatGrid kind={f.key as "16x9" | "9x16"} on={up === f.key && !open} pool={pool} turn={turn} big={refined} wall={wall} />
               )
-            ) : (
+            ) : f.key === "beyond" && doorBeyond ? null : (
+            // (hero 8's door shows no film: it opens onto Beyond's page itself)
             <video
               ref={(el) => {
                 videoRefs.current[f.key] = el;
               }}
-              src={f.key === "beyond" && doorFilm ? doorFilm : portrait ? f.small : f.desk}
-              poster={f.key === "beyond" && doorFilm ? stillOf(doorFilm) : portrait ? f.smallPoster : f.poster}
+              src={portrait ? f.small : f.desk}
+              poster={portrait ? f.smallPoster : f.poster}
               muted
               loop
               playsInline
@@ -1379,9 +1367,8 @@ export default function Chooser({
           </div>
           {/* the light from the door, soft on the dark round it */}
           {f.key === "beyond" && doorBeyond && <span className={styles.doorGlow} aria-hidden="true" />}
-          {/* the light through the gap, and the light that pours through as it opens */}
+          {/* the light through the gap */}
           {f.key === "beyond" && doorBeyond && <span className={styles.doorLine} aria-hidden="true" />}
-          {f.key === "beyond" && doorBeyond && <span className={styles.doorFlood} aria-hidden="true" />}
           {f.key === "beyond" && plainBeyond && !doorBeyond && <OpenCorners on={up === "beyond"} word={wordRefs} stage={stageRef} />}
           {f.key === "beyond" && pool?.length && !plainBeyond ? (
             grid ? (

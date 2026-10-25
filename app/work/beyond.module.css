@@ -364,27 +364,69 @@
   color: rgb(246 244 240 / 0.75);
 }
 
-/* ===================== through hero 8's door: the film arriving, settling into its card ===================== */
-.arrive {
+/* ===================== through hero 8's door: the dark parting from its line ===================== */
+/* arriving, the page is the door's dark with its hairline of light down the middle, just as hero 8
+   left it; then the two halves of the dark part from the line onto the page */
+.doorIn {
   position: fixed;
-  z-index: 40;
+  z-index: 60;
   inset: 0;
   pointer-events: none;
 }
 
-/* full screen it's framed as the opened film is; in its card, as the card frames it */
-.arriveBox {
-  container-type: size;
+.doorHalf {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50.5%;
+  background: #050505;
+  animation: door-part 1.2s cubic-bezier(0.76, 0, 0.24, 1) 0.15s both;
 }
 
-.arriveBox .film img,
-.arriveBox .film video {
-  transition: scale 1.2s cubic-bezier(0.76, 0, 0.24, 1);
+.doorHalf:first-child {
+  left: 0;
+  --to: -100%;
 }
 
-.arriveIn .film img,
-.arriveIn .film video {
-  scale: 1.32;
+.doorHalf:nth-child(2) {
+  right: 0;
+  --to: 100%;
+}
+
+@keyframes door-part {
+  to {
+    transform: translateX(var(--to));
+  }
+}
+
+/* the line of light (as hero 8's), with its soft glow on the dark, giving way as the dark parts */
+.doorSeam {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  translate: -50% 0;
+  background: linear-gradient(90deg, rgb(255 236 214 / 0.35), rgb(255 248 240), rgb(255 236 214 / 0.35));
+  box-shadow: 0 0 14px 1px rgb(255 232 206 / 0.4);
+  animation: door-seam 0.6s ease 0.15s both;
+}
+
+.doorSeam::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34vw;
+  height: 84vh;
+  translate: -50% -50%;
+  background: radial-gradient(closest-side, rgb(255 236 214 / 0.13), rgb(255 236 214 / 0.04) 55%, transparent);
+}
+
+@keyframes door-seam {
+  to {
+    opacity: 0;
+  }
 }
 
 .close {

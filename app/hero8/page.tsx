@@ -5,7 +5,8 @@ import { useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
 import { HOME_KEY } from "../work/_shared/chrome";
-import { BEYOND_FILMS, WALL_16X9 } from "../work/_shared/data";
+import { WALL_16X9 } from "../work/_shared/data";
+import { leaveDoor } from "../work/_shared/door";
 import { type FormatKey } from "../hero13/formats";
 import Chooser, { LOGO_T } from "../hero2/chooser";
 import styles from "../hero2/hero2.module.css";
@@ -22,11 +23,10 @@ import own from "../hero7/hero7.module.css";
 // Beyond, the studio's top service, is an entrance: the screen goes black,
 // the other words fall away and BEYOND turns to paper, and a single hairline
 // of light — its film, seen through the gap — draws down the middle of the
-// dark like a door left ajar onto a lit room. Click BEYOND and the door
-// opens: the line reaches the full height, light pours through the widening
-// gap and settles into the film — Beyond's first project — and Beyond's page
-// picks that film up where the door left it, full screen, and settles it into
-// its card: through the door, straight into the work.
+// dark like a door left ajar onto a lit room. Click BEYOND and the words step
+// aside as the line reaches the full height; Beyond's page arrives as that same
+// dark and line, and the dark parts from it like a door onto the projects and
+// their categories (work/beyond.tsx): through the door, straight into the work.
 //
 // Clicking a word goes on to that format's work (/work?format=…), as in hero 7.
 // ===========================================================================
@@ -39,8 +39,8 @@ const AUTO_MS = 3400;
 const AUTO_SEQ: (FormatKey | null)[] = ["16x9", "9x16", "beyond", null];
 // ms from the click to the work page: the preview has filled the screen by then
 const GO_MS = 1050;
-// ...and for Beyond, once its door has opened onto the film and it has held a moment
-const GO_BEYOND_MS = 1650;
+// ...and for Beyond, once its line has reached the full height (its page opens the door)
+const GO_BEYOND_MS = 650;
 
 // The variant depends on the URL and today's date, so it's read on the client only.
 const noopSubscribe = () => () => {};
@@ -103,6 +103,7 @@ function Home({ variant }: { variant: HeroVariant }) {
       try {
         sessionStorage.setItem(HOME_KEY, "/hero8");
       } catch {}
+      if (k === "beyond") leaveDoor();
       window.setTimeout(() => router.push(`/work?format=${k}`), reduce ? 0 : k === "beyond" ? GO_BEYOND_MS : GO_MS);
     },
     [ready, reduce, room, router]
@@ -136,7 +137,6 @@ function Home({ variant }: { variant: HeroVariant }) {
         band
         plainBeyond
         doorBeyond
-        doorFilm={BEYOND_FILMS[0].clip}
         luxe
       />
     </section>

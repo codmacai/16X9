@@ -1,34 +1,22 @@
-// Beyond's door (hero 8) and Beyond's work page (work/beyond.tsx) are one move: the film seen
-// through the door as it opens is the deck's first project, and the page picks it up where the
-// door left it — the same film, at the same moment, full screen — before it settles into its card.
-// The door leaves a note of which film and how far in; the page reads it once, and only soon after.
-export type Door = { clip: string; t: number; at: number };
-
+// Beyond's door (hero 8) and Beyond's work page (work/beyond.tsx) are one move: clicking BEYOND
+// the hairline of light reaches the full height of the dark, and Beyond's page, arriving, starts
+// as that same dark and line and opens from it onto itself. The door leaves a note as it goes;
+// the page reads it once, and only soon after (a reload, or coming back later, opens plainly).
 const KEY = "16x9:door";
 
-export function leaveDoor(d: Door) {
+export function leaveDoor() {
   try {
-    sessionStorage.setItem(KEY, JSON.stringify(d));
+    sessionStorage.setItem(KEY, String(Date.now()));
   } catch {}
 }
 
-/** the door's note, if it was left for this film just now (and it's then used up) */
-export function takeDoor(clip: string): Door | null {
+/** whether this page was just come into through the door (the note is then used up) */
+export function takeDoor(): boolean {
   try {
-    const d = JSON.parse(sessionStorage.getItem(KEY) ?? "null") as Door | null;
+    const at = Number(sessionStorage.getItem(KEY));
     sessionStorage.removeItem(KEY);
-    return d && d.clip === clip && Date.now() - d.at < 8000 ? d : null;
+    return at > 0 && Date.now() - at < 8000;
   } catch {
-    return null;
+    return false;
   }
-}
-
-/** a film picked up where the door left it: there, plus the time since */
-export function seekDoor(v: HTMLVideoElement, d: Door) {
-  const go = () => {
-    const t = d.t + (Date.now() - d.at) / 1000;
-    v.currentTime = v.duration ? t % v.duration : t;
-  };
-  if (v.readyState >= 1) go();
-  else v.addEventListener("loadedmetadata", go, { once: true });
 }

@@ -1291,7 +1291,7 @@
 }
 
 /* ===== hero 8: Beyond as a door — the screen black, one hairline of light down the middle ===== */
-/* the film is behind the door, out of sight until it opens */
+/* nothing shows through it here: the door opens onto Beyond's page itself (work/beyond.tsx) */
 .film_beyond.filmDoor .filmBox {
   z-index: 1;
   clip-path: inset(14% 50% 14% 50%);
@@ -1299,15 +1299,6 @@
 
 .film_beyond.filmDoor .filmBox::after {
   display: none;
-}
-
-/* behind the door, Beyond's first project, framed as its page frames it full screen (the
-   stand-in clips carry bars in their files: far enough in that they fall outside), held still
-   so the page can pick it up exactly */
-.film_beyond.filmDoor .filmBox video {
-  scale: 1.45;
-  translate: none;
-  transition: none;
 }
 
 /* the light through the gap: a hairline, brightest at its middle, drawn out from there */
@@ -1333,81 +1324,20 @@
   transition: transform 1.6s cubic-bezier(0.16, 1, 0.3, 1) 0.35s;
 }
 
-/* the light that pours through as it opens */
-.doorFlood {
-  position: absolute;
-  z-index: 2;
-  inset: 0;
-  background: radial-gradient(ellipse 60% 75% at 50% 50%, rgb(255 248 238), rgb(255 232 206) 70%, rgb(236 206 176));
-  clip-path: inset(14% 50% 14% 50%);
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* ===== going in: the door opens ===== */
-/* 1. the line reaches the full height and brightens, then gives way to the light behind it */
+/* ===== going in: the line reaches the full height and holds; Beyond's page, arriving, opens
+   the dark from it (work/beyond.tsx, DoorIn) ===== */
 .stageDoor .doorOpen .doorLine {
-  animation: door-line 0.75s cubic-bezier(0.65, 0, 0.35, 1) both;
+  animation: door-reach 0.5s cubic-bezier(0.65, 0, 0.35, 1) both;
 }
 
-@keyframes door-line {
-  0% {
+@keyframes door-reach {
+  from {
     transform: scaleY(1);
-    opacity: 1;
   }
-  45% {
+  to {
     transform: scaleY(1.39);
-    opacity: 1;
     -webkit-mask-image: none;
     mask-image: none;
-  }
-  100% {
-    transform: scaleY(1.39);
-    opacity: 0;
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-}
-
-/* 2. the gap opens from the line, top to bottom first, then wide; the film behind it */
-.stageDoor .doorOpen .filmBox {
-  animation: door-open 1.25s both;
-}
-
-/* ...light pouring through it, settling into the film as it reaches the edges */
-.stageDoor .doorOpen .doorFlood {
-  animation:
-    door-open 1.25s both,
-    door-flood 1.25s both;
-}
-
-@keyframes door-open {
-  0% {
-    clip-path: inset(14% 50% 14% 50%);
-    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
-  }
-  28% {
-    clip-path: inset(0 calc(50% - 1px) 0 calc(50% - 1px));
-    animation-timing-function: cubic-bezier(0.76, 0, 0.24, 1);
-  }
-  100% {
-    clip-path: inset(0 0 0 0);
-  }
-}
-
-@keyframes door-flood {
-  0%,
-  22% {
-    opacity: 0;
-  }
-  34% {
-    opacity: 1;
-  }
-  62% {
-    opacity: 0.55;
-  }
-  100% {
-    opacity: 0;
   }
 }
 
@@ -1431,22 +1361,6 @@
   transition: opacity 2s ease 0.6s;
 }
 
-/* opening, the glow swells with the light, then the film takes over */
-.stageDoor .doorOpen .doorGlow {
-  animation: door-glow 1s ease-out both;
-}
-
-@keyframes door-glow {
-  40% {
-    opacity: 1;
-    scale: 1.8;
-  }
-  100% {
-    opacity: 0;
-    scale: 2.4;
-  }
-}
-
 /* on the dark, the line of words turns to paper */
 .stagePaper > .namesWrap .names {
   color: var(--paper);
@@ -1467,10 +1381,7 @@
   .doorGlow {
     transition: none !important;
   }
-  .stageDoor .doorOpen .filmBox,
-  .stageDoor .doorOpen .doorFlood,
-  .stageDoor .doorOpen .doorLine,
-  .stageDoor .doorOpen .doorGlow {
+  .stageDoor .doorOpen .doorLine {
     animation-duration: 0.01s;
   }
 }
