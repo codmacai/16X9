@@ -1,11 +1,12 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion, type Transition, type Variants } from "framer-motion";
 import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
 import { Band, EASE, EASE_CINE, rootClass } from "./_shared/chrome";
 import { BEYOND_CATEGORIES, BEYOND_FILMS, stillFor, type BeyondFilm } from "./_shared/data";
+import { seekDoor, takeDoor, type Door } from "./_shared/door";
 import { startMuted } from "./brand-shared";
 import s from "./beyond.module.css";
 
@@ -23,6 +24,10 @@ import s from "./beyond.module.css";
 // categories as the landing's index line, each with its count, a fine line
 // under the one on show sliding to the one you pick: picking one springs
 // the deck to its first project.
+//
+// Come in through hero 8's door and the page picks up the film seen through
+// it (the first project's) where the door left it, full screen, and settles
+// it into its card as the page comes in round it — then its words rise.
 // ===========================================================================
 
 const N = BEYOND_FILMS.length;
@@ -47,6 +52,15 @@ export default function Beyond() {
   const go = useCallback((to: number) => setAt(Math.max(0, Math.min(N - 1, to))), []);
   const [full, setFull] = useState<Rect | null>(null);
 
+  // come in through hero 8's door: its film, picked up full screen, settling into the first card
+  const [door, setDoor] = useState<Door | null>(null);
+  useLayoutEffect(() => {
+    const d = takeDoor(BEYOND_FILMS[0].clip);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the door's note is only in the browser; read before the first paint
+    if (d && !reduce) setDoor(d);
+  }, [reduce]);
+  const arrived = useCallback(() => setDoor(null), []);
+
   // the deck's height, so it can spring a card's height at a time
   const deckRef = useRef<HTMLDivElement>(null);
   const [h, setH] = useState(0);
@@ -64,7 +78,7 @@ export default function Beyond() {
     atRef.current = at;
   }, [at]);
   useEffect(() => {
-    if (full) return;
+    if (full || door) return;
     let last = 0;
     const wheel = (e: WheelEvent) => {
       if (e.ctrlKey) return;
@@ -88,7 +102,7 @@ export default function Beyond() {
       window.removeEventListener("wheel", wheel);
       window.removeEventListener("keydown", key);
     };
-  }, [full, go]);
+  }, [full, door, go]);
 
   // a swipe up or down the card
   const swipe = useRef<{ x: number; y: number } | null>(null);
@@ -170,6 +184,8 @@ export default function Beyond() {
                     <Feature
                       film={f}
                       on={k === at}
+                      hold={!!door}
+                      from={door && k === 0 ? door : undefined}
                       reduce={reduce}
                       onExplore={(r) => setFull(r)}
                     />
@@ -181,6 +197,9 @@ export default function Beyond() {
         </div>
       </div>
 
+      {/* through the door: its film, full screen, settling into the first card */}
+      <AnimatePresence>{door && <Arrive key="arrive" door={door} film={BEYOND_FILMS[0]} card={deckRef} onDone={arrived} />}</AnimatePresence>
+
       {/* the film opened to the whole screen */}
       <AnimatePresence>{full && <Full key="full" from={full} film={film} reduce={reduce} onClose={() => setFull(null)} />}</AnimatePresence>
     </main>
@@ -188,20 +207,43 @@ export default function Beyond() {
 }
 
 /** A project as a feature card, in the site's type. Its words rise in once it's on show. */
-function Feature({ film: f, on, reduce, onExplore }: { film: BeyondFilm; on: boolean; reduce: boolean; onExplore: (r: Rect) => void }) {
+function Feature({
+  film: f,
+  on,
+  hold = false,
+  from,
+  reduce,
+  onExplore,
+}: {
+  film: BeyondFilm;
+  on: boolean;
+  /** its film arriving through the door: its words wait for it to settle */
+  hold?: boolean;
+  /** ...and its film plays from where the door left it, so the hand-over can't be seen */
+  from?: Door;
+  reduce: boolean;
+  onExplore: (r: Rect) => void;
+}) {
   const c = BEYOND_CATEGORIES[f.cat];
   const ref = useRef<HTMLElement>(null);
+  const play = useCallback(
+    (v: HTMLVideoElement | null) => {
+      startMuted(v);
+      if (v && from) seekDoor(v, from);
+    },
+    [from]
+  );
   return (
     <article ref={ref} className={`${s.card} ${on ? s.cardOn : ""}`} aria-label={`${f.title} — ${c.name}`}>
       {/* the film, the whole card, settling slowly as the card arrives */}
       <div className={s.film} aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={stillFor(f.clip)} alt="" draggable={false} />
-        {on && !reduce && <video ref={startMuted} src={f.clip} muted autoPlay playsInline loop preload="auto" />}
+        {on && !reduce && <video ref={play} src={f.clip} muted autoPlay playsInline loop preload="auto" />}
       </div>
       <i className={s.grade} aria-hidden="true" />
 
-      <motion.div className={s.words} variants={WORDS} initial={reduce ? false : "out"} animate={on || reduce ? "in" : "out"}>
+      <motion.div className={s.words} variants={WORDS} initial={reduce ? false : "out"} animate={(on && !hold) || reduce ? "in" : "out"}>
         {/* the eyebrow, over the name */}
         <div className={s.foot}>
           <motion.p className={s.label} variants={RISE}>
@@ -264,6 +306,58 @@ function Full({ from, film, reduce, onClose }: { from: Rect; film: BeyondFilm; r
         <motion.button type="button" className={s.close} onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.6 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
           Close <i aria-hidden="true">×</i>
         </motion.button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/** Through hero 8's door: the film seen through it, picked up where the door left it, full screen;
+ *  it holds a moment, then settles into the first card (the deck's own place) as the page comes in
+ *  round it, its grade coming up as it goes. Then it hands over to the card, which is playing the
+ *  same film at the same moment underneath. */
+function Arrive({ door, film, card, onDone }: { door: Door; film: BeyondFilm; card: RefObject<HTMLDivElement | null>; onDone: () => void }) {
+  const [full] = useState(() => ({ top: 0, left: 0, width: window.innerWidth, height: window.innerHeight }));
+  const [to, setTo] = useState<{ rect: Rect; radius: number } | null>(null);
+  const play = useCallback(
+    (v: HTMLVideoElement | null) => {
+      startMuted(v);
+      if (v) seekDoor(v, door);
+    },
+    [door]
+  );
+  // where it settles, measured once the page has laid itself out under the band
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const el = card.current;
+      if (!el) return onDone();
+      const r = el.getBoundingClientRect();
+      setTo({ rect: { top: r.top, left: r.left, width: r.width, height: r.height }, radius: parseFloat(getComputedStyle(el).borderTopLeftRadius) || 24 });
+    }, 350);
+    return () => window.clearTimeout(id);
+  }, [card, onDone]);
+  return (
+    <motion.div className={s.arrive} aria-hidden="true" exit={{ opacity: 0, transition: { duration: 0.3 } }}>
+      <motion.div
+        className={`${s.fullBox} ${s.arriveBox} ${to ? s.arriveIn : ""}`}
+        initial={{ ...full, borderRadius: 0 }}
+        animate={to ? { ...to.rect, borderRadius: to.radius } : { ...full, borderRadius: 0 }}
+        transition={{ duration: 1.2, ease: EASE_CINE }}
+        onAnimationComplete={() => to && onDone()}
+      >
+        <div className={s.film}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={stillFor(film.clip)} alt="" draggable={false} />
+          <video
+            ref={play}
+            src={film.clip}
+            muted
+            autoPlay
+            playsInline
+            loop
+            preload="auto"
+          />
+        </div>
+        <motion.i className={s.grade} initial={{ opacity: 0 }} animate={{ opacity: to ? 1 : 0 }} transition={{ duration: 1.2, ease: EASE_CINE }} />
       </motion.div>
     </motion.div>
   );

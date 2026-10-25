@@ -364,6 +364,29 @@
   color: rgb(246 244 240 / 0.75);
 }
 
+/* ===================== through hero 8's door: the film arriving, settling into its card ===================== */
+.arrive {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* full screen it's framed as the opened film is; in its card, as the card frames it */
+.arriveBox {
+  container-type: size;
+}
+
+.arriveBox .film img,
+.arriveBox .film video {
+  transition: scale 1.2s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+.arriveIn .film img,
+.arriveIn .film video {
+  scale: 1.32;
+}
+
 .close {
   position: absolute;
   top: clamp(24px, 4vw, 48px);

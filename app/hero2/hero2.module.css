@@ -1301,6 +1301,15 @@
   display: none;
 }
 
+/* behind the door, Beyond's first project, framed as its page frames it full screen (the
+   stand-in clips carry bars in their files: far enough in that they fall outside), held still
+   so the page can pick it up exactly */
+.film_beyond.filmDoor .filmBox video {
+  scale: 1.45;
+  translate: none;
+  transition: none;
+}
+
 /* the light through the gap: a hairline, brightest at its middle, drawn out from there */
 .doorLine {
   position: absolute;

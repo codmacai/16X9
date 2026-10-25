@@ -5,7 +5,7 @@ import { useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { resolveVariant, type HeroVariant } from "@/components/Hero-config";
 import { HOME_KEY } from "../work/_shared/chrome";
-import { WALL_16X9 } from "../work/_shared/data";
+import { BEYOND_FILMS, WALL_16X9 } from "../work/_shared/data";
 import { type FormatKey } from "../hero13/formats";
 import Chooser, { LOGO_T } from "../hero2/chooser";
 import styles from "../hero2/hero2.module.css";
@@ -24,7 +24,9 @@ import own from "../hero7/hero7.module.css";
 // of light — its film, seen through the gap — draws down the middle of the
 // dark like a door left ajar onto a lit room. Click BEYOND and the door
 // opens: the line reaches the full height, light pours through the widening
-// gap and settles into the film, and on into Beyond's work.
+// gap and settles into the film — Beyond's first project — and Beyond's page
+// picks that film up where the door left it, full screen, and settles it into
+// its card: through the door, straight into the work.
 //
 // Clicking a word goes on to that format's work (/work?format=…), as in hero 7.
 // ===========================================================================
@@ -134,6 +136,7 @@ function Home({ variant }: { variant: HeroVariant }) {
         band
         plainBeyond
         doorBeyond
+        doorFilm={BEYOND_FILMS[0].clip}
         luxe
       />
     </section>
