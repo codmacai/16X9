@@ -429,6 +429,27 @@
   }
 }
 
+/* ===================== from hero 9's panel: lifting away onto the page ===================== */
+/* arriving, the page is hero 9's white light panel filling the screen, just as hero 9 left it;
+   then it lifts away off the top, onto the page */
+.panelIn {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  background: radial-gradient(ellipse 85% 75% at 50% 42%, #fbfaf7, #ecebe6);
+  animation: panel-in 1s cubic-bezier(0.76, 0, 0.24, 1) 0.15s both;
+  pointer-events: none;
+}
+
+@keyframes panel-in {
+  from {
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 100% 0);
+  }
+}
+
 .close {
   position: absolute;
   top: clamp(24px, 4vw, 48px);

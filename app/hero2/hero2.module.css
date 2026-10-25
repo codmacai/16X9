@@ -2956,3 +2956,131 @@
     transition: none;
   }
 }
+
+/* ===== hero 9: Beyond as a lit panel in a wall (beyond-panel.tsx), no film ===== */
+.film_beyond.filmPanel .filmBox {
+  display: none;
+}
+
+/* a wall of dark matte panels, the size of the 16:9 one in the middle, their seams running on
+   from its edges. The surface itself is drawn (beyond-panel.tsx, WallSurface); this ground is
+   its stand-in without WebGL */
+.wall {
+  --pw: min(58vw, 150vh);
+  --ph: calc(var(--pw) * 9 / 16);
+  /* the panel sits a little above the middle, so the line of words falls under its type */
+  --lift: calc(var(--ph) * -0.09);
+  --seam: #070707;
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, var(--seam) 0 4px, transparent 4px) calc(50% - 2px) 0 / var(--pw) 100%,
+    linear-gradient(180deg, var(--seam) 0 4px, transparent 4px) 0 calc(50% + var(--lift) - 2px) / 100% var(--ph),
+    radial-gradient(ellipse 75% 60% at 50% 0%, rgb(255 255 255 / 0.09), transparent 72%),
+    radial-gradient(ellipse 90% 85% at 50% 42%, transparent 35%, rgb(0 0 0 / 0.6)),
+    #262626;
+}
+
+@media (max-aspect-ratio: 1 / 1) {
+  .wall {
+    --pw: 90vw;
+  }
+}
+
+.wallSurface {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* the panel in the middle, a white light panel: off, a hairline across it; on, it opens from the
+   line, a faint glow of it on the wall */
+.panel {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + var(--lift));
+  width: var(--pw);
+  height: var(--ph);
+  translate: -50% -50%;
+  overflow: hidden;
+  background: radial-gradient(ellipse 85% 75% at 50% 42%, #fbfaf7, #ecebe6);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.55);
+  clip-path: inset(50% 0 50% 0);
+  transition: clip-path 0s linear 0.6s;
+}
+
+.wallOn .panel {
+  clip-path: inset(0 0 0 0);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.55),
+    0 0 16vh 1vh rgb(255 255 255 / 0.06);
+  transition:
+    clip-path 0.9s cubic-bezier(0.76, 0, 0.24, 1) 0.25s,
+    box-shadow 1.2s ease 0.6s;
+}
+
+/* on it, a category in heavy black type: arriving close and huge, cropped by the panel's edges,
+   drawing back until it sits whole (its size measured to the panel) */
+.panelWord,
+.panelMeasure {
+  color: #0a0a0a;
+  font-family: var(--font-sans), Arial, sans-serif;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.panelWord {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+.panelMeasure {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 100px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* going in, the panel grows to the whole screen */
+.wallGo .panel {
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  box-shadow: none;
+  transition:
+    top 0.95s cubic-bezier(0.76, 0, 0.24, 1),
+    width 0.95s cubic-bezier(0.76, 0, 0.24, 1),
+    height 0.95s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+/* on the panel, the line of words in ink (its corners too); the caption steps aside */
+.stagePanel > .namesWrap .names {
+  color: #0a0a0a;
+}
+
+.stagePanel > .namesWrap .cap {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .wallOn .panel,
+  .wallGo .panel {
+    transition: none;
+  }
+}

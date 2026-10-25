@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
 import { Band, EASE, EASE_CINE, rootClass } from "./_shared/chrome";
 import { BEYOND_CATEGORIES, BEYOND_FILMS, stillFor, type BeyondFilm } from "./_shared/data";
-import { takeDoor } from "./_shared/door";
+import { takeDoor, type Entry } from "./_shared/door";
 import { startMuted } from "./brand-shared";
 import s from "./beyond.module.css";
 
@@ -27,15 +27,18 @@ import s from "./beyond.module.css";
 //
 // Come in through hero 8's door and the page arrives as the door's own dark,
 // its hairline of light down the middle, then the dark parts from the line
-// like a door onto the page — its words rising as it opens.
+// like a door onto the page — its words rising as it opens. Come in from hero
+// 9's panel and it arrives as that panel, filling the screen, which lifts away
+// off the top onto the page.
 // ===========================================================================
 
 const N = BEYOND_FILMS.length;
 const GAP = 28; // px between one card and the next in the deck
 const DECK: Transition = { type: "spring", stiffness: 80, damping: 13, mass: 1 }; // the deck, springing on: a touch past, then settling
 const pad2 = (n: number) => String(n).padStart(2, "0");
-// through the door (ms from arriving): the words start to rise as it opens, and it's gone (its
-// halves part over 1.2s from 0.15s; beyond.module.css)
+// through the door or out of the light (ms from arriving): the words start to rise as it opens,
+// and it's gone (the door's halves part over 1.2s from 0.15s, the panel lifts over 1s from
+// 0.15s; beyond.module.css)
 const DOOR = { words: 450, gone: 1450 };
 const firstOf = (cat: number) => BEYOND_FILMS.findIndex((f) => f.cat === cat);
 const filmsOf = (cat: number) => BEYOND_FILMS.filter((f) => f.cat === cat);
@@ -55,12 +58,17 @@ export default function Beyond() {
   const go = useCallback((to: number) => setAt(Math.max(0, Math.min(N - 1, to))), []);
   const [full, setFull] = useState<Rect | null>(null);
 
-  // come in through hero 8's door: the dark, parting from its line onto the page (the card's
-  // words wait for it). A fixed run, on timers: it always clears, whatever the browser does.
+  // come in from the home: through hero 8's door (the dark, parting from its line onto the page)
+  // or from hero 9's panel (filling the screen, lifting away onto the page); the card's words wait for it.
+  // A fixed run, on timers: it always clears, whatever the browser does.
   const [door, setDoor] = useState<"shut" | "opening" | null>(null);
+  const [entry, setEntry] = useState<Entry>("door");
   useLayoutEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- the door's note is only in the browser; read before the first paint
-    if (takeDoor() && !reduce) setDoor("shut");
+    const e = takeDoor();
+    if (!e || reduce) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the home's note is only in the browser; read before the first paint
+    setEntry(e);
+    setDoor("shut");
   }, [reduce]);
   useEffect(() => {
     if (door !== "shut") return;
@@ -208,14 +216,15 @@ export default function Beyond() {
         </div>
       </div>
 
-      {/* through the door: the dark parting from its line */}
-      {door && (
+      {/* through the door: the dark parting from its line; or from the panel, lifting away */}
+      {door && entry === "door" && (
         <div className={s.doorIn} aria-hidden="true">
           <i className={s.doorHalf} />
           <i className={s.doorHalf} />
           <i className={s.doorSeam} />
         </div>
       )}
+      {door && entry === "panel" && <div className={s.panelIn} aria-hidden="true" />}
 
       {/* the film opened to the whole screen */}
       <AnimatePresence>{full && <Full key="full" from={full} film={film} reduce={reduce} onClose={() => setFull(null)} />}</AnimatePresence>
