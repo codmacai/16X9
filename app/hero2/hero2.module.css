@@ -3241,18 +3241,18 @@
 }
 
 /* ===== hero 9's 16x9: a cinema's screen in the wall (framed-screen.tsx) ===== */
-/* the screen: cinema-wide, in the middle — the wall above it and below it the same — and one of the
+/* the screen: 16:9, large, in the middle — the wall above it and below it the same — and one of the
    wall's tiles (the wall's tiles are its size here: screenAt), exactly within its seams, no frame of
    its own; its light soft on the wall round it. Off, a hairline across it; on, it comes on from the
    line */
 .tv {
-  --tw: min(96vw, 82vh * 8 / 3);
+  --tw: min(96vw, 76vh * 16 / 9);
   position: absolute;
   z-index: 2;
   left: 50%;
   top: 50%;
   width: calc(var(--tw) - 2px);
-  aspect-ratio: 8 / 3;
+  aspect-ratio: 16 / 9;
   translate: -50% -50%;
   overflow: hidden;
   background: #030303;
@@ -3330,7 +3330,7 @@
 /* a panel: one of the wall's tall tiles (reelPanelAt), exactly within its seams, across the middle
    row; it comes on from a line across it, out from the middle */
 .rp {
-  --ph: min(96vw * 3 / 8, 82vh); /* 16x9's screen's height (.tv) */
+  --ph: min(96vw * 9 / 16, 76vh); /* 16x9's screen's height (.tv) */
   --pw: calc(var(--ph) * 9 / 16);
   position: absolute;
   z-index: 2;
