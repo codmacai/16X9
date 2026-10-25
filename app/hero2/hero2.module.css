@@ -2966,7 +2966,7 @@
    on from its edges. The surface itself is drawn (beyond-panel.tsx, WallSurface); this ground is
    its stand-in without WebGL */
 .wall {
-  --pw: min(66vw, 142vh);
+  --pw: min(74vw, 150vh);
   --ph: calc(var(--pw) * 9 / 16);
   /* the tile sits a little above the middle, so what's set on it — the category over the line of
      words — sits in the middle of it */
@@ -3240,10 +3240,10 @@
   --gap: 12px;
 }
 
-/* ===== hero 9's 16x9: one screen in the wall (framed-screen.tsx) ===== */
-/* the screen: the tile in the middle — where Beyond's lights white — set flush in the wall, a fine
-   dark bezel, its light faint on the wall round it. Off, a hairline across it; on, it comes on from
-   the line */
+/* ===== hero 9's 16x9: the tile in the middle a screen (framed-screen.tsx) ===== */
+/* the screen: the tile in the middle — where Beyond's lights white — exactly within its seams, no
+   frame of its own; its light faint on the wall round it. Off, a hairline across it; on, it comes on
+   from the line */
 .tv {
   position: absolute;
   z-index: 2;
@@ -3254,9 +3254,6 @@
   translate: -50% -50%;
   overflow: hidden;
   background: #030303;
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.06),
-    0 0 0 1px #000;
   clip-path: inset(50% 0 50% 0);
   transition:
     clip-path 0s linear 0.6s,
@@ -3265,29 +3262,36 @@
 
 .tvOn .tv {
   clip-path: inset(0 0 0 0);
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.06),
-    0 0 0 1px #000,
-    0 0 14vh 1vh rgb(190 205 255 / 0.05);
+  box-shadow: 0 0 16vh 1vh rgb(200 212 255 / 0.05);
   transition:
     clip-path 1.1s cubic-bezier(0.76, 0, 0.24, 1) 0.25s,
     box-shadow 1.4s ease 0.6s;
 }
 
-/* its films, inside the bezel */
+/* its films, edge to edge, three by three, each 16:9: between them only the wall's own fine seams,
+   so its grid runs on through the screen, finer; the wall's push-in left off, so it stays true */
 .tv > .fgrid {
-  inset: 0.55%;
+  inset: 0;
 }
 
-/* a breath of reflection across the glass */
+.stageLuxe .tv .cine.fgrid {
+  gap: 2px;
+  background: #030303;
+  transform: none;
+}
+
+.stageLuxe .tv .fcell {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
+/* the faintest sheen across its glass */
 .tvGlass {
   position: absolute;
   z-index: 3;
   inset: 0;
   background:
-    linear-gradient(118deg, transparent 30%, rgb(255 255 255 / 0.045) 42%, rgb(255 255 255 / 0.015) 52%, transparent 60%),
-    radial-gradient(ellipse 80% 60% at 50% 0%, rgb(255 255 255 / 0.035), transparent 70%);
-  box-shadow: inset 0 0 0 0.55cqw #050505;
+    linear-gradient(118deg, transparent 30%, rgb(255 255 255 / 0.04) 42%, rgb(255 255 255 / 0.012) 52%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgb(255 255 255 / 0.03), transparent 70%);
   pointer-events: none;
 }
 

@@ -217,7 +217,7 @@ function compile(gl: WebGLRenderingContext, type: number, src: string) {
 function panelAt(w: number, h: number) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const pw = vw <= vh ? vw * 0.92 : Math.min(vw * 0.66, vh * 1.42);
+  const pw = vw <= vh ? vw * 0.92 : Math.min(vw * 0.74, vh * 1.5);
   const ph = (pw * 9) / 16;
   return { cx: w / 2, cy: h / 2 - ph * 0.08, pw, ph };
 }
