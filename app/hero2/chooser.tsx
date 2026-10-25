@@ -644,6 +644,7 @@ const FormatGrid = memo(function FormatGrid({
   big = false,
   wall,
   curved = false,
+  screen = false,
 }: {
   kind: "16x9" | "9x16";
   on: boolean;
@@ -654,10 +655,12 @@ const FormatGrid = memo(function FormatGrid({
   wall?: WallFilm[];
   /** hero 9: the wall curved round the viewer, as a cinema's screen (four across, to give it sweep) */
   curved?: boolean;
+  /** hero 9: on one 16:9 screen — three by three, filling it exactly */
+  screen?: boolean;
 }) {
   // hero 6: larger tiles — 16x9 three across, 9x16 five across — enough rows to cover the screen
   const view = useViewport();
-  const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : coverGrid(view, curved ? 4 : 3)) : GRID[kind];
+  const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : screen ? { cols: 3, rows: 3 } : coverGrid(view, curved ? 4 : 3)) : GRID[kind];
   const n = g.cols * g.rows;
   const live = useLiveCount(on && big, n);
   const { budget, rich } = useDevice();
@@ -1158,8 +1161,8 @@ export default function Chooser({
    *  drawing back, the sides coming round, fine gutters between the films; the view shifting a
    *  little with the pointer (with luxe) */
   curved?: boolean;
-  /** hero 9: 16x9 as a framed screen on the Beyond tile's wall, in daylight — the brand films
-   *  playing in it with their marks, set as a print in a paper mat; no smoke (framed-screen.tsx) */
+  /** hero 9: 16x9 as one screen in the Beyond tile's wall, where Beyond's tile is — its wall of
+   *  brand films on it, three by three, each under its brand's mark; no smoke (framed-screen.tsx) */
   poster?: boolean;
   /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; a still ribbon of smoke
    *  in the middle under the words; every film resting low, one at a time taking the light; each
@@ -1408,7 +1411,7 @@ export default function Chooser({
           ref={(el) => {
             filmRefs.current[f.key] = el;
           }}
-          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""} ${f.key === "beyond" && doorBeyond ? `${styles.filmDoor} ${up === "beyond" && open ? styles.doorOpen : ""}` : ""} ${f.key === "beyond" && panelBeyond ? styles.filmPanel : ""} ${curved && f.key !== "beyond" ? styles.filmCurved : ""}`}
+          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""} ${f.key === "beyond" && doorBeyond ? `${styles.filmDoor} ${up === "beyond" && open ? styles.doorOpen : ""}` : ""} ${f.key === "beyond" && panelBeyond ? styles.filmPanel : ""} ${curved && f.key !== "beyond" && !(poster && f.key === "16x9") ? styles.filmCurved : ""}`}
           aria-hidden="true"
         >
           <div
@@ -1417,8 +1420,10 @@ export default function Chooser({
             }}
             className={styles.filmBox}
           >
-            {poster && f.key === "16x9" && wall?.length ? (
-              <FramedScreen on={up === "16x9" && !open} films={wall} reduce={reduce} />
+            {poster && f.key === "16x9" && pool?.length ? (
+              <FramedScreen on={up === "16x9" && !open}>
+                <FormatGrid kind="16x9" on={up === "16x9" && !open} pool={pool} turn={turn} big={refined} wall={wall} screen />
+              </FramedScreen>
             ) : grid && pool?.length && f.key !== "beyond" ? (
               refined && f.key === "9x16" ? (
                 <ReelStrip on={up === f.key && !open} pool={pool} turn={turn} curved={curved} />
