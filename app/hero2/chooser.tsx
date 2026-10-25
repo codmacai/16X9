@@ -1128,6 +1128,7 @@ export default function Chooser({
   curved = false,
   poster = false,
   luxe = false,
+  light = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -1179,14 +1180,18 @@ export default function Chooser({
    *  drawing back, the sides coming round, fine gutters between the films; the view shifting a
    *  little with the pointer (with luxe) */
   curved?: boolean;
-  /** hero 9: 16x9 and 9x16 each as one cinema-wide screen in the Beyond tile's wall, where Beyond's tile is — its wall of
-   *  brand films on it, three by three, each under its brand's mark; no smoke (framed-screen.tsx) */
+  /** hero 9: 16x9 as one wide screen in the Beyond tile's wall — its brand films on it, three by
+   *  three, each under its brand's mark (framed-screen.tsx) — and 9x16 as three displays mounted on
+   *  the wall, each scrolling through its account's reels (reel-panels.tsx); no smoke */
   poster?: boolean;
   /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; a still ribbon of smoke
    *  in the middle under the words; every film resting low, one at a time taking the light; each
    *  tile opening from a line across its middle, out from the centre. Every preview, Beyond's
    *  door too, comes in the same way: the room fades to black over the one before, then it opens */
   luxe?: boolean;
+  /** hero 10: hero 9's wall white, its grain stronger, its seams grey, in every room; the line of
+   *  words and the logo differenced against it, so they read on the wall and on the screens alike */
+  light?: boolean;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
   const base = reduce ? 0 : first ? (logo ? LOGO_T.names : INTRO.names) : 0.1;
@@ -1399,7 +1404,7 @@ export default function Chooser({
   return (
     <motion.div
       ref={stageRef}
-      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${(doorBeyond && up === "beyond") || (poster && !!up && up !== "beyond") ? styles.stagePaper : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && poster && !!up && up !== "beyond" ? styles.stageScreen : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
+      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${(doorBeyond && up === "beyond") || (poster && !!up && up !== "beyond") ? styles.stagePaper : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && poster && !!up && up !== "beyond" ? styles.stageScreen : ""} ${light ? styles.stageLight : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
       initial={false}
       animate={{ opacity: open && !((doorBeyond || panelBeyond) && launch === "beyond") ? 0 : 1 }}
       transition={reduce ? { duration: 0 } : open ? { delay: luxe ? 0.45 : 0.95, duration: 0.6, ease: EASE } : { duration: 0.5, ease: EASE }}
@@ -1440,9 +1445,9 @@ export default function Chooser({
             className={styles.filmBox}
           >
             {poster && f.key === "9x16" && pool?.length ? (
-              <ReelPanels on={up === "9x16" && !open} pool={pool} turn={turn} reduce={reduce} />
+              <ReelPanels on={up === "9x16" && !open} pool={pool} turn={turn} reduce={reduce} light={light} />
             ) : poster && f.key === "16x9" && pool?.length ? (
-              <FramedScreen on={up === f.key && !open}>
+              <FramedScreen on={up === f.key && !open} light={light}>
                 <FormatGrid kind={f.key} on={up === f.key && !open} pool={pool} turn={turn} big={refined} wall={wall} screen />
               </FramedScreen>
             ) : grid && pool?.length && f.key !== "beyond" ? (
@@ -1481,6 +1486,7 @@ export default function Chooser({
               onEnter={() => point("beyond")}
               onLeave={() => point(null)}
               onOpen={() => onOpen("beyond")}
+              light={light}
             />
           )}
           {f.key === "beyond" && plainBeyond && !doorBeyond && !panelBeyond && <OpenCorners on={up === "beyond"} word={wordRefs} stage={stageRef} />}

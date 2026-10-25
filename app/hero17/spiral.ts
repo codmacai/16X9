@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 // ===========================================================================
-// HERO 10 — the spiral. A ribbon of 16:9 panels wound around an invisible
+// HERO 17 (first built as hero 10) — the spiral. A ribbon of 16:9 panels wound around an invisible
 // vertical cylinder as a helix. Each panel is bent to the cylinder in the
 // vertex shader and sits level at the helix height of its centre, so the
 // ribbon steps down to the right across the front and up to the right round

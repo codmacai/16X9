@@ -33,10 +33,13 @@ export default function BeyondPanel({
   onEnter,
   onLeave,
   onOpen,
+  light = false,
 }: {
   on: boolean;
   go: boolean;
   reduce: boolean;
+  /** hero 10: the wall white */
+  light?: boolean;
   /** the line of words, so the category can be set on it */
   word: RefObject<Partial<Record<FormatKey, HTMLElement | null>>>;
   /** the tile, pointed at and left, and clicked: it holds the preview open, and goes in */
@@ -90,7 +93,7 @@ export default function BeyondPanel({
   const c = BEYOND_CATEGORIES[i];
   return (
     <div className={`${styles.wall} ${on || go ? styles.wallOn : ""} ${go ? styles.wallGo : ""}`} aria-hidden="true">
-      <WallSurface />
+      <WallSurface light={light} />
       <div className={styles.panel} onPointerEnter={onEnter} onPointerLeave={onLeave} onClick={onOpen}>
         <span ref={measureRef} className={styles.panelMeasure}>
           {BEYOND_CATEGORIES.map((k) => (
@@ -158,6 +161,7 @@ precision highp float;
 uniform vec2 uRes;   // device px
 uniform vec4 uPanel; // the panel: centre x, centre y (from the top), width, height, device px
 uniform float uDpr;
+uniform float uLight; // 0: the near-black matte; 1: a white one, its grain stronger, its seams grey
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -183,24 +187,29 @@ void main() {
   float gap = 1.0 * uDpr;
   float px1 = 1.0 / uDpr;
 
-  // the material: a near-black matte, each panel a shade apart, the finest grain
-  float v = 0.092 + 0.008 * (hash(tile + 3.7) - 0.5);
-  v += (noise(vec2(px.x * 0.0025 * px1, px.y * 0.45 * px1)) - 0.5) * 0.007;
-  v += (hash(px) - 0.5) * 0.007;
+  // the material: a matte, near-black (or white), each panel a shade apart, the finest grain
+  float v = mix(0.092, 0.92, uLight) + mix(0.008, 0.014, uLight) * (hash(tile + 3.7) - 0.5);
+  v += (noise(vec2(px.x * 0.0025 * px1, px.y * 0.45 * px1)) - 0.5) * mix(0.007, 0.014, uLight);
+  v += (hash(px) - 0.5) * mix(0.007, 0.034, uLight);
   // each panel a touch brighter at its top
-  v *= 1.0 + 0.1 * pow(1.0 - l.y / s.y, 2.0);
-  // a soft pool of light from above the middle; the rest of the room falling away to dark
+  v *= 1.0 + mix(0.1, 0.035, uLight) * pow(1.0 - l.y / s.y, 2.0);
+  // a soft pool of light from above the middle; the rest of the room falling away (to dark, or
+  // on the white, only a little)
   vec2 q = (px - vec2(uRes.x * 0.5, uRes.y * 0.08)) / vec2(uRes.x * 0.5, uRes.y * 0.95);
   float key = exp(-dot(q, q) * 1.4);
-  v *= 0.3 + 1.05 * key;
+  v *= mix(0.3 + 1.05 * key, 0.87 + 0.15 * key, uLight);
   // the lit tile's light on the wall round it, warm and soft
   vec2 e = max(abs(px - c) - s * 0.5, 0.0);
   float spill = exp(-length(e) / s.y * 3.2);
-  vec3 col = vec3(v) * vec3(1.0, 0.988, 0.97) + vec3(1.0, 0.965, 0.91) * spill * 0.05;
+  vec3 col = vec3(v) * mix(vec3(1.0, 0.988, 0.97), vec3(1.0, 0.992, 0.972), uLight) + vec3(1.0, 0.965, 0.91) * spill * mix(0.05, 0.012, uLight);
+  // on the white, the screen (or the lit tile) set a little proud of the wall: its shadow soft
+  // round it, falling a little below
+  vec2 e2 = max(abs(px - c - vec2(0.0, s.y * 0.025)) - s * 0.5, 0.0);
+  col *= 1.0 - uLight * 0.16 * exp(-length(e2) / (s.y * 0.05));
   // the seams: fine, a breath of shadow either side, the top edge of each panel just lit
-  col *= mix(0.78, 1.0, smoothstep(gap, gap + 6.0 * uDpr, d));
-  col += 0.025 * smoothstep(gap + 1.2 * uDpr, gap + 0.2 * uDpr, l.y) * step(gap, l.y) * step(gap, min(l.x, s.x - l.x));
-  col = mix(col, vec3(0.012), 1.0 - smoothstep(gap - 0.6 * uDpr, gap + 0.2 * uDpr, d));
+  col *= mix(mix(0.78, 0.9, uLight), 1.0, smoothstep(gap, gap + 6.0 * uDpr, d));
+  col += mix(0.025, 0.03, uLight) * smoothstep(gap + 1.2 * uDpr, gap + 0.2 * uDpr, l.y) * step(gap, l.y) * step(gap, min(l.x, s.x - l.x));
+  col = mix(col, vec3(mix(0.012, 0.64, uLight)), 1.0 - smoothstep(gap - 0.6 * uDpr, gap + 0.2 * uDpr, d));
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -225,8 +234,8 @@ function panelAt(w: number, h: number) {
 type Geo = (w: number, h: number) => { cx: number; cy: number; pw: number; ph: number };
 
 /** the wall, its tiles the size of `at`'s (the Beyond tile's by default), their seams running on from
- *  its edges */
-export function WallSurface({ at = panelAt }: { at?: Geo }) {
+ *  its edges; `light`, the white wall (hero 10) */
+export function WallSurface({ at = panelAt, light = false }: { at?: Geo; light?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -249,6 +258,7 @@ export function WallSurface({ at = panelAt }: { at?: Geo }) {
     const uRes = gl.getUniformLocation(prog, "uRes");
     const uPanel = gl.getUniformLocation(prog, "uPanel");
     const uDpr = gl.getUniformLocation(prog, "uDpr");
+    const uLight = gl.getUniformLocation(prog, "uLight");
 
     const draw = () => {
       if (!canvas.clientWidth) return;
@@ -260,6 +270,7 @@ export function WallSurface({ at = panelAt }: { at?: Geo }) {
       gl.uniform2f(uRes, canvas.width, canvas.height);
       gl.uniform4f(uPanel, cx * dpr, cy * dpr, pw * dpr, ph * dpr);
       gl.uniform1f(uDpr, dpr);
+      gl.uniform1f(uLight, light ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       canvas.dataset.drawn = "";
     };
@@ -273,6 +284,6 @@ export function WallSurface({ at = panelAt }: { at?: Geo }) {
       gl.deleteShader(fs);
       gl.deleteBuffer(buf);
     };
-  }, [at]);
+  }, [at, light]);
   return <canvas ref={ref} className={styles.wallSurface} />;
 }

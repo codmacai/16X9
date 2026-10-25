@@ -23,10 +23,10 @@ export function screenAt(w: number, h: number) {
   return { cx: w / 2, cy: h / 2, pw, ph };
 }
 
-export default function FramedScreen({ on, children }: { on: boolean; children: ReactNode }) {
+export default function FramedScreen({ on, light = false, children }: { on: boolean; light?: boolean; children: ReactNode }) {
   return (
     <div className={`${styles.wall} ${styles.tvRoom} ${on ? styles.tvOn : ""}`} aria-hidden="true">
-      <WallSurface at={screenAt} />
+      <WallSurface at={screenAt} light={light} />
       <div className={styles.tv}>
         {children}
         <i className={styles.tvGlass} />

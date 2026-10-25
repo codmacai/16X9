@@ -1,88 +1,141 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ACCOUNTS } from "../work/_shared/data";
 import { WallSurface } from "./beyond-panel";
 import styles from "./hero2.module.css";
 
-// hero 9's 9x16: a row of reels, each its own panel in the wall. The room is the Beyond tile's —
-// the same near-black matte tiles and fine seams (WallSurface) — but here its tiles are tall, 9:16,
-// and across the middle row every one is a screen: a reel on each, its account's mark small at its
-// foot, the wall's own seams between them; the rows above and below dark. The row sits in the
-// middle, the wall above it and below it the same. The panels come on from a line across each, out
-// from the middle; every reel rests low, and one at a time takes the light.
+// hero 9's 9x16: three screens on the wall. The room is the Beyond tile's wall — the same matte
+// tiles and fine seams (WallSurface) — its tiles small here, as a station's, nine to a screen's
+// height; and mounted on it, three tall 9:16 displays in black bezels, a breath apart, their shadow
+// on the wall. On each, an account's reels, one at a time, the account's name and handle at its
+// foot and its mark beside them. Every few seconds the three move on to the next reel, one after
+// another from the left, each scrolling up as a feed does. Their screens come on from a line
+// across each, the middle one first.
 
-const LIT_MS = 2400;
-const ACCOUNTS = ["/work/accounts/ded_cafe.webp", "/work/accounts/amerlounge.webp", "/work/accounts/businesslounge.webp", "/work/accounts/businessavenue.webp"];
+const HOLD_MS = 4000;
+/** how long a scroll takes, the last of the three included (.dspReel) */
+const MOVE_MS = 1700;
+const WHO = ACCOUNTS.filter((a) => !a.handle.startsWith("demo-"));
+const DISPLAYS = [-1, 0, 1];
 const stillOf = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.webp");
+const mod = (a: number, n: number) => ((a % n) + n) % n;
 
-/** the panels' size and the row's place — as the CSS sets it (.rp) */
-export function reelPanelAt(w: number, h: number) {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const ph = vw <= vh ? (vw * 0.92 * 27) / 32 : Math.min((vw * 0.96 * 9) / 16, vh * 0.76);
-  return { cx: w / 2, cy: h / 2, pw: (ph * 9) / 16, ph };
+/** a display's screen's width — as the CSS sets it (.dspRoom --sw) */
+function screenW(vw: number, vh: number) {
+  return vw <= vh ? vw * 0.64 : Math.min(vw * 0.235, (vh * 0.72 * 9) / 16);
 }
 
-const sub = (cb: () => void) => {
-  window.addEventListener("resize", cb);
-  return () => window.removeEventListener("resize", cb);
-};
+/** the wall's tiles: small, nine to a display's height (its bezel too), so its head and foot sit on
+ *  seams */
+function tileAt(w: number, h: number) {
+  const sw = screenW(window.innerWidth, window.innerHeight);
+  const ph = ((sw * 16) / 9 + sw * 0.06) / 9;
+  return { cx: w / 2, cy: h / 2, pw: ph * 1.6, ph };
+}
 
-/** iOS plays a film on its own only when it's muted as an attribute, not just the property */
-const startMuted = (v: HTMLVideoElement | null) => {
-  if (!v) return;
-  v.muted = true;
-  v.setAttribute("muted", "");
-  v.play().catch(() => {});
-};
-
-export default function ReelPanels({ on, pool, turn, reduce }: { on: boolean; pool: string[]; turn: number; reduce: boolean }) {
-  // as many panels either side of the middle one as it takes to reach the screen's edges
-  const side = useSyncExternalStore(
-    sub,
-    () => {
-      const { pw } = reelPanelAt(window.innerWidth, window.innerHeight);
-      return Math.ceil((window.innerWidth / 2 - pw / 2) / pw);
-    },
-    () => 2
+/** one reel on a screen: its still under it until it plays; playing only while it's on screen */
+function Reel({ src, on, live, who }: { src: string; on: boolean; live: boolean; who: (typeof WHO)[number] }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    // iOS plays a film on its own only when it's muted as an attribute, not just the property
+    v.muted = true;
+    v.setAttribute("muted", "");
+    if (live) v.play().catch(() => {});
+    else v.pause();
+  }, [live, on]);
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={stillOf(src)} alt="" draggable={false} />
+      {on && (
+        <video
+          ref={ref}
+          src={src}
+          muted
+          loop
+          playsInline
+          preload="auto"
+          disablePictureInPicture
+          onPlaying={(e) => (e.currentTarget.dataset.playing = "")}
+        />
+      )}
+      <span className={styles.dspWho}>
+        <span>
+          <b>{who.name}</b>
+          <i>@{who.handle}</i>
+        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={who.logo} alt="" draggable={false} />
+      </span>
+    </>
   );
-  const ks = Array.from({ length: side * 2 + 1 }, (_, i) => i - side);
+}
 
-  // one at a time takes the light, out from the middle and back
-  const [lit, setLit] = useState<number | null>(null);
+export default function ReelPanels({
+  on,
+  pool,
+  turn,
+  reduce,
+  light = false,
+}: {
+  on: boolean;
+  pool: string[];
+  turn: number;
+  reduce: boolean;
+  /** hero 10: the wall white */
+  light?: boolean;
+}) {
+  // every few seconds, the next reel; while they scroll, the one going up stays to be seen going
+  const [step, setStep] = useState(0);
+  const [moving, setMoving] = useState(false);
   useEffect(() => {
     if (!on || reduce) return;
-    const order = ks.slice().sort((a, b) => ((a * 37 + 11) % 7) - ((b * 37 + 11) % 7));
-    let i = 0;
-    const t = window.setTimeout(() => setLit(order[0]), 900);
-    const id = window.setInterval(() => setLit(order[(i = (i + 1) % order.length)]), LIT_MS);
-    return () => {
+    let t = 0;
+    const id = window.setInterval(() => {
+      setStep((s) => s + 1);
+      setMoving(true);
       window.clearTimeout(t);
+      t = window.setTimeout(() => setMoving(false), MOVE_MS);
+    }, HOLD_MS);
+    return () => {
       window.clearInterval(id);
-      setLit(null);
+      window.clearTimeout(t);
+      setMoving(false);
     };
-  }, [on, reduce, side]); // eslint-disable-line react-hooks/exhaustive-deps -- ks follows side
+  }, [on, reduce]);
+
+  // the reels in turn across the three, so no two show the same at once
+  const nAt = (d: number, s: number) => s * DISPLAYS.length + d + 1;
+  const reelAt = (n: number) => pool[mod(n * 7 + 2 + turn, pool.length)];
 
   return (
-    <div className={`${styles.wall} ${on ? styles.rpOn : ""}`} aria-hidden="true">
-      <WallSurface at={reelPanelAt} />
-      {ks.map((k) => {
-        const src = pool[(((k + side) * 7 + 2 + turn) % pool.length + pool.length) % pool.length];
-        return (
-          <span
-            key={k}
-            className={`${styles.rp} ${lit === k ? styles.lit : ""}`}
-            style={{ "--k": k, "--open": `${(Math.abs(k) * 0.08).toFixed(2)}s` } as React.CSSProperties}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={stillOf(src)} alt="" draggable={false} />
-            {on && <video ref={startMuted} src={src} muted autoPlay loop playsInline preload="auto" disablePictureInPicture />}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className={styles.rpMark} src={ACCOUNTS[(k + side) % ACCOUNTS.length]} alt="" draggable={false} />
-            <i className={styles.tvGlass} />
-          </span>
-        );
-      })}
+    <div className={`${styles.wall} ${styles.dspRoom} ${on ? styles.dspOn : ""}`} aria-hidden="true">
+      <WallSurface at={tileAt} light={light} />
+      {DISPLAYS.map((d) => (
+        <div
+          key={d}
+          className={styles.dsp}
+          style={{ "--d": d, "--open": `${(Math.abs(d) * 0.12).toFixed(2)}s`, "--lag": `${((d + 1) * 0.16).toFixed(2)}s` } as React.CSSProperties}
+        >
+          <div className={styles.dspScreen}>
+            {/* the one gone up (while it goes), the one on, and the next waiting under it */}
+            {[-1, 0, 1].map((j) => {
+              if (j === -1 && !moving) return null;
+              const s = step + j;
+              const n = nAt(d, s);
+              return (
+                <div key={s} className={styles.dspReel} style={{ "--j": j } as React.CSSProperties}>
+                  <Reel src={reelAt(n)} on={on} live={on && j <= 0} who={WHO[mod(n, WHO.length)]} />
+                </div>
+              );
+            })}
+            <i className={styles.dspGlass} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
