@@ -3335,10 +3335,10 @@
 }
 
 /* ===== hero 9's 9x16: three screens mounted on the wall (reel-panels.tsx) ===== */
-/* the wall's tiles are small here (tileAt); on it, three displays: a 9:16 screen (--sw wide) in a
+/* the wall is 16x9's, clean (screenAt); on it, three displays: a 9:16 screen (--sw wide) in a
    black bezel (--bz), a breath apart (--gap), the middle one in the middle */
 .dspRoom {
-  --sw: min(23.5vw, 72vh * 9 / 16); /* as screenW() has it */
+  --sw: min(23.5vw, 72vh * 9 / 16);
   --bz: calc(var(--sw) * 0.03);
   --dw: calc(var(--sw) + 2 * var(--bz));
   --gap: calc(var(--dw) * 0.26);

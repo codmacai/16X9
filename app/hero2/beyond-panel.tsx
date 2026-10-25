@@ -162,6 +162,7 @@ uniform vec2 uRes;   // device px
 uniform vec4 uPanel; // the panel: centre x, centre y (from the top), width, height, device px
 uniform float uDpr;
 uniform float uLight; // 0: the near-black matte; 1: a white one, its grain stronger, its seams grey
+uniform float uLit;   // 1: the tile in the middle is lit, or a screen — its light (or shadow) round it
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -201,11 +202,11 @@ void main() {
   // the lit tile's light on the wall round it, warm and soft
   vec2 e = max(abs(px - c) - s * 0.5, 0.0);
   float spill = exp(-length(e) / s.y * 3.2);
-  vec3 col = vec3(v) * mix(vec3(1.0, 0.988, 0.97), vec3(1.0, 0.992, 0.972), uLight) + vec3(1.0, 0.965, 0.91) * spill * mix(0.05, 0.012, uLight);
+  vec3 col = vec3(v) * mix(vec3(1.0, 0.988, 0.97), vec3(1.0, 0.992, 0.972), uLight) + vec3(1.0, 0.965, 0.91) * spill * mix(0.05, 0.012, uLight) * uLit;
   // on the white, the screen (or the lit tile) set a little proud of the wall: its shadow soft
   // round it, falling a little below
   vec2 e2 = max(abs(px - c - vec2(0.0, s.y * 0.025)) - s * 0.5, 0.0);
-  col *= 1.0 - uLight * 0.16 * exp(-length(e2) / (s.y * 0.05));
+  col *= 1.0 - uLight * uLit * 0.16 * exp(-length(e2) / (s.y * 0.05));
   // the seams: fine, a breath of shadow either side, the top edge of each panel just lit
   col *= mix(mix(0.78, 0.9, uLight), 1.0, smoothstep(gap, gap + 6.0 * uDpr, d));
   col += mix(0.025, 0.03, uLight) * smoothstep(gap + 1.2 * uDpr, gap + 0.2 * uDpr, l.y) * step(gap, l.y) * step(gap, min(l.x, s.x - l.x));
@@ -234,8 +235,9 @@ function panelAt(w: number, h: number) {
 type Geo = (w: number, h: number) => { cx: number; cy: number; pw: number; ph: number };
 
 /** the wall, its tiles the size of `at`'s (the Beyond tile's by default), their seams running on from
- *  its edges; `light`, the white wall (hero 10) */
-export function WallSurface({ at = panelAt, light = false }: { at?: Geo; light?: boolean }) {
+ *  its edges; `light`, the white wall (hero 10); `lit` false, nothing in the middle tile, so no
+ *  light (or shadow) round it */
+export function WallSurface({ at = panelAt, light = false, lit = true }: { at?: Geo; light?: boolean; lit?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -259,6 +261,7 @@ export function WallSurface({ at = panelAt, light = false }: { at?: Geo; light?:
     const uPanel = gl.getUniformLocation(prog, "uPanel");
     const uDpr = gl.getUniformLocation(prog, "uDpr");
     const uLight = gl.getUniformLocation(prog, "uLight");
+    const uLit = gl.getUniformLocation(prog, "uLit");
 
     const draw = () => {
       if (!canvas.clientWidth) return;
@@ -271,6 +274,7 @@ export function WallSurface({ at = panelAt, light = false }: { at?: Geo; light?:
       gl.uniform4f(uPanel, cx * dpr, cy * dpr, pw * dpr, ph * dpr);
       gl.uniform1f(uDpr, dpr);
       gl.uniform1f(uLight, light ? 1 : 0);
+      gl.uniform1f(uLit, lit ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       canvas.dataset.drawn = "";
     };
@@ -284,6 +288,6 @@ export function WallSurface({ at = panelAt, light = false }: { at?: Geo; light?:
       gl.deleteShader(fs);
       gl.deleteBuffer(buf);
     };
-  }, [at, light]);
+  }, [at, light, lit]);
   return <canvas ref={ref} className={styles.wallSurface} />;
 }

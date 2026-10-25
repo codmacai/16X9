@@ -16,8 +16,8 @@ import own from "../hero7/hero7.module.css";
 // HERO 9 — hero 8 as a room: a wall of near-black matte tiles. 16x9 is a
 // wide screen in it, near its sides, one of its tiles, centred: its brand films on it
 // three by three, each under its mark, edge to edge with only the wall's
-// fine seams between them (hero2/framed-screen.tsx). For 9x16 the wall's tiles
-// are small, and three tall displays are mounted on it, each scrolling on
+// fine seams between them (hero2/framed-screen.tsx). For 9x16 the wall is the
+// same, clean, and three tall displays are mounted on it, each scrolling on
 // through its account's reels (hero2/reel-panels.tsx). With either up, the
 // line of words steps back to an outline so the films lead. No smoke. Beyond, the studio's top service,
 // shows no film: the screen becomes a wall of near-black matte panels, drawn

@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { ACCOUNTS } from "../work/_shared/data";
 import { WallSurface } from "./beyond-panel";
+import { screenAt } from "./framed-screen";
 import styles from "./hero2.module.css";
 
-// hero 9's 9x16: three screens on the wall. The room is the Beyond tile's wall — the same matte
-// tiles and fine seams (WallSurface) — its tiles small here, as a station's, nine to a screen's
-// height; and mounted on it, three tall 9:16 displays in black bezels, a breath apart, their shadow
-// on the wall. On each, an account's reels, one at a time, the account's name and handle at its
+// hero 9's 9x16: three screens on the wall. The room is 16x9's — the same clean matte wall, its
+// tiles the size of 16x9's screen, so its seams only round the edges and the wall is the same going
+// between them (WallSurface, screenAt) — and mounted on it, three tall 9:16 displays in black
+// bezels, a breath apart, their shadow on the wall. On each, an account's reels, one at a time, the account's name and handle at its
 // foot and its mark beside them. Every few seconds the three move on to the next reel, one after
 // another from the left, each scrolling up as a feed does. Their screens come on from a line
 // across each, the middle one first.
@@ -20,19 +21,6 @@ const WHO = ACCOUNTS.filter((a) => !a.handle.startsWith("demo-"));
 const DISPLAYS = [-1, 0, 1];
 const stillOf = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.webp");
 const mod = (a: number, n: number) => ((a % n) + n) % n;
-
-/** a display's screen's width — as the CSS sets it (.dspRoom --sw) */
-function screenW(vw: number, vh: number) {
-  return vw <= vh ? vw * 0.64 : Math.min(vw * 0.235, (vh * 0.72 * 9) / 16);
-}
-
-/** the wall's tiles: small, nine to a display's height (its bezel too), so its head and foot sit on
- *  seams */
-function tileAt(w: number, h: number) {
-  const sw = screenW(window.innerWidth, window.innerHeight);
-  const ph = ((sw * 16) / 9 + sw * 0.06) / 9;
-  return { cx: w / 2, cy: h / 2, pw: ph * 1.6, ph };
-}
 
 /** one reel on a screen: its still under it until it plays; playing only while it's on screen */
 function Reel({ src, on, live, who }: { src: string; on: boolean; live: boolean; who: (typeof WHO)[number] }) {
@@ -113,7 +101,7 @@ export default function ReelPanels({
 
   return (
     <div className={`${styles.wall} ${styles.dspRoom} ${on ? styles.dspOn : ""}`} aria-hidden="true">
-      <WallSurface at={tileAt} light={light} />
+      <WallSurface at={screenAt} light={light} lit={false} />
       {DISPLAYS.map((d) => (
         <div
           key={d}
