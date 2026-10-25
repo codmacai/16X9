@@ -3240,59 +3240,87 @@
   --gap: 12px;
 }
 
-/* ===== hero 9's 16x9: one screen in the wall (framed-screen.tsx) ===== */
-/* the screen: the tile in the middle — where Beyond's lights white — set flush in the wall, a fine
-   dark bezel, its light faint on the wall round it. Off, a hairline across it; on, it comes on from
-   the line */
+/* ===== hero 9's 16x9: one wide white panel, its films set in as windows (framed-screen.tsx) ===== */
+/* the panel: the Beyond tile's warm white, wider and larger, hung on the wall (a shadow under it);
+   white round the films and between them, its frame. Off, a hairline across it; on, it comes on
+   from the line */
 .tv {
+  --tw: min(86vw, 150vh);
   position: absolute;
   z-index: 2;
   left: 50%;
-  top: calc(50% + var(--lift));
-  width: calc(var(--pw) - 2px);
-  height: calc(var(--ph) - 2px);
+  top: 50%;
+  width: var(--tw);
+  padding: calc(var(--tw) * 0.022);
   translate: -50% -50%;
   overflow: hidden;
-  background: #030303;
+  container-type: inline-size;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 110% 85% at 50% 0%, rgb(255 255 255 / 0.6), transparent 70%),
+    linear-gradient(180deg, #f1efea, #e3e1db);
   box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.06),
-    0 0 0 1px #000;
+    inset 0 1px 0 rgb(255 255 255 / 0.85),
+    inset 0 0 14px rgb(0 0 0 / 0.1),
+    0 2px 0 rgb(0 0 0 / 0.35),
+    0 30px 70px -24px rgb(0 0 0 / 0.9);
   clip-path: inset(50% 0 50% 0);
-  transition:
-    clip-path 0s linear 0.6s,
-    box-shadow 0.4s ease;
+  transition: clip-path 0s linear 0.6s;
 }
 
 .tvOn .tv {
   clip-path: inset(0 0 0 0);
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.06),
-    0 0 0 1px #000,
-    0 0 14vh 1vh rgb(190 205 255 / 0.05);
-  transition:
-    clip-path 1.1s cubic-bezier(0.76, 0, 0.24, 1) 0.25s,
-    box-shadow 1.4s ease 0.6s;
+  transition: clip-path 1.1s cubic-bezier(0.76, 0, 0.24, 1) 0.25s;
 }
 
-/* its films, inside the bezel */
+@media (max-aspect-ratio: 1 / 1) {
+  .tv {
+    --tw: 92vw;
+  }
+}
+
+/* the films, in the panel's flow, each 16:9, the panel's white between them: a row above the line of
+   words and a row below, four across (two on a portrait screen), and between them a band of the
+   white the line sits on, in ink; the wall's own push-in, dark gutters and centre shade left off */
 .tv > .fgrid {
-  inset: 0.55%;
+  position: relative;
+  inset: auto;
 }
 
-/* a breath of reflection across the glass */
-.tvGlass {
-  position: absolute;
-  z-index: 3;
-  inset: 0;
-  background:
-    linear-gradient(118deg, transparent 30%, rgb(255 255 255 / 0.045) 42%, rgb(255 255 255 / 0.015) 52%, transparent 60%),
-    radial-gradient(ellipse 80% 60% at 50% 0%, rgb(255 255 255 / 0.035), transparent 70%);
-  box-shadow: inset 0 0 0 0.55cqw #050505;
-  pointer-events: none;
+.stageLuxe .tv .cine.fgrid {
+  --fs: clamp(34px, 5.2vw, 100px); /* the line of words' size */
+  grid-template-rows: auto calc(var(--fs) * 2.3) auto;
+  gap: calc(var(--tw) * 0.007);
+  background: transparent;
+  transform: none;
 }
 
-.tv {
-  container-type: size;
+.tv .fgrid .fcell:nth-child(n + 5) {
+  grid-row: 3;
+}
+
+@media (max-aspect-ratio: 1 / 1) {
+  .stageLuxe .tv .cine.fgrid {
+    grid-template-rows: auto calc(var(--fs) * 3.6) auto;
+  }
+  .tv .fgrid .fcell:nth-child(n + 3) {
+    grid-row: 3;
+  }
+}
+
+.stageLuxe .tv .cine::after {
+  content: none;
+}
+
+.tv .fcell {
+  background: #0b0b0b;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
+}
+
+/* the line of words, differenced against what's behind it: paper on the wall as the panel comes
+   on, ink on its white */
+.stageScreen > .namesWrap {
+  mix-blend-mode: difference;
 }
 
 @media (prefers-reduced-motion: reduce) {
