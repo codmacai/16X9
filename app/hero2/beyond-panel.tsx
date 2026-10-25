@@ -175,9 +175,20 @@ float noise(vec2 p) {
   vec2 u = f * f * (3.0 - 2.0 * f);
   return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
+float fbm(vec2 p) {
+  float f = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 5; i++) {
+    f += a * noise(p);
+    p = p * 2.03 + 17.1;
+    a *= 0.5;
+  }
+  return f;
+}
 
 void main() {
   vec2 px = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
+  vec2 uv = px / uRes.y; // in screen heights, from the top
   vec2 c = uPanel.xy;
   vec2 s = uPanel.zw;
   // the panels: the size of the one in the middle, their seams running on from its edges
@@ -185,34 +196,57 @@ void main() {
   vec2 tile = floor(g);
   vec2 l = (g - tile) * s;
   float d = min(min(l.x, s.x - l.x), min(l.y, s.y - l.y));
-  float gap = 1.0 * uDpr;
-  float px1 = 1.0 / uDpr;
+  float gap = 1.2 * uDpr;
 
-  // the material: a matte, near-black (or white), each panel a shade apart, the finest grain
-  float v = mix(0.092, 0.92, uLight) + mix(0.008, 0.014, uLight) * (hash(tile + 3.7) - 0.5);
-  v += (noise(vec2(px.x * 0.0025 * px1, px.y * 0.45 * px1)) - 0.5) * mix(0.007, 0.014, uLight);
-  v += (hash(px) - 0.5) * mix(0.007, 0.034, uLight);
-  // each panel a touch brighter at its top
-  v *= 1.0 + mix(0.1, 0.035, uLight) * pow(1.0 - l.y / s.y, 2.0);
-  // a soft pool of light from above the middle; the rest of the room falling away (to dark, or
-  // on the white, only a little)
-  vec2 q = (px - vec2(uRes.x * 0.5, uRes.y * 0.08)) / vec2(uRes.x * 0.5, uRes.y * 0.95);
-  float key = exp(-dot(q, q) * 1.4);
-  v *= mix(0.3 + 1.05 * key, 0.87 + 0.15 * key, uLight);
+  // the material: a fine plaster, near-black (or white) — clouded a little as a troweled finish
+  // is, each panel cast apart from the next, a fine tooth over it all
+  float cloud = fbm(uv * 3.2 + tile * 3.71);
+  float tooth = fbm(uv * 55.0);
+  float v = mix(0.12, 0.93, uLight);
+  v *= 1.0 + mix(0.22, 0.06, uLight) * (cloud - 0.5) + mix(0.1, 0.035, uLight) * (tooth - 0.5);
+  v *= 1.0 + mix(0.06, 0.018, uLight) * (hash(tile + 3.7) - 0.5);
+  v += (hash(px) - 0.5) * mix(0.006, 0.03, uLight);
+
+  // the light: a row of wall-washers above, each throwing its arc down the wall — a crisp curved
+  // top, the light widening and falling away as it comes down — over a low fill
+  float wash = 0.0;
+  for (int k = -5; k <= 5; k++) {
+    float dx = uv.x - (uRes.x * 0.5 / uRes.y + float(k) * 0.5);
+    float y = uv.y;
+    float cone = exp(-dx * dx / (0.012 + 0.16 * y * y));
+    float top = smoothstep(0.0, 0.09, y - 0.01 - 1.4 * dx * dx);
+    wash += cone * top * exp(-y * 0.85);
+  }
+  // the room's fill: brightest high in the middle, falling off to the sides
+  vec2 q = (uv - vec2(uRes.x * 0.5 / uRes.y, 0.3)) / vec2(uRes.x / uRes.y * 0.75, 0.9);
+  float fill = exp(-dot(q, q));
+  float light = mix(0.26 + 0.34 * fill + 0.8 * wash, 0.8 + 0.08 * fill + 0.16 * wash, uLight);
+  // the wall darkening into the ceiling and the floor
+  light *= mix(mix(0.55, 0.88, uLight), 1.0, smoothstep(0.0, 0.1, uv.y));
+  light *= mix(mix(0.5, 0.84, uLight), 1.0, smoothstep(1.0, 0.72, uv.y));
+  // the light warm, the fill a touch cooler
+  vec3 tint = mix(vec3(0.94, 0.96, 1.0), vec3(1.0, 0.96, 0.9), clamp(wash, 0.0, 1.0));
+  tint = mix(tint, vec3(1.0, 0.99, 0.97), uLight * 0.7);
+  vec3 col = vec3(v * light) * tint;
+
   // the lit tile's light on the wall round it, warm and soft
   vec2 e = max(abs(px - c) - s * 0.5, 0.0);
   float spill = exp(-length(e) / s.y * 3.2);
-  vec3 col = vec3(v) * mix(vec3(1.0, 0.988, 0.97), vec3(1.0, 0.992, 0.972), uLight) + vec3(1.0, 0.965, 0.91) * spill * mix(0.05, 0.012, uLight) * uLit;
-  // on the white, the screen (or the lit tile) set a little proud of the wall: its shadow soft
-  // round it, falling a little below
-  vec2 e2 = max(abs(px - c - vec2(0.0, s.y * 0.025)) - s * 0.5, 0.0);
-  col *= 1.0 - uLight * uLit * 0.16 * exp(-length(e2) / (s.y * 0.05));
-  // the seams: fine, a breath of shadow either side, the top edge of each panel just lit
-  col *= mix(mix(0.78, 0.9, uLight), 1.0, smoothstep(gap, gap + 6.0 * uDpr, d));
-  col += mix(0.025, 0.03, uLight) * smoothstep(gap + 1.2 * uDpr, gap + 0.2 * uDpr, l.y) * step(gap, l.y) * step(gap, min(l.x, s.x - l.x));
-  col = mix(col, vec3(mix(0.012, 0.64, uLight)), 1.0 - smoothstep(gap - 0.6 * uDpr, gap + 0.2 * uDpr, d));
+  col += vec3(1.0, 0.965, 0.91) * spill * mix(0.045, 0.01, uLight) * uLit;
+  // the screen (or the lit tile) set a little proud of the wall: its shadow soft round it,
+  // falling a little below
+  vec2 e2 = max(abs(px - c - vec2(0.0, s.y * 0.03)) - s * 0.5, 0.0);
+  col *= 1.0 - uLit * mix(0.35, 0.16, uLight) * exp(-length(e2) / (s.y * 0.05));
 
-  gl_FragColor = vec4(col, 1.0);
+  // the seams: a fine groove, the light falling into it; the panel's top edge catching the light
+  // above, its foot in the groove's shadow, its sides a breath darker
+  float lip = smoothstep(gap + 2.5 * uDpr, gap, l.y) * step(gap, l.y);
+  float foot = smoothstep(s.y - gap - 5.0 * uDpr, s.y - gap, l.y);
+  float side = smoothstep(gap + 4.0 * uDpr, gap, min(l.x, s.x - l.x));
+  col *= 1.0 + mix(0.55, 0.06, uLight) * lip * light - mix(0.3, 0.1, uLight) * foot - mix(0.18, 0.06, uLight) * side;
+  col = mix(col, col * mix(0.12, 0.62, uLight), 1.0 - smoothstep(gap - 0.6 * uDpr, gap + 0.3 * uDpr, d));
+
+  gl_FragColor = vec4(col + (hash(px + 7.0) - 0.5) / 255.0, 1.0);
 }
 `;
 
