@@ -655,13 +655,24 @@ const FormatGrid = memo(function FormatGrid({
   wall?: WallFilm[];
   /** hero 9: the wall curved round the viewer, as a cinema's screen (four across, to give it sweep) */
   curved?: boolean;
-  /** hero 9: on one cinema-wide screen — four across (two on a portrait screen), three down, each
-   *  film 16:9, filling it exactly */
+  /** hero 9: on one cinema-wide screen — 16x9's films four across, three down, each 16:9; 9x16's
+   *  reels eight across, two down, each 9:16 (half as many across on a portrait screen) */
   screen?: boolean;
 }) {
   // hero 6: larger tiles — 16x9 three across, 9x16 five across — enough rows to cover the screen
   const view = useViewport();
-  const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : screen ? { cols: view.w / view.h < 1 ? 2 : 4, rows: 3 } : coverGrid(view, curved ? 4 : 3)) : GRID[kind];
+  const tall = view.w / view.h < 1;
+  // (hero 9's cinema screen: 16x9's films four by three, 9x16's reels eight by two; half as many
+  // across on a portrait screen)
+  const g = big
+    ? kind === "9x16"
+      ? screen
+        ? { cols: tall ? 4 : 8, rows: 2 }
+        : { cols: 5, rows: 2 }
+      : screen
+        ? { cols: tall ? 2 : 4, rows: 3 }
+        : coverGrid(view, curved ? 4 : 3)
+    : GRID[kind];
   const n = g.cols * g.rows;
   const live = useLiveCount(on && big, n);
   const { budget, rich } = useDevice();
@@ -1162,7 +1173,7 @@ export default function Chooser({
    *  drawing back, the sides coming round, fine gutters between the films; the view shifting a
    *  little with the pointer (with luxe) */
   curved?: boolean;
-  /** hero 9: 16x9 as one screen in the Beyond tile's wall, where Beyond's tile is — its wall of
+  /** hero 9: 16x9 and 9x16 each as one cinema-wide screen in the Beyond tile's wall, where Beyond's tile is — its wall of
    *  brand films on it, three by three, each under its brand's mark; no smoke (framed-screen.tsx) */
   poster?: boolean;
   /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; a still ribbon of smoke
@@ -1382,7 +1393,7 @@ export default function Chooser({
   return (
     <motion.div
       ref={stageRef}
-      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${(doorBeyond && up === "beyond") || (poster && up === "16x9") ? styles.stagePaper : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
+      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${(doorBeyond && up === "beyond") || (poster && !!up && up !== "beyond") ? styles.stagePaper : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
       initial={false}
       animate={{ opacity: open && !((doorBeyond || panelBeyond) && launch === "beyond") ? 0 : 1 }}
       transition={reduce ? { duration: 0 } : open ? { delay: luxe ? 0.45 : 0.95, duration: 0.6, ease: EASE } : { duration: 0.5, ease: EASE }}
@@ -1412,7 +1423,7 @@ export default function Chooser({
           ref={(el) => {
             filmRefs.current[f.key] = el;
           }}
-          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""} ${f.key === "beyond" && doorBeyond ? `${styles.filmDoor} ${up === "beyond" && open ? styles.doorOpen : ""}` : ""} ${f.key === "beyond" && panelBeyond ? styles.filmPanel : ""} ${curved && f.key !== "beyond" && !(poster && f.key === "16x9") ? styles.filmCurved : ""}`}
+          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""} ${f.key === "beyond" && doorBeyond ? `${styles.filmDoor} ${up === "beyond" && open ? styles.doorOpen : ""}` : ""} ${f.key === "beyond" && panelBeyond ? styles.filmPanel : ""} ${curved && f.key !== "beyond" && !poster ? styles.filmCurved : ""}`}
           aria-hidden="true"
         >
           <div
@@ -1421,9 +1432,9 @@ export default function Chooser({
             }}
             className={styles.filmBox}
           >
-            {poster && f.key === "16x9" && pool?.length ? (
-              <FramedScreen on={up === "16x9" && !open}>
-                <FormatGrid kind="16x9" on={up === "16x9" && !open} pool={pool} turn={turn} big={refined} wall={wall} screen />
+            {poster && f.key !== "beyond" && pool?.length ? (
+              <FramedScreen on={up === f.key && !open}>
+                <FormatGrid kind={f.key} on={up === f.key && !open} pool={pool} turn={turn} big={refined} wall={wall} screen />
               </FramedScreen>
             ) : grid && pool?.length && f.key !== "beyond" ? (
               refined && f.key === "9x16" ? (
@@ -1482,7 +1493,7 @@ export default function Chooser({
           parts too and the film is the whole screen */}
       {/* hero 7: smoke in the middle, over the preview and under the words */}
       {band && !luxe && <Smoke on={!!up && !open && !(doorBeyond && up === "beyond")} />}
-      {band && luxe && <SmokeRibbon on={!!up && !open && up !== "beyond" && !(poster && up === "16x9")} />}
+      {band && luxe && <SmokeRibbon on={!!up && !open && up !== "beyond" && !poster} />}
 
       {/* hero 7: under the line while Beyond is up, the way in — over the smoke, and it holds the
           preview while it's pointed at (hero 8's door has none: BEYOND itself is the way in) */}

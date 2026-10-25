@@ -13,12 +13,11 @@ import styles from "../hero2/hero2.module.css";
 import own from "../hero7/hero7.module.css";
 
 // ===========================================================================
-// HERO 9 — hero 8 as a room: a wall of near-black matte tiles, and the tile in
-// the middle the format's. For 16x9 it's a screen set in the wall, its wall of
-// brand films on it three by three, each under its brand's mark, its light
-// faint on the wall round it (no smoke; hero2/framed-screen.tsx). 9x16 keeps its
-// columns of reels, curved round the viewer as a cinema's screen, the ribbon of
-// smoke under the words. Beyond, the studio's top service,
+// HERO 9 — hero 8 as a room: a wall of near-black matte tiles. 16x9 and 9x16
+// are each a cinema-wide screen in it, one of its tiles, centred: 16x9's brand
+// films on it four by three, 9x16's reels eight by two, each under its mark,
+// edge to edge with only the wall's fine seams between them (no smoke;
+// hero2/framed-screen.tsx). Beyond, the studio's top service,
 // shows no film: the screen becomes a wall of near-black matte panels, drawn
 // as a real surface, and the tile in the middle — 16:9, our frame — lights a
 // warm white from a line across it. On it, as on a museum label: the

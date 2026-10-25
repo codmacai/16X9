@@ -4,11 +4,12 @@ import type { ReactNode } from "react";
 import { WallSurface } from "./beyond-panel";
 import styles from "./hero2.module.css";
 
-// hero 9's 16x9: a cinema's screen in the wall. The room is the Beyond tile's — the same near-black
+// hero 9's 16x9 and 9x16: a cinema's screen in the wall. The room is the Beyond tile's — the same near-black
 // matte tiles and fine seams (WallSurface) — but here its tiles are the screen's size, so the screen
 // is one of them, exactly within its seams: cinema-wide (64:27, near enough 2.39:1), in the middle of
-// the screen, the wall above it and below it the same. On it, 16x9's wall of brand films, four by
-// three, each 16:9, each under its brand's mark (the FormatGrid passed in), edge to edge with only
+// the screen, the wall above it and below it the same. On it, the format's wall: 16x9's brand films
+// four by three, each 16:9, under its brand's mark; or 9x16's reels eight by two, each 9:16, under
+// its account's (the FormatGrid passed in) — edge to edge with only
 // the wall's own fine seams between them, so the wall's grid runs on through it. A cinema's finish:
 // its light soft on the wall round it, the faintest sheen and grain on it, its corners falling
 // away a little. It comes on from a line across it, as the tile does.

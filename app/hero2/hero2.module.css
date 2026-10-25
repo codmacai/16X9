@@ -3295,6 +3295,12 @@
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
 }
 
+/* 9x16's reels, their accounts' marks small and fine */
+.tv .fcell .tlRound {
+  width: 22%;
+  box-shadow: 0 0 0 1px rgb(246 244 240 / 0.7), 0 4px 16px rgb(0 0 0 / 0.5);
+}
+
 /* a cinema's finish: the corners falling away a little, the faintest sheen across the glass, a
    fine grain */
 .tvGlass {
