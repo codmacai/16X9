@@ -656,22 +656,21 @@ const FormatGrid = memo(function FormatGrid({
   wall?: WallFilm[];
   /** hero 9: the wall curved round the viewer, as a cinema's screen (four across, to give it sweep) */
   curved?: boolean;
-  /** hero 9: on one cinema-wide screen — 16x9's films four across, three down, each 16:9; 9x16's
-   *  reels eight across, two down, each 9:16 (half as many across on a portrait screen) */
+  /** hero 9: on one cinema-wide screen — 16x9's films three across, two down, each 16:9 (two
+   *  across, three down on a portrait screen) */
   screen?: boolean;
 }) {
   // hero 6: larger tiles — 16x9 three across, 9x16 five across — enough rows to cover the screen
   const view = useViewport();
   const tall = view.w / view.h < 1;
-  // (hero 9's cinema screen: 16x9's films four by three, 9x16's reels eight by two; half as many
-  // across on a portrait screen)
+  // (hero 9's cinema screen: 16x9's films three by two, large; two by three on a portrait screen)
   const g = big
     ? kind === "9x16"
       ? screen
         ? { cols: tall ? 4 : 8, rows: 2 }
         : { cols: 5, rows: 2 }
       : screen
-        ? { cols: tall ? 2 : 4, rows: 3 }
+        ? { cols: tall ? 2 : 3, rows: tall ? 3 : 2 }
         : coverGrid(view, curved ? 4 : 3)
     : GRID[kind];
   const n = g.cols * g.rows;
@@ -1394,7 +1393,7 @@ export default function Chooser({
   return (
     <motion.div
       ref={stageRef}
-      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${(doorBeyond && up === "beyond") || (poster && !!up && up !== "beyond") ? styles.stagePaper : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
+      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${(doorBeyond && up === "beyond") || (poster && !!up && up !== "beyond") ? styles.stagePaper : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && poster && !!up && up !== "beyond" ? styles.stageScreen : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
       initial={false}
       animate={{ opacity: open && !((doorBeyond || panelBeyond) && launch === "beyond") ? 0 : 1 }}
       transition={reduce ? { duration: 0 } : open ? { delay: luxe ? 0.45 : 0.95, duration: 0.6, ease: EASE } : { duration: 0.5, ease: EASE }}
