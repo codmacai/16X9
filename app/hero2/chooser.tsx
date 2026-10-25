@@ -655,19 +655,12 @@ const FormatGrid = memo(function FormatGrid({
   wall?: WallFilm[];
   /** hero 9: the wall curved round the viewer, as a cinema's screen (four across, to give it sweep) */
   curved?: boolean;
-  /** hero 9: set in one white panel — a row above the line of words and a row below it, four across
-   *  (two on a portrait screen), each film 16:9 */
+  /** hero 9: on one 16:9 screen — three by three, filling it exactly */
   screen?: boolean;
 }) {
   // hero 6: larger tiles — 16x9 three across, 9x16 five across — enough rows to cover the screen
   const view = useViewport();
-  const g = big
-    ? kind === "9x16"
-      ? { cols: 5, rows: 2 }
-      : screen
-        ? { cols: view.w / view.h < 1 ? 2 : 4, rows: 2 }
-        : coverGrid(view, curved ? 4 : 3)
-    : GRID[kind];
+  const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : screen ? { cols: 3, rows: 3 } : coverGrid(view, curved ? 4 : 3)) : GRID[kind];
   const n = g.cols * g.rows;
   const live = useLiveCount(on && big, n);
   const { budget, rich } = useDevice();
@@ -1168,9 +1161,8 @@ export default function Chooser({
    *  drawing back, the sides coming round, fine gutters between the films; the view shifting a
    *  little with the pointer (with luxe) */
   curved?: boolean;
-  /** hero 9: 16x9 as one wide white panel on the Beyond tile's wall — its brand films set into it
-   *  as 16:9 windows, a row above the line of words and a row below, the line in ink on the white
-   *  between them, each film under its brand's mark; no smoke (framed-screen.tsx) */
+  /** hero 9: 16x9 as one screen in the Beyond tile's wall, where Beyond's tile is — its wall of
+   *  brand films on it, three by three, each under its brand's mark; no smoke (framed-screen.tsx) */
   poster?: boolean;
   /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; a still ribbon of smoke
    *  in the middle under the words; every film resting low, one at a time taking the light; each
@@ -1389,7 +1381,7 @@ export default function Chooser({
   return (
     <motion.div
       ref={stageRef}
-      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${(doorBeyond && up === "beyond") || (poster && up === "16x9") ? styles.stagePaper : ""} ${poster && up === "16x9" ? styles.stageScreen : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
+      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${(doorBeyond && up === "beyond") || (poster && up === "16x9") ? styles.stagePaper : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
       initial={false}
       animate={{ opacity: open && !((doorBeyond || panelBeyond) && launch === "beyond") ? 0 : 1 }}
       transition={reduce ? { duration: 0 } : open ? { delay: luxe ? 0.45 : 0.95, duration: 0.6, ease: EASE } : { duration: 0.5, ease: EASE }}
