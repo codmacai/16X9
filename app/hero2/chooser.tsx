@@ -1,12 +1,13 @@
 "use client";
 
-import { Fragment, memo, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { Fragment, memo, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { AnimatePresence, animate as fmAnimate, motion } from "framer-motion";
 import { FORMATS, Ratio, type FormatKey } from "../hero13/formats";
 import type { Preview, WallFilm } from "../work/_shared/data";
 import styles from "./hero2.module.css";
 import SmokeRibbon from "./smoke-ribbon";
 import BeyondPanel from "./beyond-panel";
+import FeatureFrame, { type FrameItem } from "./feature-frame";
 
 export const EASE = [0.16, 1, 0.3, 1] as const;
 export const EASE_CINE = [0.76, 0, 0.24, 1] as const;
@@ -1069,6 +1070,7 @@ export default function Chooser({
   plainBeyond = false,
   doorBeyond = false,
   panelBeyond = false,
+  frames = false,
   luxe = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
@@ -1115,6 +1117,10 @@ export default function Chooser({
    *  (beyond-panel.tsx); a click on the tile grows it to the whole screen, and Beyond's page
    *  comes out from under it */
   panelBeyond?: boolean;
+  /** hero 9: 16x9 and 9x16 as Beyond is — one frame in the middle, the format's shape: their walls
+   *  falling back out of focus behind it, one film at a time in it, sharp, labelled
+   *  (feature-frame.tsx); going in, it grows to the whole screen */
+  frames?: boolean;
   /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; a still ribbon of smoke
    *  in the middle under the words; every film resting low, one at a time taking the light; each
    *  tile opening from a line across its middle, out from the centre. Every preview, Beyond's
@@ -1308,13 +1314,28 @@ export default function Chooser({
   };
   useEffect(() => () => window.clearTimeout(leave.current), []);
 
+  // hero 9's frames: 16x9's brand films, each under its brand and title; 9x16's reels, each under
+  // its account
+  const frameItems = useMemo<Record<"16x9" | "9x16", FrameItem[]>>(() => {
+    const p = pool ?? [];
+    return {
+      "16x9": wall?.length
+        ? wall.slice(0, 8).map((w) => ({ src: w.clip, still: w.shot, label: w.brand, sub: w.title }))
+        : p.slice(0, 8).map((s) => ({ src: s, still: stillOf(s), label: "16x9" })),
+      "9x16": Array.from({ length: Math.min(6, p.length) }, (_, k) => {
+        const s = p[(k * 7 + 2 + turn) % p.length];
+        return { src: s, still: stillOf(s), label: `@${REEL_ACCOUNTS[k % REEL_ACCOUNTS.length].handle}` };
+      }),
+    };
+  }, [wall, pool, turn]);
+
   const shown = open ? null : active;
   return (
     <motion.div
       ref={stageRef}
       className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${doorBeyond && up === "beyond" ? styles.stagePaper : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
       initial={false}
-      animate={{ opacity: open && !((doorBeyond || panelBeyond) && launch === "beyond") ? 0 : 1 }}
+      animate={{ opacity: open && !(((doorBeyond || panelBeyond) && launch === "beyond") || frames) ? 0 : 1 }}
       transition={reduce ? { duration: 0 } : open ? { delay: luxe ? 0.45 : 0.95, duration: 0.6, ease: EASE } : { duration: 0.5, ease: EASE }}
       style={{ pointerEvents: open ? "none" : "auto" }}
     >
@@ -1342,7 +1363,7 @@ export default function Chooser({
           ref={(el) => {
             filmRefs.current[f.key] = el;
           }}
-          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""} ${f.key === "beyond" && doorBeyond ? `${styles.filmDoor} ${up === "beyond" && open ? styles.doorOpen : ""}` : ""} ${f.key === "beyond" && panelBeyond ? styles.filmPanel : ""}`}
+          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""} ${f.key === "beyond" && doorBeyond ? `${styles.filmDoor} ${up === "beyond" && open ? styles.doorOpen : ""}` : ""} ${f.key === "beyond" && panelBeyond ? styles.filmPanel : ""} ${frames && f.key !== "beyond" ? styles.filmFramed : ""}`}
           aria-hidden="true"
         >
           <div
@@ -1376,6 +1397,16 @@ export default function Chooser({
           </div>
           {/* the light from the door, soft on the dark round it */}
           {f.key === "beyond" && doorBeyond && <span className={styles.doorGlow} aria-hidden="true" />}
+          {frames && f.key !== "beyond" && (
+            <FeatureFrame
+              kind={f.key}
+              on={up === f.key && !open}
+              go={open && launch === f.key}
+              items={frameItems[f.key]}
+              hold={f.key === "16x9" ? 4200 : 3400}
+              reduce={reduce}
+            />
+          )}
           {/* the light through the gap */}
           {f.key === "beyond" && doorBeyond && <span className={styles.doorLine} aria-hidden="true" />}
           {f.key === "beyond" && panelBeyond && (
