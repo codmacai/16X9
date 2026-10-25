@@ -1,22 +1,21 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BEYOND_CATEGORIES } from "../work/_shared/data";
-import type { FormatKey } from "../hero13/formats";
 import styles from "./hero2.module.css";
 
 // hero 9: Beyond as a lit tile in a gallery wall. No film. The screen becomes a wall of near-black
 // matte panels — drawn once, as a real surface: fine seams just catching the light, a soft pool
 // of light from above — and the tile in the middle, 16:9, our frame, set in the wall like the rest,
-// lights from a line across it, a warm white, its light faint on the wall round it. On it, as on
-// a museum label: the category's full name small at its head and its number; the category in
-// large regular Arial, set on the line of words, on its left edge — each one coming into focus as
-// it draws back into place, the one before dissolving; at its foot, five hairlines, the current
-// one drawing across as it holds. Of the line itself only BEYOND stays, where it is, under the
-// category and off to the right (the rest steps aside), turning with the tile under it
-// (differenced: paper on the dark wall, ink on the lit tile). Clicking BEYOND the tile grows to the whole screen,
-// and Beyond's page comes out from under it (work/beyond.tsx).
+// lights from a line across it, a warm white, its light faint on the wall round it. As it lights,
+// the line of words hands over to it: the words sink away into their masks (CSS, .stagePanel), and
+// the tile carries it all, as a museum label does — BEYOND small at its head and the category's
+// number; the category in large regular Arial, each coming into focus as it draws back into
+// place, the one before dissolving, with what it covers set small under it; at its foot, five
+// hairlines, the current one drawing across as it holds. The whole tile is the way in: pointing
+// at it keeps it lit, a click on it goes into Beyond — the tile grows to the whole screen, and
+// Beyond's page comes out from under it (work/beyond.tsx).
 const N = BEYOND_CATEGORIES.length;
 const HOLD_MS = 2600;
 const FOCUS = [0.16, 1, 0.3, 1] as const;
@@ -26,13 +25,17 @@ export default function BeyondPanel({
   on,
   go,
   reduce,
-  word,
+  onEnter,
+  onLeave,
+  onOpen,
 }: {
   on: boolean;
   go: boolean;
   reduce: boolean;
-  /** the line of words, so the category can be set on it */
-  word: RefObject<Partial<Record<FormatKey, HTMLElement | null>>>;
+  /** the tile, pointed at and left, and clicked: it holds the preview open, and goes in */
+  onEnter: () => void;
+  onLeave: () => void;
+  onOpen: () => void;
 }) {
   const [i, setI] = useState(0);
   // the categories, one after another, while it's on; going in, the one showing stays; from the
@@ -49,82 +52,82 @@ export default function BeyondPanel({
     return () => window.clearInterval(id);
   }, [on, reduce]);
 
-  // the category set on the line of words: on its left edge, a size up from it (smaller where a
-  // long one would run past the tile), measured as it comes on and again if the screen changes
+  // each category as large as the tile allows: a set size, smaller where a long one would run
+  // past it (measured once the type is in, and again if the screen changes)
   const measureRef = useRef<HTMLSpanElement>(null);
-  const [lock, setLock] = useState<{ x: number; y: number; sizes: number[] } | null>(null);
+  const [sizes, setSizes] = useState<number[] | null>(null);
   useLayoutEffect(() => {
-    if (!on) return;
     const m = measureRef.current;
-    const a = word.current["16x9"];
-    if (!m || !a) return;
+    if (!m) return;
     const fit = () => {
-      const ra = a.getBoundingClientRect();
-      const fs = parseFloat(getComputedStyle(a).fontSize) || 60;
-      const { cx, cy, pw, ph } = panelAt(window.innerWidth, window.innerHeight);
-      const x = ra.left - (cx - pw / 2);
-      const room = pw - x - pw * 0.045;
-      setLock({
-        x,
-        y: ra.top - ra.height * 0.1 - (cy - ph / 2),
-        sizes: [...m.children].map((el) => Math.min(fs * 1.5, room / ((el as HTMLElement).offsetWidth / 100))),
-      });
+      const { pw } = panelAt(window.innerWidth, window.innerHeight);
+      setSizes([...m.children].map((el) => Math.min(pw * 0.13, (pw * 0.86) / ((el as HTMLElement).offsetWidth / 100))));
     };
     fit();
     document.fonts?.ready.then(fit);
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, [on, word]);
+  }, []);
 
   const c = BEYOND_CATEGORIES[i];
+  const rowH = sizes ? Math.max(...sizes) * 0.82 : 0;
   return (
     <div className={`${styles.wall} ${on || go ? styles.wallOn : ""} ${go ? styles.wallGo : ""}`} aria-hidden="true">
       <WallSurface />
-      <div className={styles.panel}>
+      <div className={styles.panel} onPointerEnter={onEnter} onPointerLeave={onLeave} onClick={onOpen}>
         <span ref={measureRef} className={styles.panelMeasure}>
           {BEYOND_CATEGORIES.map((k) => (
             <span key={k.short}>{k.short}</span>
           ))}
         </span>
 
-        {/* at its head, as on a label: the category's full name, and its number */}
+        {/* at its head, as on a label: what this is, and the category's number */}
         <span className={styles.panelHead}>
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.span
-              key={c.name}
-              initial={reduce ? false : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.6, ease: FOCUS, delay: 0.1 } }}
-              exit={{ opacity: 0, transition: { duration: 0.2 } }}
-            >
-              {c.name}
-            </motion.span>
-          </AnimatePresence>
+          <span>Beyond</span>
           <span>
             {pad2(i + 1)} / {pad2(N)}
           </span>
         </span>
 
-        {/* the category, coming into focus as it draws back into place on the line, once the one
-            before has dissolved */}
-        <AnimatePresence mode="wait" initial={false}>
-          {lock && (
-            <motion.span
-              key={c.short}
-              className={styles.panelWord}
-              style={{ left: lock.x, top: lock.y, y: "-100%", fontSize: lock.sizes[i] }}
-              initial={reduce ? false : { scale: 1.32, opacity: 0, filter: "blur(14px)" }}
-              animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
-              exit={reduce ? { opacity: 0 } : { scale: 0.985, opacity: 0, filter: "blur(6px)", transition: { duration: 0.3, ease: [0.4, 0, 1, 1] } }}
-              transition={
-                reduce
-                  ? { duration: 0 }
-                  : { scale: { duration: 1.5, ease: FOCUS }, filter: { duration: 1.1, ease: FOCUS }, opacity: { duration: 0.6, ease: "easeOut" } }
-              }
-            >
-              {c.short}
-            </motion.span>
-          )}
-        </AnimatePresence>
+        {/* the category, coming into focus as it draws back into place once the one before has
+            dissolved; what it covers, small, under it */}
+        <span className={styles.panelBody}>
+          <span className={styles.panelRow} style={{ height: rowH }}>
+            <AnimatePresence mode="wait" initial={false}>
+              {sizes && (
+                <motion.span
+                  key={c.short}
+                  className={styles.panelWord}
+                  style={{ fontSize: sizes[i] }}
+                  initial={reduce ? false : { scale: 1.32, opacity: 0, filter: "blur(14px)" }}
+                  animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+                  exit={reduce ? { opacity: 0 } : { scale: 0.985, opacity: 0, filter: "blur(6px)", transition: { duration: 0.3, ease: [0.4, 0, 1, 1] } }}
+                  transition={
+                    reduce
+                      ? { duration: 0 }
+                      : { scale: { duration: 1.5, ease: FOCUS }, filter: { duration: 1.1, ease: FOCUS }, opacity: { duration: 0.6, ease: "easeOut" } }
+                  }
+                >
+                  {c.short}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </span>
+          <span className={styles.panelSub}>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={c.name}
+                initial={reduce ? false : { opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.7, ease: FOCUS, delay: 0.25 } }}
+                exit={{ opacity: 0, transition: { duration: 0.2 } }}
+              >
+                {c.name}
+                <i aria-hidden="true" />
+                {c.did.join(" · ")}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+        </span>
 
         {/* at its foot, five hairlines: those shown, and the one showing drawing across as it holds */}
         <span className={styles.panelTicks}>

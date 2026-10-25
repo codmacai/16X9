@@ -1108,11 +1108,11 @@ export default function Chooser({
    *  of light stands in the dark like a door left ajar; clicking BEYOND, the words step aside and
    *  the line reaches the full height — and Beyond's page, arriving, opens the dark from it */
   doorBeyond?: boolean;
-  /** hero 9: Beyond as a lit panel in a wall — no film: a wall of dark matte panels, the 16:9 one
-   *  in the middle coming on as a white light panel, Beyond's categories on it in heavy black
-   *  type, each arriving huge and drawing back until it sits whole (beyond-panel.tsx), the line of
-   *  words blended across it; clicking BEYOND it grows to the whole screen, and Beyond's page comes out
-   *  from under it */
+  /** hero 9: Beyond as a lit tile in a gallery wall — no film: a wall of near-black matte panels,
+   *  the 16:9 one in the middle lighting a warm white; the line of words sinks away and the tile
+   *  carries it all, Beyond's categories on it coming into focus one after another
+   *  (beyond-panel.tsx); the whole tile is the way in: a click on it grows it to the whole
+   *  screen, and Beyond's page comes out from under it */
   panelBeyond?: boolean;
   /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; a still ribbon of smoke
    *  in the middle under the words; every film resting low, one at a time taking the light; each
@@ -1377,7 +1377,16 @@ export default function Chooser({
           {f.key === "beyond" && doorBeyond && <span className={styles.doorGlow} aria-hidden="true" />}
           {/* the light through the gap */}
           {f.key === "beyond" && doorBeyond && <span className={styles.doorLine} aria-hidden="true" />}
-          {f.key === "beyond" && panelBeyond && <BeyondPanel on={up === "beyond" && !open} go={open && launch === "beyond"} reduce={reduce} word={wordRefs} />}
+          {f.key === "beyond" && panelBeyond && (
+            <BeyondPanel
+              on={up === "beyond" && !open}
+              go={open && launch === "beyond"}
+              reduce={reduce}
+              onEnter={() => point("beyond")}
+              onLeave={() => point(null)}
+              onOpen={() => onOpen("beyond")}
+            />
+          )}
           {f.key === "beyond" && plainBeyond && !doorBeyond && !panelBeyond && <OpenCorners on={up === "beyond"} word={wordRefs} stage={stageRef} />}
           {f.key === "beyond" && pool?.length && !plainBeyond ? (
             grid ? (
