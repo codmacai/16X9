@@ -544,10 +544,20 @@ function useViewport() {
     () => viewCache
   );
 }
+/** hero 9's curved wall: where a tile (or column) at `k` across the screen (-0.5 at its left edge,
+ *  0.5 at its right) goes — moved to the middle, then swung round an upright axis in front of the
+ *  wall, so the middle draws back and the sides come round towards the viewer, facing in */
+function curveAt(k: number, w: number) {
+  const r = w * 0.78;
+  const dx = k * w;
+  const a = dx / r;
+  return `translateX(${(-dx).toFixed(1)}px) translateZ(${r.toFixed(0)}px) rotateY(${(-a).toFixed(4)}rad) translateZ(${(-r).toFixed(0)}px)`;
+}
+
 /** 16x9's wall: three across (two on a portrait screen), and as many rows of exact 16:9 tiles as
  *  it takes to cover the screen's height. */
-function coverGrid({ w, h }: { w: number; h: number }) {
-  const cols = w / h < 1 ? 2 : 3;
+function coverGrid({ w, h }: { w: number; h: number }, across = 3) {
+  const cols = w / h < 1 ? 2 : across;
   const rows = Math.max(2, Math.ceil(h / ((w / cols) * (9 / 16))));
   return { cols, rows };
 }
@@ -632,6 +642,7 @@ const FormatGrid = memo(function FormatGrid({
   turn,
   big = false,
   wall,
+  curved = false,
 }: {
   kind: "16x9" | "9x16";
   on: boolean;
@@ -640,10 +651,12 @@ const FormatGrid = memo(function FormatGrid({
   big?: boolean;
   /** hero 6's 16x9: the real films, each with its own brand */
   wall?: WallFilm[];
+  /** hero 9: the wall curved round the viewer, as a cinema's screen (four across, to give it sweep) */
+  curved?: boolean;
 }) {
   // hero 6: larger tiles — 16x9 three across, 9x16 five across — enough rows to cover the screen
   const view = useViewport();
-  const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : coverGrid(view)) : GRID[kind];
+  const g = big ? (kind === "9x16" ? { cols: 5, rows: 2 } : coverGrid(view, curved ? 4 : 3)) : GRID[kind];
   const n = g.cols * g.rows;
   const live = useLiveCount(on && big, n);
   const { budget, rich } = useDevice();
@@ -695,7 +708,13 @@ const FormatGrid = memo(function FormatGrid({
           <span
             key={i}
             className={`${styles.fcell} ${lit === i ? styles.lit : ""}`}
-            style={{ transitionDelay: on ? `${0.15 + col * 0.07 + row * 0.04}s` : "0s", "--open": `${open.toFixed(2)}s` } as React.CSSProperties}
+            style={
+              {
+                transitionDelay: on ? `${0.15 + col * 0.07 + row * 0.04}s` : "0s",
+                "--open": `${open.toFixed(2)}s`,
+                transform: curved ? curveAt((col + 0.5) / g.cols - 0.5, view.w) : undefined,
+              } as React.CSSProperties
+            }
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {still && <img src={still} alt="" draggable={false} />}
@@ -761,7 +780,19 @@ const FEEDS = 5; // columns
 const feedDelay = (c: number) => -c * 1.7 - (c % 2) * 0.9;
 const PER_FEED = 4; // reels in a column (shown twice, so the swipe loops without a seam)
 
-const ReelStrip = memo(function ReelStrip({ on, pool, turn }: { on: boolean; pool: string[]; turn: number }) {
+const ReelStrip = memo(function ReelStrip({
+  on,
+  pool,
+  turn,
+  curved = false,
+}: {
+  on: boolean;
+  pool: string[];
+  turn: number;
+  /** hero 9: the columns curved round the viewer, as a cinema's screen */
+  curved?: boolean;
+}) {
+  const view = useViewport();
   const live = useLiveCount(on, FEEDS * PER_FEED * 2);
   const lit = useLit(on, FEEDS);
   let n = 0;
@@ -771,7 +802,12 @@ const ReelStrip = memo(function ReelStrip({ on, pool, turn }: { on: boolean; poo
         <div
           key={c}
           className={`${styles.feed} ${lit === c ? styles.lit : ""}`}
-          style={{ "--open": `${(Math.abs(c - (FEEDS - 1) / 2) * 0.1).toFixed(2)}s` } as React.CSSProperties}
+          style={
+            {
+              "--open": `${(Math.abs(c - (FEEDS - 1) / 2) * 0.1).toFixed(2)}s`,
+              transform: curved ? curveAt((c + 0.5) / FEEDS - 0.5, view.w) : undefined,
+            } as React.CSSProperties
+          }
         >
           <div className={styles.feedTrack} style={{ animationDelay: `${feedDelay(c)}s` }}>
             {[0, 1].map((copy) =>
@@ -1069,6 +1105,7 @@ export default function Chooser({
   plainBeyond = false,
   doorBeyond = false,
   panelBeyond = false,
+  curved = false,
   luxe = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
@@ -1115,6 +1152,10 @@ export default function Chooser({
    *  (beyond-panel.tsx); a click on the tile grows it to the whole screen, and Beyond's page
    *  comes out from under it */
   panelBeyond?: boolean;
+  /** hero 9: 16x9's and 9x16's walls curved round the viewer, as a cinema's screen — the middle
+   *  drawing back, the sides coming round, fine gutters between the films; the view shifting a
+   *  little with the pointer (with luxe) */
+  curved?: boolean;
   /** hero 8: 16x9's and 9x16's walls in Beyond's dark — the room black; a still ribbon of smoke
    *  in the middle under the words; every film resting low, one at a time taking the light; each
    *  tile opening from a line across its middle, out from the centre. Every preview, Beyond's
@@ -1279,6 +1320,26 @@ export default function Chooser({
     return () => window.removeEventListener("resize", onResize);
   }, [up, open, reduce, grid, luxe]);
 
+  // hero 9: the curved walls are seen from where the pointer is, a little
+  useEffect(() => {
+    if (!curved || reduce || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    let raf = 0;
+    const move = (e: PointerEvent) => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const el = stageRef.current;
+        if (!el) return;
+        el.style.setProperty("--vx", ((e.clientX / window.innerWidth - 0.5) * 2).toFixed(3));
+        el.style.setProperty("--vy", ((e.clientY / window.innerHeight - 0.5) * 2).toFixed(3));
+      });
+    };
+    window.addEventListener("pointermove", move);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("pointermove", move);
+    };
+  }, [curved, reduce]);
+
   // hero 7: Beyond's film is a place you look around in — it leans a little after the pointer
   useEffect(() => {
     if (!plainBeyond || reduce || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
@@ -1342,7 +1403,7 @@ export default function Chooser({
           ref={(el) => {
             filmRefs.current[f.key] = el;
           }}
-          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""} ${f.key === "beyond" && doorBeyond ? `${styles.filmDoor} ${up === "beyond" && open ? styles.doorOpen : ""}` : ""} ${f.key === "beyond" && panelBeyond ? styles.filmPanel : ""}`}
+          className={`${styles.film} ${styles[`film_${f.key.replace("x", "by")}`]} ${grid ? styles.filmGrid : ""} ${f.key === "beyond" && plainBeyond ? `${styles.filmPlain} ${up === "beyond" ? styles.filmPlainOn : ""}` : ""} ${f.key === "beyond" && doorBeyond ? `${styles.filmDoor} ${up === "beyond" && open ? styles.doorOpen : ""}` : ""} ${f.key === "beyond" && panelBeyond ? styles.filmPanel : ""} ${curved && f.key !== "beyond" ? styles.filmCurved : ""}`}
           aria-hidden="true"
         >
           <div
@@ -1353,9 +1414,9 @@ export default function Chooser({
           >
             {grid && pool?.length && f.key !== "beyond" ? (
               refined && f.key === "9x16" ? (
-                <ReelStrip on={up === f.key && !open} pool={pool} turn={turn} />
+                <ReelStrip on={up === f.key && !open} pool={pool} turn={turn} curved={curved} />
               ) : (
-                <FormatGrid kind={f.key as "16x9" | "9x16"} on={up === f.key && !open} pool={pool} turn={turn} big={refined} wall={wall} />
+                <FormatGrid kind={f.key as "16x9" | "9x16"} on={up === f.key && !open} pool={pool} turn={turn} big={refined} wall={wall} curved={curved} />
               )
             ) : f.key === "beyond" && (doorBeyond || panelBeyond) ? null : (
             // (hero 8's door and hero 9's panel show no film: they open onto Beyond's page itself)

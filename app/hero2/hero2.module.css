@@ -3211,3 +3211,31 @@
     transform: none;
   }
 }
+
+/* ===== hero 9: 16x9's and 9x16's walls curved round the viewer (curveAt, in chooser.tsx) ===== */
+/* seen in perspective, from where the pointer is, a little */
+.filmCurved .cine {
+  perspective: 1100px;
+  perspective-origin: calc(50% + var(--vx, 0) * 7%) calc(50% + var(--vy, 0) * 6%);
+}
+
+/* fine gutters between the films, each with the slightest round to its corners */
+.stageLuxe .filmCurved .cine.fgrid {
+  gap: 10px;
+  background: #050505;
+}
+
+.filmCurved .fcell,
+.filmCurved .feed {
+  border-radius: 3px;
+  backface-visibility: hidden;
+}
+
+/* the films rest a little lower than on the flat wall, the one taking the light brighter for it */
+.stageLuxe .filmCurved .cine .fcell::after {
+  opacity: 0.5;
+}
+
+.stageLuxe .filmCurved .reelStrip {
+  --gap: 12px;
+}

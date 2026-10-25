@@ -13,9 +13,12 @@ import styles from "../hero2/hero2.module.css";
 import own from "../hero7/hero7.module.css";
 
 // ===========================================================================
-// HERO 9 — hero 8, with Beyond as a lit tile in a gallery wall instead of a
-// door. 16x9 and 9x16 as in hero 8: their walls of films in a black room, the
-// still ribbon of smoke under the words. Beyond, the studio's top service,
+// HERO 9 — hero 8 as a screening room. 16x9 and 9x16 keep their walls of films
+// — the brand films' grid, the columns of reels — but each wall curves round
+// the viewer as a cinema's screen does: the middle drawing back, the sides
+// coming round and facing in, fine gutters between the films, the view shifting
+// a little with the pointer; one film at a time taking the light, the ribbon of
+// smoke still under the words. Beyond, the studio's top service,
 // shows no film: the screen becomes a wall of near-black matte panels, drawn
 // as a real surface, and the tile in the middle — 16:9, our frame — lights a
 // warm white from a line across it. On it, as on a museum label: the
@@ -134,6 +137,7 @@ function Home({ variant }: { variant: HeroVariant }) {
         band
         plainBeyond
         panelBeyond
+        curved
         luxe
       />
     </section>
