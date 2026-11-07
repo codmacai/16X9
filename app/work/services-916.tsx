@@ -7,28 +7,36 @@ import SectionLabel from "./section-label";
 import s from "./services.module.css";
 
 // ===========================================================================
-// WORK, 9x16 — what we do, under the accounts: the services as an index, in
-// the line of words' own language. Each is a row across the page — its number,
-// its name large in a hairline outline, what it covers at its end — between
-// hairlines that draw across as they come into view, the name rising after.
-// Pointed at (on a phone, scrolled to the middle of the screen), a row takes
-// the light as a chosen word does: its name fills in paper, the frame's corners
-// close round it, and the rest step back.
+// WORK, 9x16 — what we do, under the accounts: the services as cards, each a
+// frame in the dark. A card opens from a line across its middle as it comes
+// into view, as every frame on the site does; at its head its number and
+// "Service" on a hairline, a small 9:16 frame at its end; at its foot the
+// service's name large in a hairline outline, and what it covers. A soft
+// light lies across its top, a fine grain over it. Pointed at (on a phone,
+// scrolled to the middle of the screen), a card takes the light as a chosen
+// word does: a light follows the pointer across it and along its edge, the
+// name fills in paper, the frame's corners close round the card, a hairline
+// draws along its foot, and the rest step back.
 // ===========================================================================
 
+const EASE_CINE = [0.76, 0, 0.24, 1] as const;
 const EASE = [0.16, 1, 0.3, 1] as const;
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
-const ROW: Variants = { hidden: {}, shown: {} };
-const RULE: Variants = { hidden: { scaleX: 0 }, shown: { scaleX: 1, transition: { duration: 1.2, ease: EASE } } };
-const RISE: Variants = { hidden: { y: "105%" }, shown: { y: "0%", transition: { duration: 1.1, ease: EASE, delay: 0.15 } } };
-const FADE: Variants = { hidden: { opacity: 0 }, shown: { opacity: 1, transition: { duration: 0.9, ease: "easeOut", delay: 0.45 } } };
+const OPEN: Variants = {
+  hidden: { clipPath: "inset(50% 0% 50% 0%)" },
+  shown: (i: number) => ({ clipPath: "inset(0% 0% 0% 0%)", transition: { duration: 1.2, ease: EASE_CINE, delay: (i % 3) * 0.12 } }),
+};
+const INNER: Variants = {
+  hidden: { opacity: 0, y: 14 },
+  shown: (i: number) => ({ opacity: 1, y: 0, transition: { duration: 1, ease: EASE, delay: 0.55 + (i % 3) * 0.12 } }),
+};
 
 export default function Services916({ reduce }: { reduce: boolean }) {
   const [on, setOn] = useState<number | null>(null);
-  const listRef = useRef<HTMLOListElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
-  // no pointer to point with: the row in the middle of the screen takes the light
+  // no pointer to point with: the card in the middle of the screen takes the light
   useEffect(() => {
     const list = listRef.current;
     if (!list || !window.matchMedia("(hover: none)").matches) return;
@@ -51,46 +59,60 @@ export default function Services916({ reduce }: { reduce: boolean }) {
       <SectionLabel no="02" id="services-title" reduce={reduce}>
         Our services
       </SectionLabel>
-      <ol ref={listRef} className={`${s.list} ${on !== null ? s.listOn : ""}`} onPointerLeave={() => setOn(null)}>
+      <ul ref={listRef} className={`${s.grid} ${on !== null ? s.gridOn : ""}`} onPointerLeave={() => setOn(null)}>
         {SERVICES_9X16.map((sv, i) => (
+          // (watched from the slot: the card itself, shut to a line, has nothing in view to be seen by)
           <motion.li
             key={sv.name.join(" ")}
-            className={`${s.row} ${on === i ? s.on : ""}`}
-            variants={ROW}
+            className={`${s.slot} ${on === i ? s.on : ""}`}
             initial={reduce ? false : "hidden"}
             whileInView="shown"
-            viewport={{ once: true, amount: 0.4 }}
-            onPointerEnter={(e) => e.pointerType === "mouse" && setOn(i)}
+            viewport={{ once: true, amount: 0.35 }}
           >
-            <motion.i className={s.rule} variants={RULE} aria-hidden="true" />
-            <motion.span className={s.num} variants={FADE}>
-              {pad2(i + 1)}
-            </motion.span>
-            <h3 className={s.name}>
-              <span className={s.mask}>
-                <motion.span className={s.word} variants={RISE}>
-                  {sv.name.join(" ")}
-                  {/* the frame's corners, closing round the name as it takes the light */}
-                  <i className={s.corners} aria-hidden="true">
-                    <b />
-                    <b />
-                    <b />
-                    <b />
-                  </i>
-                </motion.span>
-              </span>
-            </h3>
-            <motion.span className={s.tags} variants={FADE}>
-              {sv.tags.map((t) => (
-                <span key={t}>{t}</span>
-              ))}
-            </motion.span>
+            {/* the frame's corners, closing round the card as it takes the light */}
+            <i className={s.corners} aria-hidden="true">
+              <b />
+              <b />
+              <b />
+              <b />
+            </i>
+            <motion.article
+              className={s.card}
+              custom={i}
+              variants={OPEN}
+              onPointerEnter={(e) => e.pointerType === "mouse" && setOn(i)}
+              onPointerMove={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+                e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+              }}
+            >
+              <motion.header className={s.head} custom={i} variants={INNER}>
+                <span className={s.label}>
+                  <span className={s.num}>{pad2(i + 1)}</span>
+                  <i className={s.leader} aria-hidden="true" />
+                  Service
+                </span>
+                <i className={s.glyph} aria-hidden="true" />
+              </motion.header>
+              <motion.div className={s.foot} custom={i} variants={INNER}>
+                <h3 className={s.name}>
+                  {sv.name.map((line) => (
+                    <span key={line}>{line}</span>
+                  ))}
+                </h3>
+                <p className={s.tags}>
+                  {sv.tags.map((t) => (
+                    <span key={t}>{t}</span>
+                  ))}
+                </p>
+              </motion.div>
+              {/* a hairline drawing along its foot */}
+              <i className={s.line} aria-hidden="true" />
+            </motion.article>
           </motion.li>
         ))}
-        <motion.li className={s.end} variants={ROW} initial={reduce ? false : "hidden"} whileInView="shown" viewport={{ once: true }} aria-hidden="true">
-          <motion.i className={s.rule} variants={RULE} />
-        </motion.li>
-      </ol>
+      </ul>
     </section>
   );
 }
