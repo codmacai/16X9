@@ -2,22 +2,16 @@
 
 import { useState, type RefObject } from "react";
 import { motion } from "framer-motion";
-import { brandOf, CATEGORIES, logoOf, type Project } from "./_shared/data";
+import { CATEGORIES, type Project } from "./_shared/data";
 import s from "./story.module.css";
 
 // ===========================================================================
-// THE CASE — on a film's page, above the screen, in the site's own hand:
-// ink and hairlines on the paper.
-//   · On the left the brand, as a film's opening title card: "A film for",
-//     a hairline frame with the brand's mark in the middle of it — the frame's
-//     corners closing in round it as it comes into view, as they do round a
-//     chosen word — and under it the brand's name, large and light. It holds
-//     its place while the right side passes.
-//   · On the right the project, as a spec sheet: its name set large and
-//     light; then its particulars in rows between hairlines that draw across
-//     as they come in — who directed it, its category, year and format —
-//     each label small and wide-set, its value in light capitals; and last
-//     the case, in three numbered parts: the client, the task, the solution.
+// THE CASE — on a film's page, above the screen, in the site's own hand: ink
+// and hairlines on the paper, one screen tall. The project's name set large
+// and light; under it its particulars side by side in columns — who directed
+// it, its category, year, runtime and format — each over a hairline that draws
+// across as it comes in; and last the case in three numbered parts: the
+// client, the task, the solution.
 // Every film has all three parts of its case: one whose case isn't written yet
 // has one drafted from what we know of it (caseOf).
 // ===========================================================================
@@ -56,8 +50,6 @@ function directionOf(film: Project) {
 
 export default function Story({ film, root, reduce }: { film: Project; root: RefObject<HTMLElement | null>; reduce: boolean }) {
   const parts = caseOf(film);
-  const brand = brandOf(film);
-  const logo = logoOf(film);
   const kind = CATEGORIES.find((c) => c.id === film.category)?.label ?? "Film";
   const specs = [
     { label: "Direction", value: directionOf(film) },
@@ -78,34 +70,6 @@ export default function Story({ film, root, reduce }: { film: Project; root: Ref
       onViewportEnter={() => setSeen(true)}
       viewport={{ root, once: true, amount: 0.2 }}
     >
-      {/* the brand, as an opening title card */}
-      <div className={s.side}>
-        <div className={s.sticky}>
-          <span className={s.lab}>A film for</span>
-          <div className={s.frame}>
-            <i className={s.corners} aria-hidden="true">
-              <b />
-              <b />
-              <b />
-              <b />
-            </i>
-            {logo?.colour ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img className={s.logo} src={logo.colour} alt="" draggable={false} />
-            ) : logo ? (
-              <span className={s.logoMask} style={{ maskImage: `url(${logo.src})`, WebkitMaskImage: `url(${logo.src})` }} />
-            ) : (
-              <span className={s.logoName}>{brand}</span>
-            )}
-          </div>
-          <h2 className={s.brand}>
-            <span className={s.mask}>
-              <span className={s.rise}>{brand}</span>
-            </span>
-          </h2>
-        </div>
-      </div>
-
       {/* the project, as a spec sheet */}
       <div className={s.sheet}>
         <span className={s.lab}>The project</span>
@@ -115,7 +79,7 @@ export default function Story({ film, root, reduce }: { film: Project; root: Ref
           </span>
         </h3>
 
-        <dl className={s.specs}>
+        <dl className={s.specs} style={{ "--n": specs.length } as React.CSSProperties}>
           {specs.map((f, i) => (
             <div key={f.label} className={s.spec} style={{ "--i": i } as React.CSSProperties}>
               <i className={s.rule} aria-hidden="true" />

@@ -1,20 +1,25 @@
-/* THE CASE (story.tsx): ink and hairlines on the film page's paper — on the left the brand as an
-   opening title card (a hairline frame round its mark, its corners closing in; its name large and
-   light), on the right the project as a spec sheet (its name, its particulars between drawn
-   hairlines, then the case in three numbered parts). Everything goes once, from .on. */
+/* THE CASE (story.tsx): ink and hairlines on the film page's paper, one screen tall — the project's
+   name, its particulars side by side in columns over drawn hairlines, then the case in three
+   numbered parts. Everything goes once, from .on. */
 
 .story {
   --cine: cubic-bezier(0.76, 0, 0.24, 1);
   --soft: cubic-bezier(0.16, 1, 0.3, 1);
   --rule: color-mix(in srgb, var(--ink) 18%, transparent);
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 0.42fr) minmax(0, 1fr);
-  gap: clamp(32px, 6vw, 110px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100svh - var(--band, 64px));
   max-width: 1440px;
   margin: 0 auto;
-  padding: clamp(70px, 13vh, 150px) var(--ui) clamp(50px, 9vh, 110px);
+  padding: clamp(28px, 6vh, 72px) var(--ui);
+  box-sizing: border-box;
   color: var(--ink);
+}
+
+.sheet {
+  min-width: 0;
 }
 
 /* labels: small, wide-set capitals */
@@ -44,128 +49,9 @@
   translate: 0 0;
 }
 
-/* ===== the brand: an opening title card, holding its place ===== */
-.sticky {
-  position: sticky;
-  top: clamp(90px, 16vh, 150px);
-  display: flex;
-  flex-direction: column;
-  gap: clamp(16px, 2.4vh, 24px);
-}
-
-.frame {
-  position: relative;
-  display: grid;
-  place-items: center;
-  aspect-ratio: 4 / 3;
-  border: 1px solid var(--rule);
-  background: color-mix(in srgb, var(--ink) 3%, transparent);
-}
-
-/* the frame's corners, closing in round the mark */
-.corners {
-  position: absolute;
-  inset: 14%;
-  opacity: 0;
-  scale: 1.18;
-  transition:
-    opacity 0.6s ease 0.4s,
-    scale 1.3s var(--soft) 0.4s;
-  pointer-events: none;
-}
-
-.on .corners {
-  opacity: 1;
-  scale: 1;
-}
-
-.corners b {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  border: 0 solid var(--ink);
-}
-
-.corners b:nth-child(1) {
-  left: 0;
-  top: 0;
-  border-width: 1px 0 0 1px;
-}
-
-.corners b:nth-child(2) {
-  right: 0;
-  top: 0;
-  border-width: 1px 1px 0 0;
-}
-
-.corners b:nth-child(3) {
-  left: 0;
-  bottom: 0;
-  border-width: 0 0 1px 1px;
-}
-
-.corners b:nth-child(4) {
-  right: 0;
-  bottom: 0;
-  border-width: 0 1px 1px 0;
-}
-
-/* the mark, in the middle of the frame */
-.logo,
-.logoMask {
-  display: block;
-  width: 52%;
-  height: 34%;
-  object-fit: contain;
-  opacity: 0;
-  transition: opacity 1s ease 0.6s;
-}
-
-.logoMask {
-  background: var(--ink);
-  -webkit-mask: center / contain no-repeat;
-  mask: center / contain no-repeat;
-}
-
-/* (no mark yet: its name, set small in the frame) */
-.logoName {
-  max-width: 70%;
-  font-size: clamp(14px, 1.3vw, 20px);
-  letter-spacing: 0.3em;
-  text-align: center;
-  text-transform: uppercase;
-  opacity: 0;
-  transition: opacity 1s ease 0.6s;
-}
-
-.on .logo,
-.on .logoMask {
-  opacity: 0.9;
-}
-
-.on .logoName {
-  opacity: 0.8;
-}
-
-/* its name under the frame, large and light */
-.brand {
-  margin: clamp(4px, 1vh, 10px) 0 0;
-  font-size: clamp(40px, 4.6vw, 84px);
-  font-weight: 300;
-  line-height: 0.92;
-  letter-spacing: -0.045em;
-  text-transform: uppercase;
-  overflow-wrap: anywhere;
-}
-
-/* ===== the project: a spec sheet ===== */
-.sheet {
-  min-width: 0;
-}
-
 .title {
-  margin: clamp(12px, 2vh, 20px) 0 clamp(30px, 6vh, 64px);
-  font-size: clamp(48px, 7.4vw, 128px);
+  margin: clamp(8px, 1.6vh, 18px) 0 clamp(22px, 5vh, 56px);
+  font-size: clamp(44px, min(8vw, 13vh), 132px);
   font-weight: 300;
   line-height: 0.9;
   letter-spacing: -0.05em;
@@ -173,18 +59,20 @@
   overflow-wrap: anywhere;
 }
 
-/* its particulars: rows between hairlines that draw across as they come in */
+/* its particulars: side by side in columns, each over a hairline drawing across */
 .specs {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr));
+  gap: clamp(16px, 2.4vw, 40px);
   margin: 0;
 }
 
 .spec {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 0.34fr) minmax(0, 1fr);
-  align-items: baseline;
-  gap: 20px;
-  padding: clamp(16px, 2.6vh, 24px) 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.6vh, 16px);
+  padding-top: clamp(14px, 2.2vh, 22px);
 }
 
 .rule {
@@ -205,11 +93,12 @@
 
 .value {
   margin: 0;
-  font-size: clamp(18px, 1.8vw, 30px);
+  font-size: clamp(17px, min(1.8vw, 3.4vh), 30px);
   font-weight: 300;
   line-height: 1.1;
   letter-spacing: -0.01em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
   opacity: 0;
   translate: 0 10px;
   transition:
@@ -225,14 +114,20 @@
 /* the case: three numbered parts */
 .case {
   position: relative;
-  padding-top: clamp(18px, 3vh, 28px);
+  margin-top: clamp(26px, 5.5vh, 64px);
+  padding-top: clamp(14px, 2.2vh, 22px);
+}
+
+.case .rule {
+  background: var(--ink);
+  opacity: 0.35;
 }
 
 .parts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(20px, 2.6vw, 44px);
-  margin: clamp(18px, 3vh, 28px) 0 0;
+  margin: clamp(14px, 2.4vh, 24px) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -259,8 +154,8 @@
 }
 
 .partName {
-  margin: 10px 0 12px;
-  font-size: clamp(15px, 1.2vw, 18px);
+  margin: 8px 0 10px;
+  font-size: clamp(14px, 1.15vw, 17px);
   font-weight: 400;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -268,41 +163,35 @@
 
 .text {
   margin: 0;
-  font-size: clamp(14px, 1.05vw, 16px);
-  line-height: 1.6;
+  font-size: clamp(13px, min(1vw, 1.9vh), 15px);
+  line-height: 1.55;
   text-transform: none;
   opacity: 0.8;
 }
 
-/* phones and narrow tablets: the title card on top, the sheet under it */
+/* tablets: particulars three across */
 @media (max-width: 900px) {
-  .story {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .sticky {
-    position: static;
-  }
-  .frame {
-    aspect-ratio: 16 / 10;
+  .specs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 20px;
   }
   .parts {
     grid-template-columns: minmax(0, 1fr);
   }
+  .story {
+    min-height: 0;
+  }
 }
 
+/* phones: two across */
 @media (max-width: 640px) {
-  .spec {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
+  .specs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .rise,
-  .corners,
-  .logo,
-  .logoMask,
-  .logoName,
   .rule,
   .value,
   .part {
