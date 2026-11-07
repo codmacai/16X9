@@ -1,173 +1,143 @@
-/* WORK, 9x16 — what we do (services-916.tsx): the services as cards, each a frame in the dark —
-   opening from a line as it comes into view; its number and "Service" on a hairline at its head,
-   a small 9:16 frame at its end; its name large in a hairline outline at its foot, what it covers
-   under it. Taking the light: a light following the pointer across it and along its edge, the name
-   filled in paper, the frame's corners closed round it, a hairline drawn along its foot. */
+/* WORK, 9x16 — what we do (services-916.tsx): the services as lit tiles on a rail — each 9:16, a
+   warm white like Beyond's tile, in ink: "Service" and its number at its head, its number large
+   in a hairline outline, its name and what it covers at its foot. Each opens from a line as it
+   comes into view; the rail runs on past the page's edge, with the count, a filling hairline and
+   the arrows under it. Pointed at, a tile lifts, its number fills, the frame's corners close
+   round it. */
 
 .services {
+  --edge: max(var(--ui), (100vw - 1280px) / 2); /* the page's margin, where the rail starts */
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: clamp(40px, 6.5vh, 70px);
-  padding: clamp(10px, 3vh, 40px) var(--ui) clamp(150px, 22vh, 240px);
+  padding: clamp(10px, 3vh, 40px) 0 clamp(150px, 22vh, 240px);
 }
 
-.grid {
+/* ===== the rail ===== */
+.rail {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(18px, 2.2vw, 34px);
+  grid-auto-flow: column;
+  grid-auto-columns: clamp(250px, 22vw, 320px);
+  column-gap: clamp(16px, 1.8vw, 28px);
   width: 100%;
-  max-width: 1280px;
   margin: 0;
-  padding: 0;
+  padding: 18px var(--edge) 22px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 var(--edge);
+  scrollbar-width: none;
   list-style: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+.rail:active {
+  cursor: grabbing;
+}
+
+/* (dragged with the mouse: no snapping until it's let go) */
+.rail[data-drag] {
+  scroll-snap-type: none;
 }
 
 .slot {
   position: relative;
-  min-width: 0;
-  transition: opacity 0.6s ease;
+  scroll-snap-align: start;
 }
 
-/* ===== a card ===== */
-.card {
-  --mx: 50%;
-  --my: 0%;
+/* ===== a tile: 9:16, lit a warm white ===== */
+.tile {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  aspect-ratio: 4 / 5;
-  padding: clamp(20px, 2vw, 30px);
+  aspect-ratio: 9 / 16;
+  padding: clamp(20px, 1.8vw, 28px);
   overflow: hidden;
-  color: var(--paper);
+  color: #0c0c0c;
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(ellipse 90% 55% at 50% -5%, rgb(255 250 240 / 0.07), transparent 70%),
-    linear-gradient(180deg, #0d0d0d, #070707);
-  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.12);
-  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 120% 70% at 50% 0%, rgb(255 255 255 / 0.75), transparent 70%),
+    linear-gradient(180deg, #f3f1ec, #e2dfd8);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    inset 0 0 22px rgb(0 0 0 / 0.08),
+    0 0 60px -10px rgb(255 245 225 / 0.08);
+  transition:
+    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.6s ease;
 }
 
-/* the light following the pointer, across it... */
-.card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(520px circle at var(--mx) var(--my), rgb(255 250 240 / 0.075), transparent 45%);
-  opacity: 0;
-  transition: opacity 0.6s ease;
-  pointer-events: none;
-}
-
-/* ...and along its edge */
-.card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  padding: 1px;
-  background: radial-gradient(360px circle at var(--mx) var(--my), rgb(246 244 240 / 0.6), transparent 60%);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box exclude,
-    linear-gradient(#000 0 0);
-  opacity: 0;
-  transition: opacity 0.6s ease;
-  pointer-events: none;
-}
-
-/* its head: the number and "Service" on a hairline; a small 9:16 frame at its end */
+/* its head, as on a label: "Service", and its number */
 .head {
-  position: relative;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  font-size: 10px;
-  letter-spacing: 0.28em;
+  font-size: 9.5px;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
+  opacity: 0.62;
 }
 
-.label {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  opacity: 0.6;
-  transition: opacity 0.5s ease;
-}
-
-.num {
+.count {
   font-variant-numeric: tabular-nums;
 }
 
-.leader {
-  width: 28px;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.6;
-  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.glyph {
-  width: 9px;
-  height: 16px;
-  border: 1px solid currentColor;
-  border-radius: 1.5px;
+.count i,
+.at i {
+  font-style: normal;
   opacity: 0.45;
-  transition: opacity 0.5s ease;
 }
 
-/* its foot: the name, large, in a hairline outline; what it covers */
+/* its number, large, in a hairline outline */
+.big {
+  margin-top: clamp(18px, 3vh, 34px);
+  font-size: clamp(96px, 9.4vw, 150px);
+  line-height: 0.85;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  color: transparent;
+  -webkit-text-stroke: 1px rgb(12 12 12 / 0.7);
+  transition:
+    color 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    -webkit-text-stroke-color 0.6s ease;
+}
+
+/* its foot: the name; a hairline; what it covers */
 .foot {
-  position: relative;
+  margin-top: auto;
 }
 
 .name {
   margin: 0;
   display: flex;
   flex-direction: column;
-  font-size: clamp(28px, 2.9vw, 46px);
+  font-size: clamp(22px, 1.9vw, 30px);
   font-weight: 400;
-  line-height: 1;
-  letter-spacing: -0.015em;
+  line-height: 1.02;
+  letter-spacing: -0.01em;
   text-transform: uppercase;
-  color: transparent;
-  -webkit-text-stroke: 1px rgb(246 244 240 / 0.8);
-  transition:
-    color 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-    -webkit-text-stroke-color 0.6s ease;
 }
 
 .tags {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  margin: clamp(16px, 2.2vh, 22px) 0 0;
-  padding-top: clamp(14px, 2vh, 18px);
-  border-top: 1px solid rgb(246 244 240 / 0.12);
+  flex-direction: column;
+  gap: 7px;
+  margin: clamp(14px, 2vh, 20px) 0 0;
+  padding: clamp(12px, 1.8vh, 16px) 0 0;
+  border-top: 1px solid rgb(12 12 12 / 0.2);
+  list-style: none;
   font-size: 9.5px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  opacity: 0.5;
-  transition: opacity 0.5s ease;
+  opacity: 0.6;
 }
 
-/* the hairline along its foot, drawing out as it takes the light */
-.line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 1px;
-  background: var(--paper);
-  transform: scaleX(0);
-  transform-origin: 0 50%;
-  transition: transform 0.9s cubic-bezier(0.65, 0, 0.35, 1);
-}
-
-/* the frame's corners, outside the card: closing round it as it takes the light */
+/* the frame's corners, in paper, outside the tile: closing round it as it's pointed at */
 .corners {
   position: absolute;
   z-index: 1;
@@ -176,8 +146,7 @@
   scale: 1.03;
   transition:
     opacity 0.45s ease,
-    scale 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-    inset 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    scale 0.7s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
 }
 
@@ -212,85 +181,118 @@
   border-width: 0 1px 1px 0;
 }
 
-/* ===== taking the light ===== */
-.on .card {
-  transform: translateY(-4px);
+@media (hover: hover) {
+  .slot:hover .tile {
+    transform: translateY(-6px);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      inset 0 0 22px rgb(0 0 0 / 0.06),
+      0 0 80px -6px rgb(255 245 225 / 0.16);
+  }
+  .slot:hover .big {
+    color: #0c0c0c;
+    -webkit-text-stroke-color: #0c0c0c;
+  }
+  .slot:hover .corners {
+    opacity: 1;
+    scale: 1;
+    translate: 0 -6px;
+  }
 }
 
-.on .card::before,
-.on .card::after {
-  opacity: 1;
-}
-
-.on .name {
+/* ===== under the rail: the count, the hairline filling as it goes, the arrows ===== */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 2.4vw, 36px);
+  width: calc(100% - 2 * var(--edge));
+  margin-top: calc(clamp(40px, 6.5vh, 70px) * -0.4);
   color: var(--paper);
-  -webkit-text-stroke-color: var(--paper);
 }
 
-.on .label,
-.on .tags {
-  opacity: 0.95;
+.at {
+  font-size: 10px;
+  letter-spacing: 0.26em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
 }
 
-.on .glyph {
-  opacity: 0.9;
+.track {
+  position: relative;
+  flex: 1;
+  height: 1px;
+  background: rgb(246 244 240 / 0.16);
 }
 
-.on .leader {
-  width: 46px;
+.track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgb(246 244 240 / 0.85);
+  transform: scaleX(var(--p, 0));
+  transform-origin: 0 50%;
+  transition: transform 0.2s linear;
 }
 
-.on .line {
-  transform: scaleX(1);
+.arrows {
+  display: flex;
+  gap: 10px;
 }
 
-.on .corners {
-  opacity: 1;
-  scale: 1;
+.arrow {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgb(246 244 240 / 0.28);
+  border-radius: 50%;
+  background: none;
+  color: var(--paper);
+  cursor: pointer;
+  transition:
+    border-color 0.4s ease,
+    background-color 0.4s ease,
+    color 0.4s ease;
 }
 
-.gridOn .slot:not(.on) {
-  opacity: 0.4;
+.arrow svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
 }
 
-/* no pointer: the light rests across its top */
-@media (hover: none) {
-  .card {
-    --mx: 50%;
-    --my: 0%;
+@media (hover: hover) {
+  .arrow:hover {
+    border-color: var(--paper);
+    background: var(--paper);
+    color: #0c0c0c;
   }
 }
 
-/* tablets: two to a row; phones: one, a little shorter */
-@media (max-width: 1080px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .name {
-    font-size: clamp(26px, 4.4vw, 40px);
-  }
-}
-
+/* phones: a tile most of the screen wide, the next peeking in */
 @media (max-width: 640px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 26px;
+  .rail {
+    grid-auto-columns: 70vw;
   }
-  .card {
-    aspect-ratio: 5 / 4;
+  .big {
+    font-size: 30vw;
   }
   .name {
-    font-size: clamp(30px, 9vw, 40px);
+    font-size: 6.4vw;
+  }
+  .arrows {
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .slot,
-  .card,
-  .name,
-  .line,
+  .tile,
+  .big,
   .corners,
-  .leader {
+  .track::after {
     transition: none;
   }
 }
