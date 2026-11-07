@@ -115,7 +115,24 @@
   transition: opacity 0.4s ease;
 }
 
+.handle {
+  position: relative;
+}
+
+/* tracked type centred true: the tracking after its last letter given back before its first */
+.name {
+  padding-left: 0.22em;
+}
+
+.handle {
+  padding-left: 0.12em;
+}
+
+/* (the arrow hangs off the handle's end, so the handle itself stays centred under the name) */
 .handle i {
+  position: absolute;
+  left: 100%;
+  margin-left: 0.5em;
   display: inline-block;
   font-style: normal;
   opacity: 0;

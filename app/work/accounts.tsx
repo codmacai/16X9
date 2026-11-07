@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform, type MotionValue, type Transition } from "framer-motion";
+import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion, type Transition } from "framer-motion";
 import { useRouter } from "next/navigation";
 import RoomSwitch from "../hero4/room-switch";
 import { Band, rootClass } from "./_shared/chrome";
@@ -23,8 +23,8 @@ import { useSmoothWheel } from "./smooth-wheel";
 // handle underneath. Point at one and its reels come up in the frame, the
 // grid alone, three across (account-reels.tsx): the one pointed at plays, a
 // click plays it whole. Click the frame to open the account's page. The name underneath
-// opens the account on Instagram. Four to a row (two on a phone);
-// as the page scrolls past them each column drifts at its own pace. Then what
+// opens the account on Instagram. Four to a row (two on a phone), in true
+// rows, each frame rising into place as it comes into view. Then what
 // we do: the services, as frames that play their work (services-916.tsx).
 // ===========================================================================
 
@@ -55,11 +55,6 @@ export default function Accounts() {
   const reelAcc = reel ? ACCOUNTS.find((a) => a.handle === reel.handle) : undefined;
   // the page glides on the wheel, except while something is open over it
   useSmoothWheel(!open && !reel && work === null && svc === null);
-  // as the page scrolls past the accounts, each column drifts at its own pace
-  const rowRef = useRef<HTMLUListElement>(null);
-  const { scrollYProgress } = useScroll({ target: rowRef, offset: ["start end", "end start"] });
-  const drift = useSpring(scrollYProgress, { stiffness: 90, damping: 24, mass: 0.5 });
-  const cols = [useDrift(drift, 30, reduce), useDrift(drift, 90, reduce), useDrift(drift, 50, reduce), useDrift(drift, 110, reduce)];
   return (
     <main className={`${rootClass} ${styles.page}`}>
       <Band
@@ -74,10 +69,10 @@ export default function Accounts() {
         <SectionLabel no="01" reduce={reduce}>
           The accounts we run
         </SectionLabel>
-        <ul ref={rowRef} className={styles.row}>
+        <ul className={styles.row}>
           {ACCOUNTS.map((a, i) => (
-            // the column's drift on the scroll, and the frame's own rise into place as it comes into view
-            <motion.li key={a.handle} style={{ y: cols[i % 4] }}>
+            // the frames in true rows, each rising into place as it comes into view
+            <motion.li key={a.handle}>
               <motion.div
                 initial={reduce ? false : { opacity: 0, y: 70, scale: 0.96 }}
                 whileInView={{ opacity: 1, y: 0, scale: 1 }}
@@ -136,8 +131,3 @@ export default function Accounts() {
   );
 }
 
-
-// a column's drift as the page scrolls past: from `px` below its place to `px` above it
-function useDrift(progress: MotionValue<number>, px: number, reduce: boolean) {
-  return useTransform(progress, [0, 1], reduce ? [0, 0] : [px, -px]);
-}

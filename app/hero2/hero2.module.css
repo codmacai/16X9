@@ -3604,3 +3604,8 @@
 .stageLine.stageScreen > .namesWrap .cap {
   opacity: 0.8;
 }
+
+/* hero 8's door: BEYOND in the outline too, clear — the others stepped back */
+.stageLine.stageDoor > .namesWrap .name[data-fmt="beyond"] {
+  opacity: 1;
+}

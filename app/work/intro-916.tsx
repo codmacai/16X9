@@ -17,7 +17,8 @@ import s from "./intro.module.css";
 // each at the frame's head, and each swipes up into the next; arrows at the
 // frame's sides go on to the next reel or back to the last (back swipes it
 // down). Point at the frame and the reel holds; click it to play it whole.
-// Scroll, and the page
+// At the room's foot, the way on: "Scroll or click to view the accounts we run",
+// a short hairline drawing down beside it. Scroll (or click it), and the page
 // swipes on the way the feed does: the room holds and falls back into the
 // dark, its headline drifting apart, while the accounts rise over it as a
 // sheet (accounts.tsx) — the next reel coming up over the last.
@@ -263,6 +264,20 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
             </span>
           </span>
         </motion.div>
+
+        {/* at the room's foot, the way on: scroll, or click, to the accounts we run */}
+        <motion.button
+          type="button"
+          className={s.next}
+          style={reduce ? undefined : { opacity: meta }}
+          onClick={() => {
+            const el = document.getElementById("accounts");
+            if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY, behavior: reduce ? "auto" : "smooth" });
+          }}
+        >
+          <span>Scroll or click to view the accounts we run</span>
+          <i aria-hidden="true" />
+        </motion.button>
 
         {/* falling back into the dark as the accounts come up over it */}
         {!reduce && <motion.i className={s.dark} style={{ opacity: dark }} aria-hidden="true" />}
