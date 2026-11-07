@@ -2,12 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
-import Curve from "./curve";
 import s from "./team.module.css";
 
 // ===========================================================================
-// THE TEAM — the people behind the frame, as one clean wall of portraits. The
-// black rises over the opening by its arched edge (curve.tsx); on it, the team
+// THE TEAM — the people behind the frame, as one clean wall of portraits. On
+// the black, following the opening as you scroll (no edge rising over it), the team
 // in black and white, five across and three down, each with rounded corners and a
 // fine gap between them, on a wall that bends only gently round the viewer
 // (a shallow cylinder: its rows stay level, its sides turning a little away).
@@ -97,7 +96,6 @@ export default function Team() {
 
   return (
     <section ref={ref} id="team" className={`${s.section} ${on || reduce ? s.on : ""}`} aria-label="The team">
-      <Curve target={ref} color="#000" />
       <div className={s.stage}>
         <p className={s.label}>The team</p>
         <div ref={viewRef} className={s.view} aria-hidden="true">

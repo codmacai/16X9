@@ -30,7 +30,7 @@ import s from "./opening.module.css";
 //   · underneath, the studio's own words come up, and once they're up they
 //     fill in on their own, quickly, word by word (not with the scroll), three
 //     small films opening inside the line as it names them;
-//   · as the next section rises over it, the screen fades back.
+//   · then the team simply follows it as you scroll: nothing rises over it.
 // Held still (reduced motion), it is simply the first screen and the line,
 // one after the other, everything open and read, on the first word.
 // ===========================================================================
@@ -118,11 +118,6 @@ export default function Opening() {
   // their masks (--rise), the whole block settling a little as they do
   const sayY = useTransform(rise, (v) => `${10 * Math.pow(1 - v, 2)}vh`);
 
-  // as the next section rises over it, the screen fades back (no zoom)
-  const { scrollYProgress: leave } = useScroll({ target: ref, offset: ["end end", "end start"] });
-  const out = useTransform(() => (still ? 0 : leave.get()));
-  const sinkY = useTransform(out, [0, 1], ["0vh", "30vh"]);
-  const sinkFade = useTransform(out, [0, 1], [1, 0.3]);
 
   // what we are: one word at a time, while the line is on screen
   const [shown, setShown] = useState(0); // which word
@@ -172,7 +167,7 @@ export default function Opening() {
   return (
     <section id="about-top" ref={ref} className={`${s.opening} ${still ? s.still : ""}`} aria-labelledby="about-title">
       <div className={s.stage}>
-        <motion.div className={s.frame} style={{ y: sinkY, opacity: sinkFade }}>
+        <div className={s.frame}>
           <div className={s.info}>
             <Info left="16X9 & Beyond — Who we are" centre="Dubai, United Arab Emirates" />
           </div>
@@ -271,7 +266,7 @@ export default function Opening() {
               </motion.p>
             </motion.div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
