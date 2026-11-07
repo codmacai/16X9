@@ -12,26 +12,22 @@ import s from "./services.module.css";
 //
 // Tiles (the default): the services as lit tiles, three across and two down,
 // each 9:16 — the shape we make for — and lit a warm white like Beyond's
-// tile, in ink, as a museum's label is: "Service" and its number at its head;
-// its number large in a hairline outline; at its foot its name, a hairline and
-// what it covers. Each opens from a line across its middle as it comes into
-// view. Pointed at, a tile lifts, its number fills in ink and the frame's
+// tile, in ink, as a museum's label is: "Service" and a small 9:16 frame at
+// its head, and at its foot its name, large, a hairline and what it covers.
+// No numbers. Each opens from a line across its middle as it comes into view.
+// Pointed at, a tile lifts, the hairline draws across in ink and the frame's
 // corners close round it.
 //
 // Grid (?services=grid): the services as one black-and-white grid, three by
 // two, paper and ink in turn like a chessboard, edge to edge inside a hairline.
-// In each, its number and "Service" at its head, its name large in the middle,
-// what it covers at its foot, and its number again, very large and faint in a
-// hairline outline, cut off at its corner. The paper and ink stay as they are;
-// pointed at (on a phone, scrolled to the middle), the frame's corners close
-// in round a cell's name, the hairline at its head draws out, and its number
-// comes up out of the ground.
+// In each, "Service" and a small 9:16 frame at its head, its name large in the
+// middle, what it covers at its foot; no numbers. The paper and ink stay as
+// they are; pointed at (on a phone, scrolled to the middle), the frame's
+// corners close in round a cell's name and what it covers comes up clear.
 // ===========================================================================
 
 const EASE_CINE = [0.76, 0, 0.24, 1] as const;
 const EASE = [0.16, 1, 0.3, 1] as const;
-const N = SERVICES_9X16.length;
-const pad2 = (n: number) => String(n).padStart(2, "0");
 
 const OPEN: Variants = {
   hidden: { clipPath: "inset(50% 0% 50% 0%)" },
@@ -86,19 +82,16 @@ function Tiles({ reduce }: { reduce: boolean }) {
             <motion.article className={s.tile} custom={d} variants={OPEN}>
               <motion.header className={s.head} custom={d} variants={INNER}>
                 <span>Service</span>
-                <span className={s.count}>
-                  {pad2(i + 1)} <i>/ {pad2(N)}</i>
-                </span>
+                <i className={s.glyph} aria-hidden="true" />
               </motion.header>
-              <motion.span className={s.big} custom={d} variants={INNER} aria-hidden="true">
-                {pad2(i + 1)}
-              </motion.span>
               <motion.div className={s.foot} custom={d} variants={INNER}>
                 <h3 className={s.name}>
                   {sv.name.map((line) => (
                     <span key={line}>{line}</span>
                   ))}
                 </h3>
+                {/* a hairline over what it covers, drawing across in ink when it's pointed at */}
+                <i className={s.rule} aria-hidden="true" />
                 <ul className={s.tags}>
                   {sv.tags.map((t) => (
                     <li key={t}>{t}</li>
@@ -114,7 +107,7 @@ function Tiles({ reduce }: { reduce: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// Grid: one black-and-white grid, three by two, each cell turning over when pointed at
+// Grid: one black-and-white grid, three by two, paper and ink in turn
 function Grid({ reduce }: { reduce: boolean }) {
   const [on, setOn] = useState<number | null>(null);
   const ref = useRef<HTMLUListElement>(null);
@@ -158,11 +151,7 @@ function Grid({ reduce }: { reduce: boolean }) {
           >
             <motion.div className={s.face} custom={d} variants={INNER}>
               <header className={s.cellHead}>
-                <span className={s.cellLabel}>
-                  <span className={s.count}>{pad2(i + 1)}</span>
-                  <i className={s.leader} />
-                  Service
-                </span>
+                <span className={s.cellLabel}>Service</span>
                 <i className={s.glyph} />
               </header>
               <h3 className={s.cellName}>
@@ -171,9 +160,6 @@ function Grid({ reduce }: { reduce: boolean }) {
                 ))}
               </h3>
               <p className={s.cellTags}>{sv.tags.join("  ·  ")}</p>
-              <span className={s.mark} aria-hidden="true">
-                {pad2(i + 1)}
-              </span>
               <Corners className={s.cellCorners} />
             </motion.div>
           </motion.li>

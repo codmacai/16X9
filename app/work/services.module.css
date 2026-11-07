@@ -1,11 +1,11 @@
 /* WORK, 9x16 — what we do (services-916.tsx), in one of two looks.
    Tiles: lit 9:16 tiles, three across and two down — a warm white like Beyond's tile, in ink:
-   "Service" and its number at its head, its number large in a hairline outline, its name and what
-   it covers at its foot. Each opens from a line as it comes into view; pointed at, it lifts, its
-   number fills and the frame's corners close round it.
+   "Service" and a small 9:16 frame at its head, its name large and what it covers at its foot; no
+   numbers. Each opens from a line as it comes into view; pointed at, it lifts, a hairline draws
+   across in ink and the frame's corners close round it.
    Grid (?services=grid): one black-and-white grid, three by two, paper and ink in turn, which
-   stays as it is; pointed at, the frame's corners close round a cell's name, the hairline at its
-   head draws out and its large faint number comes up. */
+   stays as it is; no numbers; pointed at, the frame's corners close round a cell's name and what
+   it covers comes up clear. */
 
 .services {
   display: flex;
@@ -13,15 +13,6 @@
   align-items: center;
   gap: clamp(40px, 6.5vh, 70px);
   padding: clamp(10px, 3vh, 40px) var(--ui) clamp(150px, 22vh, 240px);
-}
-
-.count {
-  font-variant-numeric: tabular-nums;
-}
-
-.count i {
-  font-style: normal;
-  opacity: 0.45;
 }
 
 /* the frame's corners (both looks) */
@@ -118,28 +109,15 @@
     box-shadow 0.6s ease;
 }
 
-/* its head, as on a label: "Service", and its number */
+/* its head, as on a label: "Service", and a small 9:16 frame */
 .head {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   font-size: 9.5px;
   letter-spacing: 0.3em;
   text-transform: uppercase;
   opacity: 0.62;
-}
-
-/* its number, large, in a hairline outline */
-.big {
-  margin-top: clamp(18px, 3vh, 34px);
-  font-size: clamp(90px, 8.6vw, 140px);
-  line-height: 0.85;
-  letter-spacing: -0.05em;
-  font-variant-numeric: tabular-nums;
-  color: transparent;
-  -webkit-text-stroke: 1px rgb(12 12 12 / 0.7);
-  transition:
-    color 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-    -webkit-text-stroke-color 0.6s ease;
 }
 
 /* its foot: the name; a hairline; what it covers */
@@ -151,20 +129,37 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  font-size: clamp(20px, 1.9vw, 30px);
+  font-size: clamp(24px, 2.4vw, 38px);
   font-weight: 400;
-  line-height: 1.02;
-  letter-spacing: -0.01em;
+  line-height: 1;
+  letter-spacing: -0.015em;
   text-transform: uppercase;
+}
+
+.rule {
+  position: relative;
+  display: block;
+  height: 1px;
+  margin-top: clamp(16px, 2.4vh, 22px);
+  background: rgb(12 12 12 / 0.18);
+}
+
+.rule::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #0c0c0c;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 0.9s cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 .tags {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  margin: clamp(14px, 2vh, 20px) 0 0;
-  padding: clamp(12px, 1.8vh, 16px) 0 0;
-  border-top: 1px solid rgb(12 12 12 / 0.2);
+  margin: clamp(12px, 1.8vh, 16px) 0 0;
+  padding: 0;
   list-style: none;
   font-size: 9.5px;
   letter-spacing: 0.24em;
@@ -180,9 +175,8 @@
       inset 0 0 22px rgb(0 0 0 / 0.06),
       0 0 80px -6px rgb(255 245 225 / 0.16);
   }
-  .slot:hover .big {
-    color: #0c0c0c;
-    -webkit-text-stroke-color: #0c0c0c;
+  .slot:hover .rule::after {
+    transform: scaleX(1);
   }
   .slot:hover .corners {
     opacity: 1;
@@ -200,11 +194,8 @@
   .tile {
     aspect-ratio: 4 / 5;
   }
-  .big {
-    font-size: 26vw;
-  }
   .name {
-    font-size: 6.6vw;
+    font-size: 8vw;
   }
 }
 
@@ -260,22 +251,7 @@
 }
 
 .cellLabel {
-  display: flex;
-  align-items: center;
-  gap: 14px;
   opacity: 0.7;
-}
-
-.leader {
-  width: 28px;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.6;
-  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.cellOn .leader {
-  width: 46px;
 }
 
 .glyph {
@@ -311,38 +287,6 @@
   text-transform: uppercase;
   white-space: pre;
   opacity: 0.55;
-}
-
-/* its number again, very large and faint in a hairline outline, cut off at its corner */
-.mark {
-  position: absolute;
-  right: -0.04em;
-  bottom: -0.2em;
-  font-size: clamp(120px, 12vw, 200px);
-  line-height: 1;
-  letter-spacing: -0.06em;
-  font-variant-numeric: tabular-nums;
-  color: transparent;
-  -webkit-text-stroke: 1px var(--b); /* (its ink: currentColor would be its own transparent fill) */
-  opacity: 0.14;
-  translate: 0 0.06em;
-  pointer-events: none;
-  transition:
-    opacity 0.8s ease,
-    translate 1s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.cellOn .mark {
-  opacity: 0.4;
-  translate: 0 0;
-}
-
-.cellTags {
-  transition: opacity 0.5s ease;
-}
-
-.cellOn .cellTags {
-  opacity: 0.95;
 }
 
 /* (the head, the name and what it covers over it) */
@@ -387,12 +331,6 @@
     font-size: 8px;
     letter-spacing: 0.2em;
   }
-  .cellLabel {
-    gap: 8px;
-  }
-  .leader {
-    width: 14px;
-  }
   .cellName {
     font-size: 5.6vw;
   }
@@ -404,18 +342,14 @@
   .cellCorners {
     inset: 28% 8%;
   }
-  .mark {
-    font-size: 30vw;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .tile,
-  .big,
+  .rule::after,
   .corners,
   .cellCorners,
-  .leader,
-  .mark {
+  .cellTags {
     transition: none;
   }
 }
