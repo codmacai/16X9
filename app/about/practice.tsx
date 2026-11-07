@@ -17,7 +17,7 @@ import s from "./practice.module.css";
 
 // ===========================================================================
 // PRACTICE — what we do, then how we work. Paper again, rising over the
-// black of the manifesto by its arched edge (curve.tsx).
+// black of the team's globe by its arched edge (curve.tsx).
 //   · The promise: one sentence, set large. It reads itself in as you
 //     scroll, word by word out of the paper, and three phrases get a pass
 //     of black marker — find the idea, bring it to life, the right
