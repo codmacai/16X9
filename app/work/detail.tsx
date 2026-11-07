@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useInView, useScroll, useSpring, useTransform, useVelocity, type Transition, type Variants } from "framer-motion";
+import { AnimatePresence, motion, useInView, useScroll, useSpring, useTransform, type Transition, type Variants } from "framer-motion";
 import { EASE, FilmStill } from "./_shared/chrome";
 import { posterFor, type Project } from "./_shared/data";
 import Credits from "./credits";
 import Story from "./story";
-import Edge from "./edge";
 import Theatre, { type Rect } from "./theatre";
 import ScreenBar from "./screen-bar";
 import { useHeavyScroll } from "./heavy";
@@ -26,11 +25,10 @@ import d from "./detail.module.css";
 //     place as you reach it while the picture settles inside, and "Watch
 //     behind the scenes" to open it in the player;
 //   · the case above it (story.tsx): client, task, solution;
-//   · the sign-off: black rises over the page by a dragged edge (edge.tsx) —
-//     the middle leads, the sides trail, stretching with the scroll's speed —
-//     while the page above sinks back; on it, the end credits chalked on a
-//     clapperboard whose sticks clap shut as it comes into view (credits.tsx);
-//   · the next film in the drawer, rising over the credits the same way;
+//   · the end credits, set on a clapperboard the full width of the screen
+//     (credits.tsx); each section simply follows the last as you scroll, no
+//     edge dragging it up and nothing sinking back;
+//   · the next film in the drawer;
 //     click it and its page slides up over this one.
 // Opened from the line, the page doesn't slide up: the card stays exactly
 // where it was and the page is built around it — the line falls away into
@@ -43,7 +41,6 @@ const IN: Transition = { type: "spring", stiffness: 70, damping: 17, mass: 1 };
 const OUT: Transition = { duration: 0.6, ease: [0.7, 0, 0.84, 0] };
 const SMOOTH = { stiffness: 140, damping: 30, mass: 0.6 }; // how the scroll-tied motion follows the scroll
 const ROWS = 5; // rows of words behind the card
-const DRAG = { per: 34, max: 50, spring: { stiffness: 170, damping: 14, mass: 0.7 } }; // px/s of scroll per unit of bulge; the most it bulges
 
 /** How the sheet leaves: down out of sight when closed; held in place while
     the next film's page slides up over it. */
@@ -88,30 +85,6 @@ export default function Detail({
   const heroRef = useRef<HTMLElement>(null);
   const screenRef = useRef<HTMLDivElement>(null);
   const creditsRef = useRef<HTMLElement>(null);
-  const nextRef = useRef<HTMLElement>(null);
-
-  // the drag: how fast the page is scrolling down, sprung, for the rising edges
-  const { scrollY } = useScroll({ container: scrollRef });
-  const speed = useVelocity(scrollY);
-  const pull = useTransform(speed, (v) => (reduce ? 0 : Math.min(DRAG.max, Math.max(0, v / DRAG.per))));
-  const drag = useSpring(pull, DRAG.spring);
-  // the credits rise on a calmer drag: an over-damped spring on a softly capped
-  // speed, so their edge swells and eases flat as they fill the screen, never wobbling
-  const calmPull = useTransform(speed, (v) => (reduce ? 0 : 34 * Math.tanh(Math.max(0, v) / 1600)));
-  const calmDrag = useSpring(calmPull, { stiffness: 70, damping: 24, mass: 1, restDelta: 0.01 });
-
-  // the page above each rising section sinks back as it's covered (the screen
-  // only once the credits are well on their way, so it stays whole to watch)
-  const { scrollYProgress: creditsIn } = useScroll({ container: scrollRef, target: creditsRef, offset: ["start 0.6", "start start"] });
-  const paperScale = useTransform(creditsIn, [0, 1], [1, 0.9]);
-  const paperY = useTransform(creditsIn, [0, 1], ["0%", "14%"]);
-  const paperFade = useTransform(creditsIn, [0, 1], [1, 0.35]);
-  const { scrollYProgress: nextIn } = useScroll({ container: scrollRef, target: nextRef, offset: ["start end", "start start"] });
-  const creditsRecede = {
-    scale: useTransform(nextIn, [0, 1], [1, 0.9]),
-    y: useTransform(nextIn, [0, 1], ["0%", "14%"]),
-    opacity: useTransform(nextIn, [0, 1], [1, 0.35]),
-  };
 
   // the cover: the rows slide apart, the card lifts and settles back
   const { scrollYProgress: heroRaw } = useScroll({ container: scrollRef, target: heroRef, offset: ["start start", "end start"] });
@@ -378,7 +351,7 @@ export default function Detail({
         </header>
 
         {/* ================= the screen ================= */}
-        <motion.div className={d.paper} style={reduce ? undefined : { scale: paperScale, y: paperY, opacity: paperFade }}>
+        <motion.div className={d.paper}>
           {/* ================= the case: client, task, solution ================= */}
           <Story film={film} root={scrollRef} reduce={reduce} />
 
@@ -451,14 +424,11 @@ export default function Detail({
           label={label}
           container={scrollRef}
           sectionRef={creditsRef}
-          drag={calmDrag}
-          recede={creditsRecede}
           reduce={reduce}
         />
 
         {/* ================= the next film ================= */}
-        <section ref={nextRef} className={d.next} aria-label="Next film">
-          <Edge drag={drag} color="#f7f2ee" />
+        <section className={d.next} aria-label="Next film">
           <span className={d.nextKicker}>Next film · {label}</span>
           <button type="button" className={d.nextLink} onClick={onNext}>
             <span className={d.nextTitle}>

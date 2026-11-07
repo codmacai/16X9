@@ -1,27 +1,25 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore, type RefObject } from "react";
-import { motion, useInView, type MotionValue } from "framer-motion";
+import { useInView } from "framer-motion";
 import type { Project } from "./_shared/data";
-import Edge from "./edge";
 import d from "./detail.module.css";
 import s from "./credits.module.css";
 
 // ===========================================================================
-// SIGN-OFF — the film's credits, set as a clapperboard that is the screen.
-//   · It rises over the page above it by a dragged edge (edge.tsx), on the
-//     paper; the page above sinks back as it's covered (detail.tsx).
+// SIGN-OFF — the film's credits, set as a clapperboard the width of the screen.
+//   · It follows the page above as you scroll: no edge dragging it up.
 //   · It's a screen tall (and grows rather than cut anything, given more
-//     credits than a screen holds). On the paper, across its head, one
-//     clapper stick, striped black and white the full width, drawing across
-//     as it comes into view; below it the board fills the rest of the screen
-//     in black, ruled in white: the production (the film's title), its client
-//     and year across the top; then every credit in its own cell, its role
-//     over its names, the cells sharing out the room left so it all fits; and
+//     credits than a screen holds), edge to edge. Across its head the clapper
+//     stick: black, its white arrows running the full width, drawing across as
+//     it comes into view. Below it the board is the page's own paper, ruled in
+//     black, so it reads as part of the page: the production (the film's
+//     title), its client and year across the top; then every credit in its own
+//     cell, its role over its names, the cells sharing out the room left; and
 //     at the foot the mark. Only the credits: no addresses, no numbers.
 // ===========================================================================
 
-const LOGO_SRC = "/logo.png";
+const LOGO_SRC = "/logo-16x9.svg";
 
 type Cell = { label: string; names: string[] };
 
@@ -58,18 +56,12 @@ export default function Credits({
   label,
   container,
   sectionRef,
-  drag,
-  recede,
   reduce,
 }: {
   film: Project;
   label: string;
   container: RefObject<HTMLDivElement | null>;
   sectionRef: RefObject<HTMLElement | null>;
-  /** the speed of the scroll, for the edge */
-  drag: MotionValue<number>;
-  /** how it steps back as the next section rises over it */
-  recede: { scale: MotionValue<number>; y: MotionValue<string>; opacity: MotionValue<number> };
   reduce: boolean;
 }) {
   const inView = useInView(sectionRef, { root: container, amount: 0.6 });
@@ -91,15 +83,11 @@ export default function Credits({
 
   return (
     <section ref={sectionRef} className={`${d.signoff} ${s.signoff}`} aria-label={`End credits: ${film.title}`}>
-      <Edge drag={drag} color="#f7f2ee" />
-      <motion.div
-        className={`${s.stage} ${seen || reduce ? s.seen : ""}`}
-        style={reduce ? undefined : { scale: recede.scale, y: recede.y, opacity: recede.opacity }}
-      >
-        {/* the clapper stick, the full width of the board */}
+      <div className={`${s.stage} ${seen || reduce ? s.seen : ""}`}>
+        {/* the clapper stick, edge to edge: white arrows on black */}
         <span className={s.stick} aria-hidden="true" />
 
-        {/* the board, ruled in white, filling the rest of the screen */}
+        {/* the board: the page's own paper, ruled in black, filling the rest of the screen */}
         <div className={s.board}>
           <div className={s.head}>
             <div className={`${s.cell} ${s.prod}`}>
@@ -139,7 +127,7 @@ export default function Credits({
             <span>A 16×9 film{film.client ? ` for ${film.client}` : ""}</span>
           </div>
         </div>
-      </motion.div>
+      </div>
     </section>
   );
 }
