@@ -10,8 +10,8 @@ import s from "./services.module.css";
 // ===========================================================================
 // WORK, 9x16 — what we do, under the accounts, in one of two looks:
 //
-// Tiles (the default): the services as lit tiles, three across and two down,
-// each 9:16 — the shape we make for — and lit a warm white like Beyond's
+// Tiles (the default): the services as small lit tiles, three across and two
+// down (two across on a phone), each 9:16 — the shape we make for — and lit a warm white like Beyond's
 // tile, in ink, as a museum's label is: "Service" and a small 9:16 frame at
 // its head, and at its foot its name, large, a hairline and what it covers.
 // No numbers. Each opens from a line across its middle as it comes into view.
