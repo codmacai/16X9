@@ -1,96 +1,105 @@
 "use client";
 
+import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { EASE, EASE_CINE } from "../work/_shared/chrome";
 import s from "./files.module.css";
 
 // ===========================================================================
-// HOW WE WORK — two files, in the menu's language: black card stock cut with
-// a numbered tab, the pillar's name across it in light wide capitals, its
-// three points and the line that sums them up. They rise out of the drawer
-// side by side as they come into view; point at one and it's pulled up a
-// little, the way the menu's folders are.
+// HOW WE WORK — two ways, told as time. Making is a film: it has a start and
+// an end. Partnership is a series: it keeps going. Each is a row on the paper
+// — its number, its name set large, what kind of work it is — over a hairline
+// that draws itself across as the row comes into view, its three points
+// landing on it one after another. Making's line closes with an end mark, as
+// a film's does; Partnership's never ends — past its last point it runs on
+// off the page as a fine dashed line, always moving. Under each, the line
+// that sums it up. Point at a point and it comes forward, the others step
+// back. On a phone the lines run down the page instead of across.
 // ===========================================================================
 
-const PILLARS = [
+const WAYS = [
   {
     no: "01",
     name: "Making",
+    kind: "A film",
+    span: "Start to delivery",
     points: ["Production planning", "Content production", "Execution and delivery"],
     line: "We build the team and approach around the project.",
+    ends: true,
   },
   {
     no: "02",
     name: "Partnership",
+    kind: "A series",
+    span: "Ongoing",
     points: ["Creative team extension", "Ongoing collaboration", "Long-term relationships"],
     line: "We develop a shared understanding that grows over time.",
+    ends: false,
   },
 ] as const;
 
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
 export default function Files() {
   const reduce = !!useReducedMotion();
-  const t = (delay: number, duration = 1.1, ease: readonly number[] = EASE) =>
-    reduce ? { duration: 0 } : { delay, duration, ease: ease as [number, number, number, number] };
-
   return (
     <div className={s.how}>
-      <h2 className={s.label}>How we work</h2>
-      <div className={s.files}>
-        {PILLARS.map((p, k) => (
-          <motion.article
-            key={p.name}
-            className={s.file}
-            style={{ ["--tab" as string]: k ? 0.62 : 0.06 }}
-            // the file sets everything in it going at once, as it comes into view
-            initial="hidden"
-            whileInView="shown"
-            viewport={{ once: true, amount: 0.3 }}
-            variants={{
-              hidden: { y: 120, opacity: 0 },
-              shown: { y: 0, opacity: 1, transition: t(0.1 + k * 0.14, 1.2, EASE_CINE) },
-            }}
-          >
-            <span className={s.stock} aria-hidden="true" />
-            <span className={s.tab}>
-              <span className={s.tabNo}>{p.no}</span>
-              <span>{p.name}</span>
-            </span>
-
-            <div className={s.body}>
-              <h3 className={s.name}>
-                <span className={s.mask}>
-                  <motion.span
-                    className={s.nameIn}
-                    variants={{ hidden: { y: "105%" }, shown: { y: 0, transition: t(0.45 + k * 0.14) } }}
-                  >
-                    {p.name}
-                  </motion.span>
-                </span>
-              </h3>
-              <ul className={s.points}>
-                {p.points.map((point, i) => (
-                  <motion.li
-                    key={point}
-                    variants={{
-                      hidden: { opacity: 0, y: 10 },
-                      shown: { opacity: 1, y: 0, transition: t(0.7 + k * 0.14 + i * 0.08, 0.9) },
-                    }}
-                  >
-                    <i>{String(i + 1).padStart(2, "0")}</i>
-                    {point}
-                  </motion.li>
-                ))}
-              </ul>
-              <motion.p
-                className={s.line}
-                variants={{ hidden: { opacity: 0 }, shown: { opacity: 1, transition: t(1 + k * 0.14, 1) } }}
-              >
-                {p.line}
-              </motion.p>
-            </div>
-          </motion.article>
-        ))}
-      </div>
+      <header className={s.top}>
+        <h2 className={s.label}>How we work</h2>
+        <p className={s.lede}>
+          A film has an end. A series keeps going.
+          <br />
+          We work both ways.
+        </p>
+      </header>
+      {WAYS.map((w) => (
+        <Way key={w.no} way={w} reduce={reduce} />
+      ))}
     </div>
+  );
+}
+
+function Way({ way: w, reduce }: { way: (typeof WAYS)[number]; reduce: boolean }) {
+  // everything in the row goes once, as it comes into view (CSS, .on)
+  const [seen, setSeen] = useState(false);
+  const on = seen || reduce;
+  return (
+    <motion.article
+      className={`${s.way} ${w.ends ? s.film : s.series} ${on ? s.on : ""}`}
+      onViewportEnter={() => setSeen(true)}
+      viewport={{ once: true, amount: 0.35 }}
+    >
+      <span className={s.no}>{w.no}</span>
+      <div className={s.main}>
+        <header className={s.head}>
+          <h3 className={s.name}>
+            <span className={s.mask}>
+              <span className={s.nameIn}>{w.name}</span>
+            </span>
+          </h3>
+          <p className={s.kind}>
+            <span>{w.kind}</span>
+            <i aria-hidden="true" />
+            <span>{w.span}</span>
+          </p>
+        </header>
+
+        {/* its time: a hairline drawn across, its points landing on it; an end, or none */}
+        <div className={s.track}>
+          <i className={s.line} aria-hidden="true" />
+          {w.ends ? <i className={s.cap} aria-hidden="true" /> : <i className={s.more} aria-hidden="true" />}
+          <ol className={s.steps}>
+            {w.points.map((p, i) => (
+              <li key={p} style={{ "--i": i } as React.CSSProperties}>
+                <i className={s.node} aria-hidden="true" />
+                <span className={s.stepNo}>{pad2(i + 1)}</span>
+                <span className={s.stepName}>{p}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <p className={s.sum}>{w.line}</p>
+      </div>
+    </motion.article>
   );
 }

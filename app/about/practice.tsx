@@ -22,7 +22,8 @@ import s from "./practice.module.css";
 //     scroll, word by word out of the paper, and three phrases get a pass
 //     of black marker — find the idea, bring it to life, the right
 //     execution. Under the marker the letters turn to paper.
-//   · How we work: two files, Making and Partnership (files.tsx).
+//   · How we work: two ways, told as time — Making a film with an end,
+//     Partnership a series that runs on (files.tsx).
 // The scroll position drives all of it, so it scrubs both ways, smoothed
 // by an over-damped spring: it glides and never wobbles.
 // ===========================================================================
