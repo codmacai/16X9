@@ -18,8 +18,8 @@
   box-sizing: border-box;
 }
 
-/* rising over the opening, which holds behind it: the sheet starts a screen up, so it comes up from
-   the foot of the screen as soon as the page moves — the next reel over the last */
+/* rising over the opening, which holds behind it: the sheet starts a screen up from the opening's
+   end, so it comes up from the foot of the screen once the opening's reel has switched off */
 .over {
   position: relative;
   z-index: 3;

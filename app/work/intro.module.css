@@ -1,7 +1,8 @@
 /* WORK, 9x16 — the opening (intro-916.tsx), in the dark: one vertical frame in the middle, a reel
    playing in it and its light on the room; the headline through the frame. The opening plays in CSS;
-   on the scroll the room falls back into the dark (--g drifts the words apart) while the accounts
-   rise over it. */
+   on the scroll (--grow) the frame opens out to the whole screen, its edges pushing the headline
+   off either side, then (--off) the screen switches off to one bright line, and the accounts rise
+   out of the dark. */
 
 .intro {
   --bg: #050505;
@@ -11,19 +12,24 @@
   --ws: clamp(30px, 3.4vw, 60px); /* the headline's size */
   --gap: clamp(26px, 2.8vw, 52px); /* between the frame and the words */
   position: relative;
-  height: 200svh; /* the room holds while the accounts rise over it (they start 100svh up) */
+  height: 300svh; /* the room holds for two screens of scroll: into the reel, the screen off, then the
+                     accounts rising over the dark (they start 100svh up, so halfway through) */
   background: var(--bg);
   color: var(--paper);
 }
 
-/* the room holds still while the accounts rise over it */
+/* the room holds still while the frame opens and switches off, and the accounts rise over it. The
+   frame's size and middle (--w, --h, --y) open out from the frame's own to the whole screen with
+   --grow, set from the scroll */
 .pin {
+  --w: calc(var(--fw) + (100vw - var(--fw)) * var(--grow, 0));
+  --h: calc(var(--fh) + (100svh - var(--fh)) * var(--grow, 0));
+  --y: calc(var(--cy) + (50% - var(--cy)) * var(--grow, 0));
   position: sticky;
   top: 0;
   height: 100svh;
   overflow: hidden;
   background: var(--bg);
-  transform-origin: 50% 40%;
 }
 
 /* ...and falls back into the dark */
@@ -40,7 +46,7 @@
 .glow {
   position: absolute;
   left: 50%;
-  top: var(--cy);
+  top: var(--y);
   width: calc(var(--fw) * 3.2);
   height: calc(var(--fh) * 1.45);
   translate: -50% -50%;
@@ -66,13 +72,40 @@
   position: absolute;
   z-index: 2;
   left: 50%;
-  top: var(--cy);
-  width: var(--fw);
-  height: var(--fh);
-  margin: calc(var(--fh) / -2) 0 0 calc(var(--fw) / -2);
-  border-radius: 16px;
-  will-change: transform;
+  top: var(--y);
+  width: var(--w);
+  height: var(--h);
+  translate: -50% -50%;
+  border-radius: calc(16px * (1 - var(--grow, 0)));
+  /* switching off: the picture falls in from its head and foot to a line across its middle */
+  clip-path: inset(calc(var(--off, 0) * 50%) 0 calc(var(--off, 0) * 50%) 0);
   -webkit-tap-highlight-color: transparent;
+}
+
+/* switching off, the picture flares as it falls in */
+.flare {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* the one bright line it falls in to, across the middle of the screen, drawing in to nothing */
+.offLine {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: #fff;
+  box-shadow:
+    0 0 6px 1px rgb(255 255 255 / 0.7),
+    0 0 26px 3px rgb(205 215 255 / 0.35);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* it opens from a line across its middle, out to its full height */
@@ -83,7 +116,7 @@
   border-radius: inherit;
   background: #0c0c0c;
   isolation: isolate;
-  animation: open 1.6s var(--ease) 0.1s both;
+  animation: open 1.6s var(--ease) 0.1s backwards; /* (not held after: its corners follow the frame's) */
 }
 
 @keyframes open {
@@ -349,18 +382,18 @@
 
 .side {
   position: absolute;
-  top: var(--cy);
+  top: var(--y);
 }
 
-/* each pushed out before the frame's edge as it opens */
+/* each at the frame's edge, pushed out before it as it opens out on the scroll */
 .sideA {
-  right: calc(50% + var(--fw) / 2);
-  translate: calc(var(--g, 0) * var(--fw) / -2) -50%;
+  right: calc(50% + var(--w) / 2);
+  translate: 0 -50%;
 }
 
 .sideB {
-  left: calc(50% + var(--fw) / 2);
-  translate: calc(var(--g, 0) * var(--fw) / 2) -50%;
+  left: calc(50% + var(--w) / 2);
+  translate: 0 -50%;
 }
 
 /* the mask's edge is the frame's: the words slide out from behind it */
@@ -407,8 +440,8 @@
 .lede {
   position: absolute;
   margin: 0;
-  left: calc(50% + var(--fw) / 2 + var(--gap));
-  top: calc(var(--cy) + var(--ws) * 0.56 + clamp(18px, 2.6vh, 28px));
+  left: calc(50% + var(--w) / 2 + var(--gap));
+  top: calc(var(--y) + var(--ws) * 0.56 + clamp(18px, 2.6vh, 28px));
   width: min(250px, calc(50% - var(--fw) / 2 - var(--gap) - var(--ui)));
   font-size: 13px;
   line-height: 1.65;
@@ -487,12 +520,12 @@
   }
   .sideA {
     top: auto;
-    bottom: calc(100% - var(--cy) + var(--fh) / 2);
-    translate: 0 calc(var(--g, 0) * var(--fh) / -2);
+    bottom: calc(100% - var(--y) + var(--h) / 2);
+    translate: 0;
   }
   .sideB {
-    top: calc(var(--cy) + var(--fh) / 2);
-    translate: 0 calc(var(--g, 0) * var(--fh) / 2);
+    top: calc(var(--y) + var(--h) / 2);
+    translate: 0;
   }
   .sideA .mask {
     padding: 0 0 var(--gap);

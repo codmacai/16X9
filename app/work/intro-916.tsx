@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useScroll, useSpring, useTransform, type MotionStyle, type Variants } from "framer-motion";
+import { AnimatePresence, easeIn, easeInOut, motion, useScroll, useSpring, useTransform, type MotionStyle, type Variants } from "framer-motion";
 import { EASE_CINE } from "./_shared/chrome";
 import { stillFor, WORKS_9X16 } from "./_shared/data";
 import { startMuted } from "./brand-shared";
@@ -18,10 +18,14 @@ import s from "./intro.module.css";
 // frame's sides go on to the next reel or back to the last (back swipes it
 // down). Point at the frame and the reel holds; click it to play it whole.
 // At the room's foot, the way on: "Scroll or click to view the accounts we run",
-// a short hairline drawing down beside it. Scroll (or click it), and the page
-// swipes on the way the feed does: the room holds and falls back into the
-// dark, its headline drifting apart, while the accounts rise over it as a
-// sheet (accounts.tsx) — the next reel coming up over the last.
+// a short hairline drawing down beside it. Scroll (or click it), and you go
+// into the reel: the frame opens out to the whole screen, its corners
+// squaring, its edges pushing the headline off either side; it holds there a
+// moment, the reel all there is; then the screen switches off as an old set
+// does — the picture flaring and falling in to one bright line across the
+// middle, the line drawing in to nothing — and out of that dark the accounts
+// rise (accounts.tsx). Every frame on the site comes on from a line; this one
+// goes off to one.
 // The opening is CSS; the scroll is framer-motion, through a spring.
 // ===========================================================================
 
@@ -74,8 +78,8 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
     };
   }, []);
 
-  // the scroll, while the accounts rise over the room: it falls back — a little smaller, a little
-  // higher, into the dark — the headline drifting apart from the frame and the small type going first
+  // the scroll: into the reel, then the screen switching off, then the accounts rising out of the
+  // dark (they start coming up halfway: the opening is three screens tall, the accounts a screen up)
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
   const p = useSpring(scrollYProgress, SMOOTH);
   useEffect(() => {
@@ -85,18 +89,20 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
       if (now !== was) setHeld((was = now));
     });
   }, [p]);
-  const back = useTransform(p, [0, 1], [1, 0.9]);
-  const lift = useTransform(p, [0, 1], ["0svh", "-8svh"]);
-  const dark = useTransform(p, [0.05, 0.9], [0, 0.85]);
-  const g = useTransform(p, [0, 0.7], [0, 0.45]); // the words' drift, in halves of the frame
-  const words = useTransform(p, [0.05, 0.5], [1, 0]);
-  const meta = useTransform(p, [0, 0.14], [1, 0]);
-  const light = useTransform(p, [0.1, 0.7], [1, 0.25]);
+  const meta = useTransform(p, [0, 0.06], [1, 0]); // the small type goes first
+  const grow = useTransform(p, [0, 0.26], [0, 1], { ease: easeInOut }); // the frame opening to the screen
+  const words = useTransform(p, [0.02, 0.18], [1, 0]);
+  const light = useTransform(p, [0, 0.2], [1, 0]);
+  const off = useTransform(p, [0.32, 0.42], [0, 1], { ease: easeIn }); // the picture falling in to a line
+  const flare = useTransform(p, [0.33, 0.42], [0, 0.6]);
+  const lineOn = useTransform(p, [0.38, 0.42, 0.45, 0.48], [0, 1, 1, 0]);
+  const lineX = useTransform(p, [0.42, 0.48], [1, 0], { ease: easeIn });
+  const dark = useTransform(p, [0.46, 0.5], [0, 1]);
 
   // the light: the reel in the frame drawn tiny, ten times a second, and let into the last a
   // little at a time so it changes like light does; then drawn up into the canvas shown, softened
   // (the average of nine copies a little apart) and faded out to its edges there — so nothing on
-  // the page carries a filter or a mask, and the room falls back on the scroll at no cost
+  // the page carries a filter or a mask, and the room changes on the scroll at no cost
   useEffect(() => {
     const c = glowRef.current;
     const ctx = c?.getContext("2d");
@@ -162,7 +168,7 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
   const reel = REELS[at];
   return (
     <section ref={ref} className={`${s.intro} ${reduce ? s.still : ""}`} aria-labelledby="intro-title">
-      <motion.div className={s.pin} style={reduce ? undefined : ({ "--g": g, scale: back, y: lift } as MotionStyle)}>
+      <motion.div className={s.pin} style={reduce ? undefined : ({ "--grow": grow, "--off": off } as MotionStyle)}>
         {/* the reel's light, on the room */}
         <motion.div className={s.glow} style={reduce ? undefined : { opacity: light }} aria-hidden="true">
           <canvas ref={glowRef} width={56} height={56} />
@@ -233,6 +239,8 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
               </span>
             </motion.span>
           </span>
+          {/* switching off, the picture flares as it falls in */}
+          {!reduce && <motion.i className={s.flare} style={{ opacity: flare }} aria-hidden="true" />}
           {/* the frame plays its reel whole; at its sides, back to the last reel and on to the next */}
           <button type="button" className={s.open} onClick={() => onOpen(at)} aria-label={`Play ${reel.title}, ${reel.kind}`} />
           <motion.span className={s.steps} style={reduce ? undefined : { opacity: meta }}>
@@ -279,7 +287,10 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
           <i aria-hidden="true" />
         </motion.button>
 
-        {/* falling back into the dark as the accounts come up over it */}
+        {/* the one bright line it falls in to, drawing in to nothing */}
+        {!reduce && <motion.i className={s.offLine} style={{ opacity: lineOn, scaleX: lineX }} aria-hidden="true" />}
+
+        {/* and then the dark the accounts come up out of */}
         {!reduce && <motion.i className={s.dark} style={{ opacity: dark }} aria-hidden="true" />}
       </motion.div>
     </section>
