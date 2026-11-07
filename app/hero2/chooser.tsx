@@ -1129,6 +1129,7 @@ export default function Chooser({
   poster = false,
   luxe = false,
   light = false,
+  outline = false,
 }: {
   /** a room is open: the index has opened its film to the edges and stepped aside */
   open: boolean;
@@ -1192,6 +1193,9 @@ export default function Chooser({
   /** hero 10: hero 9's wall white, its grain stronger, its seams grey, in every room; the line of
    *  words and the logo differenced against it, so they read on the wall and on the screens alike */
   light?: boolean;
+  /** hero 8: with 16x9's or 9x16's films up, the line of words steps back to a hairline outline in
+   *  paper, as on hero 9's screens — only the chosen word clear — and no smoke */
+  outline?: boolean;
 }) {
   const portrait = useSyncExternalStore(subscribePortrait, () => window.matchMedia("(max-aspect-ratio: 1/1)").matches, () => false);
   const base = reduce ? 0 : first ? (logo ? LOGO_T.names : INTRO.names) : 0.1;
@@ -1404,7 +1408,7 @@ export default function Chooser({
   return (
     <motion.div
       ref={stageRef}
-      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${(doorBeyond && up === "beyond") || (poster && !!up && up !== "beyond") ? styles.stagePaper : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && poster && !!up && up !== "beyond" ? styles.stageScreen : ""} ${light ? styles.stageLight : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
+      className={`${styles.stage} ${band ? styles.stageBand : ""} ${band && up ? styles.stageBandOpen : ""} ${doorBeyond && up === "beyond" ? styles.stageDoor : ""} ${luxe ? styles.stageLuxe : ""} ${(doorBeyond && up === "beyond") || ((poster || outline) && !!up && up !== "beyond") ? styles.stagePaper : ""} ${panelBeyond && up === "beyond" ? styles.stagePanel : ""} ${luxe && (poster || outline) && !!up && up !== "beyond" ? styles.stageScreen : ""} ${outline ? styles.stageLine : ""} ${light ? styles.stageLight : ""} ${luxe && open && (launch !== "beyond" || panelBeyond) ? styles.stageGone : ""}`}
       initial={false}
       animate={{ opacity: open && !((doorBeyond || panelBeyond) && launch === "beyond") ? 0 : 1 }}
       transition={reduce ? { duration: 0 } : open ? { delay: luxe ? 0.45 : 0.95, duration: 0.6, ease: EASE } : { duration: 0.5, ease: EASE }}
@@ -1508,7 +1512,7 @@ export default function Chooser({
           parts too and the film is the whole screen */}
       {/* hero 7: smoke in the middle, over the preview and under the words */}
       {band && !luxe && <Smoke on={!!up && !open && !(doorBeyond && up === "beyond")} />}
-      {band && luxe && <SmokeRibbon on={!!up && !open && up !== "beyond" && !poster} />}
+      {band && luxe && !outline && <SmokeRibbon on={!!up && !open && up !== "beyond" && !poster} />}
 
       {/* hero 7: under the line while Beyond is up, the way in — over the smoke, and it holds the
           preview while it's pointed at (hero 8's door has none: BEYOND itself is the way in) */}

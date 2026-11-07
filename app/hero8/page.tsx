@@ -16,8 +16,9 @@ import own from "../hero7/hero7.module.css";
 // HERO 8 — hero 7, in Beyond's dark. 16x9 and 9x16 open on their walls of
 // films in a black room: each tile (or column of reels) opens from a hairline
 // across its middle, out from the centre, as the wall settles in, and every
-// film rests low while one at a time takes the light. Through the middle, under
-// the words, a still ribbon of smoke (smoke-ribbon.tsx) fades in with them.
+// film rests low while one at a time takes the light. No smoke: the line of
+// words steps back to a hairline outline in paper over the films, as on hero
+// 9's screens, in a soft shadow across the middle (CSS, .stageLine).
 // Every preview, Beyond's door too, comes in the same way — the room fades to
 // black over the one before, then it opens — so moving between them is never a cut.
 // Beyond, the studio's top service, is an entrance: the screen goes black,
@@ -141,6 +142,7 @@ function Home({ variant }: { variant: HeroVariant }) {
         plainBeyond
         doorBeyond
         luxe
+        outline
       />
     </section>
   );

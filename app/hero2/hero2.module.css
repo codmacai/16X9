@@ -3582,3 +3582,25 @@
     inset 0 1px 0 #fff,
     inset 0 0 18px rgb(0 0 0 / 0.06);
 }
+
+/* ===== hero 8: no smoke — the line of words in a hairline outline over the films (outline) ===== */
+/* where the smoke was, a deep, soft shadow across the middle for the line to sit in; the room
+   falling away to black at its edges, a fine grain over it */
+.stageLine .film .cine::after {
+  background:
+    radial-gradient(ellipse 50% 22% at 50% 51%, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.35) 60%, transparent 100%),
+    radial-gradient(ellipse 95% 85% at 50% 50%, transparent 35%, rgb(0 0 0 / 0.82)),
+    linear-gradient(180deg, rgb(0 0 0 / 0.35), transparent 22%, transparent 78%, rgb(0 0 0 / 0.4)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* the films' brands quieter, so the line leads */
+.stageLine .tlMask,
+.stageLine .tlRound {
+  opacity: 0.55;
+}
+
+/* the line's caption a touch clearer on the films */
+.stageLine.stageScreen > .namesWrap .cap {
+  opacity: 0.8;
+}
