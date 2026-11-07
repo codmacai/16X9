@@ -1,11 +1,11 @@
 /* OPENING — WE ARE, and then what we are, word after word, each one with a
-   film running inside its letters; then the studio in its own words, read in
-   as you scroll. One pinned screen on paper. */
+   film running inside its letters; then the studio in its own words, filling
+   in on their own once they're up. One pinned screen on paper. */
 
 .opening {
   position: relative;
-  height: 340vh;
-  height: 340svh;
+  height: 240vh;
+  height: 240svh;
   background: var(--noise), var(--paper);
   color: var(--ink);
 }

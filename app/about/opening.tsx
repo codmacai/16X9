@@ -21,15 +21,16 @@ import s from "./opening.module.css";
 // OPENING — who we are, in two lines:
 //   · on arrival WE ARE rises letter by letter out of its mask, and under it,
 //     big and heavy, what we are: STORYTELLERS, FILMMAKERS, STRATEGISTS,
-//     PRODUCERS, 16X9 & BEYOND — one word at a time, each leaving upward
-//     letter by letter as the next rises in. Each word has a film running
-//     inside its letters (cut with the word), and under it, small, what it
-//     stands for;
-//   · the screen holds while you scroll: the letters part from the middle,
-//     slowly then all at once, and the lines lift away (the words stop);
-//   · underneath, the studio's own words come up and are read in, word by
-//     word, and three small films open inside the line as it names them;
-//   · as the next section rises over it, the whole screen sinks back.
+//     PRODUCERS, 16X9 & BEYOND — one word after another at a quick pace, each
+//     leaving upward letter by letter as the next rises in. Each word has a
+//     film running inside its letters (cut with the word), and under it,
+//     small, what it stands for;
+//   · the screen holds while you scroll: the lines lift away (the words stop);
+//     nothing zooms;
+//   · underneath, the studio's own words come up, and once they're up they
+//     fill in on their own, quickly, word by word (not with the scroll), three
+//     small films opening inside the line as it names them;
+//   · as the next section rises over it, the screen fades back.
 // Held still (reduced motion), it is simply the first screen and the line,
 // one after the other, everything open and read, on the first word.
 // ===========================================================================
@@ -46,8 +47,9 @@ const WORDS = [
   { word: "PRODUCERS", note: "Production, start to finish", film: "/clips/clip-10.mp4", still: "/clips/stills/clip-10.webp" },
   { word: "16X9 & BEYOND", note: "Immersive and interactive", film: "/clips/clip-15.mp4", still: "/clips/stills/clip-15.webp" },
 ] as const;
-const HOLD = 2.9; // seconds each word holds (the first waits for the arrival too)
-const LAST = 4.4; // ...and the last, the name, a little longer
+const HOLD = 1.45; // seconds each word holds (the first waits for the arrival too)
+const LAST = 2.4; // ...and the last, the name, a little longer
+const FILL_S = 1.5; // how long the studio's words take to fill in, once they're up
 const LINE =
   "16x9 & Beyond brings concept development, creative strategy and production together. We create TVCs, brand films, cinematic documentaries, social and branded content, alongside immersive and interactive experiences.";
 
@@ -60,12 +62,10 @@ const CHIPS: Record<string, { still: string; film?: string }> = {
 
 // the scroll story, as shares of the pinned scroll
 const T = {
-  cue: [0, 0.05],
-  part: [0, 0.28], // the letters part
-  lift: [0.02, 0.28], // the line lifts away, under the hairline
-  fade: [0.2, 0.28],
-  rise: [0.15, 0.34], // the studio's words come up
-  read: [0.34, 0.93], // and are read in
+  cue: [0, 0.06],
+  lift: [0.03, 0.42], // the line lifts away, under the hairline
+  fade: [0.3, 0.42],
+  rise: [0.24, 0.52], // the studio's words come up (and then fill in on their own)
 } as const;
 
 /** Reduced motion, read the same way on the server and in the first client
@@ -97,18 +97,20 @@ export default function Opening() {
   // held still, the first screen rests on its first frame and the line is all read
   const p = useTransform(() => (still ? 0 : eased.get()));
   const rise = useTransform(() => (still ? 1 : share(eased.get(), T.rise)));
-  const read = useTransform(() => (still ? 1 : share(eased.get(), T.read)));
 
-  // on arrival the letters gather in as they rise; with the scroll they part
-  // again from the middle, slowly then all at once
-  const gather = useMotionValue(0.42);
+  // the studio's words: once they're up, they fill in on their own, quickly (once)
+  const read = useMotionValue(0);
+  const filled = useRef(false);
   useEffect(() => {
-    const run = animate(gather, 0, reduce ? { duration: 0 } : { delay: 0.45, duration: 2.1, ease: EASE });
-    return () => run.stop();
-  }, [gather, reduce]);
-  const spread = useTransform(() => gather.get() + Math.pow(share(p.get(), T.part), 1.7) * 3.2);
+    if (still) read.set(1);
+  }, [still, read]);
+  useMotionValueEvent(scrollYProgress, "change", (v) => {
+    if (filled.current || share(v, T.rise) < 0.6) return;
+    filled.current = true;
+    animate(read, 1, reduce ? { duration: 0 } : { duration: FILL_S, ease: "linear" });
+  });
+
   const headY = useTransform(p, (v) => `${-80 * Math.pow(share(v, T.lift), 1.25)}vh`);
-  const headScale = useTransform(p, [T.part[0], T.part[1]], [1, 1.1]);
   const headFade = useTransform(p, [T.fade[0], T.fade[1]], [1, 0]);
   const cueFade = useTransform(p, [T.cue[0], T.cue[1]], [1, 0]); // the cue and the captions
 
@@ -116,11 +118,10 @@ export default function Opening() {
   // their masks (--rise), the whole block settling a little as they do
   const sayY = useTransform(rise, (v) => `${10 * Math.pow(1 - v, 2)}vh`);
 
-  // as the next section rises over it, the screen sinks back
+  // as the next section rises over it, the screen fades back (no zoom)
   const { scrollYProgress: leave } = useScroll({ target: ref, offset: ["end end", "end start"] });
   const out = useTransform(() => (still ? 0 : leave.get()));
-  const sinkY = useTransform(out, [0, 1], ["0vh", "42vh"]);
-  const sinkScale = useTransform(out, [0, 1], [1, 0.92]);
+  const sinkY = useTransform(out, [0, 1], ["0vh", "30vh"]);
   const sinkFade = useTransform(out, [0, 1], [1, 0.3]);
 
   // what we are: one word at a time, while the line is on screen
@@ -130,7 +131,7 @@ export default function Opening() {
   useMotionValueEvent(p, "change", (v) => setLive(v < T.fade[1] + 0.02));
   useEffect(() => {
     if (still || !live) return;
-    const wait = (shown === WORDS.length - 1 ? LAST : HOLD) + (turned ? 0 : 1.1);
+    const wait = (shown === WORDS.length - 1 ? LAST : HOLD) + (turned ? 0 : 0.6);
     const id = window.setTimeout(() => {
       setTurned(true);
       setShown((a) => (a + 1) % WORDS.length);
@@ -171,7 +172,7 @@ export default function Opening() {
   return (
     <section id="about-top" ref={ref} className={`${s.opening} ${still ? s.still : ""}`} aria-labelledby="about-title">
       <div className={s.stage}>
-        <motion.div className={s.frame} style={{ y: sinkY, scale: sinkScale, opacity: sinkFade }}>
+        <motion.div className={s.frame} style={{ y: sinkY, opacity: sinkFade }}>
           <div className={s.info}>
             <Info left="16X9 & Beyond — Who we are" centre="Dubai, United Arab Emirates" />
           </div>
@@ -181,7 +182,7 @@ export default function Opening() {
             {/* the two lines, moving as one */}
             <motion.div
               className={s.title}
-              style={{ y: headY, scale: headScale, opacity: headFade, "--spread": spread } as MotionStyle}
+              style={{ y: headY, opacity: headFade }}
             >
               <h1 id="about-title" className={s.head}>
                 <span className={s.sr}>We are {WORDS.map((w) => w.word.toLowerCase()).join(", ")}</span>
@@ -202,7 +203,7 @@ export default function Opening() {
                   <AnimatePresence>
                     <span key={shown} className={s.word} style={{ "--n": WORDS[shown].word.length } as CSSProperties}>
                       <span className={s.wordIn}>
-                        <Letters text={WORDS[shown].word} from={turned ? 0.2 : 0.85} reduce={reduce} leave />
+                        <Letters text={WORDS[shown].word} from={turned ? 0.12 : 0.7} reduce={reduce} leave />
                       </span>
                     </span>
                   </AnimatePresence>
@@ -214,8 +215,8 @@ export default function Opening() {
                   <motion.span
                     key={shown}
                     initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 0.6, y: 0, transition: { delay: reduce ? 0 : 0.35, duration: 0.6, ease: EASE } }}
-                    exit={{ opacity: 0, y: -6, transition: { duration: reduce ? 0 : 0.3, ease: EASE } }}
+                    animate={{ opacity: 0.6, y: 0, transition: { delay: reduce ? 0 : 0.2, duration: 0.45, ease: EASE } }}
+                    exit={{ opacity: 0, y: -6, transition: { duration: reduce ? 0 : 0.2, ease: EASE } }}
                   >
                     ({String(shown + 1).padStart(2, "0")}) {WORDS[shown].note}
                   </motion.span>
@@ -307,8 +308,8 @@ function Letters({
             <motion.span
               className={s.glyph}
               initial={{ y: "112%" }}
-              animate={{ y: 0, transition: reduce ? { duration: 0 } : { delay: from + (start + i) * 0.045, duration: 1.1, ease: EASE } }}
-              exit={leave ? { y: "-112%", transition: reduce ? { duration: 0 } : { delay: i * 0.022, duration: 0.7, ease: EASE_CINE } } : undefined}
+              animate={{ y: 0, transition: reduce ? { duration: 0 } : { delay: from + (start + i) * 0.028, duration: 0.8, ease: EASE } }}
+              exit={leave ? { y: "-112%", transition: reduce ? { duration: 0 } : { delay: i * 0.014, duration: 0.45, ease: EASE_CINE } } : undefined}
             >
               {ch === " " ? "\u00a0" : ch}
             </motion.span>
@@ -371,9 +372,8 @@ function Word({ read, from, to, children }: { read: MotionValue<number>; from: n
 // ---------------------------------------------------------------------------
 function Chip({ read, at, still, film, pause }: { read: MotionValue<number>; at: number; still: string; film?: string; pause: boolean }) {
   const video = useRef<HTMLVideoElement>(null);
-  const open = useTransform(read, [at, at + 0.07], [0, 1]);
+  const open = useTransform(read, [at, at + 0.12], [0, 1]);
   const clip = useTransform(open, (v) => `inset(0% ${(100 * (1 - v)).toFixed(2)}% 0% 0% round 999px)`);
-  const zoom = useTransform(open, [0, 1], [1.45, 1.08]);
   useEffect(() => {
     const el = video.current;
     if (!el) return;
@@ -385,7 +385,7 @@ function Chip({ read, at, still, film, pause }: { read: MotionValue<number>; at:
       <span className={s.rise}>
         <span className={s.chip}>
           <motion.span className={s.chipPic} style={{ clipPath: clip }}>
-            <motion.span className={s.chipIn} style={{ scale: zoom }}>
+            <motion.span className={s.chipIn}>
               {film ? (
                 <video ref={video} src={film} poster={still} muted loop playsInline autoPlay preload="metadata" />
               ) : (

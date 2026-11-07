@@ -14,7 +14,7 @@ import s from "./page.module.css";
 // WHO WE ARE — the studio, told as one long scroll in four movements:
 //   1. Opening    — who we are: the line, with films set into it (paper)
 //   2. Team       — the people: their portraits round a turning globe (black)
-//   3. Practice   — the promise, then how we work: Making, Partnership (paper)
+//   3. Practice   — how we work: Making, Partnership (paper)
 //   4. Clients    — who trusted us: a dark room, one light over the names
 //   5. Contact    — the selling line, how to reach us, the three formats (#contact)
 // The page has weight: the wheel sets where it's going and it glides there.

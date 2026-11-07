@@ -1,21 +1,18 @@
-/* THE TEAM — black ground; the team's portraits on one curved wall that fills the screen and runs on
-   past its sides (team.tsx).
-   Each portrait is placed on the wall here: out to its place on the curve (--x, --y, --z, in radii
-   of --r), turned to face out along it (--yaw, --pitch); team.tsx only leans the wall. */
+/* THE TEAM — black ground; the team's portraits on one clean wall, bending only gently (team.tsx).
+   Each portrait is placed on the wall here: round it by --yaw (out --x and --z, in radii --r), its
+   row --y; team.tsx only leans the wall. */
 
 .section {
   position: relative;
-  height: 140vh;
-  height: 140svh; /* the screen holds a moment on the wall */
+  height: 100vh;
+  height: 100svh;
   background: #000;
   color: var(--paper);
 }
 
 .stage {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  height: 100svh;
+  position: relative;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -33,14 +30,14 @@
 
 /* the eye, in front of the wall: it fills the screen below the band */
 .view {
-  --r: min(39vw, 58svh); /* the wall's depth and height (its width is 1.5 times it: it runs past the sides) */
+  --r: min(72vw, 86svh); /* the wall's radius: its three rows fit the screen's height */
   position: absolute;
   inset: var(--band) 0 0;
-  perspective: calc(var(--r) * 3.2);
+  perspective: calc(var(--r) * 2.4);
   perspective-origin: 50% 50%;
 }
 
-/* the wall: its middle pushed back, so the portraits facing us sit on the screen */
+/* the wall: its middle pushed back by its radius, so the portraits facing us sit on the screen */
 .wall {
   position: absolute;
   left: 50%;
@@ -51,29 +48,27 @@
   transform: translateZ(calc(var(--r) * -1));
 }
 
-/* a portrait: turned to face out along the wall, then out to its place on it — and before it's in
-   view, further out, falling in */
+/* a portrait, 4:5, its corners rounded: out to its place on the wall, turned to face out from it —
+   and before it's in view, a little lower and faded, coming up into place */
 .tile {
-  --in: 0;
-  --far: calc(1 + (1 - var(--in)) * 0.9);
   position: absolute;
-  width: calc(var(--r) * 0.36);
-  height: calc(var(--r) * 0.38);
-  margin: calc(var(--r) * -0.19) 0 0 calc(var(--r) * -0.18);
+  width: calc(var(--r) * 0.205);
+  height: calc(var(--r) * 0.256);
+  margin: calc(var(--r) * -0.128) 0 0 calc(var(--r) * -0.1025);
   overflow: hidden;
-  background: #0b0b0b;
+  border-radius: clamp(6px, calc(var(--r) * 0.012), 14px);
+  background: #0e0e0e;
   backface-visibility: hidden;
-  transform: translate3d(calc(var(--r) * var(--x) * var(--far)), calc(var(--r) * var(--y) * var(--far)), calc(var(--r) * var(--z) * var(--far)))
-    rotateY(var(--yaw)) rotateX(var(--pitch));
+  transform: translate3d(calc(var(--r) * var(--x)), calc(var(--r) * var(--y) + 26px), calc(var(--r) * var(--z))) rotateY(var(--yaw));
   opacity: 0;
   transition:
-    transform 1.8s cubic-bezier(0.16, 1, 0.3, 1) var(--delay),
-    opacity 1.2s ease var(--delay);
+    transform 1.2s cubic-bezier(0.16, 1, 0.3, 1) var(--delay),
+    opacity 0.9s ease var(--delay);
 }
 
 .on .tile {
-  --in: 1;
   opacity: 1;
+  transform: translate3d(calc(var(--r) * var(--x)), calc(var(--r) * var(--y)), calc(var(--r) * var(--z))) rotateY(var(--yaw));
 }
 
 .tile img {
@@ -82,33 +77,31 @@
   height: 100%;
   object-fit: cover;
   object-position: 50% 30%;
-  filter: grayscale(1) contrast(1.05) brightness(0.86);
+  filter: grayscale(1) contrast(1.04) brightness(0.84);
   transition: filter 0.5s ease;
   pointer-events: none;
 }
 
 @media (hover: hover) {
   .tile:hover img {
-    filter: grayscale(1) contrast(1.05) brightness(1.08);
+    filter: grayscale(1) contrast(1.04) brightness(1.05);
   }
 }
 
-/* the room falling to black at its edges, and a fine grain over it all */
+/* the room falling softly to black at its sides */
 .stage::after {
   content: "";
   position: absolute;
   z-index: 2;
   inset: 0;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(ellipse 75% 70% at 50% calc(50% + var(--band) / 2), transparent 60%, rgb(0 0 0 / 0.8));
+  background: linear-gradient(90deg, #000, transparent 10%, transparent 90%, #000);
   pointer-events: none;
 }
 
 /* phones: the wall bigger than the screen, its sides running off it */
 @media (max-width: 760px) {
   .view {
-    --r: min(70vw, 40svh);
+    --r: min(100vw, 86svh);
   }
 }
 
