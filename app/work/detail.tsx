@@ -28,8 +28,8 @@ import d from "./detail.module.css";
 //   · the case above it (story.tsx): client, task, solution;
 //   · the sign-off: black rises over the page by a dragged edge (edge.tsx) —
 //     the middle leads, the sides trail, stretching with the scroll's speed —
-//     while the page above sinks back; then the end credits roll by
-//     themselves (credits.tsx);
+//     while the page above sinks back; on it, the end credits chalked on a
+//     clapperboard whose sticks clap shut as it comes into view (credits.tsx);
 //   · the next film in the drawer, rising over the credits the same way;
 //     click it and its page slides up over this one.
 // Opened from the line, the page doesn't slide up: the card stays exactly
@@ -454,7 +454,6 @@ export default function Detail({
           drag={calmDrag}
           recede={creditsRecede}
           reduce={reduce}
-          hold={bts}
         />
 
         {/* ================= the next film ================= */}

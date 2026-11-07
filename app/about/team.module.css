@@ -1,10 +1,12 @@
-/* THE TEAM — black ground; the team's portraits round a globe (team.tsx). Each portrait is placed on
-   the sphere once here (--lon, --lat, out --r from its middle); team.tsx turns the globe. */
+/* THE TEAM — black ground; the team's portraits on one curved wall that fills the screen and runs on
+   past its sides (team.tsx).
+   Each portrait is placed on the wall here: out to its place on the curve (--x, --y, --z, in radii
+   of --r), turned to face out along it (--yaw, --pitch); team.tsx only leans the wall. */
 
 .section {
   position: relative;
-  height: 170vh;
-  height: 170svh; /* the screen holds a while, the globe turning as you scroll */
+  height: 140vh;
+  height: 140svh; /* the screen holds a moment on the wall */
   background: #000;
   color: var(--paper);
 }
@@ -29,25 +31,17 @@
   opacity: 0.6;
 }
 
-/* the eye, in front of the globe: it fills the screen below the band */
+/* the eye, in front of the wall: it fills the screen below the band */
 .view {
-  --r: min(50vw, 62svh); /* the globe's radius */
+  --r: min(39vw, 58svh); /* the wall's depth and height (its width is 1.5 times it: it runs past the sides) */
   position: absolute;
   inset: var(--band) 0 0;
-  perspective: calc(var(--r) * 2.6);
+  perspective: calc(var(--r) * 3.2);
   perspective-origin: 50% 50%;
-  cursor: grab;
-  touch-action: pan-y;
-  user-select: none;
-  -webkit-user-select: none;
 }
 
-.view:active {
-  cursor: grabbing;
-}
-
-/* the globe: its middle pushed back by its radius, so the portraits facing us sit on the screen */
-.globe {
+/* the wall: its middle pushed back, so the portraits facing us sit on the screen */
+.wall {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -57,18 +51,20 @@
   transform: translateZ(calc(var(--r) * -1));
 }
 
-/* a portrait: turned to its place round the globe, then out to its surface — and before it's in
-   view, much further out, falling in */
+/* a portrait: turned to face out along the wall, then out to its place on it — and before it's in
+   view, further out, falling in */
 .tile {
   --in: 0;
+  --far: calc(1 + (1 - var(--in)) * 0.9);
   position: absolute;
-  width: calc(var(--r) * 0.35);
-  height: calc(var(--r) * 0.39);
-  margin: calc(var(--r) * -0.195) 0 0 calc(var(--r) * -0.175);
+  width: calc(var(--r) * 0.36);
+  height: calc(var(--r) * 0.38);
+  margin: calc(var(--r) * -0.19) 0 0 calc(var(--r) * -0.18);
   overflow: hidden;
   background: #0b0b0b;
   backface-visibility: hidden;
-  transform: rotateY(var(--lon)) rotateX(var(--lat)) translateZ(calc(var(--r) * (1 + (1 - var(--in)) * 1.1)));
+  transform: translate3d(calc(var(--r) * var(--x) * var(--far)), calc(var(--r) * var(--y) * var(--far)), calc(var(--r) * var(--z) * var(--far)))
+    rotateY(var(--yaw)) rotateX(var(--pitch));
   opacity: 0;
   transition:
     transform 1.8s cubic-bezier(0.16, 1, 0.3, 1) var(--delay),
@@ -97,7 +93,7 @@
   }
 }
 
-/* the room falling to black round the globe, and a fine grain over it all */
+/* the room falling to black at its edges, and a fine grain over it all */
 .stage::after {
   content: "";
   position: absolute;
@@ -105,44 +101,19 @@
   inset: 0;
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(ellipse 62% 64% at 50% calc(50% + var(--band) / 2), transparent 55%, rgb(0 0 0 / 0.85));
+    radial-gradient(ellipse 75% 70% at 50% calc(50% + var(--band) / 2), transparent 60%, rgb(0 0 0 / 0.8));
   pointer-events: none;
 }
 
-.hint {
-  position: absolute;
-  z-index: 3;
-  left: 50%;
-  bottom: clamp(16px, 3.4vh, 32px);
-  margin: 0;
-  translate: -50% 0;
-  font-size: 10px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  opacity: 0;
-  transition: opacity 1s ease 2.4s;
-  pointer-events: none;
-}
-
-.on .hint {
-  opacity: 0.5;
-}
-
-.on .hintGone {
-  opacity: 0;
-  transition-delay: 0s;
-}
-
-/* phones: a bigger globe than the screen, its sides running off it */
+/* phones: the wall bigger than the screen, its sides running off it */
 @media (max-width: 760px) {
   .view {
-    --r: min(84vw, 46svh);
+    --r: min(70vw, 40svh);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tile,
-  .hint {
+  .tile {
     transition: none;
   }
 }
