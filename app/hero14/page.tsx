@@ -294,7 +294,7 @@ function Home({ variant }: { variant: HeroVariant }) {
             animate={reduce ? { opacity: 1 } : { clipPath: "inset(0% 0% 0% 0%)", transition: { duration: 0.9, ease: EASE_CINE } }}
             exit={reduce ? { opacity: 0 } : { clipPath: "inset(0% 0% 100% 0%)", transition: { duration: 0.75, ease: EASE_CINE } }}
           >
-            <Drawer onClose={closeMenu} workHref={room ? `/work?format=${room}` : "/work"} />
+            <Drawer onClose={closeMenu} />
           </motion.div>
         )}
       </AnimatePresence>

@@ -15,16 +15,15 @@ import styles from "./hero11.module.css";
 // each with a numbered tab. Point at a folder and it is pulled up out of the
 // stack: its poster turns from black-and-white to colour, its label
 // and a way in come forward, and the other folders sink back. Each folder is
-// a link: Work, About, Services.
+// a link: About, and Contact (the work is reached from the formats, not the menu).
 // ===========================================================================
 
 const wide = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-wide", display: "swap" });
 
 const LOGO_SRC = "/logo-16x9.svg";
 const FOLDERS = [
-  { no: "01", label: "Work", line: "16x9 · 9x16 · Beyond", href: "/work", poster: "/hero11/work.webp", tab: 0.45 },
-  { no: "02", label: "About", line: "Who we are · How we work", href: "/about", poster: "/hero11/about.webp", tab: 0.68 },
-  { no: "03", label: "Contact", line: "Let's tell your story", href: "/about#contact", poster: "/hero11/services.webp", tab: 0.91 },
+  { no: "01", label: "About", line: "Who we are · How we work", href: "/about", poster: "/hero11/about.webp", tab: 0.6 },
+  { no: "02", label: "Contact", line: "Let's tell your story", href: "/about#contact", poster: "/hero11/services.webp", tab: 0.86 },
 ] as const;
 
 const HERO = {
@@ -44,7 +43,7 @@ const stillFor = (src: string) => src.replace(/\/([^/]+)\.mp4$/i, "/stills/$1.we
  * The drawer. On its own (/hero11) it is the page's hero; given `onClose` it is
  * a full-screen menu (/hero12, /hero13), and the top bar carries a close button.
  */
-export default function Drawer({ onClose, workHref }: { onClose?: () => void; /** where Work leads (hero 3 passes the room's format) */ workHref?: string }) {
+export default function Drawer({ onClose }: { onClose?: () => void }) {
   const reduce = !!useReducedMotion();
   const [hover, setHover] = useState<number | null>(null);
   const [leaving, setLeaving] = useState(false);
@@ -172,7 +171,7 @@ export default function Drawer({ onClose, workHref }: { onClose?: () => void; /*
         {FOLDERS.map((f, i) => (
           <Folder
             key={f.label}
-            folder={workHref && f.label === "Work" ? ({ ...f, href: workHref } as unknown as typeof f) : f}
+            folder={f}
             index={i}
             reduce={reduce}
             hover={hover}
@@ -223,7 +222,7 @@ function Folder({
         // pulled up out of the stack; the folders in front of it make way, the ones behind stay put
         y: leaving ? "110%" : on ? "-7vh" : hover !== null && index > hover ? "2.5vh" : 0,
         transition: leaving
-          ? { duration: 0.62, ease: [0.55, 0, 0.75, 0.15], delay: (2 - index) * 0.05 }
+          ? { duration: 0.62, ease: [0.55, 0, 0.75, 0.15], delay: (FOLDERS.length - 1 - index) * 0.05 }
           : on || away ? { type: "spring", stiffness: 140, damping: 20, mass: 0.9 } : { delay: 0.55 + index * 0.14, duration: 1.15, ease: EASE_CINE },
       }}
       onPointerEnter={(e) => e.pointerType === "mouse" && onHover(index)}

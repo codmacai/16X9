@@ -184,7 +184,7 @@ export default function BrandIndex({
   return (
     <>
       <div className={`${f.view} ${s.view} ${leaving ? s.viewLeave : ""}`} role="dialog" aria-modal="true" aria-label={`${drawer.label}: the brands`}>
-        {/* the drawer, and the way back */}
+        {/* the drawer (the way back is the band's Back, or Esc) */}
         <motion.div
           className={`${f.head} ${s.head}`}
           style={{ top: "var(--band)" }}
@@ -195,13 +195,6 @@ export default function BrandIndex({
           <span className={f.drawer}>
             <i>{drawer.no}</i> {drawer.label}
           </span>
-          <button type="button" className={f.close} onClick={leave} tabIndex={up ? 0 : -1}>
-            <span className={f.closeRoll}>
-              <span>Close</span>
-              <span aria-hidden="true">Close</span>
-            </span>
-            <span className={f.closeX} aria-hidden="true" />
-          </button>
         </motion.div>
 
         <div className={s.stage} onPointerMove={follow} onPointerLeave={() => setLit(false)}>

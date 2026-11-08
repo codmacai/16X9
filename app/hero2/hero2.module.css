@@ -3183,11 +3183,11 @@
   }
 }
 
-/* the outline: a hairline in paper — ink on the lit tile, through the line's difference — the
-   others a little stronger than their own inline fade would leave them, BEYOND at full */
+/* the outline: a hairline in paper — ink on the lit tile, through the line's difference — BEYOND
+   alone, in its corners: 16x9, 9x16 and the slashes go (still there to point at, to move on to) */
 .stagePanel > .namesWrap .name:not([data-fmt="beyond"]),
 .stagePanel > .namesWrap .slash {
-  opacity: 0.42 !important;
+  opacity: 0 !important;
   transition: opacity 0s linear 0.5s;
 }
 
@@ -3605,12 +3605,25 @@
   opacity: 0.8;
 }
 
-/* hero 8's door: BEYOND in the outline too, clear — the others stepped back */
+/* hero 8's door: BEYOND in the outline too, clear, in its corners, alone — 16x9, 9x16 and the
+   slashes go (still there to point at, to move on to) */
 .stageLine.stageDoor > .namesWrap .name[data-fmt="beyond"] {
   opacity: 1;
+}
+
+.stageLine.stageDoor > .namesWrap .name:not([data-fmt="beyond"]),
+.stageLine.stageDoor > .namesWrap .slash {
+  opacity: 0 !important;
 }
 
 /* hero 10: only Beyond goes on to a page of its own; 16x9 and 9x16 are only seen */
 .stageLight > .namesWrap .name:not([data-fmt="beyond"]) {
   cursor: default;
+}
+
+/* heroes 8, 9 and 10: 16x9 and 9x16 fade out as Beyond takes the line and back as it lets go,
+   never a jump (hero 9's and 10's tile times its own: they go while sunk in their masks) */
+.stageLuxe > .namesWrap .name,
+.stageLuxe > .namesWrap .slash {
+  transition: opacity 0.45s ease;
 }

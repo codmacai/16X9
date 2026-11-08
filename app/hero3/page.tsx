@@ -425,7 +425,7 @@ function Mark({
 // top like a sheet being pulled over the screen, then plays its own entrance
 // (band, paper, headline, folders). Closing lifts it back up.
 // ===========================================================================
-function Menu({ open, reduce, workHref, onClose }: { open: boolean; reduce: boolean; workHref: string; onClose: () => void }) {
+function Menu({ open, reduce, onClose }: { open: boolean; reduce: boolean; onClose: () => void }) {
   return (
     <AnimatePresence>
       {open && (
@@ -447,7 +447,7 @@ function Menu({ open, reduce, workHref, onClose }: { open: boolean; reduce: bool
               : { clipPath: "inset(0% 0% 100% 0%)", transition: { duration: 0.75, ease: EASE_CINE } }
           }
         >
-          <Drawer onClose={onClose} workHref={workHref} />
+          <Drawer onClose={onClose} />
         </motion.div>
       )}
     </AnimatePresence>
@@ -1375,7 +1375,7 @@ function DepthInner({ variant }: { variant: HeroVariant }) {
 
       {/* ================= Menu (no boxes: a veil over the wall and the links) ================= */}
       {/* in a room, Work leads to that format's work */}
-      <Menu open={menuOpen} reduce={reduce} workHref={room ? `/work?format=${room}` : "/work"} onClose={closeMenu} />
+      <Menu open={menuOpen} reduce={reduce} onClose={closeMenu} />
 
       {/* ================= Top bar: logo left, burger right ================= */}
       <motion.header

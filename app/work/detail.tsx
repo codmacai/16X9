@@ -31,7 +31,8 @@ import d from "./detail.module.css";
 // where it was and the page is built around it — the line falls away into
 // the black, the paper rises from the foot of the screen to the card's
 // waist, the words come up behind. The card never moves or changes size. Opened from "Next film", it slides up over the last.
-// Back (or Esc) lets the page slide down again.
+// The band's Back (or Esc) lets the page slide down again: it has no back
+// button of its own.
 // ===========================================================================
 
 const IN: Transition = { type: "spring", stiffness: 70, damping: 17, mass: 1 };
@@ -56,7 +57,6 @@ export default function Detail({
   rect,
   fromLine,
   reduce,
-  onClose,
 }: {
   films: Project[];
   k: number;
@@ -69,7 +69,8 @@ export default function Detail({
   /** opened from the line (the page builds around the card), or from "Next film" (it slides up) */
   fromLine: boolean;
   reduce: boolean;
-  onClose: () => void;
+  /** (no longer used: the band's Back, or Esc, closes the page) */
+  onClose?: () => void;
   /** (no longer used: the page ends on the footer, no next film) */
   onNext?: () => void;
   /** (no longer used: behind the scenes plays in the screen itself) */
@@ -233,20 +234,6 @@ export default function Detail({
               <span>{tick.repeat(4)}</span>
             </div>
           </motion.div>
-
-          <motion.button
-            type="button"
-            className={d.back}
-            onClick={onClose}
-            initial={{ opacity: 0, x: -12 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, ease: EASE, delay: reduce ? 0 : 0.5 }}
-          >
-            <span className={d.backDisc} aria-hidden="true">
-              ←
-            </span>
-            <span>All films</span>
-          </motion.button>
 
           {/* the card, across the two */}
           <motion.div

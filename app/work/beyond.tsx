@@ -141,7 +141,6 @@ export default function Beyond() {
     <main className={`${rootClass} ${s.page}`}>
       <Band
         crumb="Index"
-        workHref="/work?format=beyond"
         center={<RoomSwitch room="beyond" onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })} tone="light" />}
       />
 

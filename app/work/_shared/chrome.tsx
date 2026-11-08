@@ -44,7 +44,6 @@ export function Band({
   crumb,
   section = "Work",
   center,
-  workHref,
   onBack,
 }: {
   crumb: string;
@@ -52,8 +51,6 @@ export function Band({
   section?: string;
   /** in the middle in place of the crumb (a format's work page puts the room switch there) */
   center?: ReactNode;
-  /** where the menu's Work leads */
-  workHref?: string;
   /** what Back does here first (a page with something open closes it); otherwise it goes back a page */
   onBack?: () => void;
 }) {
@@ -196,7 +193,7 @@ export function Band({
             animate={{ clipPath: "inset(0% 0% 0% 0%)", transition: { duration: 0.9, ease: EASE_CINE } }}
             exit={{ clipPath: "inset(0% 0% 100% 0%)", transition: { duration: 0.7, ease: EASE_CINE } }}
           >
-            <Drawer onClose={close} workHref={workHref} />
+            <Drawer onClose={close} />
           </motion.div>
         )}
       </AnimatePresence>

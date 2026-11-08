@@ -50,7 +50,6 @@ export default function Accounts() {
     <main className={`${rootClass} ${styles.page}`}>
       <Band
         crumb="Index"
-        workHref="/work?format=9x16"
         /* a reel or an account's page open: Back closes it first */
         onBack={work !== null ? () => setWork(null) : reel ? () => setReel(null) : open ? () => setOpen(null) : undefined}
         center={<RoomSwitch room="9x16" onSwitch={(k) => router.replace(`/work?format=${k}`, { scroll: false })} tone="light" />}

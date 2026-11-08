@@ -45,81 +45,6 @@
   opacity: 0.55;
 }
 
-.close {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--paper);
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  cursor: pointer;
-}
-
-/* the word rolls to a second copy on hover, as the band's "Let's talk" */
-.closeRoll {
-  position: relative;
-  display: inline-grid;
-  overflow: hidden;
-  height: 1.3em;
-  line-height: 1.3em;
-}
-
-.closeRoll span {
-  grid-area: 1 / 1;
-  transition: transform 0.6s var(--ease);
-}
-
-.closeRoll span + span {
-  transform: translateY(105%);
-}
-
-.close:hover .closeRoll span {
-  transform: translateY(-105%);
-}
-
-.close:hover .closeRoll span + span {
-  transform: none;
-}
-
-/* a small cross that turns a quarter on hover */
-.closeX {
-  position: relative;
-  width: 14px;
-  height: 14px;
-  transition: transform 0.6s var(--ease);
-}
-
-.closeX::before,
-.closeX::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 1.5px;
-  margin-top: -0.75px;
-  border-radius: 2px;
-  background: currentColor;
-  transform: rotate(45deg);
-}
-
-.closeX::after {
-  transform: rotate(-45deg);
-}
-
-.close:hover .closeX {
-  transform: rotate(90deg);
-}
-
-.close:focus-visible {
-  outline: 1px solid var(--paper);
-  outline-offset: 6px;
-}
-
 /* ================= the line ================= */
 
 .stage {
@@ -348,10 +273,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .closeRoll span,
-  .closeX {
-    transition: none;
-  }
   .video {
     animation: none;
   }

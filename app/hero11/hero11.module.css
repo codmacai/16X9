@@ -8,8 +8,8 @@
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --ui: clamp(18px, 2.6vw, 40px);
   --sheet: 9%;
-  --f0: 49%;
-  --step: 17.5%;
+  --f0: 52%;
+  --step: 22%;
   --th: clamp(30px, 4.4vh, 44px); /* tab height */
   --tw: 15%; /* tab width */
   position: relative;
@@ -553,8 +553,8 @@
 @media (max-width: 760px) {
   .root {
     --sheet: 8%;
-    --f0: 47%;
-    --step: 18%;
+    --f0: 50%;
+    --step: 22%;
     --tw: 34%;
   }
   .info {

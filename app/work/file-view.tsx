@@ -378,7 +378,7 @@ export default function FileView({
         animate={detail ? { scale: 0.94, opacity: 0, y: -24 } : { scale: 1, opacity: 1, y: 0 }}
         transition={{ duration: reduce ? 0 : 0.9, ease: EASE }}
       >
-        {/* the drawer, and the way back */}
+        {/* the drawer (the way back is the band's Back, or Esc) */}
         <motion.div
           className={s.head}
           style={{ top: geo.band }}
@@ -389,13 +389,6 @@ export default function FileView({
           <span className={s.drawer}>
             <i>{drawer.no}</i> {drawer.label}
           </span>
-          <button type="button" className={s.close} onClick={leave}>
-            <span className={s.closeRoll}>
-              <span>Close</span>
-              <span aria-hidden="true">Close</span>
-            </span>
-            <span className={s.closeX} aria-hidden="true" />
-          </button>
         </motion.div>
 
         {/* the line */}

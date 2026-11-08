@@ -104,47 +104,6 @@
   }
 }
 
-.back {
-  position: absolute;
-  z-index: 2;
-  top: clamp(18px, 3.4vh, 34px);
-  left: var(--ui);
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--paper);
-  font: inherit;
-  font-size: 11px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.backDisc {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 16px;
-  letter-spacing: 0;
-  transition: transform 0.6s var(--ease);
-}
-
-.back:hover .backDisc {
-  transform: translateX(-4px);
-}
-
-.back:focus-visible {
-  outline: 1px solid var(--paper);
-  outline-offset: 6px;
-}
-
 /* the card, centred, standing across the black and the paper */
 .coverWrap {
   position: absolute;
@@ -268,7 +227,7 @@
 
 /* ================= the paper ================= */
 
-/* the page above the credits: it sinks back as the black is dragged up over it */
+/* the page's paper: the case, and the screen */
 .paper {
   position: relative;
   z-index: 1;
@@ -434,9 +393,6 @@
     font-size: 9.5px;
     letter-spacing: 0.24em;
   }
-  .back > span:last-child {
-    display: none;
-  }
   .screen {
     width: 92vw;
   }
@@ -457,7 +413,6 @@
   .tickerTrack {
     animation: none;
   }
-  .backDisc,
   .playDisc,
   .picture > * {
     transition: none;
