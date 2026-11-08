@@ -1,12 +1,14 @@
-/* WORK, 9x16 — what we do (services-916.tsx): the services one above another, each told in full —
-   rows between hairlines that draw across, the name large and light on the left, a few sentences
-   and everything it includes on the right. The row as wide as the accounts' above. Everything in a
-   row goes once, from .on */
+/* WORK, 9x16 — what we do (services-916.tsx): the services as our white cards, one above another,
+   each told in full — lit a warm white, in ink: "Service" and a 9:16 frame at its head, the name large
+   and light on the left, a few sentences and everything it includes on the right. As wide as the
+   accounts' row above. A card opens from a line as it comes into view (.on); pointed at, it lifts and
+   the frame's corners close round it. */
 
 .services {
   --cine: cubic-bezier(0.76, 0, 0.24, 1);
   --soft: cubic-bezier(0.16, 1, 0.3, 1);
-  --rule: rgb(246 244 240 / 0.16);
+  --ink: #0c0c0c;
+  --rule: rgb(12 12 12 / 0.16);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -14,37 +16,70 @@
   padding: clamp(10px, 3vh, 40px) var(--ui) clamp(110px, 16vh, 180px);
 }
 
-/* as wide as the accounts' row above */
+/* one above another, as wide as the accounts' row above */
 .list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 2vw, 26px);
   width: 100%;
   max-width: 1280px;
-  border-bottom: 1px solid var(--rule);
 }
 
-/* ===== a service ===== */
-.row {
+.slot {
   position: relative;
+}
+
+/* ===== a card, lit a warm white ===== */
+.card {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   gap: clamp(28px, 5vw, 96px);
-  padding: clamp(40px, 7vh, 80px) 0;
+  padding: clamp(26px, 3.4vw, 52px);
+  border-radius: 4px;
+  color: var(--ink);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 90% 120% at 30% 0%, rgb(255 255 255 / 0.75), transparent 70%),
+    linear-gradient(180deg, #f3f1ec, #e2dfd8);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    inset 0 0 22px rgb(0 0 0 / 0.08),
+    0 0 60px -10px rgb(255 245 225 / 0.08);
+  /* it opens from a line across its middle as it comes into view */
+  clip-path: inset(50% 0 50% 0);
+  transition:
+    clip-path 1.2s var(--cine),
+    transform 0.8s var(--soft),
+    box-shadow 0.6s ease;
 }
 
-/* the hairline over it, drawing across as it comes into view */
-.rule {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--rule);
-  transform: scaleX(0);
-  transform-origin: 0 50%;
-  transition: transform 1.3s var(--cine);
+.on .card {
+  clip-path: inset(0 0 0 0);
 }
 
-.on .rule {
-  transform: scaleX(1);
+/* its left: "Service" and the 9:16 frame at its head, the name under it */
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(22px, 4vh, 44px);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  opacity: 0.62;
+}
+
+.glyph {
+  width: 9px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-radius: 1.5px;
+  opacity: 0.8;
 }
 
 /* its name, large and light, rising out of its line */
@@ -52,7 +87,7 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  font-size: clamp(36px, 4.4vw, 76px);
+  font-size: clamp(34px, 4vw, 68px);
   font-weight: 300;
   line-height: 0.95;
   letter-spacing: -0.04em;
@@ -75,17 +110,16 @@
   translate: 0 0;
 }
 
-/* what we do: a few sentences, then everything it includes */
+/* its right: a few sentences, then everything it includes */
 .body {
   display: flex;
   flex-direction: column;
-  gap: clamp(18px, 3vh, 28px);
-  padding-top: 0.5em;
+  gap: clamp(16px, 2.6vh, 26px);
   opacity: 0;
-  translate: 0 16px;
+  translate: 0 14px;
   transition:
-    opacity 1s ease 0.35s,
-    translate 1.1s var(--soft) 0.35s;
+    opacity 1s ease 0.7s,
+    translate 1.1s var(--soft) 0.7s;
 }
 
 .on .body {
@@ -94,18 +128,18 @@
 }
 
 .about {
-  max-width: 52ch;
+  max-width: 54ch;
   margin: 0;
-  font-size: clamp(17px, 1.45vw, 22px);
+  font-size: clamp(16px, 1.35vw, 21px);
   font-weight: 300;
   line-height: 1.5;
   letter-spacing: -0.005em;
 }
 
 .lab {
-  margin: clamp(4px, 1vh, 10px) 0 0;
-  font-size: 10.5px;
-  letter-spacing: 0.26em;
+  margin: clamp(2px, 0.8vh, 8px) 0 0;
+  font-size: 10px;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
   opacity: 0.55;
 }
@@ -121,25 +155,86 @@
 }
 
 .includes li {
-  padding: 12px 0;
+  padding: 11px 0;
   border-top: 1px solid var(--rule);
-  font-size: 12px;
+  font-size: 11.5px;
   letter-spacing: 0.16em;
   line-height: 1.4;
   text-transform: uppercase;
 }
 
+/* the frame's corners, in paper, outside the card: closing round it as it's pointed at */
+.corners {
+  position: absolute;
+  z-index: 1;
+  inset: -9px;
+  color: var(--paper);
+  opacity: 0;
+  scale: 1.015;
+  transition:
+    opacity 0.45s ease,
+    scale 0.7s var(--soft),
+    translate 0.8s var(--soft);
+  pointer-events: none;
+}
+
+.corners b {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 0 solid currentColor;
+}
+
+.corners b:nth-child(1) {
+  left: 0;
+  top: 0;
+  border-width: 1px 0 0 1px;
+}
+
+.corners b:nth-child(2) {
+  right: 0;
+  top: 0;
+  border-width: 1px 1px 0 0;
+}
+
+.corners b:nth-child(3) {
+  left: 0;
+  bottom: 0;
+  border-width: 0 0 1px 1px;
+}
+
+.corners b:nth-child(4) {
+  right: 0;
+  bottom: 0;
+  border-width: 0 1px 1px 0;
+}
+
+@media (hover: hover) {
+  .on:hover .card {
+    transform: translateY(-4px);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      inset 0 0 22px rgb(0 0 0 / 0.06),
+      0 0 80px -6px rgb(255 245 225 / 0.16);
+  }
+  .on:hover .corners {
+    opacity: 1;
+    scale: 1;
+    translate: 0 -4px;
+  }
+}
+
 /* phones: the name over the words, the list in one column */
 @media (max-width: 760px) {
-  .row {
+  .card {
     grid-template-columns: minmax(0, 1fr);
     gap: 22px;
   }
-  .body {
-    padding-top: 0;
+  .side {
+    gap: 18px;
   }
   .name {
-    font-size: clamp(32px, 10vw, 46px);
+    font-size: clamp(30px, 9vw, 44px);
   }
   .includes {
     grid-template-columns: minmax(0, 1fr);
@@ -147,9 +242,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rule,
+  .card,
   .rise,
-  .body {
+  .body,
+  .corners {
     transition: none;
+  }
+  .card {
+    clip-path: none;
   }
 }
