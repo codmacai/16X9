@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ProjectView, { type OpenProject } from "../../hero7/project-view";
 import Drawer from "../../hero11/drawer";
-import { posterFor, type Project } from "./data";
+import { posterFor, stillFor, type Project } from "./data";
 import styles from "./chrome.module.css";
 
 // ===========================================================================
@@ -248,9 +248,11 @@ export function Info({ left, centre }: { left: string; centre?: string }) {
 // ---------------------------------------------------------------------------
 // FILM STILL — a film's own picture, never another's: the shot cut from it at
 // build time; else a frame of the film itself, read by the browser (a moment
-// in, past any fade up from black); else, for a film with no file yet, a quiet
-// dark frame (its title is always beside it). Drawn with the caller's class,
-// which fills and covers.
+// in, past any fade up from black); else, for a film with no file yet, the
+// still of the clip that stands in for it (the same picture the brand wall
+// shows, so a tile flying into the line lands on it); else a quiet dark frame
+// (its title is always beside it). Drawn with the caller's class, which fills
+// and covers.
 // ---------------------------------------------------------------------------
 const FRAME_AT = 12; // seconds into the film, for a frame read from it
 export function FilmStill({ film, className, style }: { film: Project; className?: string; style?: CSSProperties }) {
@@ -260,6 +262,9 @@ export function FilmStill({ film, className, style }: { film: Project; className
     return <img className={className} style={style} src={shot} alt="" draggable={false} decoding="async" />;
   if (film.film)
     return <video className={`${className ?? ""} ${styles.frame}`} style={style} src={`${film.film}#t=${FRAME_AT}`} muted playsInline preload="metadata" aria-hidden="true" />;
+  if (film.src)
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img className={className} style={style} src={stillFor(film.src)} alt="" draggable={false} decoding="async" />;
   return <span className={`${className ?? ""} ${styles.blank}`} style={style} aria-hidden="true" />;
 }
 

@@ -1,7 +1,7 @@
 /* BRAND FILMS — THE BRAND WALL (brand-index.tsx): the room itself is the wall. Six equal tiles from
    edge to edge of the screen, no line between them, each playing its brand's films under the brand's
    logo in its own colours; the tile pointed at takes the light, the rest fall back into the dark.
-   Motion is transform and opacity, a clip as each tile wipes in, and one clip for the opening. */
+   Motion is transform and opacity, a clip as each tile wipes in, and the one tile flying into the line. */
 
 .view {
   overflow: hidden;
@@ -394,40 +394,44 @@
   }
 }
 
-/* ===== into the brand: the tile opens to the whole screen ===== */
-.opening {
+/* into the brand: the tile flies into the front of its line (brand-index.tsx, Opening); its picture
+   cropped as the card's is (file.module.css: .art, .still), so it lands exactly as the card stands */
+.fly {
   position: fixed;
-  inset: 0;
-  z-index: 15; /* under the line of films, which comes after it */
-  pointer-events: none;
-  background: #050505;
-  will-change: clip-path;
-}
-
-.openingFilm {
-  position: absolute;
-  inset: var(--band) 0 0;
+  z-index: 16; /* over the line of films, which comes up under it */
   overflow: hidden;
+  background: #0a0a0a;
+  pointer-events: none;
 }
 
-.openingFilm .still,
-.openingFilm .film {
-  top: -14%;
-  height: 128% !important;
-  transform: none;
+.flyArt {
+  position: absolute;
+  inset: 0 -12%;
 }
 
-.openingWash {
+.flyStill {
+  position: absolute;
+  top: -21%;
+  left: 0;
+  width: 100% !important;
+  height: 142% !important;
+  max-width: none !important;
+  object-fit: cover;
+}
+
+.flyShade {
   position: absolute;
   inset: 0;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.86) 0%, rgb(0 0 0 / 0.45) 30%, rgb(0 0 0 / 0) 56%);
 }
 
-.openingMark {
+.flyMark {
   position: absolute;
   left: 50%;
-  width: min(28vw, 400px);
+  top: 50%;
+  width: min(42%, 220px);
   aspect-ratio: 1.5;
-  margin: calc(min(28vw, 400px) / -3) 0 0 calc(min(28vw, 400px) / -2);
+  translate: -50% -50%;
   background: #fff;
   mask-size: contain;
   mask-repeat: no-repeat;
@@ -437,17 +441,9 @@
   -webkit-mask-position: center;
 }
 
-.openingMark[data-wide] {
-  width: min(46vw, 640px);
+.flyMark[data-wide] {
+  width: min(70%, 360px);
   aspect-ratio: 5.5;
-  margin: calc(min(46vw, 640px) / -11) 0 0 calc(min(46vw, 640px) / -2);
-}
-
-@media (max-width: 760px) {
-  .openingMark {
-    width: 60vw;
-    margin: -20vw 0 0 -30vw;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

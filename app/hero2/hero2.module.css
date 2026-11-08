@@ -3609,3 +3609,8 @@
 .stageLine.stageDoor > .namesWrap .name[data-fmt="beyond"] {
   opacity: 1;
 }
+
+/* hero 10: only Beyond goes on to a page of its own; 16x9 and 9x16 are only seen */
+.stageLight > .namesWrap .name:not([data-fmt="beyond"]) {
+  cursor: default;
+}

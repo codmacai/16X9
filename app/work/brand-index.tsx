@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useMotionValue, useSpring, type Transition, ty
 import { EASE, EASE_CINE } from "./_shared/chrome";
 import type { Project } from "./_shared/data";
 import { brandsFrom, OPTICAL, pad2, reelOf, startMuted, type Brand } from "./brand-shared";
-import FileView from "./file-view";
+import FileView, { frontPicture } from "./file-view";
 import type { Drawer } from "./file-view";
 import f from "./file.module.css";
 import s from "./brand.module.css";
@@ -23,22 +23,24 @@ import s from "./brand.module.css";
 // pointer is, its logo leans toward the pointer on a spring, and its name,
 // the film now showing and its count come up at its foot — while the rest of
 // the wall falls back into the dark. On a touch screen the light moves from
-// brand to brand on its own. Click, and the tile opens to the whole screen,
-// its film washed in the brand's colour as the logo is carried to the middle
-// — then every film made for that brand rises out of the dark (file-view.tsx).
+// brand to brand on its own. Click, and the tile flies, film and all, straight
+// into the frame at the front of the brand's line of films, its logo going as
+// it comes; it lands exactly where that film stands, and the brand's other
+// films rise into the line round it (file-view.tsx) — one move, no cut.
 // ===========================================================================
 
-type Opened = { label: string; no: string; films: Project[] };
+type Opened = { label: string; no: string; films: Project[]; at: number };
 
 const LEAN = { stiffness: 150, damping: 15, mass: 0.5 }; // the logo after the pointer
 const LIGHT = { stiffness: 120, damping: 22, mass: 0.6 }; // the light after the pointer
 const RISE: Transition = { type: "spring", stiffness: 80, damping: 15, mass: 1 };
-const OPEN: Transition = { type: "spring", stiffness: 58, damping: 17, mass: 1 }; // a tile to the whole screen
+const FLY: Transition = { duration: 0.95, ease: EASE_CINE }; // a tile into the front of its line
 const LIVE_MS = 1100; // the films start once the wall has come in
 const CUT_MS = 3800; // a brand with several films cuts to the next this often...
 const CUT_STEP_MS = 650; // ...each tile on its own beat
 const FEATURE_MS = 3400; // on a touch screen, the light moves on this often
-const OPEN_MS = 820;
+const OPEN_MS = 950; // the tile has landed: the line comes up round it...
+const LAND_MS = 420; // ...and the flown tile gives way to the film in front underneath
 const LEAVE_MS = 420;
 const maskOf = (src: string) => ({ maskImage: `url(${src})`, WebkitMaskImage: `url(${src})` });
 // the light a tile takes on: its brand's colour, lifted where that colour is too deep to glow on black
@@ -100,7 +102,7 @@ export default function BrandIndex({
   const [hover, setHover] = useState<number | null>(null);
   const [feature, setFeature] = useState<number | null>(null); // the brand in the light on a touch screen
   const [opened, setOpened] = useState<Opened | null>(null);
-  const [opening, setOpening] = useState<{ brand: Brand; at: number; rect: DOMRect } | null>(null);
+  const [opening, setOpening] = useState<{ brand: Brand; at: number; rect: DOMRect; landed: boolean } | null>(null);
   const [leaving, setLeaving] = useState(false);
   const up = opened === null && opening === null && !leaving;
 
@@ -161,19 +163,21 @@ export default function BrandIndex({
     if (!lit) setLit(true);
   };
 
-  // into the brand: the tile opens to the whole screen on the film it's showing
+  // into the brand: the tile flies, on the film it's showing, into the front of the brand's line;
+  // once it's there the line comes up round it, and then it gives way to the film in front
   const enter = (k: number, at: number, el: HTMLElement) => {
     if (!up) return;
     const b = brands[k];
-    const open = () => setOpened({ label: b.name, no: pad2(k + 1), films: b.films });
+    const open = () => setOpened({ label: b.name, no: pad2(k + 1), films: b.films, at });
     onCursor(null);
     if (reduce) return open();
-    setOpening({ brand: b, at, rect: el.getBoundingClientRect() });
+    setOpening({ brand: b, at, rect: el.getBoundingClientRect(), landed: false });
     window.setTimeout(() => {
       open();
-      setOpening(null);
+      setOpening((o) => (o ? { ...o, landed: true } : o));
       setHover(null);
     }, OPEN_MS);
+    window.setTimeout(() => setOpening(null), OPEN_MS + LAND_MS);
   };
 
   const state = up ? "shown" : "away";
@@ -232,9 +236,9 @@ export default function BrandIndex({
         </div>
       </div>
 
-      {/* into the brand: the tile opens to the whole screen, washed in its colour */}
+      {/* into the brand: the tile flies into the front of its line */}
       <AnimatePresence>
-        {opening && <Opening key="opening" brand={opening.brand} at={opening.at} rect={opening.rect} />}
+        {opening && <Opening key="opening" brand={opening.brand} at={opening.at} rect={opening.rect} landed={opening.landed} />}
       </AnimatePresence>
 
       {/* the brand's films, as the folders' line */}
@@ -242,7 +246,8 @@ export default function BrandIndex({
         <FileView
           key={opened.label}
           drawer={{ no: opened.no, label: opened.label, short: opened.label, films: opened.films, cat: drawer.cat }}
-          start={0}
+          start={opened.at}
+          arrive={!reduce}
           reduce={reduce}
           onPlay={onPlay}
           onCursor={onCursor}
@@ -398,50 +403,53 @@ function Tile({
 }
 
 // ---------------------------------------------------------------------------
-// the tile opens to the whole screen (a clip, so nothing stretches) on the
-// film it was showing, washed in the brand's colour as it opens, the logo
-// carried to the middle in white
+// the tile flies, film and all, into the frame at the front of the brand's
+// line: from where it stood to exactly where that film's picture stands, its
+// corners rounding as the card's are, the picture cropped as the card crops
+// it all the way; its logo goes as it comes. Once it has landed the film
+// itself gives way to its still (the card in front shows the still), and it
+// fades over the card underneath.
 // ---------------------------------------------------------------------------
-function Opening({ brand, at, rect }: { brand: Brand; at: number; rect: DOMRect }) {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const band = document.querySelector<HTMLElement>("[data-band]")?.offsetHeight ?? 0;
-  const from = `inset(${rect.top}px ${vw - rect.right}px ${vh - rect.bottom}px ${rect.left}px)`;
-  const to = `inset(${band}px 0px 0px 0px)`;
-  const midY = band + (vh - band) / 2;
-  const optical = OPTICAL[brand.logo.src] ?? 1;
+function Opening({ brand, at, rect, landed }: { brand: Brand; at: number; rect: DOMRect; landed: boolean }) {
+  const to = frontPicture();
   const reel = reelOf(brand.films[at]);
+  const optical = OPTICAL[brand.logo.src] ?? 1;
   return (
     <motion.div
-      className={s.opening}
-      initial={{ clipPath: from }}
-      animate={{ clipPath: to }}
-      exit={{ opacity: 0, transition: { duration: 0.55, delay: 0.15, ease: EASE } }}
-      transition={OPEN}
+      className={s.fly}
+      initial={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height, borderRadius: 0 }}
+      animate={{ left: to.left, top: to.top, width: to.width, height: to.height, borderRadius: 14 }}
+      exit={{ opacity: 0, transition: { duration: 0.3, ease: EASE } }}
+      transition={FLY}
       aria-hidden="true"
     >
-      <span className={s.openingFilm}>
+      <span className={s.flyArt}>
         {reel.still && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img className={s.still} src={reel.still} alt="" draggable={false} />
+          <img className={s.flyStill} src={reel.still} alt="" draggable={false} />
         )}
-        <video ref={startMuted} className={`${s.film} ${s.filmOn}`} src={reel.clip} autoPlay muted loop playsInline />
+        <motion.video
+          ref={startMuted}
+          className={s.flyStill}
+          src={reel.clip}
+          autoPlay
+          muted
+          loop
+          playsInline
+          animate={{ opacity: landed ? 0 : 1 }}
+          transition={{ duration: 0.3, ease: EASE }}
+        />
       </span>
-      {/* the brand's colour washes over its film */}
+      {/* the card's own shade, coming up as it lands */}
+      <motion.span className={s.flyShade} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.45, ease: EASE }} />
+      {/* its logo, going as it comes */}
       <motion.span
-        className={s.openingWash}
-        style={{ background: brand.logo.hex }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.88 }}
-        transition={{ duration: 0.7, ease: EASE, delay: 0.08 }}
-      />
-      <motion.span
-        className={s.openingMark}
+        className={s.flyMark}
         data-wide={brand.logo.wide || undefined}
-        style={{ ...maskOf(brand.logo.src), top: midY }}
-        initial={{ x: rect.left + rect.width / 2 - vw / 2, y: rect.top + rect.height / 2 - midY, scale: 0.5 * optical }}
-        animate={{ x: 0, y: 0, scale: optical }}
-        transition={OPEN}
+        style={maskOf(brand.logo.src)}
+        initial={{ opacity: 1, scale: optical }}
+        animate={{ opacity: 0, scale: optical * 0.82 }}
+        transition={{ duration: 0.45, ease: EASE }}
       />
     </motion.div>
   );

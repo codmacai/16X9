@@ -93,6 +93,13 @@ function geometry(): Geo {
   };
 }
 
+/** where the film in front's picture stands on the screen (its page slides out from here; a brand's
+ *  tile flies into it, brand-index.tsx) */
+export function frontPicture() {
+  const g = geometry();
+  return { left: g.left, top: g.top, width: g.w, height: g.mh };
+}
+
 // the counter rolls up going forward, down going back
 const roll = {
   enter: (dir: number) => ({ y: dir >= 0 ? "100%" : "-100%" }),
@@ -107,10 +114,14 @@ export default function FileView({
   onPlay,
   onCursor,
   onClosed,
+  arrive = false,
 }: {
   drawer: Drawer;
   /** the film the folder was showing */
   start: number;
+  /** the film in front is already on the screen, in its place (a brand's tile has flown into it):
+   *  it doesn't rise, and it's in focus at once; the others rise in round it */
+  arrive?: boolean;
   reduce: boolean;
   onPlay: (film: Project, el: HTMLElement) => void;
   onCursor: (label: string | null) => void;
@@ -149,7 +160,7 @@ export default function FileView({
   const focuses = useRef<(HTMLDivElement | null)[]>([]);
   const arts = useRef<(HTMLDivElement | null)[]>([]);
   // the film in front comes into focus once it has risen in
-  const focusIn = useMotionValue(reduce ? 1 : 0);
+  const focusIn = useMotionValue(reduce || arrive ? 1 : 0);
   const place = useCallback(
     (v: number) => {
       const g = live.current.geo;
@@ -188,13 +199,13 @@ export default function FileView({
     const onResize = () => setGeo(geometry());
     window.addEventListener("resize", onResize);
     const t = window.setTimeout(() => setBooted(true), reduce ? 0 : 1300);
-    const run = reduce ? null : animate(focusIn, 1, { duration: 1.1, ease: EASE, delay: ENTER_S + 0.55 });
+    const run = reduce || arrive ? null : animate(focusIn, 1, { duration: 1.1, ease: EASE, delay: ENTER_S + 0.55 });
     return () => {
       window.removeEventListener("resize", onResize);
       window.clearTimeout(t);
       run?.stop();
     };
-  }, [focusIn, reduce]);
+  }, [arrive, focusIn, reduce]);
 
   // ---- moving ----
   const go = useCallback(
@@ -394,7 +405,7 @@ export default function FileView({
               key={f.no}
               className={s.slot}
               style={{ left: geo.left, top: geo.top, width: geo.w, height: geo.h }}
-              initial={reduce ? { opacity: 0 } : { y: geo.vh * 0.72, opacity: 0 }}
+              initial={arrive && k === start ? false : reduce ? { opacity: 0 } : { y: geo.vh * 0.72, opacity: 0 }}
               animate={leaving ? { y: reduce ? 0 : geo.vh * 0.62, opacity: 0 } : { y: 0, opacity: 1 }}
               transition={
                 reduce

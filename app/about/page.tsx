@@ -7,7 +7,6 @@ import Opening from "./opening";
 import Team from "./team";
 import Practice from "./practice";
 import Clients from "./clients";
-import Contact from "./contact";
 import Footer from "../work/_shared/footer";
 import s from "./page.module.css";
 
@@ -17,8 +16,8 @@ import s from "./page.module.css";
 //   2. Team       — the people: their portraits round a turning globe (black)
 //   3. Practice   — how we work: Making, Partnership (paper)
 //   4. Clients    — who trusted us: a dark room, one light over the names
-//   5. Contact    — the selling line, how to reach us, the three formats (#contact)
-//   then the footer, as on every page that scrolls (work/_shared/footer.tsx)
+//   then the footer, as on every page that scrolls (work/_shared/footer.tsx):
+//   the selling line, Let's talk and how to reach us (#contact)
 // The page has weight: the wheel sets where it's going and it glides there.
 // ===========================================================================
 
@@ -32,7 +31,6 @@ export default function About() {
       <Team />
       <Practice />
       <Clients />
-      <Contact />
       <Footer />
     </main>
   );

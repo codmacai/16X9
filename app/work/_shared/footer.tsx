@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { STUDIO } from "../../about/contact";
+import { STUDIO } from "./studio";
 import s from "./footer.module.css";
 
 // ===========================================================================
@@ -15,7 +15,8 @@ import s from "./footer.module.css";
 // the corner, and the name rises in after it. Inside the frame, as on a
 // screen: the line, "Let's talk", and where we are. Under it, tiny, the rights
 // and the way back to the top. Fill in the studio's details in
-// about/contact.tsx (STUDIO): an empty one isn't shown.
+// studio.ts (STUDIO): an empty one isn't shown. On the About page it is the
+// contact section itself: every "Let's talk" (/about#contact) lands here.
 // ===========================================================================
 
 export default function Footer() {
@@ -31,6 +32,7 @@ export default function Footer() {
 
   return (
     <motion.footer
+      id="contact"
       className={`${s.footer} ${seen ? s.seen : ""}`}
       onViewportEnter={() => setSeen(true)}
       viewport={{ once: true, amount: 0.3 }}

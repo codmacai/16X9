@@ -21,7 +21,9 @@ import own from "../hero7/hero7.module.css";
 // differenced against what's behind them, so they read as ink on the wall
 // and as paper on the screens (CSS, .stageLight).
 //
-// Clicking a word goes on to that format's work (/work?format=…), as in hero 9.
+// Only Beyond goes on to a page of its own (its tile grows to the whole
+// screen, /work?format=beyond); 16x9 and 9x16 are seen on their screens
+// here, and clicking them does nothing.
 // ===========================================================================
 
 const HEADLINE = "Stories beyond the frame";
@@ -30,9 +32,8 @@ const SETTLE_S = LOGO_T.names + 0.9;
 // touch screens have no hover: on the index the formats take turns
 const AUTO_MS = 3400;
 const AUTO_SEQ: (FormatKey | null)[] = ["16x9", "9x16", "beyond", null];
-// ms from the click to the work page: the preview has filled the screen by then
-const GO_MS = 1050;
-// ...and for Beyond, once its panel has grown to the whole screen (its page comes out from under it)
+// ms from the click to Beyond's page, once its panel has grown to the whole screen (its page comes
+// out from under it)
 const GO_BEYOND_MS = 1000;
 
 // The variant depends on the URL and today's date, so it's read on the client only.
@@ -82,10 +83,11 @@ function Home({ variant }: { variant: HeroVariant }) {
 
   const hover = useCallback((k: FormatKey | null) => setFmtHover(k), []);
   const router = useRouter();
-  // the preview fills the screen, then the page goes on to that format's work
+  // only Beyond has a page of its own here: its tile grows to the whole screen and its page comes
+  // out from under it; 16x9 and 9x16 are seen on their screens and stay where they are
   const openRoom = useCallback(
     (k: FormatKey) => {
-      if (!ready || room) return;
+      if (!ready || room || k !== "beyond") return;
       setLaunch(k);
       setRoom(k);
       setFmtHover(null);
@@ -94,8 +96,8 @@ function Home({ variant }: { variant: HeroVariant }) {
       try {
         sessionStorage.setItem(HOME_KEY, "/hero10");
       } catch {}
-      if (k === "beyond") leaveDoor("panel");
-      window.setTimeout(() => router.push(`/work?format=${k}`), reduce ? 0 : k === "beyond" ? GO_BEYOND_MS : GO_MS);
+      leaveDoor("panel");
+      window.setTimeout(() => router.push(`/work?format=${k}`), reduce ? 0 : GO_BEYOND_MS);
     },
     [ready, reduce, room, router]
   );

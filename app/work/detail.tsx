@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useInView, useScroll, useSpring, useTransform, type Transition, type Variants } from "framer-motion";
 import { EASE, FilmStill } from "./_shared/chrome";
 import { posterFor, type Project } from "./_shared/data";
-import Credits from "./credits";
 import Footer from "./_shared/footer";
 import Story from "./story";
 import Theatre, { type Rect } from "./theatre";
@@ -26,11 +25,8 @@ import d from "./detail.module.css";
 //     place as you reach it while the picture settles inside, and "Watch
 //     behind the scenes" to open it in the player;
 //   · the case above it (story.tsx): client, task, solution;
-//   · the end credits, set on a clapperboard the full width of the screen
-//     (credits.tsx); each section simply follows the last as you scroll, no
-//     edge dragging it up and nothing sinking back;
-//   · then the footer (_shared/footer.tsx);
-//     click it and its page slides up over this one.
+//   · then the footer (_shared/footer.tsx). Each section simply follows the
+//     last as you scroll: no edge dragging it up, nothing sinking back.
 // Opened from the line, the page doesn't slide up: the card stays exactly
 // where it was and the page is built around it — the line falls away into
 // the black, the paper rises from the foot of the screen to the card's
@@ -74,7 +70,7 @@ export default function Detail({
   fromLine: boolean;
   reduce: boolean;
   onClose: () => void;
-  /** (no longer used: the page ends on its credits and the footer, no next film) */
+  /** (no longer used: the page ends on the footer, no next film) */
   onNext?: () => void;
   /** (no longer used: behind the scenes plays in the screen itself) */
   onPlay?: (film: Project, el: HTMLElement) => void;
@@ -84,7 +80,6 @@ export default function Detail({
   const scrollRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
   const screenRef = useRef<HTMLDivElement>(null);
-  const creditsRef = useRef<HTMLElement>(null);
 
   // the cover: the rows slide apart, the card lifts and settles back
   const { scrollYProgress: heroRaw } = useScroll({ container: scrollRef, target: heroRef, offset: ["start start", "end start"] });
@@ -417,15 +412,6 @@ export default function Detail({
             <ScreenBar video={btsVideo} open={bts} onClose={() => setBts(false)} />
           </div>
         </motion.div>
-
-        {/* ================= the end credits ================= */}
-        <Credits
-          film={film}
-          label={label}
-          container={scrollRef}
-          sectionRef={creditsRef}
-          reduce={reduce}
-        />
 
         {/* ================= the footer ================= */}
         <Footer />

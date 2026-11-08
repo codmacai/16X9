@@ -415,15 +415,6 @@
   outline-offset: 8px;
 }
 
-/* ================= the sign-off: the end credits ================= */
-
-/* the black the clapperboard stands on (credits.tsx, credits.module.css) */
-.signoff {
-  position: relative;
-  z-index: 2;
-  background: #000;
-}
-
 /* ================= phones, reduced motion ================= */
 
 @media (max-width: 760px) {
