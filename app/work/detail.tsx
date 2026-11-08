@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useInView, useScroll, useSpring, useTransform,
 import { EASE, FilmStill } from "./_shared/chrome";
 import { posterFor, type Project } from "./_shared/data";
 import Credits from "./credits";
+import Footer from "./_shared/footer";
 import Story from "./story";
 import Theatre, { type Rect } from "./theatre";
 import ScreenBar from "./screen-bar";
@@ -28,7 +29,7 @@ import d from "./detail.module.css";
 //   · the end credits, set on a clapperboard the full width of the screen
 //     (credits.tsx); each section simply follows the last as you scroll, no
 //     edge dragging it up and nothing sinking back;
-//   · the next film in the drawer;
+//   · the next film in the drawer; then the footer (_shared/footer.tsx);
 //     click it and its page slides up over this one.
 // Opened from the line, the page doesn't slide up: the card stays exactly
 // where it was and the page is built around it — the line falls away into
@@ -442,6 +443,9 @@ export default function Detail({
             </span>
           </button>
         </section>
+
+        {/* ================= the footer ================= */}
+        <Footer />
       </div>
     </motion.section>
   );

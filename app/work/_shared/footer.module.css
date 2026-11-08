@@ -1,0 +1,332 @@
+/* FOOTER (footer.tsx) — on the black, in the site's own hand: the three formats as an index between
+   full-width hairlines, their names large and light; three columns (the line and Let's talk, the
+   sitemap, how to reach us); the bar along the foot with the mark. */
+
+.footer {
+  --rule: rgb(246 244 240 / 0.16);
+  position: relative;
+  z-index: 3;
+  background: #000;
+  color: var(--paper, #f6f4f0);
+  text-transform: uppercase;
+}
+
+/* small, wide-set labels */
+.lab {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  opacity: 0.55;
+}
+
+/* ===== the formats: an index between hairlines that run the full width ===== */
+.formats {
+  display: flex;
+  flex-direction: column;
+  padding-top: clamp(64px, 12vh, 140px);
+}
+
+.format {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(16px, 3vw, 48px);
+  padding: clamp(14px, 2.4vh, 24px) var(--ui, 24px);
+  border-top: 1px solid var(--rule);
+  color: inherit;
+  text-decoration: none;
+  transition: opacity 0.5s ease;
+}
+
+.format:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+
+.no {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.5;
+}
+
+/* the name, large and light; pointed at, a hairline outline */
+.word {
+  position: relative;
+  font-size: clamp(56px, 9vw, 150px);
+  font-weight: 300;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  -webkit-text-stroke: 1px transparent;
+  transition:
+    color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    -webkit-text-stroke-color 0.5s ease;
+}
+
+.line {
+  justify-self: end;
+  max-width: 300px;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  line-height: 1.6;
+  text-align: right;
+  opacity: 0.55;
+  transition: opacity 0.5s ease;
+}
+
+.line i {
+  font-style: normal;
+  letter-spacing: 0;
+}
+
+/* the frame's corners, as round a chosen word */
+.corners {
+  position: absolute;
+  inset: -0.08em -0.22em;
+  color: var(--paper, #f6f4f0); /* (the word itself goes transparent) */
+  opacity: 0;
+  scale: 1.06;
+  transition:
+    opacity 0.45s ease,
+    scale 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.corners b {
+  position: absolute;
+  width: clamp(10px, 0.12em, 18px);
+  height: clamp(10px, 0.12em, 18px);
+  border: 0 solid currentColor;
+}
+
+.corners b:nth-child(1) {
+  left: 0;
+  top: 0;
+  border-width: 1px 0 0 1px;
+}
+
+.corners b:nth-child(2) {
+  right: 0;
+  top: 0;
+  border-width: 1px 1px 0 0;
+}
+
+.corners b:nth-child(3) {
+  left: 0;
+  bottom: 0;
+  border-width: 0 0 1px 1px;
+}
+
+.corners b:nth-child(4) {
+  right: 0;
+  bottom: 0;
+  border-width: 0 1px 1px 0;
+}
+
+@media (hover: hover) {
+  .formats:hover .format {
+    opacity: 0.32;
+  }
+  .formats .format:hover {
+    opacity: 1;
+  }
+  .format:hover .word {
+    color: transparent;
+    -webkit-text-stroke-color: var(--paper, #f6f4f0);
+  }
+  .format:hover .corners {
+    opacity: 1;
+    scale: 1;
+  }
+  .format:hover .line {
+    opacity: 0.95;
+  }
+}
+
+/* ===== three columns ===== */
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1fr);
+  gap: clamp(32px, 6vw, 110px);
+  padding: clamp(56px, 11vh, 120px) var(--ui, 24px) clamp(56px, 10vh, 110px);
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 2.8vh, 28px);
+  min-width: 0;
+}
+
+/* the selling line, and Let's talk with its circled arrow, as in the band */
+.say {
+  max-width: 22ch;
+  margin: 0;
+  font-size: clamp(22px, 2.1vw, 34px);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.talk {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  align-self: flex-start;
+  color: inherit;
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-decoration: none;
+}
+
+.talk i {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgb(246 244 240 / 0.5);
+  border-radius: 50%;
+  font-style: normal;
+  letter-spacing: 0;
+  transition:
+    background-color 0.4s ease,
+    color 0.4s ease,
+    border-color 0.4s ease;
+}
+
+@media (hover: hover) {
+  .talk:hover i {
+    border-color: var(--paper, #f6f4f0);
+    background: var(--paper, #f6f4f0);
+    color: #000;
+  }
+}
+
+/* the sitemap: light capitals, faint until pointed at */
+.map {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: clamp(24px, 2.2vw, 36px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.map a {
+  color: rgb(246 244 240 / 0.4);
+  text-decoration: none;
+  transition: color 0.35s ease;
+}
+
+.map a:hover,
+.map a:focus-visible {
+  color: var(--paper, #f6f4f0);
+}
+
+/* how to reach us: rows between hairlines, a label and its value */
+.reach {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reach li {
+  display: grid;
+  grid-template-columns: minmax(0, 0.42fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.reach li:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+
+.reach i {
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 0.22em;
+  opacity: 0.55;
+}
+
+.reach a,
+.reach span {
+  min-width: 0;
+  color: inherit;
+  font-size: clamp(16px, 1.4vw, 22px);
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+/* ===== along the foot: the mark, where we are, the rights, the line ===== */
+.bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(16px, 2.4vw, 32px);
+  padding: 20px var(--ui, 24px) 22px;
+  border-top: 1px solid var(--rule);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: rgb(246 244 240 / 0.55);
+}
+
+/* the 16x9 mark, in paper */
+.mark {
+  display: block;
+  width: 62px;
+  aspect-ratio: 1244 / 600;
+  background: var(--paper, #f6f4f0);
+  -webkit-mask: url("/logo-16x9.svg") center / contain no-repeat;
+  mask: url("/logo-16x9.svg") center / contain no-repeat;
+}
+
+.follow {
+  display: flex;
+  gap: 14px;
+}
+
+.follow a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.follow a:hover {
+  color: var(--paper, #f6f4f0);
+}
+
+.end {
+  text-align: right;
+}
+
+/* tablets: the line under each name drops away; phones: the columns stack */
+@media (max-width: 900px) {
+  .format {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .line {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bar {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+  }
+  .end {
+    text-align: center;
+  }
+}

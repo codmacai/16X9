@@ -5,13 +5,11 @@ import { useReducedMotion } from "framer-motion";
 import s from "./team.module.css";
 
 // ===========================================================================
-// THE TEAM — the people behind the frame, flat and even, on the black. On the
-// left, as a title card: "The team", the line large and light, and a word on
-// who they are. On the right, the wall: everyone once, five across and three
-// down, each portrait the same size, in black and white, its corners rounded,
-// a fine gap between them — no perspective, nothing bent. As it comes into
-// view the portraits come up into place one after another; point at one and it
-// lifts into the light while the rest step back.
+// THE TEAM — the people behind the frame, and nothing else. On the black, a
+// small label and the count over the wall: everyone once, five across and
+// three down, each portrait the same size, in black and white, its corners
+// rounded, a fine gap between them. They come up into place row by row as it
+// comes into view; one pointed at brightens a little.
 // ===========================================================================
 
 // the team, in black and white, each once (stand-ins cut from the old site's
@@ -35,22 +33,11 @@ export default function Team() {
 
   return (
     <section ref={ref} id="team" className={`${s.section} ${on || reduce ? s.on : ""}`} aria-labelledby="team-title">
-      <div className={s.card}>
-        <p className={s.label}>The team</p>
-        <h2 id="team-title" className={s.title}>
-          <span className={s.mask}>
-            <span className={s.rise}>The people</span>
-          </span>
-          <span className={s.mask}>
-            <span className={s.rise} style={{ transitionDelay: "0.12s" }}>
-              behind the frame
-            </span>
-          </span>
+      <div className={s.head}>
+        <h2 id="team-title" className={s.label}>
+          The team
         </h2>
-        <p className={s.line}>Storytellers, filmmakers, strategists and producers — one crew, from the first idea to the final cut.</p>
-        <p className={s.count}>
-          {String(PEOPLE.length).padStart(2, "0")} <i>people</i>
-        </p>
+        <span className={s.label}>{String(PEOPLE.length).padStart(2, "0")}</span>
       </div>
 
       <ul className={s.wall}>

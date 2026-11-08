@@ -7,6 +7,7 @@ import RoomSwitch from "../hero4/room-switch";
 import { Band, rootClass } from "./_shared/chrome";
 import { ACCOUNTS, WORKS_9X16, instagramOf } from "./_shared/data";
 import AccountReels from "./account-reels";
+import Footer from "./_shared/footer";
 import Intro916 from "./intro-916";
 import Services916 from "./services-916";
 import Profile, { Player } from "./profile";
@@ -25,7 +26,7 @@ import { useSmoothWheel } from "./smooth-wheel";
 // click plays it whole. Click the frame to open the account's page. The name underneath
 // opens the account on Instagram. Four to a row (two on a phone), in true
 // rows, each frame rising into place as it comes into view. Then what
-// we do: the services, as cards, type only (services-916.tsx).
+// we do: the services, as cards, type only (services-916.tsx); then the footer.
 // ===========================================================================
 
 // a frame rising into place as it scrolls in
@@ -107,6 +108,7 @@ export default function Accounts() {
         </ul>
       </section>
       <Services916 reduce={reduce} />
+      <Footer />
       <AnimatePresence>
         {reelAcc && reel && (
           <Player key="reel" reels={reelAcc.reels ?? []} start={reel.i} handle={reelAcc.demo ? reelAcc.name : reelAcc.handle} logo={reelAcc.logo} onClose={() => setReel(null)} dark />
