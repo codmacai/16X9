@@ -1,133 +1,82 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore, type RefObject } from "react";
-import { useInView } from "framer-motion";
+import { useState, type RefObject } from "react";
+import { motion } from "framer-motion";
 import type { Project } from "./_shared/data";
 import d from "./detail.module.css";
 import s from "./credits.module.css";
 
 // ===========================================================================
-// SIGN-OFF — the film's credits, set as a clapperboard the width of the screen.
-//   · It follows the page above as you scroll: no edge dragging it up.
-//   · It's a screen tall (and grows rather than cut anything, given more
-//     credits than a screen holds), edge to edge. Across its head the clapper
-//     stick: black, its white arrows running the full width, drawing across as
-//     it comes into view. Below it the board is the page's own paper, ruled in
-//     black, so it reads as part of the page: the production (the film's
-//     title), its client and year across the top; then every credit in its own
-//     cell, its role over its names, the cells sharing out the room left; and
-//     at the foot the mark. Only the credits: no addresses, no numbers.
+// SIGN-OFF — the film's credits, set as a poster's billing block, on the
+// paper, one screen. "A 16×9 & Beyond film" small over the film's title, set
+// large and light; then, under a hairline, the credits run on as one centred
+// block of type — each role small and wide-set, its names after it in
+// capitals, one credit after another as a poster sets them — and at the foot
+// the studio's mark with the client and year. Only the credits: no addresses,
+// no numbers. As it comes into view the title rises out of its line, the
+// hairline draws out from the middle and the block comes up after them.
 // ===========================================================================
 
-const LOGO_SRC = "/logo-16x9.svg";
+type Credit = { role: string; names: string[] };
 
-type Cell = { label: string; names: string[] };
-
-/** the credits as cells: each role over its names (a group's names without a role go under the
- *  group's own name); the client, already across the top, isn't repeated */
-function cellsOf(film: Project): Cell[] {
-  const out: Cell[] = [];
+/** every credit, a role and its names (a group's names without a role go under the group's own
+ *  name); the client, set under the title, isn't repeated */
+function creditsOf(film: Project): Credit[] {
+  const out: Credit[] = [];
   for (const g of film.credits ?? []) {
     for (const r of g.rows) {
       if (r.role === "Client") continue;
-      out.push({ label: r.role ?? g.heading, names: r.names });
+      out.push({ role: r.role ?? g.heading, names: r.names });
     }
   }
   return out;
 }
 
-/** how many cells to a row: as few rows as sit well, fewer columns on a phone */
-function colsFor(n: number, phone: boolean) {
-  if (phone) return n <= 1 ? 1 : 2;
-  if (n <= 4) return Math.max(1, n);
-  if (n <= 8) return Math.ceil(n / 2);
-  if (n <= 15) return 5;
-  return 6;
-}
-
-const subPhone = (cb: () => void) => {
-  const mq = window.matchMedia("(max-width: 640px)");
-  mq.addEventListener("change", cb);
-  return () => mq.removeEventListener("change", cb);
-};
-
 export default function Credits({
   film,
-  label,
   container,
   sectionRef,
   reduce,
 }: {
   film: Project;
-  label: string;
+  label?: string;
   container: RefObject<HTMLDivElement | null>;
   sectionRef: RefObject<HTMLElement | null>;
   reduce: boolean;
 }) {
-  const inView = useInView(sectionRef, { root: container, amount: 0.6 });
-  const phone = useSyncExternalStore(subPhone, () => window.matchMedia("(max-width: 640px)").matches, () => false);
-
-  // in view, the stick draws across (once)
   const [seen, setSeen] = useState(false);
-  useEffect(() => {
-    if (!inView) return;
-    const t = window.setTimeout(() => setSeen(true), 0);
-    return () => window.clearTimeout(t);
-  }, [inView]);
-
-  const cells = cellsOf(film);
-  const cols = colsFor(cells.length, phone);
-  const rows = Math.max(1, Math.ceil(cells.length / cols));
-  // blank cells to finish the last row, so the ruling runs on unbroken
-  const blanks = rows * cols - cells.length;
+  const credits = creditsOf(film);
 
   return (
-    <section ref={sectionRef} className={`${d.signoff} ${s.signoff}`} aria-label={`End credits: ${film.title}`}>
-      <div className={`${s.stage} ${seen || reduce ? s.seen : ""}`}>
-        {/* the clapper stick, edge to edge: white arrows on black */}
-        <span className={s.stick} aria-hidden="true" />
+    <motion.section
+      ref={sectionRef}
+      className={`${d.signoff} ${s.signoff} ${seen || reduce ? s.seen : ""}`}
+      aria-label={`End credits: ${film.title}`}
+      onViewportEnter={() => setSeen(true)}
+      viewport={{ root: container, once: true, amount: 0.35 }}
+    >
+      <p className={s.kicker}>A 16×9 &amp; Beyond film</p>
+      <h2 className={s.title}>
+        <span className={s.mask}>
+          <span className={s.rise}>{film.title}</span>
+        </span>
+      </h2>
+      <p className={s.for}>{[film.client && `for ${film.client}`, film.year].filter(Boolean).join(" · ")}</p>
 
-        {/* the board: the page's own paper, ruled in black, filling the rest of the screen */}
-        <div className={s.board}>
-          <div className={s.head}>
-            <div className={`${s.cell} ${s.prod}`}>
-              <span className={s.lab}>Production</span>
-              <span className={s.title}>{film.title}</span>
-            </div>
-            <div className={s.cell}>
-              <span className={s.lab}>Client</span>
-              <span className={s.val}>{film.client}</span>
-            </div>
-            <div className={s.cell}>
-              <span className={s.lab}>{film.year ? "Year" : "Format"}</span>
-              <span className={s.val}>{film.year || label}</span>
-            </div>
-          </div>
+      <i className={s.rule} aria-hidden="true" />
 
-          <div className={s.cells} style={{ "--cols": cols, "--rows": rows } as React.CSSProperties}>
-            {cells.map((c, i) => (
-              <div key={i} className={s.cell}>
-                <span className={s.lab}>{c.label}</span>
-                <span className={s.val}>
-                  {c.names.map((n) => (
-                    <span key={n}>{n}</span>
-                  ))}
-                </span>
-              </div>
-            ))}
-            {Array.from({ length: blanks }, (_, i) => (
-              <div key={`b${i}`} className={s.cell} aria-hidden="true" />
-            ))}
-          </div>
+      {/* the billing block: one credit after another, centred, as a poster sets them */}
+      <p className={s.block}>
+        {credits.map((c, i) => (
+          <span key={i} className={s.credit}>
+            <span className={s.role}>{c.role}</span> <span className={s.names}>{c.names.join(" · ")}</span>
+          </span>
+        ))}
+      </p>
 
-          <div className={s.foot}>
-            <span>End credits</span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LOGO_SRC} alt="16x9" />
-            <span>A 16×9 film{film.client ? ` for ${film.client}` : ""}</span>
-          </div>
-        </div>
+      <div className={s.foot}>
+        <span className={s.mark} role="img" aria-label="16x9 & Beyond" />
       </div>
-    </section>
+    </motion.section>
   );
 }

@@ -276,20 +276,6 @@
   will-change: transform, opacity;
 }
 
-/* a rising section's dragged top edge (edge.tsx): it sits just above the
-   section, in its colour, and bulges up with the scroll's speed */
-.edge {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(100% - 1px);
-  display: block;
-  width: 100%;
-  height: 24vh;
-  overflow: visible;
-  pointer-events: none;
-}
-
 /* ================= the screen ================= */
 
 .screenWrap {
@@ -438,121 +424,6 @@
   background: #000;
 }
 
-/* ================= the next film ================= */
-
-.next {
-  position: relative;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(20px, 3.4vh, 36px);
-  min-height: calc(var(--sh) * 0.86);
-  padding: clamp(60px, 12vh, 140px) var(--ui);
-  background: var(--noise), var(--paper);
-  color: var(--ink);
-  text-align: center;
-}
-
-.nextKicker {
-  font-size: 11px;
-  letter-spacing: 0.46em;
-  text-transform: uppercase;
-  opacity: 0.6;
-}
-
-.nextLink {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(16px, 2.6vh, 28px);
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.nextTitle {
-  display: flex;
-  align-items: center;
-  gap: 0.22em;
-  font-size: min(10vw, 17vh);
-  font-weight: 300;
-  line-height: 0.9;
-  letter-spacing: -0.045em;
-  text-transform: uppercase;
-}
-
-.nextName {
-  transition: transform 0.9s var(--ease);
-}
-
-/* the next film's picture opens in the line, as in the menu's headline */
-.nextReel {
-  position: relative;
-  display: block;
-  flex: none;
-  overflow: hidden;
-  width: 0;
-  height: 0.72em;
-  border-radius: 999px;
-  background: var(--ink) center / cover no-repeat;
-  opacity: 0;
-  transition:
-    width 0.9s var(--ease),
-    opacity 0.6s var(--ease);
-}
-
-.nextReelFill {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* no picture of it: the pill stays ink, the title would be too small to read */
-.nextReelFill > span {
-  display: none;
-}
-
-.nextLink:hover .nextReel,
-.nextLink:focus-visible .nextReel {
-  width: 1.9em;
-  opacity: 1;
-}
-
-.nextMeta {
-  display: inline-flex;
-  gap: 12px;
-  font-size: 11px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  opacity: 0.6;
-}
-
-.nextMeta i {
-  font-style: normal;
-  transition: transform 0.6s var(--ease);
-}
-
-.nextLink:hover .nextMeta i {
-  transform: translateX(6px);
-}
-
-.nextLink:focus-visible {
-  outline: none;
-}
-
-.nextLink:focus-visible .nextName {
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.12em;
-}
-
 /* ================= phones, reduced motion ================= */
 
 @media (max-width: 760px) {
@@ -581,15 +452,6 @@
   .names {
     font-size: 8.4vw;
   }
-  .edge {
-    height: 14vh;
-  }
-  .nextTitle {
-    font-size: 12vw;
-  }
-  .rollTitle {
-    font-size: 15vw;
-  }
   .playDisc {
     width: 56px;
   }
@@ -606,10 +468,7 @@
   }
   .backDisc,
   .playDisc,
-  .picture > *,
-  .nextName,
-  .nextReel,
-  .nextMeta i {
+  .picture > * {
     transition: none;
   }
 }

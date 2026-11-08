@@ -1,173 +1,140 @@
-/* FOOTER (footer.tsx) — on the black, in the site's own hand: the three formats as an index between
-   full-width hairlines, their names large and light; three columns (the line and Let's talk, the
-   sitemap, how to reach us); the bar along the foot with the mark. */
+/* FOOTER (footer.tsx) — on the black, the studio's mark drawn the width of the page: a hairline frame
+   open at the foot on the right, 16X9 in the corner breaking out of it, & BEYOND tiny under it; inside
+   the frame the line, Let's talk and where we are; under it, tiny, the rights and back to the top. */
 
 .footer {
-  --rule: rgb(246 244 240 / 0.16);
+  --cine: cubic-bezier(0.76, 0, 0.24, 1);
+  --soft: cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   z-index: 3;
+  padding: clamp(64px, 12vh, 140px) var(--ui, 24px) 0;
   background: #000;
   color: var(--paper, #f6f4f0);
   text-transform: uppercase;
 }
 
-/* small, wide-set labels */
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ===== the mark, the width of the page (its own proportions: 1244 × 600) ===== */
+.stage {
+  position: relative;
+  width: min(100%, calc(76svh * 1244 / 600));
+  margin: 0 auto;
+}
+
+.markBox {
+  position: relative;
+  aspect-ratio: 1244 / 600;
+}
+
+.mark {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* the frame: a hairline, drawing itself round from the corner as it comes into view */
+.frame {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.15; /* in the mark's own units: a hairline at the width of a laptop */
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0.85;
+  transition: stroke-dashoffset 2.4s var(--cine) 0.1s;
+}
+
+.seen .frame {
+  stroke-dashoffset: 0;
+}
+
+/* 16X9, in the corner, rising in after the frame */
+.name {
+  fill: currentColor;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 232px;
+  font-weight: 700;
+  opacity: 0;
+  translate: 0 30px;
+  transition:
+    opacity 1s ease 1.4s,
+    translate 1.2s var(--soft) 1.4s;
+}
+
+.seen .name {
+  opacity: 1;
+  translate: 0 0;
+}
+
+/* & BEYOND: tiny, under 16X9, ending on its right edge */
+.beyond {
+  position: absolute;
+  top: calc(514 / 600 * 100%);
+  right: calc((1244 - 1235) / 1244 * 100%);
+  margin-right: -0.42em; /* the tracking after its last letter given back */
+  font-size: 11px;
+  letter-spacing: 0.42em;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 1s ease 2s;
+}
+
+.seen .beyond {
+  opacity: 0.75;
+}
+
+/* ===== inside the frame, as on a screen ===== */
+.inside {
+  position: absolute;
+  top: calc(8 / 600 * 100%);
+  left: calc(8 / 1244 * 100%);
+  width: calc(1032 / 1244 * 100%);
+  height: calc(484 / 600 * 100%);
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+  padding: clamp(24px, 3.4vw, 56px);
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity 1.2s ease 1s;
+}
+
+.seen .inside {
+  opacity: 1;
+}
+
+.say {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 2.2vw, 28px);
+  max-width: 50%;
+}
+
 .lab {
   margin: 0;
   font-size: 11px;
-  font-weight: 400;
   letter-spacing: 0.22em;
   opacity: 0.55;
-}
-
-/* ===== the formats: an index between hairlines that run the full width ===== */
-.formats {
-  display: flex;
-  flex-direction: column;
-  padding-top: clamp(64px, 12vh, 140px);
-}
-
-.format {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(16px, 3vw, 48px);
-  padding: clamp(14px, 2.4vh, 24px) var(--ui, 24px);
-  border-top: 1px solid var(--rule);
-  color: inherit;
-  text-decoration: none;
-  transition: opacity 0.5s ease;
-}
-
-.format:last-child {
-  border-bottom: 1px solid var(--rule);
-}
-
-.no {
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.5;
-}
-
-/* the name, large and light; pointed at, a hairline outline */
-.word {
-  position: relative;
-  font-size: clamp(56px, 9vw, 150px);
-  font-weight: 300;
-  line-height: 0.95;
-  letter-spacing: -0.045em;
-  -webkit-text-stroke: 1px transparent;
-  transition:
-    color 0.5s cubic-bezier(0.16, 1, 0.3, 1),
-    -webkit-text-stroke-color 0.5s ease;
 }
 
 .line {
-  justify-self: end;
-  max-width: 300px;
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  line-height: 1.6;
-  text-align: right;
-  opacity: 0.55;
-  transition: opacity 0.5s ease;
-}
-
-.line i {
-  font-style: normal;
-  letter-spacing: 0;
-}
-
-/* the frame's corners, as round a chosen word */
-.corners {
-  position: absolute;
-  inset: -0.08em -0.22em;
-  color: var(--paper, #f6f4f0); /* (the word itself goes transparent) */
-  opacity: 0;
-  scale: 1.06;
-  transition:
-    opacity 0.45s ease,
-    scale 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-  pointer-events: none;
-}
-
-.corners b {
-  position: absolute;
-  width: clamp(10px, 0.12em, 18px);
-  height: clamp(10px, 0.12em, 18px);
-  border: 0 solid currentColor;
-}
-
-.corners b:nth-child(1) {
-  left: 0;
-  top: 0;
-  border-width: 1px 0 0 1px;
-}
-
-.corners b:nth-child(2) {
-  right: 0;
-  top: 0;
-  border-width: 1px 1px 0 0;
-}
-
-.corners b:nth-child(3) {
-  left: 0;
-  bottom: 0;
-  border-width: 0 0 1px 1px;
-}
-
-.corners b:nth-child(4) {
-  right: 0;
-  bottom: 0;
-  border-width: 0 1px 1px 0;
-}
-
-@media (hover: hover) {
-  .formats:hover .format {
-    opacity: 0.32;
-  }
-  .formats .format:hover {
-    opacity: 1;
-  }
-  .format:hover .word {
-    color: transparent;
-    -webkit-text-stroke-color: var(--paper, #f6f4f0);
-  }
-  .format:hover .corners {
-    opacity: 1;
-    scale: 1;
-  }
-  .format:hover .line {
-    opacity: 0.95;
-  }
-}
-
-/* ===== three columns ===== */
-.cols {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1fr);
-  gap: clamp(32px, 6vw, 110px);
-  padding: clamp(56px, 11vh, 120px) var(--ui, 24px) clamp(56px, 10vh, 110px);
-}
-
-.col {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(18px, 2.8vh, 28px);
-  min-width: 0;
-}
-
-/* the selling line, and Let's talk with its circled arrow, as in the band */
-.say {
-  max-width: 22ch;
   margin: 0;
-  font-size: clamp(22px, 2.1vw, 34px);
+  font-size: clamp(22px, min(2.9vw, 5.6svh), 46px);
   font-weight: 300;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
 }
 
+/* Let's talk, with its circled arrow, as in the band */
 .talk {
   display: inline-flex;
   align-items: center;
@@ -202,131 +169,110 @@
   }
 }
 
-/* the sitemap: light capitals, faint until pointed at */
-.map {
+/* where we are, small, in the frame's top right */
+.reach {
   display: flex;
   flex-direction: column;
-  gap: 0.22em;
+  align-items: flex-end;
+  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: clamp(24px, 2.2vw, 36px);
-  font-weight: 300;
-  line-height: 1;
-  letter-spacing: -0.02em;
-}
-
-.map a {
-  color: rgb(246 244 240 / 0.4);
-  text-decoration: none;
-  transition: color 0.35s ease;
-}
-
-.map a:hover,
-.map a:focus-visible {
-  color: var(--paper, #f6f4f0);
-}
-
-/* how to reach us: rows between hairlines, a label and its value */
-.reach {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.reach li {
-  display: grid;
-  grid-template-columns: minmax(0, 0.42fr) minmax(0, 1fr);
-  align-items: baseline;
-  gap: 16px;
-  padding: 14px 0;
-  border-top: 1px solid var(--rule);
-}
-
-.reach li:last-child {
-  border-bottom: 1px solid var(--rule);
-}
-
-.reach i {
-  font-size: 10px;
-  font-style: normal;
+  font-size: 11px;
   letter-spacing: 0.22em;
-  opacity: 0.55;
-}
-
-.reach a,
-.reach span {
-  min-width: 0;
-  color: inherit;
-  font-size: clamp(16px, 1.4vw, 22px);
-  font-weight: 300;
-  line-height: 1.2;
-  letter-spacing: -0.005em;
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
-
-/* ===== along the foot: the mark, where we are, the rights, the line ===== */
-.bar {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(16px, 2.4vw, 32px);
-  padding: 20px var(--ui, 24px) 22px;
-  border-top: 1px solid var(--rule);
-  font-size: 10px;
-  letter-spacing: 0.22em;
-  color: rgb(246 244 240 / 0.55);
-}
-
-/* the 16x9 mark, in paper */
-.mark {
-  display: block;
-  width: 62px;
-  aspect-ratio: 1244 / 600;
-  background: var(--paper, #f6f4f0);
-  -webkit-mask: url("/logo-16x9.svg") center / contain no-repeat;
-  mask: url("/logo-16x9.svg") center / contain no-repeat;
-}
-
-.follow {
-  display: flex;
-  gap: 14px;
-}
-
-.follow a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.follow a:hover {
-  color: var(--paper, #f6f4f0);
-}
-
-.end {
   text-align: right;
 }
 
-/* tablets: the line under each name drops away; phones: the columns stack */
-@media (max-width: 900px) {
-  .format {
-    grid-template-columns: auto minmax(0, 1fr);
+.reach li {
+  opacity: 0.7;
+}
+
+.reach a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ===== under it, tiny: the rights, the line, back to the top ===== */
+.bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  margin-top: clamp(48px, 9vh, 100px);
+  padding: 20px 0 22px;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: rgb(246 244 240 / 0.5);
+}
+
+.top {
+  justify-self: end;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.top i {
+  font-style: normal;
+  letter-spacing: 0;
+}
+
+.top:hover {
+  color: var(--paper, #f6f4f0);
+}
+
+/* phones: what's inside the frame comes out above it, the mark under it, whole */
+@media (max-width: 760px) {
+  .stage {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  .inside {
+    position: static;
+    order: -1;
+    flex-direction: column;
+    width: auto;
+    height: auto;
+    padding: 0 0 44px;
+  }
+  .say {
+    max-width: none;
   }
   .line {
+    font-size: 8vw;
+  }
+  .reach {
+    align-items: flex-start;
+    text-align: left;
+  }
+  .frame {
+    stroke-width: 3.6; /* the mark is small here: the hairline kept a hairline */
+  }
+  .beyond {
+    font-size: 8px;
+    letter-spacing: 0.32em;
+    margin-right: -0.32em;
+  }
+  .bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .tag {
     display: none;
   }
 }
 
-@media (max-width: 760px) {
-  .cols {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .bar {
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: center;
-    text-align: center;
-  }
-  .end {
-    text-align: center;
+@media (prefers-reduced-motion: reduce) {
+  .frame,
+  .name,
+  .beyond,
+  .inside {
+    transition: none;
   }
 }

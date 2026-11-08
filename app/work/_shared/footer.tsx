@@ -1,123 +1,80 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { STUDIO } from "../../about/contact";
 import s from "./footer.module.css";
 
 // ===========================================================================
 // FOOTER — the foot of every page that scrolls (who we are, 9x16's accounts,
-// a film's page), on the black, in the site's own hand: light wide capitals,
-// hairlines, small tracked labels. Across the top, the three formats as an
-// index between full-width hairlines — each its number, its name large and
-// light, what it covers — a way into its work; pointed at, the name turns to a
-// hairline outline, the frame's corners close round it and the others step
-// back. Under them three columns: the selling line and "Let's talk", the
-// sitemap, and how to reach us. Along the foot, a hairline, then the mark,
-// where we are, the rights and the line. Fill in the studio's details in
+// a film's page), on the black: the studio's mark, drawn the width of the
+// page. Its frame is a hairline, open at the foot on the right, where 16X9
+// stands in the corner breaking out of it, & BEYOND tiny under it — stories
+// beyond the frame. As it comes into view the frame draws itself round, from
+// the corner, and the name rises in after it. Inside the frame, as on a
+// screen: the line, "Let's talk", and where we are. Under it, tiny, the rights
+// and the way back to the top. Fill in the studio's details in
 // about/contact.tsx (STUDIO): an empty one isn't shown.
 // ===========================================================================
 
-const FORMATS = [
-  { key: "16x9", label: "16x9", line: "Film campaigns, commercials and documentaries" },
-  { key: "9x16", label: "9x16", line: "Social content, strategy and account management" },
-  { key: "beyond", label: "Beyond", line: "Activations, immersive experiences, AR and VR" },
-];
-
-const SITEMAP = [
-  { label: "Home", href: "/" },
-  { label: "Work", href: "/work?format=16x9" },
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/about#contact" },
-];
-
 export default function Footer() {
-  const follow = [
-    STUDIO.instagram && { label: "Instagram", href: STUDIO.instagram },
-    STUDIO.linkedin && { label: "LinkedIn", href: STUDIO.linkedin },
-  ].filter(Boolean) as { label: string; href: string }[];
+  // in view: the frame draws and the name rises, once
+  const [seen, setSeen] = useState(false);
   const reach = [
-    STUDIO.email && { label: "Inquiries", value: STUDIO.email, href: `mailto:${STUDIO.email}` },
-    STUDIO.phone && { label: "Phone", value: STUDIO.phone, href: `tel:${STUDIO.phone.replace(/\s/g, "")}` },
-    { label: "Studio", value: STUDIO.city },
-  ].filter(Boolean) as { label: string; value: string; href?: string }[];
+    STUDIO.email && { value: STUDIO.email, href: `mailto:${STUDIO.email}` },
+    STUDIO.phone && { value: STUDIO.phone, href: `tel:${STUDIO.phone.replace(/\s/g, "")}` },
+    STUDIO.instagram && { value: "Instagram ↗", href: STUDIO.instagram },
+    STUDIO.linkedin && { value: "LinkedIn ↗", href: STUDIO.linkedin },
+    { value: STUDIO.city },
+  ].filter(Boolean) as { value: string; href?: string }[];
 
   return (
-    <footer className={s.footer}>
-      {/* the three formats, large, between hairlines */}
-      <nav className={s.formats} aria-label="The work, by format">
-        {FORMATS.map((f, i) => (
-          <Link key={f.key} className={s.format} href={`/work?format=${f.key}`}>
-            <span className={s.no}>{String(i + 1).padStart(2, "0")}</span>
-            <span className={s.word}>
-              {f.label}
-              {/* the frame's corners, closing round the word pointed at */}
-              <i className={s.corners} aria-hidden="true">
-                <b />
-                <b />
-                <b />
-                <b />
-              </i>
-            </span>
-            <span className={s.line}>
-              {f.line} <i aria-hidden="true">↗</i>
-            </span>
-          </Link>
-        ))}
-      </nav>
-
-      <div className={s.cols}>
-        <div className={s.col}>
-          <p className={s.lab}>Start a project</p>
-          <p className={s.say}>We find the story, shape the idea and bring it to life.</p>
-          <Link className={s.talk} href={STUDIO.email ? `mailto:${STUDIO.email}` : "/about#contact"}>
-            <span>Let&apos;s talk</span>
-            <i aria-hidden="true">↗</i>
-          </Link>
+    <motion.footer
+      className={`${s.footer} ${seen ? s.seen : ""}`}
+      onViewportEnter={() => setSeen(true)}
+      viewport={{ once: true, amount: 0.3 }}
+    >
+      <div className={s.stage}>
+        {/* the mark, the width of the page: its frame a hairline, 16X9 in its open corner */}
+        <div className={s.markBox}>
+          <svg className={s.mark} viewBox="0 0 1244 600" aria-hidden="true">
+            <path className={s.frame} d="M 735 492 H 8 V 8 H 1040 V 292" pathLength={1} />
+            <text className={s.name} x="732" y="500" textLength="503" lengthAdjust="spacingAndGlyphs">
+              16X9
+            </text>
+          </svg>
+          <span className={s.beyond} aria-hidden="true">
+            &amp; Beyond
+          </span>
+          <span className={s.sr}>16x9 &amp; Beyond</span>
         </div>
 
-        <nav className={s.col} aria-label="Sitemap">
-          <p className={s.lab}>Sitemap</p>
-          <ul className={s.map}>
-            {SITEMAP.map((m) => (
-              <li key={m.label}>
-                <Link href={m.href}>{m.label}</Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className={s.col}>
-          <p className={s.lab}>Contact us</p>
+        {/* inside the frame, as on a screen */}
+        <div className={s.inside}>
+          <div className={s.say}>
+            <p className={s.lab}>Start a project</p>
+            <p className={s.line}>We find the story, shape the idea and bring it to life.</p>
+            <Link className={s.talk} href={STUDIO.email ? `mailto:${STUDIO.email}` : "/about#contact"}>
+              <span>Let&apos;s talk</span>
+              <i aria-hidden="true">↗</i>
+            </Link>
+          </div>
           <ul className={s.reach}>
             {reach.map((r) => (
-              <li key={r.label}>
-                <i>{r.label}</i>
-                {r.href ? <a href={r.href}>{r.value}</a> : <span>{r.value}</span>}
-              </li>
+              <li key={r.value}>{r.href ? <a href={r.href}>{r.value}</a> : r.value}</li>
             ))}
           </ul>
         </div>
       </div>
 
       <div className={s.bar}>
-        <span className={s.mark} role="img" aria-label="16x9 & Beyond" />
-        <span className={s.follow}>
-          {follow.length ? (
-            <>
-              Follow us —
-              {follow.map((f) => (
-                <a key={f.label} href={f.href} target="_blank" rel="noopener noreferrer">
-                  {f.label}
-                </a>
-              ))}
-            </>
-          ) : (
-            STUDIO.city
-          )}
-        </span>
-        <span>© 16x9 &amp; Beyond. All rights reserved</span>
-        <span className={s.end}>Stories beyond the frame</span>
+        <span>© 16x9 &amp; Beyond</span>
+        <span className={s.tag}>Stories beyond the frame</span>
+        <button type="button" className={s.top} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+          Back to top <i aria-hidden="true">↑</i>
+        </button>
       </div>
-    </footer>
+    </motion.footer>
   );
 }

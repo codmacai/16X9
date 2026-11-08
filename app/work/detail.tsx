@@ -29,7 +29,7 @@ import d from "./detail.module.css";
 //   · the end credits, set on a clapperboard the full width of the screen
 //     (credits.tsx); each section simply follows the last as you scroll, no
 //     edge dragging it up and nothing sinking back;
-//   · the next film in the drawer; then the footer (_shared/footer.tsx);
+//   · then the footer (_shared/footer.tsx);
 //     click it and its page slides up over this one.
 // Opened from the line, the page doesn't slide up: the card stays exactly
 // where it was and the page is built around it — the line falls away into
@@ -61,7 +61,6 @@ export default function Detail({
   fromLine,
   reduce,
   onClose,
-  onNext,
 }: {
   films: Project[];
   k: number;
@@ -75,12 +74,12 @@ export default function Detail({
   fromLine: boolean;
   reduce: boolean;
   onClose: () => void;
-  onNext: () => void;
+  /** (no longer used: the page ends on its credits and the footer, no next film) */
+  onNext?: () => void;
   /** (no longer used: behind the scenes plays in the screen itself) */
   onPlay?: (film: Project, el: HTMLElement) => void;
 }) {
   const film = films[k];
-  const next = films[(k + 1) % films.length];
   const still = posterFor(film);
   const scrollRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
@@ -427,22 +426,6 @@ export default function Detail({
           sectionRef={creditsRef}
           reduce={reduce}
         />
-
-        {/* ================= the next film ================= */}
-        <section className={d.next} aria-label="Next film">
-          <span className={d.nextKicker}>Next film · {label}</span>
-          <button type="button" className={d.nextLink} onClick={onNext}>
-            <span className={d.nextTitle}>
-              <span className={d.nextName}>{next.title}</span>
-              <span className={d.nextReel} aria-hidden="true">
-                <FilmStill film={next} className={d.nextReelFill} />
-              </span>
-            </span>
-            <span className={d.nextMeta}>
-              {[next.client, next.year, next.duration].filter(Boolean).join(" · ")} <i aria-hidden="true">→</i>
-            </span>
-          </button>
-        </section>
 
         {/* ================= the footer ================= */}
         <Footer />
