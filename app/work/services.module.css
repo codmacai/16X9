@@ -1,8 +1,9 @@
-/* WORK, 9x16 — what we do (services-916.tsx): the services as our white cards, one above another,
-   each told in full — lit a warm white, in ink: "Service" and a 9:16 frame at its head, the name large
-   and light on the left, a few sentences and everything it includes on the right. As wide as the
-   accounts' row above. A card opens from a line as it comes into view (.on); pointed at, it lifts and
-   the frame's corners close round it. */
+/* WORK, 9x16 — what we do (services-916.tsx): the services as our white cards, each told in full —
+   lit a warm white, in ink: "Service" and a 9:16 frame at its head, the name large and light, a few
+   sentences and everything it includes. As wide as the accounts' row above. A card opens from a line as
+   it comes into view (.on); pointed at, it lifts and the frame's corners close round it.
+   Stacked (.stack, the default): one above another, each holding near the top as the next slides up
+   over it. In a row (.row3, ?services=row): three across. */
 
 .services {
   --cine: cubic-bezier(0.76, 0, 0.24, 1);
@@ -16,8 +17,8 @@
   padding: clamp(10px, 3vh, 40px) var(--ui) clamp(110px, 16vh, 180px);
 }
 
-/* one above another, as wide as the accounts' row above */
-.list {
+/* ===== stacked: one above another, as wide as the accounts' row above ===== */
+.stack {
   display: flex;
   flex-direction: column;
   gap: clamp(16px, 2vw, 26px);
@@ -25,8 +26,77 @@
   max-width: 1280px;
 }
 
+/* each holds near the top of the screen, a little lower than the one before, so the edges of those
+   beneath show; the next slides up over it (later cards paint over earlier ones) */
+@media (min-width: 761px) and (min-height: 640px) {
+  .stack {
+    gap: clamp(26px, 5vh, 56px);
+    padding-bottom: 14vh; /* the whole stack holds a moment once the last card is on */
+  }
+  .stack .slot {
+    position: sticky;
+    top: calc(var(--band) + clamp(18px, 3vh, 32px) + var(--i) * 16px);
+  }
+  .stack .card {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      inset 0 0 22px rgb(0 0 0 / 0.08),
+      0 -18px 40px -16px rgb(0 0 0 / 0.55);
+  }
+}
+
 .slot {
   position: relative;
+}
+
+/* the card and its corners, settling back together as cards stack over it */
+.hold {
+  position: relative;
+  transform-origin: 50% 0%;
+}
+
+/* ===== in a row: three across ===== */
+.row3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(16px, 2vw, 28px);
+  width: 100%;
+  max-width: 1280px;
+}
+
+.row3 .slot,
+.row3 .hold {
+  height: 100%;
+}
+
+.row3 .card {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: clamp(20px, 3vh, 30px);
+  height: 100%;
+  box-sizing: border-box;
+  padding: clamp(22px, 2.2vw, 34px);
+}
+
+.row3 .side {
+  gap: clamp(18px, 3vh, 28px);
+}
+
+.row3 .name {
+  font-size: clamp(26px, 2.5vw, 40px);
+}
+
+.row3 .about {
+  font-size: clamp(14px, 1.05vw, 16px);
+}
+
+.row3 .includes {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.row3 .includes li {
+  padding: 9px 0;
+  font-size: 10.5px;
 }
 
 /* ===== a card, lit a warm white ===== */
@@ -224,8 +294,18 @@
   }
 }
 
-/* phones: the name over the words, the list in one column */
+/* tablets: the row two across */
+@media (max-width: 1080px) {
+  .row3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* phones: the name over the words, the list in one column; the row one across */
 @media (max-width: 760px) {
+  .row3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .card {
     grid-template-columns: minmax(0, 1fr);
     gap: 22px;
@@ -250,5 +330,12 @@
   }
   .card {
     clip-path: none;
+  }
+}
+
+/* where the cards don't hold (a phone, a short screen) they don't settle back either */
+@media (max-width: 760px), (max-height: 639px) {
+  .stack .hold {
+    transform: none !important;
   }
 }
