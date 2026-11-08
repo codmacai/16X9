@@ -326,18 +326,61 @@ export const WORKS_9X16: Reel[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// 9x16's services, under the accounts, as frames: each plays its kind of
-// work when pointed at (stand-in clips for now; swap each for a reel of that
-// service). Its name in two lines; three words on what it covers.
+// 9x16's services, under the accounts, set one above another, each told in
+// full: its name, a few sentences on what we do, and everything it includes.
+// The copy is drafted from what the studio does; edit each in place. (`tags`
+// is the short form, three words; `clip` a stand-in reel of that service.)
 // ---------------------------------------------------------------------------
-export type Service = { name: [string, string]; tags: string[]; clip: string };
+export type Service = { name: [string, string]; about: string; includes: string[]; tags: string[]; clip: string };
 export const SERVICES_9X16: Service[] = [
-  { name: ["Social media", "management"], tags: ["Strategy", "Calendar", "Community"], clip: "/clips/clip-06.mp4" },
-  { name: ["Short-form", "reels"], tags: ["Concept", "Shoot", "Edit"], clip: "/clips/clip-08.mp4" },
-  { name: ["Content", "series"], tags: ["Formats", "Hosts", "Episodes"], clip: "/clips/clip-11.mp4" },
-  { name: ["Paid", "social"], tags: ["Ads", "Cutdowns", "Testing"], clip: "/clips/clip-01.mp4" },
-  { name: ["Creator", "campaigns"], tags: ["Casting", "Briefs", "Production"], clip: "/clips/clip-14.mp4" },
-  { name: ["Event", "coverage"], tags: ["Live stories", "Highlights", "Recaps"], clip: "/clips/clip-10.mp4" },
+  {
+    name: ["Social media", "management"],
+    about:
+      "Full social media management, end to end. We take the accounts on and run them: the strategy, the monthly calendar, the content, the posting, the community and the numbers, so the brand shows up every day, in its own voice, without you having to chase it.",
+    includes: ["Account handling", "Strategy and positioning", "Monthly content calendar", "Content creation", "Posting and scheduling", "Community management", "Monthly reporting"],
+    tags: ["Strategy", "Calendar", "Community"],
+    clip: "/clips/clip-06.mp4",
+  },
+  {
+    name: ["Short-form", "reels"],
+    about:
+      "Reels made for the scroll. An idea that lands in the first second, shot vertical on set, cut to the platform's rhythm and delivered ready to post, with captions, sound and covers, for a feed that stops thumbs.",
+    includes: ["Concepts and scripts", "Vertical shoots", "Editing and motion", "Captions and subtitles", "Sound and trending audio", "Covers and thumbnails"],
+    tags: ["Concept", "Shoot", "Edit"],
+    clip: "/clips/clip-08.mp4",
+  },
+  {
+    name: ["Content", "series"],
+    about:
+      "Recurring formats that give people a reason to come back. We develop the show, cast the host and produce it episode after episode, season after season, so the account becomes something people follow rather than scroll past.",
+    includes: ["Format development", "Host casting", "Episode production", "Season planning", "Branded segments"],
+    tags: ["Formats", "Hosts", "Episodes"],
+    clip: "/clips/clip-11.mp4",
+  },
+  {
+    name: ["Paid", "social"],
+    about:
+      "Ads built to perform. We make the creative, cut it for every placement and test the versions against each other, then put the budget behind what works and keep refreshing it before it tires.",
+    includes: ["Ad creative", "Cutdowns for every placement", "A/B testing", "Campaign setup", "Performance reporting"],
+    tags: ["Ads", "Cutdowns", "Testing"],
+    clip: "/clips/clip-01.mp4",
+  },
+  {
+    name: ["Creator", "campaigns"],
+    about:
+      "Campaigns with the creators your audience already follows. We find the right voices, brief them, produce alongside them and keep every piece on brand, from the first idea to the last post.",
+    includes: ["Creator scouting and casting", "Briefs and scripts", "Production support", "Usage and rights", "Campaign reporting"],
+    tags: ["Casting", "Briefs", "Production"],
+    clip: "/clips/clip-14.mp4",
+  },
+  {
+    name: ["Event", "coverage"],
+    about:
+      "Events covered as they happen. Stories while it's live, highlights the same day and a recap film once the night is over, so the moment keeps working long after the doors close.",
+    includes: ["Live stories", "Same-day highlights", "Recap films", "Photo coverage", "Interviews"],
+    tags: ["Live stories", "Highlights", "Recaps"],
+    clip: "/clips/clip-10.mp4",
+  },
 ];
 
 // ---------------------------------------------------------------------------
