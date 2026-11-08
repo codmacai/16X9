@@ -48,7 +48,7 @@
   display: flex;
   flex-wrap: wrap;
   column-gap: 0.26em;
-  font-size: clamp(30px, min(5.4vw, 11vh), 96px);
+  font-size: clamp(40px, min(6.4vw, 11vh), 110px);
   font-weight: 300;
   line-height: 0.92;
   letter-spacing: -0.05em;
@@ -294,6 +294,6 @@
 
 @media (max-width: 560px) {
   .big {
-    font-size: 9vw;
+    font-size: 11vw;
   }
 }
