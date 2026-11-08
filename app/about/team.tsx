@@ -5,122 +5,67 @@ import { useReducedMotion } from "framer-motion";
 import s from "./team.module.css";
 
 // ===========================================================================
-// THE TEAM — the people behind the frame, as one clean wall of portraits. On
-// the black, following the opening as you scroll (no edge rising over it), the team
-// in black and white, five across and three down, each with rounded corners and a
-// fine gap between them, on a wall that bends only gently round the viewer
-// (a shallow cylinder: its rows stay level, its sides turning a little away).
-// As the section comes into view the portraits come up into place from the
-// middle out; after that it only leans a touch after the pointer. Each portrait
-// is placed once, in CSS (--x, --z and --yaw, in radii of the wall).
+// THE TEAM — the people behind the frame, flat and even, on the black. On the
+// left, as a title card: "The team", the line large and light, and a word on
+// who they are. On the right, the wall: everyone once, five across and three
+// down, each portrait the same size, in black and white, its corners rounded,
+// a fine gap between them — no perspective, nothing bent. As it comes into
+// view the portraits come up into place one after another; point at one and it
+// lifts into the light while the rest step back.
 // ===========================================================================
 
 // the team, in black and white, each once (stand-ins cut from the old site's
 // About page: replace each with the full-size original)
 const PEOPLE = Array.from({ length: 15 }, (_, i) => `/about/team/team-${String(i + 1).padStart(2, "0")}.webp`);
 const COLS = 5;
-const ROWS = 3; // five by three: everyone once
-const STEP = 13; // degrees round the wall between columns
-const ROW = 0.278; // the distance between rows, in radii of the wall
-const LEAN = { x: 2, y: 3 }; // how far it leans after the pointer, in degrees
-
-const rad = (deg: number) => (deg * Math.PI) / 180;
-const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
-
-// every place on the wall, and who's there
-const TILES = Array.from({ length: COLS * ROWS }, (_, n) => {
-  const c = n % COLS;
-  const r = Math.floor(n / COLS);
-  const lon = (c - (COLS - 1) / 2) * STEP;
-  return {
-    x: r4(Math.sin(rad(lon))),
-    y: r4((r - (ROWS - 1) / 2) * ROW),
-    z: r4(Math.cos(rad(lon))),
-    yaw: r4(lon),
-    src: PEOPLE[n % PEOPLE.length],
-    // they come up from the middle out
-    delay: r4(Math.abs(c - (COLS - 1) / 2) * 0.06 + r * 0.05),
-  };
-});
 
 export default function Team() {
   const reduce = !!useReducedMotion();
   const ref = useRef<HTMLElement>(null);
-  const wallRef = useRef<HTMLDivElement>(null);
-  const viewRef = useRef<HTMLDivElement>(null);
   const [on, setOn] = useState(false);
 
   // in view: the portraits come up into place, once
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const io = new IntersectionObserver(([e]) => e.isIntersecting && setOn(true), { threshold: 0.25 });
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && setOn(true), { threshold: 0.2 });
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
-  // the wall leans a touch after the pointer
-  useEffect(() => {
-    const wall = wallRef.current;
-    const view = viewRef.current;
-    if (!wall || !view || reduce || !window.matchMedia("(pointer: fine)").matches) return;
-    let raf = 0;
-    let lean = { x: 0, y: 0 };
-    const aim = { x: 0, y: 0 };
-    const move = (e: PointerEvent) => {
-      const r = view.getBoundingClientRect();
-      aim.x = ((e.clientY - r.top) / r.height - 0.5) * -LEAN.x * 2;
-      aim.y = ((e.clientX - r.left) / r.width - 0.5) * LEAN.y * 2;
-    };
-    const leave = () => {
-      aim.x = 0;
-      aim.y = 0;
-    };
-    const tick = () => {
-      raf = requestAnimationFrame(tick);
-      const nx = lean.x + (aim.x - lean.x) * 0.06;
-      const ny = lean.y + (aim.y - lean.y) * 0.06;
-      if (Math.abs(nx - lean.x) < 0.0005 && Math.abs(ny - lean.y) < 0.0005) return;
-      lean = { x: nx, y: ny };
-      wall.style.transform = `translateZ(calc(var(--r) * -1)) rotateX(${nx.toFixed(3)}deg) rotateY(${ny.toFixed(3)}deg)`;
-    };
-    view.addEventListener("pointermove", move);
-    view.addEventListener("pointerleave", leave);
-    raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      view.removeEventListener("pointermove", move);
-      view.removeEventListener("pointerleave", leave);
-    };
-  }, [reduce]);
-
   return (
-    <section ref={ref} id="team" className={`${s.section} ${on || reduce ? s.on : ""}`} aria-label="The team">
-      <div className={s.stage}>
+    <section ref={ref} id="team" className={`${s.section} ${on || reduce ? s.on : ""}`} aria-labelledby="team-title">
+      <div className={s.card}>
         <p className={s.label}>The team</p>
-        <div ref={viewRef} className={s.view} aria-hidden="true">
-          <div ref={wallRef} className={s.wall}>
-            {TILES.map((t, n) => (
-              <span
-                key={n}
-                className={s.tile}
-                style={
-                  {
-                    "--x": t.x,
-                    "--y": t.y,
-                    "--z": t.z,
-                    "--yaw": `${t.yaw}deg`,
-                    "--delay": `${t.delay}s`,
-                  } as React.CSSProperties
-                }
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={t.src} alt="" draggable={false} decoding="async" loading="lazy" />
-              </span>
-            ))}
-          </div>
-        </div>
+        <h2 id="team-title" className={s.title}>
+          <span className={s.mask}>
+            <span className={s.rise}>The people</span>
+          </span>
+          <span className={s.mask}>
+            <span className={s.rise} style={{ transitionDelay: "0.12s" }}>
+              behind the frame
+            </span>
+          </span>
+        </h2>
+        <p className={s.line}>Storytellers, filmmakers, strategists and producers — one crew, from the first idea to the final cut.</p>
+        <p className={s.count}>
+          {String(PEOPLE.length).padStart(2, "0")} <i>people</i>
+        </p>
       </div>
+
+      <ul className={s.wall}>
+        {PEOPLE.map((src, i) => (
+          <li
+            key={src}
+            className={s.tile}
+            // they come up row by row, left to right
+            style={{ "--delay": `${(Math.floor(i / COLS) * 0.12 + (i % COLS) * 0.06).toFixed(2)}s` } as React.CSSProperties}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt="" draggable={false} decoding="async" loading="lazy" />
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
