@@ -8,8 +8,8 @@ import s from "./footer.module.css";
 // ===========================================================================
 // FOOTER — the foot of every page that scrolls (who we are, 9x16's accounts,
 // a film's page): a screen of black that closes the page, with room to
-// breathe. At its head the question, set large — HAVE A STORY? — and the line
-// under it; beside it "Let's talk", a large circle that leans after the
+// breathe. At its head the studio's e-mail, set large, a way to write to us;
+// beside it "Let's talk", a large circle that leans after the
 // pointer on a spring and mails the studio. Under them the two partnership
 // headquarters, each on its own warm-white card (our cards), its e-mail,
 // address and phone in rows. Along the foot, a hairline, then the mark, the
@@ -58,20 +58,15 @@ export default function Footer() {
       <div className={s.head}>
         <div className={s.ask}>
           <motion.p className={s.lab} variants={IN} custom={0}>
-            Start a project
+            Get in touch
           </motion.p>
           <h2 className={s.big}>
-            {["Have a", "story?"].map((w, k) => (
-              <span key={w} className={s.mask}>
-                <motion.span className={s.word} variants={WORD} custom={k}>
-                  {w}
-                </motion.span>
-              </span>
-            ))}
+            <span className={s.mask}>
+              <motion.a className={`${s.word} ${s.mail}`} href={`mailto:${STUDIO.email}`} variants={WORD} custom={0}>
+                {STUDIO.email}
+              </motion.a>
+            </span>
           </h2>
-          <motion.p className={s.line} variants={IN} custom={2}>
-            We find it, shape the idea and bring it to life.
-          </motion.p>
         </div>
 
         <motion.a
