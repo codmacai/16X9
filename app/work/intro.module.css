@@ -1,7 +1,6 @@
 /* WORK, 9x16 — the opening (intro-916.tsx), in the dark: one vertical frame in the middle, a reel
    playing in it and its light on the room; the headline through the frame. The opening plays in CSS;
-   on the scroll the headline slides back behind the frame (--tuck), the frame closes to a hairline at
-   its own width (--off) — nothing grows — and the accounts rise out of the dark. */
+   on the scroll the room holds still and the accounts rise over it. */
 
 .intro {
   --bg: #050505;
@@ -11,14 +10,12 @@
   --ws: clamp(30px, 3.4vw, 60px); /* the headline's size */
   --gap: clamp(26px, 2.8vw, 52px); /* between the frame and the words */
   position: relative;
-  height: 240svh; /* the room holds for 1.4 screens of scroll: the opening playing back, then the
-                     accounts rising over the dark (they start 100svh up) */
+  height: 200svh; /* the room holds while the accounts rise over it (they start 100svh up) */
   background: var(--bg);
   color: var(--paper);
 }
 
-/* the room holds still while the opening plays back and the accounts rise over it; the frame keeps
-   its size and place throughout (--w, --h, --y) */
+/* the room holds still while the accounts rise over it (--w, --h, --y: the frame's size and place) */
 .pin {
   --w: var(--fw);
   --h: var(--fh);
@@ -28,16 +25,6 @@
   height: 100svh;
   overflow: hidden;
   background: var(--bg);
-}
-
-/* ...and falls back into the dark */
-.dark {
-  position: absolute;
-  z-index: 5;
-  inset: 0;
-  background: #000;
-  opacity: 0;
-  pointer-events: none;
 }
 
 /* ===== the reel's light, thrown on the room ===== */
@@ -75,23 +62,7 @@
   height: var(--h);
   translate: -50% -50%;
   border-radius: 16px;
-  /* closing: from its head and foot to a line across its middle, as it opened */
-  clip-path: inset(calc(var(--off, 0) * 50%) 0 calc(var(--off, 0) * 50%) 0 round 16px);
   -webkit-tap-highlight-color: transparent;
-}
-
-/* the hairline it closes to, across its middle at its own width, fading */
-.offLine {
-  position: absolute;
-  z-index: 4;
-  left: 50%;
-  top: var(--y);
-  width: var(--w);
-  height: 1px;
-  translate: -50% 0;
-  background: var(--paper);
-  opacity: 0;
-  pointer-events: none;
 }
 
 /* it opens from a line across its middle, out to its full height */
@@ -402,15 +373,6 @@
   white-space: nowrap;
 }
 
-/* on the scroll, each side slides back in behind the frame the way it came out (--tuck; a transform,
-   so it never fights the entrance's translate) */
-.sideA .word {
-  transform: translateX(calc(var(--tuck, 0) * 135%));
-}
-
-.sideB .word {
-  transform: translateX(calc(var(--tuck, 0) * -135%));
-}
 
 .sideA .word {
   animation: from-right 1.5s var(--ease) 0.7s both;
@@ -531,11 +493,9 @@
   }
   .sideA .word {
     animation-name: from-below;
-    transform: translateY(calc(var(--tuck, 0) * 165%));
   }
   .sideB .word {
     animation-name: from-above;
-    transform: translateY(calc(var(--tuck, 0) * -165%));
   }
   .lede,
   .caption {
@@ -555,7 +515,7 @@
   }
 }
 
-/* reduced motion: no scroll to open over — the frame, its first reel and the words, then the dark */
+/* reduced motion: no scroll to open over — the frame, its first reel and the words */
 .still {
   height: auto;
 }
@@ -580,22 +540,19 @@
   position: absolute;
   z-index: 4;
   left: 50%;
-  bottom: clamp(10px, 2vh, 22px);
+  bottom: clamp(10px, 2.2vh, 24px);
   translate: -50% 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border: 0;
-  background: none;
+  gap: 10px;
+  margin: 0;
   color: rgb(246 244 240 / 0.7);
-  font: inherit;
   font-size: 10px;
   letter-spacing: 0.26em;
   text-transform: uppercase;
   white-space: nowrap;
-  cursor: pointer;
-  transition: color 0.4s ease;
+  pointer-events: none;
 }
 
 .next > span {
@@ -603,7 +560,7 @@
   animation: rise 1.1s var(--ease) 1.6s both;
 }
 
-/* beside it, a short hairline drawing down, again and again */
+/* under it, a short hairline drawing down, again and again */
 .next i {
   position: relative;
   flex: none;
@@ -635,16 +592,15 @@
   }
 }
 
-.next:hover,
-.next:focus-visible {
-  color: rgb(246 244 240 / 1);
-}
-
 @media (max-width: 760px), (max-aspect-ratio: 4/5) {
   .next {
-    bottom: 4px;
+    bottom: 6px;
+    gap: 6px;
     font-size: 8.5px;
     letter-spacing: 0.18em;
+  }
+  .next i {
+    height: 12px;
   }
 }
 

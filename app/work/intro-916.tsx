@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, easeInOut, motion, useScroll, useSpring, useTransform, type MotionStyle, type Variants } from "framer-motion";
+import { AnimatePresence, motion, useScroll, useSpring, type Variants } from "framer-motion";
 import { EASE_CINE } from "./_shared/chrome";
 import { stillFor, WORKS_9X16 } from "./_shared/data";
 import { startMuted } from "./brand-shared";
@@ -17,14 +17,10 @@ import s from "./intro.module.css";
 // each at the frame's head, and each swipes up into the next; arrows at the
 // frame's sides go on to the next reel or back to the last (back swipes it
 // down). Point at the frame and the reel holds; click it to play it whole.
-// At the room's foot, the way on: "Scroll or click to view the accounts we run",
-// a short hairline drawing down beside it. Scroll (or click it), and the
-// opening plays itself back, quietly — nothing grows: the small type goes, the
-// headline slides back in behind the frame the way it came out, the frame
-// closes from its head and foot to a hairline across its middle at its own
-// width, the reel's light going with it, and the hairline fades; out of that
-// dark the accounts rise (accounts.tsx). Every frame on the site comes on
-// from a line; this one goes back to one.
+// At the room's foot, small: "Scroll to view the accounts we run", a hairline
+// drawing down under it. The room itself never moves: scroll, and the
+// accounts rise over it as a sheet (accounts.tsx) — the next reel coming up
+// over the last.
 // The opening is CSS; the scroll is framer-motion, through a spring.
 // ===========================================================================
 
@@ -77,9 +73,8 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
     };
   }, []);
 
-  // the scroll: the opening plays back, the frame closes to a line, then the accounts rise out of the
-  // dark (they start coming up a little under a third of the way: the opening is 2.4 screens tall,
-  // the accounts a screen up)
+  // the scroll, while the accounts rise over the room (it holds still; the reel holds once it's
+  // scrolled into)
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
   const p = useSpring(scrollYProgress, SMOOTH);
   useEffect(() => {
@@ -89,12 +84,6 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
       if (now !== was) setHeld((was = now));
     });
   }, [p]);
-  const meta = useTransform(p, [0, 0.06], [1, 0]); // the small type goes first
-  const tuck = useTransform(p, [0.02, 0.16], [0, 1], { ease: easeInOut }); // the headline back behind the frame
-  const off = useTransform(p, [0.1, 0.24], [0, 1], { ease: easeInOut }); // the frame closing to a line
-  const light = useTransform(p, [0.08, 0.22], [1, 0]);
-  const lineOn = useTransform(p, [0.21, 0.24, 0.26, 0.31], [0, 0.7, 0.7, 0]); // its hairline, fading
-  const dark = useTransform(p, [0.24, 0.31], [0, 1]);
 
   // the light: the reel in the frame drawn tiny, ten times a second, and let into the last a
   // little at a time so it changes like light does; then drawn up into the canvas shown, softened
@@ -165,11 +154,11 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
   const reel = REELS[at];
   return (
     <section ref={ref} className={`${s.intro} ${reduce ? s.still : ""}`} aria-labelledby="intro-title">
-      <motion.div className={s.pin} style={reduce ? undefined : ({ "--tuck": tuck, "--off": off } as MotionStyle)}>
+      <div className={s.pin}>
         {/* the reel's light, on the room */}
-        <motion.div className={s.glow} style={reduce ? undefined : { opacity: light }} aria-hidden="true">
+        <div className={s.glow} aria-hidden="true">
           <canvas ref={glowRef} width={56} height={56} />
-        </motion.div>
+        </div>
 
         {/* the headline, through the frame */}
         <h1 id="intro-title" className={s.title}>
@@ -185,9 +174,9 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
           </span>
         </h1>
 
-        <motion.p className={s.lede} style={reduce ? undefined : { opacity: meta }}>
+        <p className={s.lede}>
           <span>Vertical films, reels and series for the screen in every hand.</span>
-        </motion.p>
+        </p>
 
         {/* the frame */}
         <div className={s.frame} onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)} onPointerLeave={() => setHover(false)}>
@@ -215,7 +204,7 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
 
             {/* a fine bar for each reel, as stories have; the one playing fills, and on its end the next swipes in */}
             {!reduce && (
-              <motion.span className={s.bars} style={{ opacity: meta }} aria-hidden="true">
+              <span className={s.bars} aria-hidden="true">
                 {REELS.map((r, k) => (
                   <i key={r.src} className={k < at ? s.barDone : undefined}>
                     {ready && k === at && (
@@ -227,18 +216,18 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
                     )}
                   </i>
                 ))}
-              </motion.span>
+              </span>
             )}
 
-            <motion.span className={s.playBox} style={reduce ? undefined : { opacity: meta }} aria-hidden="true">
+            <span className={s.playBox} aria-hidden="true">
               <span className={s.play}>
                 <i /> Play
               </span>
-            </motion.span>
+            </span>
           </span>
           {/* the frame plays its reel whole; at its sides, back to the last reel and on to the next */}
           <button type="button" className={s.open} onClick={() => onOpen(at)} aria-label={`Play ${reel.title}, ${reel.kind}`} />
-          <motion.span className={s.steps} style={reduce ? undefined : { opacity: meta }}>
+          <span className={s.steps}>
             <button type="button" className={s.step} onClick={() => go(-1)} aria-label="The last reel">
               <svg viewBox="0 0 16 16" aria-hidden="true">
                 <path d="M10 3 5 8l5 5" />
@@ -249,11 +238,11 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
                 <path d="m6 3 5 5-5 5" />
               </svg>
             </button>
-          </motion.span>
+          </span>
         </div>
 
         {/* under the frame: which reel it is */}
-        <motion.div className={s.caption} style={reduce ? undefined : { opacity: meta }} aria-hidden="true">
+        <div className={s.caption} aria-hidden="true">
           <span>
             <span className={s.count}>
               {pad2(at + 1)} <i>/ {pad2(N)}</i>
@@ -266,28 +255,14 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
               </AnimatePresence>
             </span>
           </span>
-        </motion.div>
+        </div>
 
-        {/* at the room's foot, the way on: scroll, or click, to the accounts we run */}
-        <motion.button
-          type="button"
-          className={s.next}
-          style={reduce ? undefined : { opacity: meta }}
-          onClick={() => {
-            const el = document.getElementById("accounts");
-            if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY, behavior: reduce ? "auto" : "smooth" });
-          }}
-        >
-          <span>Scroll or click to view the accounts we run</span>
+        {/* at the room's foot, small: the way on */}
+        <p className={s.next}>
+          <span>Scroll to view the accounts we run</span>
           <i aria-hidden="true" />
-        </motion.button>
-
-        {/* the hairline it closes to, at its own width, fading */}
-        {!reduce && <motion.i className={s.offLine} style={{ opacity: lineOn }} aria-hidden="true" />}
-
-        {/* and then the dark the accounts come up out of */}
-        {!reduce && <motion.i className={s.dark} style={{ opacity: dark }} aria-hidden="true" />}
-      </motion.div>
+        </p>
+      </div>
     </section>
   );
 }
