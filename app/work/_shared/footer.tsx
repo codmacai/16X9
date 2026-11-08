@@ -1,41 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { motion } from "framer-motion";
-import { STUDIO } from "./studio";
+import { OFFICES, STUDIO } from "./studio";
 import s from "./footer.module.css";
 
 // ===========================================================================
 // FOOTER — the foot of every page that scrolls (who we are, 9x16's accounts,
-// a film's page), on the black: the studio's mark, drawn the width of the
-// page. Its frame is a hairline, open at the foot on the right, where 16X9
-// stands in the corner breaking out of it, & BEYOND tiny under it — stories
-// beyond the frame. As it comes into view the frame draws itself round, from
-// the corner, and the name rises in after it. Inside the frame, as on a
-// screen: the line, "Let's talk", and where we are. Under it, tiny, the rights
-// and the way back to the top. Fill in the studio's details in
-// studio.ts (STUDIO): an empty one isn't shown. On the About page it is the
-// contact section itself: every "Let's talk" (/about#contact) lands here.
+// a film's page): a screen of black that closes the page, built on the
+// studio's mark. The mark is drawn the width of the page — its frame a
+// hairline, open at the foot on the right, where 16X9 stands in the corner
+// breaking out of it, & BEYOND tiny under it: stories beyond the frame — and
+// everything sits inside it, as on a screen. At its head, the line set large
+// and "Let's talk"; at its foot, the two partnership headquarters, each with
+// its e-mail, address and phone. As it comes into view the frame draws itself
+// round from the corner, the name rises in, and what's inside comes up after.
+// Under it all, tiny, the rights and the way back to the top. The details
+// live in studio.ts. On the About page it is the contact section itself:
+// every "Let's talk" (/about#contact) lands here.
 // ===========================================================================
 
 export default function Footer() {
-  // in view: the frame draws and the name rises, once
+  // in view: the frame draws, the name rises, what's inside comes up — once
   const [seen, setSeen] = useState(false);
-  const reach = [
-    STUDIO.email && { value: STUDIO.email, href: `mailto:${STUDIO.email}` },
-    STUDIO.phone && { value: STUDIO.phone, href: `tel:${STUDIO.phone.replace(/\s/g, "")}` },
-    STUDIO.instagram && { value: "Instagram ↗", href: STUDIO.instagram },
-    STUDIO.linkedin && { value: "LinkedIn ↗", href: STUDIO.linkedin },
-    { value: STUDIO.city },
-  ].filter(Boolean) as { value: string; href?: string }[];
 
   return (
     <motion.footer
       id="contact"
       className={`${s.footer} ${seen ? s.seen : ""}`}
       onViewportEnter={() => setSeen(true)}
-      viewport={{ once: true, amount: 0.3 }}
+      viewport={{ once: true, amount: 0.25 }}
     >
       <div className={s.stage}>
         {/* the mark, the width of the page: its frame a hairline, 16X9 in its open corner */}
@@ -54,26 +48,49 @@ export default function Footer() {
 
         {/* inside the frame, as on a screen */}
         <div className={s.inside}>
-          <div className={s.say}>
-            <p className={s.lab}>Start a project</p>
-            <p className={s.line}>We find the story, shape the idea and bring it to life.</p>
-            <Link className={s.talk} href={STUDIO.email ? `mailto:${STUDIO.email}` : "/about#contact"}>
+          <div className={s.top}>
+            <div className={s.say}>
+              <p className={s.lab}>Start a project</p>
+              <p className={s.line}>Have a story? We find it, shape the idea and bring it to life.</p>
+            </div>
+            <a className={s.talk} href={`mailto:${STUDIO.email}`}>
               <span>Let&apos;s talk</span>
               <i aria-hidden="true">↗</i>
-            </Link>
+            </a>
           </div>
-          <ul className={s.reach}>
-            {reach.map((r) => (
-              <li key={r.value}>{r.href ? <a href={r.href}>{r.value}</a> : r.value}</li>
+
+          <div className={s.offices}>
+            {OFFICES.map((o) => (
+              <address key={o.name} className={s.office}>
+                <p className={s.officeName}>{o.name}</p>
+                <dl>
+                  <div>
+                    <dt>E-mail</dt>
+                    <dd>
+                      <a href={`mailto:${o.email}`}>{o.email}</a>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Address{o.note && <i> ({o.note})</i>}</dt>
+                    <dd>{o.address}</dd>
+                  </div>
+                  <div>
+                    <dt>Phone</dt>
+                    <dd>
+                      <a href={`tel:${o.tel}`}>{o.phone}</a>
+                    </dd>
+                  </div>
+                </dl>
+              </address>
             ))}
-          </ul>
+          </div>
         </div>
       </div>
 
       <div className={s.bar}>
         <span>© 16x9 &amp; Beyond</span>
         <span className={s.tag}>Stories beyond the frame</span>
-        <button type="button" className={s.top} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+        <button type="button" className={s.up} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
           Back to top <i aria-hidden="true">↑</i>
         </button>
       </div>

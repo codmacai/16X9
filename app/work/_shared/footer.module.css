@@ -1,13 +1,22 @@
-/* FOOTER (footer.tsx) — on the black, the studio's mark drawn the width of the page: a hairline frame
-   open at the foot on the right, 16X9 in the corner breaking out of it, & BEYOND tiny under it; inside
-   the frame the line, Let's talk and where we are; under it, tiny, the rights and back to the top. */
+/* FOOTER (footer.tsx) — a screen of black that closes the page, built on the studio's mark: a
+   hairline frame drawn the width of the page, open at the foot on the right where 16X9 stands
+   breaking out of it, & BEYOND tiny under it; inside the frame the line and Let's talk at its head,
+   the two partnership headquarters at its foot; under it, tiny, the rights and back to the top. */
 
 .footer {
   --cine: cubic-bezier(0.76, 0, 0.24, 1);
   --soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --rule: rgb(246 244 240 / 0.16);
   position: relative;
   z-index: 3;
-  padding: clamp(64px, 12vh, 140px) var(--ui, 24px) 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100vh;
+  min-height: 100svh;
+  box-sizing: border-box;
+  /* (clear of the band over the page's head, which stays over it) */
+  padding: calc(var(--band, 64px) + clamp(24px, 5vh, 56px)) var(--ui, 24px) 0;
   background: #000;
   color: var(--paper, #f6f4f0);
   text-transform: uppercase;
@@ -22,11 +31,19 @@
   white-space: nowrap;
 }
 
+/* small, wide-set labels */
+.lab {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  opacity: 0.55;
+}
+
 /* ===== the mark, the width of the page (its own proportions: 1244 × 600) ===== */
 .stage {
   position: relative;
-  width: min(100%, calc(76svh * 1244 / 600));
-  margin: 0 auto;
+  width: min(100%, calc((100svh - var(--band, 64px) - 170px) * 1244 / 600));
+  margin: auto;
 }
 
 .markBox {
@@ -49,7 +66,7 @@
   stroke-width: 1.15; /* in the mark's own units: a hairline at the width of a laptop */
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  opacity: 0.85;
+  opacity: 0.8;
   transition: stroke-dashoffset 2.4s var(--cine) 0.1s;
 }
 
@@ -66,8 +83,8 @@
   opacity: 0;
   translate: 0 30px;
   transition:
-    opacity 1s ease 1.4s,
-    translate 1.2s var(--soft) 1.4s;
+    opacity 1s ease 1.3s,
+    translate 1.2s var(--soft) 1.3s;
 }
 
 .seen .name {
@@ -85,14 +102,14 @@
   letter-spacing: 0.42em;
   white-space: nowrap;
   opacity: 0;
-  transition: opacity 1s ease 2s;
+  transition: opacity 1s ease 1.9s;
 }
 
 .seen .beyond {
   opacity: 0.75;
 }
 
-/* ===== inside the frame, as on a screen ===== */
+/* ===== inside the frame, as on a screen: the line at its head, the offices at its foot ===== */
 .inside {
   position: absolute;
   top: calc(8 / 600 * 100%);
@@ -100,46 +117,50 @@
   width: calc(1032 / 1244 * 100%);
   height: calc(484 / 600 * 100%);
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  gap: 32px;
-  padding: clamp(24px, 3.4vw, 56px);
+  padding: clamp(24px, 3vw, 52px);
   box-sizing: border-box;
-  opacity: 0;
-  transition: opacity 1.2s ease 1s;
 }
 
-.seen .inside {
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  opacity: 0;
+  translate: 0 14px;
+  transition:
+    opacity 1s ease 0.8s,
+    translate 1.1s var(--soft) 0.8s;
+}
+
+.seen .top {
   opacity: 1;
+  translate: 0 0;
 }
 
 .say {
   display: flex;
   flex-direction: column;
-  gap: clamp(16px, 2.2vw, 28px);
-  max-width: 50%;
-}
-
-.lab {
-  margin: 0;
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  opacity: 0.55;
+  gap: clamp(14px, 2vw, 24px);
+  max-width: 62%;
 }
 
 .line {
   margin: 0;
-  font-size: clamp(22px, min(2.9vw, 5.6svh), 46px);
+  font-size: clamp(24px, min(3.1vw, 5.8svh), 50px);
   font-weight: 300;
-  line-height: 1.04;
-  letter-spacing: -0.025em;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
 }
 
 /* Let's talk, with its circled arrow, as in the band */
 .talk {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 14px;
-  align-self: flex-start;
   color: inherit;
   font-size: 12px;
   letter-spacing: 0.24em;
@@ -149,8 +170,8 @@
 .talk i {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 46px;
+  height: 46px;
   border: 1px solid rgb(246 244 240 / 0.5);
   border-radius: 50%;
   font-style: normal;
@@ -169,43 +190,89 @@
   }
 }
 
-/* where we are, small, in the frame's top right */
-.reach {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* the two headquarters, side by side, in the frame's foot (clear of 16X9 in its corner) */
+.offices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(20px, 3vw, 48px);
+  width: calc(700 / 1032 * 100%);
+  opacity: 0;
+  translate: 0 14px;
+  transition:
+    opacity 1s ease 1.05s,
+    translate 1.1s var(--soft) 1.05s;
+}
+
+.seen .offices {
+  opacity: 1;
+  translate: 0 0;
+}
+
+.office {
+  min-width: 0;
+  font-style: normal;
+}
+
+.officeName {
+  margin: 0 0 clamp(10px, 1.6vh, 16px);
+  padding-bottom: clamp(10px, 1.6vh, 14px);
+  border-bottom: 1px solid var(--rule);
   font-size: 11px;
   letter-spacing: 0.22em;
-  text-align: right;
 }
 
-.reach li {
-  opacity: 0.7;
+.office dl {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.3vh, 12px);
+  margin: 0;
 }
 
-.reach a {
+.office dt {
+  margin-bottom: 4px;
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  opacity: 0.5;
+}
+
+.office dt i {
+  font-style: normal;
+}
+
+.office dd {
+  margin: 0;
+  font-size: clamp(12px, 0.95vw, 15px);
+  font-weight: 300;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+}
+
+.office a {
   color: inherit;
   text-decoration: none;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+  transition: background-size 0.5s var(--soft);
 }
 
-/* ===== under it, tiny: the rights, the line, back to the top ===== */
+.office a:hover {
+  background-size: 100% 1px;
+}
+
+/* ===== under it all, tiny: the rights, the line, back to the top ===== */
 .bar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 20px;
-  margin-top: clamp(48px, 9vh, 100px);
+  margin-top: clamp(32px, 6vh, 64px);
   padding: 20px 0 22px;
+  border-top: 1px solid var(--rule);
   font-size: 10px;
   letter-spacing: 0.22em;
   color: rgb(246 244 240 / 0.5);
 }
 
-.top {
+.up {
   justify-self: end;
   padding: 0;
   border: 0;
@@ -218,17 +285,17 @@
   transition: color 0.3s ease;
 }
 
-.top i {
+.up i {
   font-style: normal;
   letter-spacing: 0;
 }
 
-.top:hover {
+.up:hover {
   color: var(--paper, #f6f4f0);
 }
 
-/* phones: what's inside the frame comes out above it, the mark under it, whole */
-@media (max-width: 760px) {
+/* tablets and phones: what's inside the frame comes out above it, the mark under it, whole */
+@media (max-width: 900px) {
   .stage {
     display: flex;
     flex-direction: column;
@@ -237,20 +304,35 @@
   .inside {
     position: static;
     order: -1;
-    flex-direction: column;
     width: auto;
     height: auto;
-    padding: 0 0 44px;
+    gap: 44px;
+    padding: 0 0 48px;
+  }
+  .top {
+    flex-direction: column;
   }
   .say {
     max-width: none;
   }
   .line {
-    font-size: 8vw;
+    font-size: clamp(28px, 7vw, 44px);
   }
-  .reach {
-    align-items: flex-start;
-    text-align: left;
+  .offices {
+    width: auto;
+  }
+  .office dd {
+    font-size: 14px;
+  }
+  .frame {
+    stroke-width: 2.4;
+  }
+}
+
+@media (max-width: 560px) {
+  .offices {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
   }
   .frame {
     stroke-width: 3.6; /* the mark is small here: the hairline kept a hairline */
@@ -272,7 +354,8 @@
   .frame,
   .name,
   .beyond,
-  .inside {
+  .top,
+  .offices {
     transition: none;
   }
 }
