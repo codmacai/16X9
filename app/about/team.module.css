@@ -1,34 +1,37 @@
-/* THE TEAM — black ground; a small label and the count over the wall of portraits: flat, even, five
-   across and three down, rounded corners and a fine gap (team.tsx). Everything goes once, from .on */
+/* THE TEAM — black ground; a head row (the label, a hairline drawing across, the count) over the
+   wall of portraits: flat, even, five across and three down, corners just rounded, a fine gap
+   (team.tsx). Pointed at, one comes forward and the rest step back. */
 
 .section {
   --soft: cubic-bezier(0.16, 1, 0.3, 1);
   --gap: clamp(8px, 0.8vw, 12px);
   /* the wall's width: three rows of 4:5 portraits fitting the height left under the band */
-  --w: min(100%, calc((100svh - var(--band) - clamp(90px, 16vh, 160px) - 2 * var(--gap)) / 3 * 0.8 * 5 + 4 * var(--gap)));
+  --w: min(100%, calc((100svh - var(--band) - clamp(110px, 18vh, 180px) - 2 * var(--gap)) / 3 * 0.8 * 5 + 4 * var(--gap)));
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(16px, 2.4vh, 24px);
+  gap: clamp(18px, 3vh, 30px);
   min-height: 100vh;
   min-height: 100svh;
   box-sizing: border-box;
-  padding: calc(var(--band) + clamp(24px, 5vh, 56px)) var(--ui) clamp(32px, 6vh, 64px);
+  padding: calc(var(--band) + clamp(24px, 5vh, 56px)) var(--ui) clamp(36px, 7vh, 72px);
   background: #000;
   color: var(--paper);
 }
 
-/* over the wall, as wide as it: the label, and the count */
+/* over the wall, as wide as it: the label, a hairline drawing across, the count */
 .head {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: clamp(16px, 2vw, 28px);
   width: var(--w);
 }
 
 .label {
   margin: 0;
+  flex: none;
   font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.22em;
@@ -37,6 +40,14 @@
   opacity: 0.6;
 }
 
+.rule {
+  flex: 1;
+  height: 1px;
+  background: rgb(246 244 240 / 0.22);
+  transform-origin: 0 50%;
+}
+
+/* ===== the wall ===== */
 .wall {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -50,18 +61,9 @@
 .tile {
   aspect-ratio: 4 / 5;
   overflow: hidden;
-  border-radius: clamp(6px, 0.6vw, 10px);
+  border-radius: 4px;
   background: #0e0e0e;
-  opacity: 0;
-  translate: 0 16px;
-  transition:
-    opacity 0.9s ease var(--delay),
-    translate 1.1s var(--soft) var(--delay);
-}
-
-.on .tile {
-  opacity: 1;
-  translate: 0 0;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04);
 }
 
 .tile img {
@@ -71,12 +73,21 @@
   object-fit: cover;
   object-position: 50% 28%;
   filter: grayscale(1) contrast(1.04) brightness(0.86);
-  transition: filter 0.5s ease;
+  transition:
+    filter 0.6s ease,
+    opacity 0.6s ease,
+    scale 1s var(--soft);
 }
 
+/* pointed at: it comes forward into the light, the rest step back into the dark */
 @media (hover: hover) {
-  .tile:hover img {
-    filter: grayscale(1) contrast(1.04) brightness(1.04);
+  .wall:hover .tile img {
+    opacity: 0.4;
+  }
+  .wall .tile:hover img {
+    opacity: 1;
+    filter: grayscale(1) contrast(1.06) brightness(1.06);
+    scale: 1.05;
   }
 }
 
@@ -91,7 +102,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tile,
   .tile img {
     transition: none;
   }
