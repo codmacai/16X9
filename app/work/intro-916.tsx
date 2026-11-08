@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, easeIn, easeInOut, motion, useScroll, useSpring, useTransform, type MotionStyle, type Variants } from "framer-motion";
+import { AnimatePresence, easeInOut, motion, useScroll, useSpring, useTransform, type MotionStyle, type Variants } from "framer-motion";
 import { EASE_CINE } from "./_shared/chrome";
 import { stillFor, WORKS_9X16 } from "./_shared/data";
 import { startMuted } from "./brand-shared";
@@ -18,14 +18,13 @@ import s from "./intro.module.css";
 // frame's sides go on to the next reel or back to the last (back swipes it
 // down). Point at the frame and the reel holds; click it to play it whole.
 // At the room's foot, the way on: "Scroll or click to view the accounts we run",
-// a short hairline drawing down beside it. Scroll (or click it), and you go
-// into the reel: the frame opens out to the whole screen, its corners
-// squaring, its edges pushing the headline off either side; it holds there a
-// moment, the reel all there is; then the screen switches off as an old set
-// does — the picture flaring and falling in to one bright line across the
-// middle, the line drawing in to nothing — and out of that dark the accounts
-// rise (accounts.tsx). Every frame on the site comes on from a line; this one
-// goes off to one.
+// a short hairline drawing down beside it. Scroll (or click it), and the
+// opening plays itself back, quietly — nothing grows: the small type goes, the
+// headline slides back in behind the frame the way it came out, the frame
+// closes from its head and foot to a hairline across its middle at its own
+// width, the reel's light going with it, and the hairline fades; out of that
+// dark the accounts rise (accounts.tsx). Every frame on the site comes on
+// from a line; this one goes back to one.
 // The opening is CSS; the scroll is framer-motion, through a spring.
 // ===========================================================================
 
@@ -78,8 +77,9 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
     };
   }, []);
 
-  // the scroll: into the reel, then the screen switching off, then the accounts rising out of the
-  // dark (they start coming up halfway: the opening is three screens tall, the accounts a screen up)
+  // the scroll: the opening plays back, the frame closes to a line, then the accounts rise out of the
+  // dark (they start coming up a little under a third of the way: the opening is 2.4 screens tall,
+  // the accounts a screen up)
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
   const p = useSpring(scrollYProgress, SMOOTH);
   useEffect(() => {
@@ -90,14 +90,11 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
     });
   }, [p]);
   const meta = useTransform(p, [0, 0.06], [1, 0]); // the small type goes first
-  const grow = useTransform(p, [0, 0.26], [0, 1], { ease: easeInOut }); // the frame opening to the screen
-  const words = useTransform(p, [0.02, 0.18], [1, 0]);
-  const light = useTransform(p, [0, 0.2], [1, 0]);
-  const off = useTransform(p, [0.32, 0.42], [0, 1], { ease: easeIn }); // the picture falling in to a line
-  const flare = useTransform(p, [0.33, 0.42], [0, 0.6]);
-  const lineOn = useTransform(p, [0.38, 0.42, 0.45, 0.48], [0, 1, 1, 0]);
-  const lineX = useTransform(p, [0.42, 0.48], [1, 0], { ease: easeIn });
-  const dark = useTransform(p, [0.46, 0.5], [0, 1]);
+  const tuck = useTransform(p, [0.02, 0.16], [0, 1], { ease: easeInOut }); // the headline back behind the frame
+  const off = useTransform(p, [0.1, 0.24], [0, 1], { ease: easeInOut }); // the frame closing to a line
+  const light = useTransform(p, [0.08, 0.22], [1, 0]);
+  const lineOn = useTransform(p, [0.21, 0.24, 0.26, 0.31], [0, 0.7, 0.7, 0]); // its hairline, fading
+  const dark = useTransform(p, [0.24, 0.31], [0, 1]);
 
   // the light: the reel in the frame drawn tiny, ten times a second, and let into the last a
   // little at a time so it changes like light does; then drawn up into the canvas shown, softened
@@ -168,14 +165,14 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
   const reel = REELS[at];
   return (
     <section ref={ref} className={`${s.intro} ${reduce ? s.still : ""}`} aria-labelledby="intro-title">
-      <motion.div className={s.pin} style={reduce ? undefined : ({ "--grow": grow, "--off": off } as MotionStyle)}>
+      <motion.div className={s.pin} style={reduce ? undefined : ({ "--tuck": tuck, "--off": off } as MotionStyle)}>
         {/* the reel's light, on the room */}
         <motion.div className={s.glow} style={reduce ? undefined : { opacity: light }} aria-hidden="true">
           <canvas ref={glowRef} width={56} height={56} />
         </motion.div>
 
         {/* the headline, through the frame */}
-        <motion.h1 id="intro-title" className={s.title} style={reduce ? undefined : { opacity: words }}>
+        <h1 id="intro-title" className={s.title}>
           <span className={`${s.side} ${s.sideA}`}>
             <span className={s.mask}>
               <span className={s.word}>Made for</span>
@@ -186,7 +183,7 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
               <span className={s.word}>the scroll.</span>
             </span>
           </span>
-        </motion.h1>
+        </h1>
 
         <motion.p className={s.lede} style={reduce ? undefined : { opacity: meta }}>
           <span>Vertical films, reels and series for the screen in every hand.</span>
@@ -239,8 +236,6 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
               </span>
             </motion.span>
           </span>
-          {/* switching off, the picture flares as it falls in */}
-          {!reduce && <motion.i className={s.flare} style={{ opacity: flare }} aria-hidden="true" />}
           {/* the frame plays its reel whole; at its sides, back to the last reel and on to the next */}
           <button type="button" className={s.open} onClick={() => onOpen(at)} aria-label={`Play ${reel.title}, ${reel.kind}`} />
           <motion.span className={s.steps} style={reduce ? undefined : { opacity: meta }}>
@@ -287,8 +282,8 @@ export default function Intro916({ reduce, onOpen }: { reduce: boolean; onOpen: 
           <i aria-hidden="true" />
         </motion.button>
 
-        {/* the one bright line it falls in to, drawing in to nothing */}
-        {!reduce && <motion.i className={s.offLine} style={{ opacity: lineOn, scaleX: lineX }} aria-hidden="true" />}
+        {/* the hairline it closes to, at its own width, fading */}
+        {!reduce && <motion.i className={s.offLine} style={{ opacity: lineOn }} aria-hidden="true" />}
 
         {/* and then the dark the accounts come up out of */}
         {!reduce && <motion.i className={s.dark} style={{ opacity: dark }} aria-hidden="true" />}

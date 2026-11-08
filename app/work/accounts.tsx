@@ -18,8 +18,8 @@ import { useSmoothWheel } from "./smooth-wheel";
 // ===========================================================================
 // WORK, 9x16 — it opens on one vertical frame in the dark (intro-916.tsx),
 // and the scroll brings up, over it, a sheet holding the Instagram accounts
-// the studio runs, as slim 9:16 frames, outlined in a
-// hairline, each holding the brand's logo at its centre (its Instagram
+// the studio runs, each a black card with a slim 9:16 frame inset in it,
+// outlined in a hairline, holding the brand's logo at its centre (its Instagram
 // picture, in a circle) and its followers and posts at the foot; name and
 // handle underneath. Point at one and its reels come up in the frame, the
 // grid alone, three across (account-reels.tsx): the one pointed at plays, a

@@ -1,8 +1,7 @@
 /* WORK, 9x16 — the opening (intro-916.tsx), in the dark: one vertical frame in the middle, a reel
    playing in it and its light on the room; the headline through the frame. The opening plays in CSS;
-   on the scroll (--grow) the frame opens out to the whole screen, its edges pushing the headline
-   off either side, then (--off) the screen switches off to one bright line, and the accounts rise
-   out of the dark. */
+   on the scroll the headline slides back behind the frame (--tuck), the frame closes to a hairline at
+   its own width (--off) — nothing grows — and the accounts rise out of the dark. */
 
 .intro {
   --bg: #050505;
@@ -12,19 +11,18 @@
   --ws: clamp(30px, 3.4vw, 60px); /* the headline's size */
   --gap: clamp(26px, 2.8vw, 52px); /* between the frame and the words */
   position: relative;
-  height: 300svh; /* the room holds for two screens of scroll: into the reel, the screen off, then the
-                     accounts rising over the dark (they start 100svh up, so halfway through) */
+  height: 240svh; /* the room holds for 1.4 screens of scroll: the opening playing back, then the
+                     accounts rising over the dark (they start 100svh up) */
   background: var(--bg);
   color: var(--paper);
 }
 
-/* the room holds still while the frame opens and switches off, and the accounts rise over it. The
-   frame's size and middle (--w, --h, --y) open out from the frame's own to the whole screen with
-   --grow, set from the scroll */
+/* the room holds still while the opening plays back and the accounts rise over it; the frame keeps
+   its size and place throughout (--w, --h, --y) */
 .pin {
-  --w: calc(var(--fw) + (100vw - var(--fw)) * var(--grow, 0));
-  --h: calc(var(--fh) + (100svh - var(--fh)) * var(--grow, 0));
-  --y: calc(var(--cy) + (50% - var(--cy)) * var(--grow, 0));
+  --w: var(--fw);
+  --h: var(--fh);
+  --y: var(--cy);
   position: sticky;
   top: 0;
   height: 100svh;
@@ -76,34 +74,22 @@
   width: var(--w);
   height: var(--h);
   translate: -50% -50%;
-  border-radius: calc(16px * (1 - var(--grow, 0)));
-  /* switching off: the picture falls in from its head and foot to a line across its middle */
-  clip-path: inset(calc(var(--off, 0) * 50%) 0 calc(var(--off, 0) * 50%) 0);
+  border-radius: 16px;
+  /* closing: from its head and foot to a line across its middle, as it opened */
+  clip-path: inset(calc(var(--off, 0) * 50%) 0 calc(var(--off, 0) * 50%) 0 round 16px);
   -webkit-tap-highlight-color: transparent;
 }
 
-/* switching off, the picture flares as it falls in */
-.flare {
-  position: absolute;
-  z-index: 3;
-  inset: 0;
-  background: #fff;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* the one bright line it falls in to, across the middle of the screen, drawing in to nothing */
+/* the hairline it closes to, across its middle at its own width, fading */
 .offLine {
   position: absolute;
   z-index: 4;
-  left: 0;
-  right: 0;
-  top: 50%;
+  left: 50%;
+  top: var(--y);
+  width: var(--w);
   height: 1px;
-  background: #fff;
-  box-shadow:
-    0 0 6px 1px rgb(255 255 255 / 0.7),
-    0 0 26px 3px rgb(205 215 255 / 0.35);
+  translate: -50% 0;
+  background: var(--paper);
   opacity: 0;
   pointer-events: none;
 }
@@ -416,6 +402,16 @@
   white-space: nowrap;
 }
 
+/* on the scroll, each side slides back in behind the frame the way it came out (--tuck; a transform,
+   so it never fights the entrance's translate) */
+.sideA .word {
+  transform: translateX(calc(var(--tuck, 0) * 135%));
+}
+
+.sideB .word {
+  transform: translateX(calc(var(--tuck, 0) * -135%));
+}
+
 .sideA .word {
   animation: from-right 1.5s var(--ease) 0.7s both;
 }
@@ -535,9 +531,11 @@
   }
   .sideA .word {
     animation-name: from-below;
+    transform: translateY(calc(var(--tuck, 0) * 165%));
   }
   .sideB .word {
     animation-name: from-above;
+    transform: translateY(calc(var(--tuck, 0) * -165%));
   }
   .lede,
   .caption {
