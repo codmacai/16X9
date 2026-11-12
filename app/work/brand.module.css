@@ -1,8 +1,10 @@
-/* BRAND FILMS — THE BRAND WALL (brand-index.tsx): six brands, each on a black card as the 9x16
-   accounts are — a dark lit surface, its edge catching the light, a frame inset in it playing the
-   brand's films under its logo, its name and count at the card's foot. The card pointed at lifts and
-   its edge lights in the brand's colour; the rest fall back into the dark. Motion is transform and
-   opacity only, and the one frame flying into the line. */
+/* BRAND FILMS — THE BRAND WALL (brand-index.tsx): the room itself is the wall. Six equal tiles from
+   edge to edge of the screen, no line or gap between them and one even grade over them all, so they
+   read as one wall of screens; each plays its brand's films under the brand's logo, in black and
+   white at rest. The tile pointed at comes into colour and takes the light, the rest fall back into
+   the dark; the films shift a little against the pointer, as if seen through windows, and a fine
+   grain runs over the whole wall. Motion is transform and opacity, a clip as each tile wipes in,
+   and the one tile flying into the line. */
 
 .view {
   overflow: hidden;
@@ -33,17 +35,15 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: clamp(12px, 1.4vw, 22px);
   margin: 0;
-  /* under the drawer's name, and a margin round the cards */
-  padding: 56px var(--ui) clamp(18px, 3vh, 32px);
-  box-sizing: border-box;
+  padding: 0;
   list-style: none;
 }
 
 .wall > li {
   min-width: 0;
   min-height: 0;
+  background: #070707;
 }
 
 /* the light after the pointer */
@@ -67,77 +67,104 @@
   opacity: 1;
 }
 
-/* the edges of the room fall softly to black */
+/* the edges of the room fall to black; the head stays legible over the top row */
 .vignette {
   position: absolute;
   inset: 0;
   z-index: 3;
-  background: radial-gradient(ellipse 95% 90% at 50% 52%, transparent 62%, rgb(0 0 0 / 0.4));
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 90% 85% at 50% 52%, transparent 58%, rgb(0 0 0 / 0.5)),
+    linear-gradient(to bottom, rgb(0 0 0 / 0.6), transparent 15%);
   pointer-events: none;
 }
 
-/* ===== a card: a dark lit surface, its edge catching the light; the frame inset in it, its name
-   and count at its foot ===== */
+/* a fine grain over the whole wall, alive as film is */
+.vignette::after {
+  content: "";
+  position: absolute;
+  inset: -60px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.07;
+  animation: grain 0.9s steps(5) infinite;
+  will-change: transform;
+}
+
+@keyframes grain {
+  0% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-22px, 14px);
+  }
+  40% {
+    transform: translate(18px, -26px);
+  }
+  60% {
+    transform: translate(-30px, -8px);
+  }
+  80% {
+    transform: translate(26px, 22px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* ===== a tile ===== */
 .tile {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(8px, 1.2vh, 12px);
+  display: block;
   width: 100%;
   height: 100%;
-  box-sizing: border-box;
-  padding: clamp(8px, 0.8vw, 12px) clamp(8px, 0.8vw, 12px) clamp(10px, 1.4vh, 14px);
+  padding: 0;
   border: 0;
-  border-radius: 6px;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(ellipse 120% 60% at 50% 0%, rgb(255 255 255 / 0.07), transparent 70%),
-    linear-gradient(180deg, #151515, #0b0b0b);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.1),
-    inset 0 0 0 1px rgb(255 255 255 / 0.06),
-    0 24px 50px -24px rgb(0 0 0 / 0.9);
+  overflow: hidden;
+  background: transparent;
   color: var(--paper);
   font: inherit;
   cursor: pointer;
+  isolation: isolate;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    transform 0.8s var(--ease),
-    box-shadow 0.6s ease;
 }
 
 .tile:focus-visible {
-  outline: 1px solid var(--paper);
-  outline-offset: 4px;
+  outline: none;
 }
 
-/* in the light: the card lifts and its edge lights in the brand's colour */
-.on .tile {
-  transform: translateY(-6px);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.16),
-    inset 0 0 0 1px color-mix(in srgb, var(--glow) 55%, rgb(246 244 240 / 0.2)),
-    0 30px 60px -24px rgb(0 0 0 / 0.95);
-}
-
-/* the frame, inset in the card: the films, the grade, the colour, the logo */
-.frame {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  border-radius: 3px;
-  background: #050505;
-  isolation: isolate;
-  box-shadow: inset 0 0 0 1px rgb(246 244 240 / 0.1);
-}
-
-/* its films: most carry letterbox bars, so the picture runs far enough past the frame's top and
-   bottom that they fall outside it; in the light it lifts and pushes in */
+/* its films: most carry letterbox bars, so the picture runs far enough past the tile's top and
+   bottom that they fall outside it; in the light it lifts and pushes in. The picture runs a little
+   past the tile's sides as well, and shifts against the pointer (--px, --py, -0.5 to 0.5, on a
+   spring from brand-index.tsx), as a view through a window does */
 .media {
   position: absolute;
-  inset: 0;
+  inset: -14px -18px;
   z-index: 0;
+  translate: calc(var(--px, 0) * -28px) calc(var(--py, 0) * -20px);
+  will-change: translate;
+}
+
+/* black and white at rest: the films' colour drawn out (a black layer blending its saturation over
+   them); the tile in the light comes into colour. Only where there is a pointer to bring it */
+.mono {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: none;
+  background: #000;
+  mix-blend-mode: saturation;
+  transition: opacity 1.1s var(--ease);
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .mono {
+    display: block;
+  }
+}
+
+.on .mono {
+  opacity: 0;
 }
 
 .still,
@@ -177,12 +204,14 @@
   transform: scale(1.12);
 }
 
-/* the grade: the films held down so the logos read; the one in the light lifts, the rest go dark */
+/* the grade: the films held down so the logos read, one even grade over every tile so no tile
+   is framed apart from the next (the room's vignette does the edges); the one in the light lifts,
+   the rest go dark */
 .shade {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.66) 85%);
+  background: rgb(0 0 0 / 0.5);
   transition: opacity 0.9s var(--ease);
 }
 
@@ -204,7 +233,7 @@
 }
 
 /* the brand's colour, glowing from where the pointer is */
-.frame::before {
+.tile::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -216,8 +245,8 @@
   pointer-events: none;
 }
 
-/* ...and a hairline of it along the frame's foot */
-.frame::after {
+/* ...and a hairline of it along the tile's foot */
+.tile::after {
   content: "";
   position: absolute;
   z-index: 4;
@@ -232,20 +261,19 @@
   pointer-events: none;
 }
 
-.on .frame::before {
+.on .tile::before {
   opacity: 1;
 }
 
-.on .frame::after {
+.on .tile::after {
   transform: scaleX(1);
 }
 
-/* a brand with several films: a fine bar for each, over its name */
+/* a brand with several films: a fine bar for each, the one showing filling */
 .bars {
   display: flex;
   gap: 4px;
-  width: min(150px, 60%);
-  margin-bottom: 6px;
+  width: min(120px, 50%);
 }
 
 .bars i {
@@ -322,61 +350,28 @@
   opacity: 0.4;
 }
 
-/* ===== at the card's foot: its name, the film showing, its count ===== */
+/* ===== in the light, quiet at its foot: its cuts and its count (the logo is its name) ===== */
 .caption {
-  position: relative;
-  flex: none;
+  position: absolute;
+  z-index: 3;
+  left: clamp(18px, 2vw, 30px);
+  right: clamp(18px, 2vw, 30px);
+  bottom: clamp(18px, 3.2vh, 30px);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 0 4px;
   text-align: left;
-}
-
-
-
-.capName {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.capName b {
-  font-weight: 400;
-  font-size: 11px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-}
-
-/* the film showing: it comes up only in the light */
-.capFilm {
-  max-height: 0;
   opacity: 0;
+  transform: translateY(10px);
   transition:
-    max-height 0.6s var(--ease),
-    opacity 0.5s var(--ease);
-  overflow: hidden;
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: rgb(246 244 240 / 0.6);
-  animation: film-in 0.6s var(--ease) both;
+    opacity 0.5s var(--ease),
+    transform 0.8s var(--ease);
 }
 
-.on .capFilm {
-  max-height: 1.6em;
+.on .caption {
   opacity: 1;
-}
-
-@keyframes film-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
+  transform: none;
 }
 
 .capCount {
@@ -413,17 +408,11 @@
     width: 72%;
     height: 11%;
   }
-  .wall {
-    padding-top: 52px;
-  }
   .caption {
-    padding: 0 2px;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
   }
-  .capName b {
-    font-size: 9px;
-    letter-spacing: 0.18em;
-  }
-  .capFilm,
   .capCount {
     display: none;
   }
@@ -487,7 +476,14 @@
 @media (prefers-reduced-motion: reduce) {
   .still,
   .film,
-  .logo {
+  .logo,
+  .mono {
     transition: none;
+  }
+  .media {
+    translate: none;
+  }
+  .vignette::after {
+    animation: none;
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { AnimatePresence, motion, useMotionValue, useSpring, type Transition, type Variants } from "framer-motion";
+import { AnimatePresence, motion, useMotionValue, useSpring, type MotionStyle, type Transition, type Variants } from "framer-motion";
 import { EASE, EASE_CINE } from "./_shared/chrome";
 import type { Project } from "./_shared/data";
 import { brandsFrom, OPTICAL, pad2, reelOf, startMuted, type Brand } from "./brand-shared";
@@ -11,18 +11,20 @@ import f from "./file.module.css";
 import s from "./brand.module.css";
 
 // ===========================================================================
-// BRAND FILMS — THE BRAND WALL. Six brands, each on its own black card, as
-// the 9x16 accounts are: a dark lit surface, its edge catching the light, a
-// frame inset in it playing the brand's own films under its logo in its own
-// colours, and at the card's foot the brand's name and its count.
+// BRAND FILMS — THE BRAND WALL. The room itself is the wall: six equal tiles
+// from edge to edge of the screen, joined with no line between them, each
+// playing its brand's own films under the brand's logo in its own colours —
+// in black and white at rest, the films shifting a little against the pointer
+// as if seen through windows, a fine grain over the whole wall.
 // A brand with several films cuts from one to the next on its own beat, a
 // fine bar under its name counting them through.
 //
-// The cards come up into place on a spring, one after another, their logos
-// rising after them. Point at one and it takes the light: the card lifts and
-// its edge lights in the brand's colour, its film pushes in, the colour glows
-// from where the pointer is and its logo leans toward the pointer on a spring
-// — while the rest of the wall falls back into the dark. On a touch screen the light moves from
+// The wall comes in like a sequence being cut together: each tile wipes up
+// into place, its logo rising after it. Point at one and it takes the light:
+// its film comes into colour, lifts and pushes in, its brand's colour glows from where the
+// pointer is, its logo leans toward the pointer on a spring, and its name,
+// the film now showing and its count come up at its foot — while the rest of
+// the wall falls back into the dark. On a touch screen the light moves from
 // brand to brand on its own. Click, and the tile flies, film and all, straight
 // into the frame at the front of the brand's line of films, its logo going as
 // it comes; it lands exactly where that film stands, and the brand's other
@@ -62,11 +64,11 @@ const useLowPower = () =>
     () => false
   );
 
-// the cards come up into place on a spring, one after another, their logos rising after them
-const delayOf = (i: number) => 0.15 + (i % 3) * 0.08 + Math.floor(i / 3) * 0.12;
+// the wall cut together: each tile wipes up into place, its logo rising after it
+const delayOf = (i: number) => 0.2 + (i % 3) * 0.1 + Math.floor(i / 3) * 0.14;
 const tiles: Variants = {
-  hidden: { opacity: 0, y: 70, scale: 0.96 },
-  shown: (i: number) => ({ opacity: 1, y: 0, scale: 1, transition: { ...RISE, delay: delayOf(i) } }),
+  hidden: { clipPath: "inset(100% 0% 0% 0%)" },
+  shown: (i: number) => ({ clipPath: "inset(0% 0% 0% 0%)", transition: { duration: 1.1, ease: EASE_CINE, delay: delayOf(i) } }),
   away: (i: number) => ({ opacity: 0, transition: { duration: 0.3, ease: EASE, delay: i * 0.025 } }),
 };
 const marks: Variants = {
@@ -155,12 +157,26 @@ export default function BrandIndex({
   const lightX = useSpring(lx, LIGHT);
   const lightY = useSpring(ly, LIGHT);
   const [lit, setLit] = useState(false);
+  // the films' depth: they shift a little against the pointer, as if seen through windows
+  const dx = useMotionValue(0);
+  const dy = useMotionValue(0);
+  const depthX = useSpring(dx, LIGHT);
+  const depthY = useSpring(dy, LIGHT);
   const follow = (e: ReactPointerEvent<HTMLElement>) => {
     if (e.pointerType !== "mouse") return;
     const r = e.currentTarget.getBoundingClientRect();
     lx.set(e.clientX - r.left);
     ly.set(e.clientY - r.top);
+    if (!reduce) {
+      dx.set((e.clientX - r.left) / r.width - 0.5);
+      dy.set((e.clientY - r.top) / r.height - 0.5);
+    }
     if (!lit) setLit(true);
+  };
+  const unfollow = () => {
+    setLit(false);
+    dx.set(0);
+    dy.set(0);
   };
 
   // into the brand: the tile flies, on the film it's showing, into the front of the brand's line;
@@ -197,7 +213,12 @@ export default function BrandIndex({
           </span>
         </motion.div>
 
-        <div className={s.stage} onPointerMove={follow} onPointerLeave={() => setLit(false)}>
+        <motion.div
+          className={s.stage}
+          style={{ "--px": depthX, "--py": depthY } as MotionStyle}
+          onPointerMove={follow}
+          onPointerLeave={unfollow}
+        >
           <ul className={`${s.wall} ${spot !== null ? s.wallFocus : ""}`} onPointerLeave={() => setHover(null)}>
             {brands.map((b, k) => (
               <motion.li
@@ -226,7 +247,7 @@ export default function BrandIndex({
           {/* a soft light after the pointer, over the wall */}
           <motion.span className={`${s.light} ${lit && up ? s.lightOn : ""}`} style={{ x: lightX, y: lightY }} aria-hidden="true" />
           <span className={s.vignette} aria-hidden="true" />
-        </div>
+        </motion.div>
       </div>
 
       {/* into the brand: the tile flies into the front of its line */}
@@ -252,9 +273,9 @@ export default function BrandIndex({
 }
 
 // ---------------------------------------------------------------------------
-// one tile: its brand's films, cut on its own beat, under its logo; in the
-// light, the film lifts and the logo leans toward the pointer, and its name,
-// the film showing and its count come up at its foot
+// one tile: its brand's films, cut on its own beat, under its logo, in black
+// and white at rest; in the light, the film comes into colour and lifts, the
+// logo leans toward the pointer, and its cuts and count come up at its foot
 // ---------------------------------------------------------------------------
 function Tile({
   brand,
@@ -276,7 +297,7 @@ function Tile({
   onLeave: () => void;
   onOpen: (at: number, el: HTMLElement) => void;
 }) {
-  const frameRef = useRef<HTMLSpanElement>(null);
+  const ref = useRef<HTMLButtonElement>(null);
   const reels = useMemo(() => brand.films.map(reelOf), [brand]);
   const n = reels.length;
 
@@ -323,6 +344,7 @@ function Tile({
 
   return (
     <button
+      ref={ref}
       type="button"
       className={s.tile}
       tabIndex={tabbable ? 0 : -1}
@@ -334,61 +356,56 @@ function Tile({
       onPointerLeave={leave}
       onFocus={(e) => e.currentTarget.matches(":focus-visible") && onEnter()}
       onBlur={onLeave}
-      onClick={() => frameRef.current && onOpen(at, frameRef.current)}
+      onClick={() => ref.current && onOpen(at, ref.current)}
       aria-label={`${brand.name}: ${n} ${n === 1 ? "film" : "films"}`}
     >
-      {/* the frame, inset in the card: its films, behind the logo */}
-      <span ref={frameRef} className={s.frame}>
-        {/* its films, behind the logo */}
-        <span className={s.media} aria-hidden="true">
-          {reels[at].still && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={reels[at].still} className={s.still} src={reels[at].still} alt="" draggable={false} decoding="async" />
-          )}
-          {playing &&
-            shown.map((j, i) => (
-              <video
-                key={reels[j].clip}
-                ref={startMuted}
-                className={`${s.film} ${i === 0 ? s.filmOn : ""}`}
-                src={reels[j].clip}
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="auto"
-                disablePictureInPicture
-              />
-            ))}
-        </span>
-        <span className={s.shade} aria-hidden="true" />
-
-        <motion.span className={s.logoBox} data-wide={brand.logo.wide || undefined} style={{ x, y }} aria-hidden="true">
-          <motion.span className={s.rise} variants={marks} custom={k}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className={s.logo} src={brand.logo.dark} alt="" draggable={false} style={{ scale: String(OPTICAL[brand.logo.src] ?? 1) }} />
-          </motion.span>
-        </motion.span>
+      {/* its films, behind the logo */}
+      <span className={s.media} aria-hidden="true">
+        {reels[at].still && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={reels[at].still} className={s.still} src={reels[at].still} alt="" draggable={false} decoding="async" />
+        )}
+        {playing &&
+          shown.map((j, i) => (
+            <video
+              key={reels[j].clip}
+              ref={startMuted}
+              className={`${s.film} ${i === 0 ? s.filmOn : ""}`}
+              src={reels[j].clip}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              disablePictureInPicture
+            />
+          ))}
       </span>
+      {/* black and white at rest: it comes into colour in the light */}
+      <span className={s.mono} aria-hidden="true" />
+      <span className={s.shade} aria-hidden="true" />
 
-      {/* at the card's foot: its name, the film showing, and its count */}
+      <motion.span className={s.logoBox} data-wide={brand.logo.wide || undefined} style={{ x, y }} aria-hidden="true">
+        <motion.span className={s.rise} variants={marks} custom={k}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className={s.logo} src={brand.logo.dark} alt="" draggable={false} style={{ scale: String(OPTICAL[brand.logo.src] ?? 1) }} />
+        </motion.span>
+      </motion.span>
+
+      {/* in the light, quiet at its foot: its cuts and its count (the logo is its name) */}
       <span className={s.caption} aria-hidden="true">
-        <span className={s.capName}>
-          {/* a brand with several films: a fine bar for each, the one showing filling */}
-          {n > 1 && (
-            <span className={s.bars}>
-              {reels.map((r, i) => (
-                <i key={r.clip} className={i < at ? s.barDone : undefined}>
-                  {i === at && playing && <b key={at} style={{ animationDuration: `${CUT_MS}ms` }} />}
-                </i>
-              ))}
-            </span>
-          )}
-          <b>{brand.name}</b>
-          <span key={at} className={s.capFilm}>
-            {brand.films[at].title}
+        {/* a brand with several films: a fine bar for each, the one showing filling */}
+        {n > 1 ? (
+          <span className={s.bars}>
+            {reels.map((r, i) => (
+              <i key={r.clip} className={i < at ? s.barDone : undefined}>
+                {i === at && playing && <b key={at} style={{ animationDuration: `${CUT_MS}ms` }} />}
+              </i>
+            ))}
           </span>
-        </span>
+        ) : (
+          <span />
+        )}
         <span className={s.capCount}>
           {pad2(n)} {n === 1 ? "film" : "films"} <i>→</i>
         </span>
@@ -412,7 +429,7 @@ function Opening({ brand, at, rect, landed }: { brand: Brand; at: number; rect: 
   return (
     <motion.div
       className={s.fly}
-      initial={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height, borderRadius: 3 }}
+      initial={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height, borderRadius: 0 }}
       animate={{ left: to.left, top: to.top, width: to.width, height: to.height, borderRadius: 14 }}
       exit={{ opacity: 0, transition: { duration: 0.3, ease: EASE } }}
       transition={FLY}
